@@ -1,0 +1,6 @@
+res://scripts/autoload/AudioManager.gd
+res://scripts/Main.gd
+res://scripts/Game.gd
+res://scripts/GameOver.gd
+res://scripts/HighScores.gd
+res://scripts/ShardSelect.gd

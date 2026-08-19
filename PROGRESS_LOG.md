@@ -203,6 +203,8 @@ multiple endings.
 - [x] Perception asserted against the real building in `live_run.gd`, and the
       freed-registry bug it turned out to be hiding (see CLOSED, below).
 - [x] The west annexe: departments are now ROOMS, shuttered until bought.
+- [x] Imaging has teeth and a counterplay: it writes the true cause into the
+      record, colleagues can order it, and the aperture is how you ruin a scan.
 
 ---
 
@@ -213,7 +215,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-875 assertions   (test functions across 5 suites)
+883 assertions   (test functions across 5 suites)
  40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -303,12 +305,32 @@ was:
   Buying a department means more of the building is walked through, and
   therefore more of it is watched.
 
+### Imaging: the one document you did not write
+The annexe left Radiology as a room containing a button that was purely good for
+the player — exact vitals for a day, no downside worth the walk. It is now the
+sharpest thing in the game.
+
+`PatientChart.imaging_findings` records the TRUE cause of every active
+complication at the moment of the scan, and the audit raises
+`contradicts_imaging` against any of them whose filed cause disagrees. A clean,
+plausibly documented complication — the thing careful play is built on — passes
+every audit until somebody points a scanner at it. And the player is not the
+only person who can: a colleague reading an overdue chart will ask for imaging,
+the request shows on the tablet, and ignoring it costs you at clock-out with the
+one person who asked. There is nothing in the record to explain, because none of
+it is in the record.
+
+The counterplay is the aperture, which is why the machine had to be fixed first:
+prescribed values were only ever set for machines standing in the patient's own
+ward, so both the treatment bay and Radiology showed a by-the-book setting
+belonging to nobody present. `_nearby_patient` now sets it from whoever has been
+wheeled in. Two notches off and the scan degrades to artefact — no record, the
+request satisfied on paper, and one line in a device log at the far end of the
+building.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- More sabotage verbs around the new departments: the imaging bench writes the
-  truth into the record permanently, and there is currently no way to argue with
-  it other than not using it.
 - Intake trolleys are scenery. Emergency admissions still go straight to a ward;
   parking one on a trolley until you find it a bed would be a real decision.

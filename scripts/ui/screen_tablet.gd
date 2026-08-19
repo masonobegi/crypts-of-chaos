@@ -51,6 +51,12 @@ func _build_ward(c: VBoxContainer) -> void:
 		bv.add_child(UIKit.row("Billing", "%s/day" % UIKit.money_str(p.daily_revenue()), UIKit.MONEY))
 		bv.add_child(UIKit.row("Insurance", DB.insurance_name(p.insurance)))
 		bv.add_child(UIKit.row("Personality", DB.archetype_name(p.archetype)))
+		# A colleague's outstanding request. Deliberately stated as a request and
+		# not as a warning: what happens if you ignore it is for the player to
+		# find out at clock-out.
+		if p.imaging_requested():
+			bv.add_child(UIKit.row("Requested", "imaging, day %d" % p.imaging_requested_day,
+				UIKit.WARN))
 		for comp in p.active_complications():
 			bv.add_child(UIKit.row("  " + comp.display_name,
 				DB.cause_name(comp.documented_cause) if comp.documented_cause != "" else "NO CAUSE FILED",

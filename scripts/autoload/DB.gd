@@ -427,6 +427,10 @@ const CAUSES := {
 	"equipment_variance": "equipment variance",
 	"administrative": "administrative burden",
 	"physician_error": "physician error",
+	# Truth-side tags. These never appear in the file-a-cause menu — they are
+	# what the simulation knows, and they only ever surface when something
+	# outside the player's handwriting reports them.
+	"machine_deviation": "a treatment device run well off its prescribed setting",
 }
 
 # =============================================================== INSURANCE

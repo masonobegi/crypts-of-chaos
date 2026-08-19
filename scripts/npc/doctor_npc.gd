@@ -39,3 +39,32 @@ func review_charts(patients: Array) -> void:
 					"This chart doesn't add up.", "Who wrote this?",
 					"That's not a cause of that.", "Hm. Interesting.",
 				])), 3.0)
+		_maybe_request_imaging(p)
+
+## Once Radiology exists, a colleague reading a chart that has run long will ask
+## for a scan. This is the hidden cost of the department: it is a machine that
+## reports the truth, and you are not the only person who can point it at your
+## patients. Declining is free today and costs you at clock-out.
+func _maybe_request_imaging(p) -> void:
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h == null or not h.is_room_open("radiology"):
+		return
+	if p.imaging_requested() or p.chart.imaging_done:
+		return
+	if not p.is_overdue():
+		return
+	# An investigator-type asks nearly every time. A lazy colleague mostly does
+	# not, which is why WHICH doctor is on today is worth knowing.
+	var appetite := 0.5 * (1.6 if archetype == "investigator" else 1.0)
+	if archetype == "lazy":
+		appetite *= 0.35
+	if not RNG.chance("imaging_request", appetite):
+		return
+	p.imaging_requested_by = mind.id
+	p.imaging_requested_day = GameState.day
+	say(String(RNG.pick("imaging_ask", [
+		"Get %s scanned, would you? It's been a while." % p.display_name,
+		"I'd like imaging on %s before they go home." % p.display_name,
+		"Can we put %s through the scanner today?" % p.display_name,
+	])), 4.0)
+	EventBus.toast.emit("%s wants %s imaged today." % [display, p.display_name], "suspicion")

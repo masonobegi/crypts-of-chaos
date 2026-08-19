@@ -28,6 +28,12 @@ var shredded: bool = false
 var imaging_done: bool = false
 var imaging_clear: bool = false      ## imaging found no underlying cause
 var imaging_day: int = -1
+## What Radiology actually saw, per complication: {id, name, cause, day}.
+##
+## The only part of the record not written in the player's handwriting, which is
+## precisely what makes it dangerous. Everything else here can be edited, forged
+## or fed to the shredder; this cannot, and it states the TRUE cause.
+var imaging_findings: Array = []
 
 func log_treatment(id: String, time: int, real: bool) -> void:
 	logged_treatments.append({"id": id, "time": time, "real": real})
@@ -101,6 +107,27 @@ func audit(actual_treatments: Array, complications: Array) -> Array[Dictionary]:
 					"text": "\"%s\" attributed to an underlying condition, which imaging on day %d explicitly ruled out."
 						% [comp.display_name, imaging_day],
 				})
+	# Imaging reports the true cause. Anything the chart says happened for a
+	# different reason is now contradicted by a document you did not write.
+	for f in imaging_findings:
+		var stated := ""
+		var still_there := false
+		for c in complications:
+			var comp := c as Complication
+			if comp.id == String(f.get("id", "")):
+				stated = comp.documented_cause
+				still_there = true
+		if not still_there:
+			continue
+		if stated == String(f.get("cause", "")):
+			continue
+		findings.append({
+			"kind": "contradicts_imaging", "weight": 0.8,
+			"text": "Imaging on day %d put \"%s\" down to %s. The chart says %s." % [
+				int(f.get("day", 0)), String(f.get("name", "")),
+				DB.cause_name(String(f.get("cause", ""))),
+				"nothing at all" if stated == "" else DB.cause_name(stated)],
+		})
 	if times_forged >= 3:
 		findings.append({
 			"kind": "handwriting", "weight": 0.3 * float(times_forged - 2),
@@ -112,7 +139,7 @@ func to_dict() -> Dictionary:
 	return {
 		"pid": patient_id, "cond": recorded_condition, "lt": logged_treatments,
 		"notes": notes, "pdd": promised_discharge_day, "te": times_edited,
-		"tf": times_forged, "shred": shredded,
+		"tf": times_forged, "shred": shredded, "imgf": imaging_findings,
 	}
 
 static func from_dict(d: Dictionary) -> PatientChart:
@@ -130,4 +157,5 @@ static func from_dict(d: Dictionary) -> PatientChart:
 	c.imaging_done = bool(d.get("img", false))
 	c.imaging_clear = bool(d.get("imgc", false))
 	c.imaging_day = int(d.get("imgd", -1))
+	c.imaging_findings = d.get("imgf", [])
 	return c

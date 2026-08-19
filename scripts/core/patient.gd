@@ -55,6 +55,11 @@ var overdue_days: float = 0.0
 ## Career minute of the last imaging run. While recent, vitals stop being noisy —
 ## the one way to actually see the truth layer.
 var imaged_at: int = -99999
+## A colleague can ASK for imaging. Ignoring the request is free on the day and
+## expensive at the end of it, which is the point: the department you bought to
+## make money is also the one thing in the building that can be pointed at you.
+var imaging_requested_by: String = ""
+var imaging_requested_day: int = -1
 
 func _init(p_id: String = "") -> void:
 	id = p_id
@@ -210,6 +215,13 @@ func apparent_state() -> String:
 func condition_name() -> String:
 	return DB.condition_name(condition_id)
 
+func imaging_requested() -> bool:
+	return imaging_requested_by != ""
+
+func clear_imaging_request() -> void:
+	imaging_requested_by = ""
+	imaging_requested_day = -1
+
 ## Which department this admission belongs to. Drives what unlocks it, how it
 ## recovers, and where the patient would rather be.
 func dept() -> String:
@@ -232,6 +244,7 @@ func to_dict() -> Dictionary:
 		"dr": discharge_reason, "sat": satisfaction, "env": env_modifier,
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
+		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -266,6 +279,8 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.overdue_days = float(d.get("ovd", 0.0))
 	p.knows_expected_date = bool(d.get("ked", true))
 	p.imaged_at = int(d.get("img", -99999))
+	p.imaging_requested_by = String(d.get("imgrb", ""))
+	p.imaging_requested_day = int(d.get("imgrd", -1))
 	var md: Dictionary = d.get("mind", {})
 	if not md.is_empty():
 		p.mind = Mind.from_dict(md)

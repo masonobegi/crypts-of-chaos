@@ -222,6 +222,7 @@ func end_shift() -> void:
 		if d is DoctorNPC:
 			d.review_charts(patient_system.active())
 
+	_settle_imaging_requests()
 	_run_ward_clerk()
 	var findings := records.pending_findings()
 	var data := {
@@ -233,6 +234,38 @@ func end_shift() -> void:
 	}
 	review_ready.emit(data)
 	EventBus.objective_changed.emit("Finish your paperwork before you leave.")
+
+## A colleague who asked for a scan this morning notices at going-home time that
+## it never happened. There is no way to explain this in the record, because
+## nothing about it is IN the record — which is exactly why it lands on the one
+## person who asked rather than on the paperwork.
+func _settle_imaging_requests() -> void:
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if sus == null:
+		return
+	for p in patient_system.active():
+		if not p.imaging_requested():
+			continue
+		if p.imaging_requested_day >= GameState.day:
+			# Asked today, still time tomorrow. Only an ignored request counts.
+			continue
+		var asker = sus.mind_of(p.imaging_requested_by)
+		p.clear_imaging_request()
+		if asker == null:
+			continue
+		var ev := Evidence.new()
+		ev.kind = "declined_imaging"
+		ev.about_actor = "player"
+		ev.patient_id = p.id
+		ev.source = Evidence.Source.INFERRED
+		ev.time = GameState.career_minutes
+		ev.base_weight = 0.34
+		ev.certainty = 0.8
+		ev.summary = "Asked for imaging on %s. It was not done." % p.display_name
+		asker.add_evidence(ev)
+		GameState.adjust_rep("insurer_trust", -0.02)
+		EventBus.toast.emit("%s never got their scan. Somebody noticed." % p.display_name,
+			"suspicion")
 
 ## Ward clerk: chases up your undocumented complications so they stop being
 ## record gaps. She files them as "idiopathic", which is plausible for most

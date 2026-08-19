@@ -613,3 +613,53 @@ func test_resolved_complications_cannot_be_noticed() -> void:
 	ps.notice_complication(p, c, "nurse_0", "A")
 	t.eq(c.noticed_time, -1, "something already dealt with is not a discovery")
 	ps.queue_free()
+
+## Imaging is the only entry in the record the player does not write, so it has
+## to actually say what the simulation knows rather than what the chart claims.
+func test_imaging_writes_the_true_cause_into_the_record() -> void:
+	var p := Patient.new("img1")
+	p.condition_id = "beige_lung"
+	var c := Complication.new()
+	c.id = "ferrous_aura"
+	c.display_name = "Ferrous Aura"
+	c.true_cause = "machine_deviation"
+	c.plausible_causes = PackedStringArray(["underlying", "idiopathic"])
+	p.add_complication(c)
+	# Filed as something plausible: clean, until somebody points a scanner at it.
+	c.documented_cause = "idiopathic"
+	c.documented_at = 10
+	t.eq(p.chart.audit(p.actual_treatments, p.complications).size(), 0,
+		"a plausibly filed complication passes an audit")
+
+	p.chart.imaging_findings.append({
+		"id": "ferrous_aura", "name": "Ferrous Aura",
+		"cause": "machine_deviation", "day": 4,
+	})
+	var findings := p.chart.audit(p.actual_treatments, p.complications)
+	t.eq(findings.size(), 1, "and stops passing the moment imaging disagrees")
+	t.eq(String(findings[0]["kind"]), "contradicts_imaging", "the finding names imaging")
+
+## And the aperture is the counterplay: off its setting, the scan records
+## nothing, which is the entire reason to run it badly on purpose.
+func test_a_degraded_scan_records_nothing() -> void:
+	var p := Patient.new("img2")
+	p.condition_id = "beige_lung"
+	var c := Complication.new()
+	c.id = "ferrous_aura"
+	c.display_name = "Ferrous Aura"
+	c.true_cause = "machine_deviation"
+	p.add_complication(c)
+	p.imaging_requested_by = "doctor_0"
+	p.imaging_requested_day = 1
+
+	var ts = load("res://scripts/systems/treatment_system.gd").new()
+	t.root.add_child(ts)
+	ts._record_imaging(p, 3)
+	t.ok(p.chart.imaging_findings.is_empty(), "an artefact scan writes no findings")
+	t.ok(not p.chart.imaging_done, "and does not count as having been imaged")
+	t.ok(not p.imaging_requested(), "but it does satisfy the request that was made")
+
+	ts._record_imaging(p, 0)
+	t.eq(p.chart.imaging_findings.size(), 1, "run properly, it records what is there")
+	t.ok(p.chart.imaging_done, "and counts")
+	ts.queue_free()

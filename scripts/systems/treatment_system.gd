@@ -123,7 +123,7 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 		visual = maxf(visual, 0.4)
 		tags.append("wrong_treatment")
 	if m.machine_id == "machine_imaging":
-		_record_imaging(p)
+		_record_imaging(p, int(res["deviation"]))
 	elif m.machine_id == "machine_dread":
 		_fill_nearest_canister(m)
 
@@ -154,19 +154,42 @@ func _fill_nearest_canister(m: TreatmentMachine) -> void:
 	best.set("contents", "ambient_dread")
 	EventBus.toast.emit("The canister is full again.", "info")
 
-## Imaging is the only thing in the game that tells you the truth. It also puts
-## that truth in the record permanently, so every claim you make afterwards has
-## to agree with it.
-func _record_imaging(p: Patient) -> void:
+## Imaging is the only thing in the game that tells you the truth, and the only
+## entry in the record that is not in your handwriting. It cannot be edited,
+## forged or shredded, and it names the cause the SIMULATION knows about — so
+## imaging a patient you have been quietly working on is a confession you signed
+## by walking down the corridor.
+##
+## The aperture has a prescribed setting like every other device on the floor.
+## Off it, the scan degrades into artefact: nothing goes into the record, the
+## request is satisfied on paper, and the only trace is a line in the device log
+## that somebody has to go to Radiology and look for. That is the whole trade —
+## an alibi now against a document later.
+func _record_imaging(p: Patient, deviation: int) -> void:
+	p.clear_imaging_request()
+	if absi(deviation) >= 2:
+		p.chart.add_note(
+			"Imaging attempted. Scan degraded by aperture artefact; findings inconclusive.",
+			GameState.career_minutes, "Radiology", true)
+		EventBus.toast.emit("%s imaged — the scan came back as noise." % p.display_name, "info")
+		return
+
 	p.imaged_at = GameState.career_minutes
 	p.chart.imaging_done = true
 	p.chart.imaging_day = GameState.day
+	var active := p.active_complications()
 	# "Clear" means nothing underlying was found — which is true whenever the
 	# patient has no active complications at the time of the scan.
-	p.chart.imaging_clear = p.active_complications().is_empty()
+	p.chart.imaging_clear = active.is_empty()
+	for c in active:
+		var comp := c as Complication
+		p.chart.imaging_findings.append({
+			"id": comp.id, "name": comp.display_name,
+			"cause": comp.true_cause, "day": GameState.day,
+		})
 	p.chart.add_note("Imaging performed. %s" % (
 		"No underlying cause identified." if p.chart.imaging_clear
-		else "Findings consistent with recorded complications."),
+		else "Findings recorded against %d active complication(s)." % active.size()),
 		GameState.career_minutes, "Radiology", true)
 	EventBus.toast.emit("%s imaged — vitals are exact for a day." % p.display_name, "good")
 

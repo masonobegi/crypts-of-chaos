@@ -29,6 +29,7 @@ var _dial_label: Label3D = null
 var _readout: Label3D = null
 var _lamp: MeshInstance3D = null
 var _panel_open := false
+var _prescribed_for := ""
 
 func build(disp: String) -> void:
 	fixture_name = disp
@@ -110,6 +111,7 @@ func set_prescribed_for(p) -> void:
 	# Every condition has a by-the-book setting. It is on the chart. Deviating
 	# from it is trivially easy and entirely on you.
 	prescribed = 3 + (hash(p.condition_id) % 5)
+	_prescribed_for = p.id
 	_refresh()
 
 func _nearby_patient(_player):
@@ -120,6 +122,13 @@ func _nearby_patient(_player):
 		if d < best_d:
 			best_d = d
 			best = n.get("data")
+	# Machines that live outside the wards — the treatment bay, and Radiology —
+	# treat whoever has been WHEELED to them, so the by-the-book setting has to
+	# follow the patient in. Without this the readout showed a prescribed value
+	# belonging to nobody present, which quietly made the dial meaningless in
+	# exactly the two rooms built around it.
+	if best != null and String(best.id) != _prescribed_for:
+		set_prescribed_for(best)
 	return best
 
 # ------------------------------------------------------------------ running

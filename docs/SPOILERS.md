@@ -117,11 +117,36 @@ points at it. It is the highest-leverage thermostat in the building.
 
 **Radiology.** The imaging bench used to appear in the treatment bay the instant
 the upgrade was bought. It is now in Radiology, at the opposite end of the floor
-from the wards, which turns "run imaging" from a free button into a round trip.
-`TreatmentSystem` writes what imaging saw into the record permanently
-(`machine_imaging`), so the walk is the price of the truth. The control booth
-screen is the one solid object in the department that breaks line of sight to
-the couch.
+from the wards, and the machine treats whoever is within 3.4 m of it — so using
+it means physically wheeling a bed the length of the building and back.
+
+Imaging is the only entry in the record the player does not write. It cannot be
+edited, forged or shredded, and it names the cause the SIMULATION knows about,
+not the one on the chart. `PatientChart.imaging_findings` records
+`{id, name, true_cause, day}` for every active complication at the moment of the
+scan, and `audit()` raises `contradicts_imaging` (weight 0.8) for any of them
+whose filed cause disagrees. A perfectly clean, plausibly documented
+complication passes every audit in the game until somebody points a scanner at
+it.
+
+Which is why the department cuts both ways: **colleagues can order imaging.**
+`DoctorNPC._maybe_request_imaging` fires on any overdue patient once Radiology
+is open — appetite 0.5, ×1.6 for an investigator, ×0.35 for a lazy one, so which
+doctor is on shift genuinely matters. The request shows on the tablet. Ignore it
+and at clock-out `ShiftSystem._settle_imaging_requests` gives the doctor who
+asked an INFERRED memory at weight 0.34 and knocks insurer trust down 0.02 —
+there is no way to explain this in the record, because none of it is in the
+record.
+
+The counterplay is the aperture. Like every device on the floor it has a
+prescribed setting, and `_nearby_patient` now sets that from whoever has been
+wheeled in. Run it two or more notches off and the scan degrades to artefact:
+nothing enters the record, the request is satisfied on paper, and the only trace
+is a line in the Radiology device log that somebody has to walk over there and
+read. An alibi today against a document tomorrow.
+
+The control booth screen is the one solid object in the department that breaks
+line of sight to the couch.
 
 Shutters block movement, block vision (layer 32) and remove their doorway from
 the nav graph, so a sealed department is genuinely sealed — staff will not path

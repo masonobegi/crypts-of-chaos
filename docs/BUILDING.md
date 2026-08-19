@@ -18,6 +18,16 @@ GODOT=/path/to/godot ./run_tests.sh
 
 Exit code is non-zero if anything fails.
 
+## Exporting
+
+Presets for Linux, Windows and macOS are in `export_presets.cfg`; they exclude
+`tests/`, `docs/` and the tooling scripts from the build. Export templates for
+your Godot version must be installed first.
+
+```
+godot --headless --path . --export-release "Linux" build/linux/ChronicCare.x86_64
+```
+
 ## Screenshots
 
 ```

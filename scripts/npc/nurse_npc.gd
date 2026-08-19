@@ -10,5 +10,5 @@ func _ready() -> void:
 	home_room = "station"
 	if patrol_rooms.is_empty():
 		patrol_rooms = ["corridor", "station", "ward_101", "ward_102", "ward_103",
-			"ward_104", "ward_105", "supply"]
+			"ward_104", "ward_105", "supply", "intake", "day_room"]
 	super._ready()

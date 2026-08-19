@@ -18,9 +18,10 @@ func _hospital():
 
 func test_hospital_builds_all_rooms() -> void:
 	var h = _hospital()
-	t.eq(h.rooms.size(), 12, "every room in LAYOUT is constructed")
+	t.eq(h.rooms.size(), 15, "every room in LAYOUT is constructed")
 	for key in ["corridor", "ward_101", "ward_105", "lobby", "station",
-			"treatment", "supply", "bathroom", "office"]:
+			"treatment", "supply", "bathroom", "office",
+			"intake", "radiology", "day_room"]:
 		t.ok(h.room(key) != null, "room exists: %s" % key)
 
 func test_room_lookup_by_position() -> void:
@@ -43,12 +44,54 @@ func test_rooms_do_not_overlap() -> void:
 func test_navigation_is_connected() -> void:
 	var h = _hospital()
 	t.gt(float(h.nav.cell_count()), 300.0, "nav grid has meaningful coverage")
-	# Every room must be reachable from the lobby, or NPCs silently fail to path.
+	# Every OPEN room must be reachable from the lobby, or NPCs silently fail to
+	# path. The annexe departments are deliberately sealed at career start and
+	# are covered by test_a_sealed_department_is_genuinely_sealed.
 	var from: Vector3 = h.point_in("lobby")
-	for key in h.rooms.keys():
+	for key in h.open_room_keys():
 		var to = h.point_in(key)
 		var path = h.nav.find_path(from, to)
 		t.gt(float(path.size()), 0.0, "path exists from lobby to %s" % key)
+
+## A shutter has to be a wall as far as navigation is concerned. If it is only
+## a mesh, staff path into a department nobody has paid for and stand inside it.
+func test_a_sealed_department_is_genuinely_sealed() -> void:
+	var h = _hospital()
+	var from: Vector3 = h.point_in("lobby")
+	for key in ["intake", "radiology", "day_room"]:
+		t.ok(not h.is_room_open(key), "%s starts sealed" % key)
+		t.ok(not h.open_room_keys().has(key), "%s is not offered as somewhere to go" % key)
+		t.eq(h.nav.find_path(from, h.point_in(key)).size(), 0,
+			"nothing can path into %s while it is shut" % key)
+	# The corridor still has to run past all three of them.
+	t.gt(float(h.nav.find_path(h.point_in("office"), Vector3(-14.0, 0, 2.0)).size()), 0.0,
+		"the corridor still runs the length of the annexe")
+
+## And opening one has to actually open it — including for pathfinding, which is
+## the half that would fail silently.
+func test_buying_a_department_opens_its_shutter() -> void:
+	# A fresh floor, not the shared one: opening a shutter is one-way by design,
+	# so doing it to the cached hospital would silently change what every test
+	# declared after this one is looking at.
+	var owned := GameState.owned_upgrades.duplicate()
+	GameState.owned_upgrades.append("dept_psych")
+	var h = load("res://scripts/world/hospital.gd").new()
+	t.root.add_child(h)
+	h.build()
+	t.ok(h.is_room_open("day_room"), "the shutter is up")
+	t.gt(float(h.nav.find_path(h.point_in("lobby"), h.point_in("day_room")).size()), 0.0,
+		"and staff can now walk into it")
+	t.ok(not h.is_room_open("radiology"), "the ones you did not buy stay shut")
+
+	# And buying one later opens it in place, without rebuilding the floor.
+	GameState.owned_upgrades.append("dept_radiology")
+	h.refresh_departments()
+	t.ok(h.is_room_open("radiology"), "a shutter opens on purchase, mid-career")
+	t.gt(float(h.nav.find_path(h.point_in("lobby"), h.point_in("radiology")).size()), 0.0,
+		"and the floor re-connects without a rebuild")
+
+	GameState.owned_upgrades = owned
+	h.queue_free()
 
 func test_ward_to_ward_paths_cross_the_corridor() -> void:
 	var h = _hospital()

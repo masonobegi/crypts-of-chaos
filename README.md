@@ -89,8 +89,11 @@ GODOT=/path/to/godot ./run_tests.sh
 
 One complete hospital floor, generated procedurally from a single layout table: corridor,
 five patient rooms, lobby, nurses' station, treatment bay, supply room, staff WC, and your
-office. Hinged physics doors that block line of sight. Wheelable beds with patients still
-in them. Twenty-five physics props, all of which make noise, and noise moves people.
+office — plus a west annexe of three departments (Emergency Intake, Radiology, the Psych
+Day Room) that are built, lit and furnished from day one and sealed behind roller shutters
+until you can afford them. Hinged physics doors that block line of sight. Wheelable beds
+with patients still in them. Twenty-five physics props, all of which make noise, and noise
+moves people.
 
 There are no art or audio assets. Every mesh is built from primitives at runtime and every
 sound is synthesised into a waveform on first play.

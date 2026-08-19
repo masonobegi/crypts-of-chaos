@@ -96,6 +96,37 @@ inspector reads it back to you. Same bargain as the machine dial.
 Rooms honour `Room.target_override` from the thermostat; an open window overrides
 both and drags toward 8 °C, which is faster and far more obvious.
 
+## The west annexe
+
+The three departments are physical rooms behind roller shutters from day one.
+Opening one changes more than what the shop says it changes:
+
+**Emergency Intake.** Arrivals fire a 60 m hearing event positioned in Intake,
+at the far west end of the floor. Every member of staff who hears a noise
+investigates it, so an emergency admission reliably empties the east wards for
+about a minute. Buying Emergency is, mechanically, a scheduled distraction that
+also pays a day rate.
+
+**The Psych Day Room.** Psychiatric admissions recover on `0.35 + satisfaction`
+rather than on treatment, and `PatientSystem.tick()` scores every patient against
+the comfort of the room their BODY is standing in, not the ward they are assigned
+to. Psych patients have a 0.45 urge to sit in the day room for ~40 s at a time
+once it is open. So the day room thermostat is a single control that slows every
+psych admission on the floor simultaneously, and nothing on any individual chart
+points at it. It is the highest-leverage thermostat in the building.
+
+**Radiology.** The imaging bench used to appear in the treatment bay the instant
+the upgrade was bought. It is now in Radiology, at the opposite end of the floor
+from the wards, which turns "run imaging" from a free button into a round trip.
+`TreatmentSystem` writes what imaging saw into the record permanently
+(`machine_imaging`), so the walk is the price of the truth. The control booth
+screen is the one solid object in the department that breaks line of sight to
+the couch.
+
+Shutters block movement, block vision (layer 32) and remove their doorway from
+the nav graph, so a sealed department is genuinely sealed — staff will not path
+into it and `Hospital.open_room_keys()` will not offer it.
+
 ## Charts in the wrong room
 
 Charts are physical props you can carry. An investigator that reaches a bed and

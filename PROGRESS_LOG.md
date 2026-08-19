@@ -202,6 +202,7 @@ multiple endings.
 - [x] Export presets for Linux / Windows / macOS.
 - [x] Perception asserted against the real building in `live_run.gd`, and the
       freed-registry bug it turned out to be hiding (see CLOSED, below).
+- [x] The west annexe: departments are now ROOMS, shuttered until bought.
 
 ---
 
@@ -212,11 +213,11 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-817 assertions   (test functions across 5 suites)
+875 assertions   (test functions across 5 suites)
  40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
- 21 screenshots  (every room and every UI screen, rendered offscreen)
+ 25 screenshots  (every room and every UI screen, rendered offscreen)
 ```
 
 Balance at 30 days, seed 90210:
@@ -269,11 +270,45 @@ anybody else. Regression test:
 `test_a_departed_npc_does_not_switch_off_everyone_elses_senses`, which plants a
 stale entry ahead of a live witness on purpose. Engine gotcha #11 in CLAUDE.md.
 
+### The west annexe — departments are rooms now
+Departments used to be pure capability unlocks: you paid £28,000 and a checkbox
+somewhere started letting emergency patients spawn. Nothing about the building
+changed, so the most expensive things in the game were the least visible.
+
+The floor now runs from x = -16 instead of x = 0, and the three departments are
+real rooms off the west end of the corridor: **Emergency Intake** (triage desk,
+three trolleys, ambulance bay), **Radiology** (a gantry with a bore, a couch, the
+imaging bench, and a control booth you can stand behind), and the **Psych Day
+Room** (armchairs in a circle, a television nobody chose, a jigsaw missing a
+piece). They are built, lit and furnished from the first shift and sealed behind
+roller shutters — `RollerShutter` blocks movement, blocks line of sight, and cuts
+its doorway out of the navigation graph, so nothing paths into a department the
+hospital has not bought. Buying one rolls the shutter up in place; no rebuild.
+
+Wanting a room you can already see beats wanting a line in a shop. It also means
+the corridor is a running score: how much of the west end is still shut says
+where the career is, every time you walk past.
+
+Three things fell out of it that were not in the plan and are better than what
+was:
+- **Emergency arrivals now happen in Intake**, at the opposite end of the floor
+  from the wards, and they are loud enough that everybody hears. The department
+  pays twice — once in day rate, and once in the quiet minute it buys you in
+  Room 105 while the staff are all at the other end of the building.
+- **Psych patients leave their beds for the day room** and sit there a long
+  while. Recovery is scored against the comfort of the room a patient is
+  ACTUALLY in, so a cold, dark day room slows down every psych admission on the
+  floor at once, from a thermostat nobody associates with any of them.
+- **Staff patrol the annexe once it opens**, filtered live rather than at spawn.
+  Buying a department means more of the building is walked through, and
+  therefore more of it is watched.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- A physical second wing (departments are currently capability unlocks that
-  reuse the existing floor; new rooms would need Hospital.LAYOUT to become
-  data-driven per-run rather than a const).
-- More sabotage verbs around the new departments.
+- More sabotage verbs around the new departments: the imaging bench writes the
+  truth into the record permanently, and there is currently no way to argue with
+  it other than not using it.
+- Intake trolleys are scenery. Emergency admissions still go straight to a ward;
+  parking one on a trolley until you find it a bed would be a real decision.

@@ -77,7 +77,10 @@ func _ok(cond: bool, msg: String) -> void:
 		notes.append("  ok: " + msg)
 
 func _check_boot() -> void:
-	_ok(game.hospital != null and game.hospital.rooms.size() == 12, "hospital built with 12 rooms")
+	_ok(game.hospital != null and game.hospital.rooms.size() == 15, "hospital built with 15 rooms")
+	# The three annexe departments are built but shuttered on day one.
+	_ok(game.hospital != null and game.hospital.open_room_keys().size() == 12,
+		"twelve of them are open at career start")
 	_ok(game.player != null, "player spawned")
 	_ok(game.player.global_position.y > -5.0, "player is not under the floor")
 	_ok(tree.get_nodes_in_group("staff").size() >= 3, "staff spawned")

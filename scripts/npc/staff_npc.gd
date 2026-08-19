@@ -278,7 +278,17 @@ func _pick_patrol_target() -> void:
 			and not GameState.flag("coffee_broken", false) \
 			and RNG.chance("coffee_pull", 0.45):
 		pool = ["station"]
-	var key := String(RNG.pick("staff_patrol_pick", pool))
+	# A department nobody has bought is behind a shutter, and a nurse who picks
+	# one stands in the corridor waiting on a path that does not exist. Filtered
+	# here rather than at spawn so the annexe fills with staff the moment it
+	# opens — buying a department means more of the building is watched.
+	var reachable: Array = []
+	for k in pool:
+		if h.is_room_open(String(k)):
+			reachable.append(k)
+	if reachable.is_empty():
+		reachable = ["corridor"]
+	var key := String(RNG.pick("staff_patrol_pick", reachable))
 	goto(h.point_in(key, "staff_patrol_pt"), false)
 	_speed = WALK_SPEED * _patrol_speed
 

@@ -112,17 +112,29 @@ func _maybe_wander() -> void:
 		urge = 0.18
 	if data.recovery < 0.25:
 		urge *= 0.3      # too unwell to get up
-	if not RNG.chance("patient_wander", urge):
-		return
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h == null:
 		return
+	# A psychiatric admission with a day room to sit in will use it, and will
+	# stay a good while. That matters more than it looks: recovery is scored
+	# against the comfort of the room they are ACTUALLY in, so a cold, dark day
+	# room slows down every psych patient on the floor at once, from a
+	# thermostat nobody associates with any of them.
+	var day_room: bool = data.dept() == "psych" and h.is_room_open("day_room")
+	if day_room:
+		urge = maxf(urge, 0.45)
+	if not RNG.chance("patient_wander", urge):
+		return
 	state = State.WANDERING
-	_timer = 12.0
-	goto(h.point_in("corridor", "patient_wander_pt"))
+	_timer = 40.0 if day_room else 12.0
+	goto(h.point_in("day_room", "day_room_pt") if day_room
+		else h.point_in("corridor", "patient_wander_pt"))
 	say(String(RNG.pick("wander_bark", [
 		"I'm just going to stretch my legs.", "Where's the tea?",
 		"I need to speak to someone.", "Is this the way out?",
+	]) if not day_room else RNG.pick("day_room_bark", [
+		"I'll be in the day room.", "There's a jigsaw. I'm told it's missing a piece.",
+		"The telly's on. It's always on.", "I prefer it in there. It's warmer.",
 	])), 3.0)
 	WorldEvent.new("patient_wandering", "").at(global_position, current_room()) \
 		.about(data.id).heard(0.0, 10.0).tag("chaos") \

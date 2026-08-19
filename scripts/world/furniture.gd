@@ -30,6 +30,9 @@ static func furnish(h: Hospital) -> Array[Rect2]:
 			"supply": _supply(h, r)
 			"office": _office(h, r)
 			"bathroom": _bathroom(h, r)
+			"intake": _intake(h, r)
+			"radiology": _radiology(h, r)
+			"day_room": _day_room(h, r)
 	return footprints
 
 ## Record a solid footprint, grown slightly so NPCs keep their shoulders clear.
@@ -222,6 +225,17 @@ static func _corridor(h: Hospital, r: Room) -> void:
 		_chair(h, Vector3(x, 0, z + 1.5), PI)
 	_wall_sign(h, "◄  WARDS 101-105        TREATMENT  ►", Vector3(23.0, 2.6, 3.85), PI, 0.16)
 
+	# ---- west annexe end of the corridor. Deliberately underfurnished: it is
+	# meant to look like a part of the hospital that stopped being maintained,
+	# which is exactly what the player is buying their way out of.
+	_wall_sign(h, "WEST ANNEXE", Vector3(-8.0, 2.6, 3.85), PI, 0.18)
+	_wall_sign(h, "◄  INTAKE   RADIOLOGY   DAY ROOM", Vector3(-8.0, 2.25, 3.85), PI, 0.1)
+	_prop(h, "wet_floor_sign", Vector3(-2.0, 0.3, z + 1.0))
+	_prop(h, "bucket", Vector3(-14.0, 0.3, z - 1.4))
+	_cart(h, Vector3(-5.5, 0, z + 1.2), 1.7)
+	for x in [-13.0, -11.6]:
+		_chair(h, Vector3(x, 0, z + 1.5), PI)
+
 # ------------------------------------------------------------------ lobby
 static func _lobby(h: Hospital, r: Room) -> void:
 	var c := r.center()
@@ -294,21 +308,8 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		rb.build(m)
 		rb.position = m.position + Vector3(0.7, 1.05, 0.4)
 
-	if GameState.has_upgrade("dept_radiology"):
-		var img := TreatmentMachine.new()
-		img.room_key = r.key
-		img.machine_id = "machine_imaging"
-		img.treatment_id = "imaging"
-		img.units = "APERTURE DEPTH"
-		h.add_child(img)
-		img.build("Imaging Bench")
-		img.position = Vector3(c.x + 4.0, 0, r.rect.position.y + 1.0)
-		_occupy(c.x + 4.0, r.rect.position.y + 1.0, 1.1, 0.7)
-		var irb := MachineRunButton.new()
-		irb.room_key = r.key
-		h.add_child(irb)
-		irb.build(img)
-		irb.position = img.position + Vector3(0.7, 1.05, 0.4)
+	# The imaging bench used to appear here the moment Radiology was bought.
+	# It now lives in Radiology, which is a room, which you have to walk to.
 
 	var shelf := SupplyShelf.new()
 	shelf.room_key = r.key
@@ -406,3 +407,227 @@ static func _bathroom(h: Hospital, r: Room) -> void:
 		_block(h, Vector3(0.08, 2.0, 1.4), Color(0.55, 0.62, 0.60), Vector3(x + 0.7, 1.0, z))
 		_block(h, Vector3(0.42, 0.42, 0.42), Color(0.92, 0.93, 0.95), Vector3(x, 0.21, z))
 	_prop(h, "mop", Vector3(c.x - 1.2, 0.3, c.z + 3.0), 0.6)
+
+# ------------------------------------------------------------------ annexe
+## Emergency Intake. Wide, loud, and full of people who did not choose to be
+## here — the opposite of the quiet ward, and the point of buying it.
+static func _intake(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	var west := r.rect.position.x
+	var east := r.rect.position.x + r.rect.size.x
+	var far := r.rect.position.y + r.rect.size.y
+
+	# Triage desk, set well back from the doorway and facing it. Everything in
+	# this room is arranged to be read from the corridor door at z = 4.
+	_block(h, Vector3(4.2, 1.05, 0.8), Color(0.48, 0.44, 0.40), Vector3(c.x, 0.52, c.z + 1.2))
+	_block(h, Vector3(4.4, 0.08, 1.0), Color(0.66, 0.62, 0.56), Vector3(c.x, 1.08, c.z + 1.2))
+	_wall_sign(h, "TRIAGE", Vector3(c.x, 1.6, c.z + 0.75), PI, 0.11)
+	_chair(h, Vector3(c.x, 0, c.z + 2.2), PI, Color(0.32, 0.36, 0.42))
+
+	var term := RecordsTerminal.new()
+	term.room_key = r.key
+	term.mode = "ward"
+	h.add_child(term)
+	term.build("Intake Terminal", false)
+	term.position = Vector3(c.x - 1.5, 0.55, c.z + 1.3)
+	term.rotation.y = PI
+	_occupy(c.x, c.z + 1.2, 4.4, 1.0)
+
+	# Trolleys down the east side. Emergency admissions land on these before
+	# anybody finds them a bed, which is why the room is worth walking into
+	# unannounced.
+	for i in 3:
+		var x := east - 3.0
+		var z := r.rect.position.y + 1.8 + float(i) * 2.6
+		_block(h, Vector3(2.0, 0.14, 0.85), Build.LINEN, Vector3(x, 0.68, z))
+		_block(h, Vector3(1.9, 0.10, 0.78), Build.BED_FRAME, Vector3(x, 0.58, z))
+		# Legs and a rail, or it reads as a white box rather than a trolley.
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				_block(h, Vector3(0.06, 0.52, 0.06), Build.METAL,
+					Vector3(x + sx * 0.85, 0.27, z + sz * 0.32))
+			_block(h, Vector3(0.05, 0.34, 0.05), Build.METAL, Vector3(x + sx * 0.98, 0.9, z))
+			_block(h, Vector3(0.05, 0.05, 0.7), Build.METAL, Vector3(x + sx * 0.98, 1.06, z))
+		_occupy(x, z, 2.0, 0.85)
+		_iv_stand(h, Vector3(x - 1.3, 0, z))
+
+	# Waiting chairs along the west wall, facing nothing in particular.
+	for i in 5:
+		_chair(h, Vector3(west + 1.1, 0, r.rect.position.y + 1.6 + float(i) * 1.1), PI / 2)
+
+	var shelf := SupplyShelf.new()
+	shelf.room_key = r.key
+	h.add_child(shelf)
+	shelf.build("Intake Stock", ["compress", "blanket", "syringe", "clipboard_blank"])
+	shelf.position = Vector3(east - 0.6, 0, far - 1.6)
+	shelf.rotation.y = PI / 2
+	_occupy(east - 0.6, far - 1.6, 0.6, 1.8)
+
+	_cart(h, Vector3(c.x + 2.8, 0, c.z + 2.6), 1.1)
+	_prop(h, "wheelchair", Vector3(west + 2.6, 0.55, r.rect.position.y + 1.4), 0.7)
+	_prop(h, "extinguisher", Vector3(west + 0.6, 0.3, far - 1.0))
+
+	# The ambulance bay. Purely a backdrop — it is on the exterior wall and the
+	# player never goes through it — but a room with no way in but the corridor
+	# does not read as an emergency department.
+	_block(h, Vector3(4.4, 2.4, 0.12), Color(0.44, 0.46, 0.50), Vector3(c.x + 2.0, 1.2, far - 0.2))
+	_wall_sign(h, "▲  AMBULANCE BAY  ▲", Vector3(c.x + 2.0, 2.62, far - 0.32), PI, 0.17)
+	_wall_sign(h, "DAYS SINCE LAST INCIDENT:  0", Vector3(c.x - 3.6, 2.3, far - 0.17), PI, 0.13)
+	_wall_sign(h, "EMERGENCY INTAKE", Vector3(c.x + 3.2, 2.5, r.rect.position.y + 0.17), PI, 0.16)
+
+	var win := WindowUnit.new()
+	win.room_key = r.key
+	h.add_child(win)
+	win.build(2.0, 1.1)
+	win.position = Vector3(c.x - 4.5, 1.8, far - 0.12)
+
+	var t := Thermostat.new()
+	t.room_key = r.key
+	h.add_child(t)
+	t.build()
+	t.position = Vector3(west + 0.22, 1.45, r.rect.position.y + 7.6)
+	t.rotation.y = PI / 2
+
+## Radiology. The imaging bench used to appear in the treatment bay the instant
+## the upgrade was bought. Putting it in a room of its own costs the player a
+## walk, which is the whole difference between "a button I have" and "a thing I
+## have to decide is worth leaving the ward for".
+static func _radiology(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	# The doorway is at z = 0, on the corridor side, so the room is laid out to
+	# be READ from there: gantry at the far end, bench in front of it, control
+	# booth off to one side. Walking in should tell you what the room is for.
+	var lane := c.x + 0.8
+
+	# The gantry. A square bore rather than a ring of loose boxes: at this
+	# fidelity a circle made of cubes reads as debris, and a frame reads as
+	# equipment.
+	var bore := 1.25
+	var ring_z := r.rect.position.y + 1.9
+	var shell := Color(0.84, 0.86, 0.89)
+	_block(h, Vector3(bore * 2.0 + 1.2, 0.6, 1.1), shell, Vector3(lane, bore * 2.0 + 0.3, ring_z))
+	for sx in [-1.0, 1.0]:
+		_block(h, Vector3(0.6, bore * 2.0, 1.1), shell,
+			Vector3(lane + sx * (bore + 0.3), bore, ring_z))
+	_block(h, Vector3(bore * 2.0 + 1.2, 0.35, 1.1), shell.darkened(0.15),
+		Vector3(lane, 0.18, ring_z))
+	# The bore itself, dark, so the hole reads as a hole.
+	h.add_child(Build.box_mi(Vector3(bore * 2.0, bore * 1.7, 0.9),
+		Color(0.10, 0.11, 0.13), Vector3(lane, bore * 0.95, ring_z)))
+	_occupy(lane, ring_z, bore * 2.0 + 1.2, 1.1)
+
+	# The couch that slides through it, and the bench you actually operate.
+	_block(h, Vector3(0.9, 0.55, 2.4), Color(0.72, 0.74, 0.78), Vector3(lane, 0.62, ring_z + 2.2))
+	_block(h, Vector3(0.85, 0.10, 2.3), Build.LINEN, Vector3(lane, 0.94, ring_z + 2.2))
+	_occupy(lane, ring_z + 2.2, 0.9, 2.4)
+
+	var img := TreatmentMachine.new()
+	img.room_key = r.key
+	img.machine_id = "machine_imaging"
+	img.treatment_id = "imaging"
+	img.units = "APERTURE DEPTH"
+	h.add_child(img)
+	img.build("Imaging Bench")
+	img.position = Vector3(r.rect.position.x + r.rect.size.x - 1.3, 0, c.z + 0.4)
+	img.rotation.y = -PI / 2
+	_occupy(r.rect.position.x + r.rect.size.x - 1.3, c.z + 0.4, 0.7, 1.1)
+
+	var rb := MachineRunButton.new()
+	rb.room_key = r.key
+	h.add_child(rb)
+	rb.build(img)
+	rb.position = img.position + Vector3(-0.4, 1.05, 0.7)
+
+	# Control booth: a screen wall with a viewing window, in the near corner.
+	# Standing behind it is the one spot in the department where nobody in the
+	# room can see your hands.
+	var bx := r.rect.position.x + 2.3
+	_block(h, Vector3(0.14, 1.05, 3.0), Color(0.46, 0.50, 0.54), Vector3(bx, 0.52, c.z + 2.6))
+	_block(h, Vector3(0.14, 0.75, 3.0), Color(0.46, 0.50, 0.54), Vector3(bx, 2.02, c.z + 2.6))
+	h.add_child(Build.box_mi(Vector3(0.06, 0.9, 2.9), Color(0.55, 0.72, 0.78, 1.0),
+		Vector3(bx, 1.55, c.z + 2.6)))
+	_block(h, Vector3(1.9, 1.05, 0.7), Color(0.44, 0.48, 0.52), Vector3(bx - 1.1, 0.52, c.z + 1.4))
+	_block(h, Vector3(2.0, 0.08, 0.9), Color(0.60, 0.64, 0.68), Vector3(bx - 1.1, 1.08, c.z + 1.4))
+
+	var term := RecordsTerminal.new()
+	term.room_key = r.key
+	term.mode = "ward"
+	h.add_child(term)
+	term.build("Imaging Console", false)
+	term.position = Vector3(bx - 1.1, 0.55, c.z + 1.3)
+	_occupy(bx - 1.1, c.z + 1.4, 2.0, 0.9)
+
+	# Lead aprons on a rack. Nobody in this building has ever worn one.
+	for i in 3:
+		_block(h, Vector3(0.14, 1.0, 0.5), Color(0.28, 0.30, 0.36),
+			Vector3(r.rect.position.x + 0.4, 1.1, c.z - 1.0 + float(i) * 0.7))
+	_wall_sign(h, "APRONS", Vector3(r.rect.position.x + 0.55, 1.85, c.z - 0.3), PI / 2, 0.075)
+
+	# On the east wall, not the far one: the gantry stands in front of the far
+	# wall and would hide anything written on it.
+	var east := r.rect.position.x + r.rect.size.x - 0.17
+	_wall_sign(h, "CONTROLLED AREA\nDO NOT ENTER WHEN LIT\n(bulb on order)",
+		Vector3(east, 1.7, c.z - 2.2), -PI / 2, 0.075)
+	_wall_sign(h, "RADIOLOGY", Vector3(east, 2.5, c.z - 3.6), -PI / 2, 0.16)
+	_prop(h, "clipboard_blank", Vector3(bx - 1.1, 1.2, c.z + 1.6))
+
+	var t := Thermostat.new()
+	t.room_key = r.key
+	h.add_child(t)
+	t.build()
+	t.position = Vector3(r.rect.position.x + r.rect.size.x - 0.22, 1.45, c.z - 3.4)
+	t.rotation.y = -PI / 2
+
+## The Psych Day Room. These patients recover on comfort rather than kit, so
+## this is the only room in the building where the FURNITURE is the treatment —
+## and therefore the only room where rearranging it is a medical intervention.
+static func _day_room(h: Hospital, r: Room) -> void:
+	var c := r.center()
+
+	# A ring of armchairs, because someone read that circles are therapeutic.
+	for i in 6:
+		var a := TAU * float(i) / 6.0
+		_chair(h, Vector3(c.x + cos(a) * 1.9, 0, c.z + sin(a) * 1.9), a + PI,
+			Color(0.46, 0.38, 0.52))
+	_table(h, Vector3(c.x, 0, c.z), 1.1, 1.1, 0.42, Color(0.50, 0.38, 0.28))
+	_prop(h, "tray", Vector3(c.x, 0.55, c.z))
+
+	# The television. Mounted too high, permanently on a channel nobody chose.
+	_block(h, Vector3(1.5, 0.9, 0.12), Color(0.12, 0.13, 0.15), Vector3(c.x, 1.85, r.rect.position.y + 0.2))
+	_wall_sign(h, "~ daytime television ~", Vector3(c.x, 1.85, r.rect.position.y + 0.28), 0.0, 0.075)
+
+	# Bookcase, with the good books already taken.
+	_block(h, Vector3(0.4, 1.8, 1.8), Color(0.46, 0.34, 0.24), Vector3(r.rect.position.x + 0.5, 0.9, c.z + 1.2))
+	_wall_sign(h, "LIBRARY", Vector3(r.rect.position.x + 0.85, 1.9, c.z + 1.2), PI / 2, 0.08)
+
+	# The jigsaw. It is missing a piece and everyone knows which one.
+	_table(h, Vector3(c.x + 2.2, 0, c.z - 3.0), 1.2, 0.8, 0.72, Color(0.66, 0.60, 0.50))
+	_chair(h, Vector3(c.x + 2.2, 0, c.z - 3.9), 0.0, Color(0.40, 0.44, 0.40))
+	_wall_sign(h, "1000 PIECES\n(999)", Vector3(c.x + 2.2, 0.85, c.z - 3.0), 0.0, 0.06)
+
+	_prop(h, "colour_lamp", Vector3(c.x - 2.4, 0.4, c.z - 2.8))
+	_prop(h, "coffee", Vector3(c.x - 2.6, 0.9, c.z + 3.0))
+	_block(h, Vector3(0.6, 1.2, 0.6), Color(0.30, 0.45, 0.28), Vector3(c.x + 2.8, 0.6, c.z + 3.2))
+	_wall_sign(h, "DAY ROOM", Vector3(c.x, 2.6, r.rect.position.y + 0.16), 0.0, 0.16)
+
+	var win := WindowUnit.new()
+	win.room_key = r.key
+	h.add_child(win)
+	win.build(2.2, 1.2)
+	win.position = Vector3(c.x, 1.8, r.rect.position.y + 0.12)
+
+	# Comfort is the treatment here, so the two controls that set comfort are
+	# both in the room and both worth reaching.
+	var t := Thermostat.new()
+	t.room_key = r.key
+	h.add_child(t)
+	t.build()
+	t.position = Vector3(r.rect.position.x + r.rect.size.x - 0.22, 1.45, c.z - 3.4)
+	t.rotation.y = -PI / 2
+
+	var sw := LightSwitch.new()
+	sw.room_key = r.key
+	h.add_child(sw)
+	sw.build()
+	sw.position = Vector3(r.rect.position.x + r.rect.size.x - 0.22, 1.3, c.z - 2.4)
+	sw.rotation.y = -PI / 2

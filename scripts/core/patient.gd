@@ -111,7 +111,7 @@ func tick(days: float) -> void:
 	# Psychiatric admissions respond to how they are treated as people rather
 	# than to equipment: comfort and satisfaction ARE the treatment, which makes
 	# a cold dark ward a far more effective way to hold one than any machine.
-	if String(DB.condition(condition_id).get("dept", "ward")) == "psych":
+	if dept() == "psych":
 		rate *= clampf(0.35 + satisfaction, 0.2, 1.35)
 	recovery = clampf(recovery + rate * days, -0.2, 1.0)
 
@@ -209,6 +209,11 @@ func apparent_state() -> String:
 
 func condition_name() -> String:
 	return DB.condition_name(condition_id)
+
+## Which department this admission belongs to. Drives what unlocks it, how it
+## recovers, and where the patient would rather be.
+func dept() -> String:
+	return String(DB.condition(condition_id).get("dept", "ward"))
 
 # ------------------------------------------------------------------ save/load
 func to_dict() -> Dictionary:

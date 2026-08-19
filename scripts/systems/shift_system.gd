@@ -171,9 +171,14 @@ func _maybe_emergency_admission(hour: int) -> void:
 		return
 	AudioMgr.play("alarm", -8.0)
 	EventBus.toast.emit("EMERGENCY: %s — %s" % [p.display_name, p.condition_name()], "bad")
-	# Everybody looks. Whatever you were in the middle of, you were in the middle
-	# of it in front of an audience.
-	WorldEvent.new("emergency_admission", "").at(Vector3.ZERO, "lobby") \
+	# It happens in Intake, at the far west end of the floor, and it is loud
+	# enough that everybody hears it. That is the hidden second half of buying
+	# Emergency: every arrival drags the staff to the opposite end of the
+	# building from the wards. The department pays twice — once in day rate, and
+	# once in the quiet minute it buys you in Room 105.
+	var h = get_tree().get_first_node_in_group("hospital")
+	var where: Vector3 = h.point_in("intake", "emergency_spot") if h != null else Vector3.ZERO
+	WorldEvent.new("emergency_admission", "").at(where, "intake") \
 		.heard(0.0, 60.0).tag("noise").tag("chaos") \
 		.says("emergency admission").emit()
 

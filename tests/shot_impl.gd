@@ -121,8 +121,28 @@ const SHOTS := [
 	["07_supply", Vector3(32.0, 1.7, -2.0), Vector3(31.0, 1.3, -8.0)],
 	["08_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.2, -8.5)],
 	["09_ward_105", Vector3(41.5, 1.7, 5.5), Vector3(41.0, 1.2, 11.0)],
-	["10_overview", Vector3(23.0, 22.0, 24.0), Vector3(23.0, 0.0, 1.0)],
+	# The west annexe, shuttered — what a career starts out looking at.
+	["10_annexe_shuttered", Vector3(2.0, 1.7, 2.0), Vector3(-16.0, 1.5, 2.0)],
+	# ...and the same three rooms with the departments bought. The "unlock" tag
+	# rolls the shutters up before the shot is framed.
+	["11_intake", Vector3(-8.0, 1.7, 5.2), Vector3(-8.0, 1.3, 12.0), "unlock"],
+	["12_radiology", Vector3(-12.0, 1.7, -0.8), Vector3(-11.2, 1.3, -9.0)],
+	["13_day_room", Vector3(-4.0, 1.7, -1.4), Vector3(-4.0, 1.3, -8.5)],
+	["14_overview", Vector3(15.0, 33.0, 33.0), Vector3(15.0, 0.0, 1.0)],
 ]
+
+## Buy the whole annexe, so the departments can be photographed. Deliberately
+## done between shots rather than at start-up: the shuttered corridor is the
+## thing a new player actually sees, and it needs a picture too.
+func _unlock_departments() -> void:
+	for id in ["dept_emergency", "dept_radiology", "dept_psych"]:
+		if not GameState.owned_upgrades.has(id):
+			GameState.owned_upgrades.append(id)
+	for d in ["emergency", "radiology", "psych"]:
+		if not GameState.unlocked_departments.has(d):
+			GameState.unlocked_departments.append(d)
+	if game != null and game.hospital != null:
+		game.hospital.refresh_departments()
 
 func start() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -148,6 +168,8 @@ func tick() -> bool:
 		return _tick_ui()
 
 	var shot: Array = SHOTS[index]
+	if shot.size() > 3 and String(shot[3]) == "unlock":
+		_unlock_departments()
 	var cam: Camera3D = game.player.camera
 	cam.global_position = shot[1]
 	cam.look_at(shot[2], Vector3.UP)

@@ -10,9 +10,15 @@ const DOOR_W := 1.4
 
 ## Rect2(x, z, width, depth). North wing is z 4..13, corridor z 0..4,
 ## south wing z -10..0. Rooms tile exactly so no wall is ever built twice.
+##
+## The west annexe (x -16..0) is built on day one and SEALED behind roller
+## shutters until the matching department is bought. Rooms you can see but not
+## enter are worth far more than rooms that pop into existence when you can
+## afford them: the shutters are visible from the corridor from the first shift,
+## so the money has somewhere to be going long before there is any.
 const LAYOUT := [
 	{"key": "corridor", "display": "Ward C Corridor", "kind": "corridor",
-		"rect": Rect2(0, 0, 46, 4), "floor": 0},
+		"rect": Rect2(-16, 0, 62, 4), "floor": 0},
 	# ---- north wing: patient rooms
 	{"key": "ward_101", "display": "Room 101", "kind": "ward", "rect": Rect2(0, 4, 9, 9), "door": 4.5},
 	{"key": "ward_102", "display": "Room 102", "kind": "ward", "rect": Rect2(9, 4, 9, 9), "door": 13.5},
@@ -29,11 +35,23 @@ const LAYOUT := [
 	{"key": "supply", "display": "Supply Room", "kind": "supply", "rect": Rect2(29, -10, 6, 10), "door": 32.0},
 	{"key": "bathroom", "display": "Staff WC", "kind": "bathroom", "rect": Rect2(35, -10, 5, 10), "door": 37.5},
 	{"key": "office", "display": "Your Office", "kind": "office", "rect": Rect2(40, -10, 6, 10), "door": 43.0},
+	# ---- west annexe: departments, shuttered until bought
+	{"key": "intake", "display": "Emergency Intake", "kind": "intake",
+		"rect": Rect2(-16, 4, 16, 9), "door": -8.0, "door_w": 2.6,
+		"locked_by": "dept_emergency"},
+	# Wide openings on purpose: the shutter IS the door, so no leaf is built.
+	{"key": "radiology", "display": "Radiology", "kind": "radiology",
+		"rect": Rect2(-16, -10, 8, 10), "door": -12.0, "door_w": 2.2,
+		"locked_by": "dept_radiology"},
+	{"key": "day_room", "display": "Psych Day Room", "kind": "day_room",
+		"rect": Rect2(-8, -10, 8, 10), "door": -4.0, "door_w": 2.2,
+		"locked_by": "dept_psych"},
 ]
 
 var rooms: Dictionary = {}          ## key -> Room
 var nav: NavGrid = null
 var doors: Array = []
+var shutters: Dictionary = {}       ## room key -> RollerShutter (open ones included)
 var _room_list: Array[Room] = []
 
 func _ready() -> void:
@@ -50,6 +68,9 @@ func build() -> void:
 	# behind the station counter never went anywhere again.
 	var blocked := Furniture.furnish(self)
 	_bake_nav(blocked)
+	_build_shutters()
+	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
+	EventBus.game_loaded.connect(refresh_departments)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
 
 # ------------------------------------------------------------------ rooms
@@ -90,6 +111,9 @@ func _floor_colour(kind: String) -> Color:
 		"supply": return Color(0.58, 0.57, 0.54)
 		"bathroom": return Color(0.72, 0.75, 0.78)
 		"office": return Color(0.52, 0.45, 0.38)
+		"intake": return Color(0.63, 0.60, 0.58)
+		"radiology": return Color(0.50, 0.54, 0.60)
+		"day_room": return Color(0.70, 0.66, 0.56)
 	return Build.FLOOR_A
 
 func _build_room_lights(r: Room) -> void:
@@ -106,21 +130,29 @@ func _build_room_lights(r: Room) -> void:
 
 # ------------------------------------------------------------------ shell
 func _build_shell() -> void:
-	var north_gaps := _gaps_for(["ward_101", "ward_102", "ward_103", "ward_104", "ward_105"])
-	var south_gaps := _gaps_for(["lobby", "station", "treatment", "supply", "bathroom", "office"])
+	var north_gaps := _gaps_for(["intake",
+		"ward_101", "ward_102", "ward_103", "ward_104", "ward_105"])
+	var south_gaps := _gaps_for(["radiology", "day_room",
+		"lobby", "station", "treatment", "supply", "bathroom", "office"])
 
 	# Walls running along X.
-	_wall_along_x(13.0, 0.0, 46.0, [])              # north exterior
-	_wall_along_x(4.0, 0.0, 46.0, north_gaps)       # corridor <-> north wing
-	_wall_along_x(0.0, 0.0, 46.0, south_gaps)       # corridor <-> south wing
-	_wall_along_x(-10.0, 0.0, 46.0, [])             # south exterior
+	_wall_along_x(13.0, -16.0, 46.0, [])            # north exterior
+	_wall_along_x(4.0, -16.0, 46.0, north_gaps)     # corridor <-> north wing
+	_wall_along_x(0.0, -16.0, 46.0, south_gaps)     # corridor <-> south wing
+	_wall_along_x(-10.0, -16.0, 46.0, [])           # south exterior
 
 	# Walls running along Z.
-	_wall_along_z(0.0, -10.0, 13.0, [])             # west exterior
+	_wall_along_z(-16.0, -10.0, 13.0, [])           # west exterior
 	_wall_along_z(46.0, -10.0, 13.0, [])            # east exterior
+	# x = 0 was the west exterior before the annexe existed. It is now an
+	# interior divider, and it must NOT cross the corridor band (z 0..4) or the
+	# corridor is severed and the annexe is unreachable however many shutters
+	# you open.
+	_wall_along_z(0.0, 4.0, 13.0, [])               # intake <-> Room 101
+	_wall_along_z(0.0, -10.0, 0.0, [])              # day room <-> lobby
 	for x in [9.0, 18.0, 28.0, 37.0]:               # between patient rooms
 		_wall_along_z(x, 4.0, 13.0, [])
-	for x in [11.0, 19.0, 29.0, 35.0, 40.0]:        # between south rooms
+	for x in [-8.0, 11.0, 19.0, 29.0, 35.0, 40.0]:  # between south rooms
 		_wall_along_z(x, -10.0, 0.0, [])
 
 func _gaps_for(keys: Array) -> Array:
@@ -203,6 +235,69 @@ func _build_doors() -> void:
 		d.build(Vector3(centre - w * 0.5, 0, z), Vector3(centre + w * 0.5, 0, z), not north)
 		add_child(d)
 		doors.append(d)
+
+# ------------------------------------------------------------------ shutters
+func _build_shutters() -> void:
+	for entry in LAYOUT:
+		if not entry.has("locked_by"):
+			continue
+		var key := String(entry["key"])
+		var rect: Rect2 = entry["rect"]
+		var w := float(entry.get("door_w", DOOR_W))
+		var centre := float(entry["door"])
+		var z := 4.0 if rect.position.y > 0.0 else 0.0
+		var sh := RollerShutter.new()
+		sh.name = "Shutter_" + key
+		sh.room_key = key
+		sh.upgrade_id = String(entry["locked_by"])
+		add_child(sh)
+		sh.build(Vector3(centre - w * 0.5, 0, z), Vector3(centre + w * 0.5, 0, z),
+			String(entry["display"]))
+		shutters[key] = sh
+	refresh_departments()
+
+func _on_upgrade_purchased(_id: String) -> void:
+	refresh_departments()
+
+## Bring the shutters into line with what has actually been bought. Called on
+## build, on every purchase, and after a save is loaded — a career restored from
+## disk must not find its paid-for departments still sealed.
+func refresh_departments() -> void:
+	for key in shutters:
+		var sh: RollerShutter = shutters[key]
+		if sh.is_open:
+			continue
+		if GameState.has_upgrade(sh.upgrade_id):
+			sh.open(nav)
+			EventBus.toast.emit("%s is open." % room(key).display, "good")
+		else:
+			sh.seal_nav(nav, _doorway_rect(key))
+
+## Can anyone — player or NPC — currently get into this room?
+func is_room_open(key: String) -> bool:
+	var sh = shutters.get(key, null)
+	return sh == null or sh.is_open
+
+## Every room that is actually reachable right now. Anything picking a room at
+## random must use this: a nurse who chooses a sealed department stands in the
+## corridor waiting for a path that will never exist.
+func open_room_keys() -> Array[String]:
+	var out: Array[String] = []
+	for r in _room_list:
+		if is_room_open(r.key):
+			out.append(r.key)
+	return out
+
+func _doorway_rect(key: String) -> Rect2:
+	for entry in LAYOUT:
+		if String(entry["key"]) != key:
+			continue
+		var rect: Rect2 = entry["rect"]
+		var w := float(entry.get("door_w", DOOR_W))
+		var centre := float(entry["door"])
+		var z := 4.0 if rect.position.y > 0.0 else 0.0
+		return Rect2(centre - w * 0.5, z - 1.1, w, 2.2)
+	return Rect2()
 
 # ------------------------------------------------------------------ signage
 func _build_signage() -> void:

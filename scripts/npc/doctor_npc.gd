@@ -9,7 +9,8 @@ func _ready() -> void:
 	outfit = Color(0.90, 0.91, 0.93)     # white coat
 	home_room = "office"
 	if patrol_rooms.is_empty():
-		patrol_rooms = ["corridor", "station", "treatment", "office"]
+		patrol_rooms = ["corridor", "station", "treatment", "office",
+			"radiology", "intake"]
 	super._ready()
 
 ## Colleagues periodically read your charts. An investigator-type does it every

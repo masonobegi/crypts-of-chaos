@@ -26,8 +26,12 @@ func _initialize() -> void:
 		if not ResourceLoader.exists(path):
 			continue
 		var script: GDScript = load(path)
-		if script == null:
-			_out("  !! could not load suite %s" % path)
+		# A script with parse errors still load()s to a non-null GDScript, and
+		# calling .new() on one HANGS the process rather than erroring. Always
+		# gate on can_instantiate() before instantiating anything.
+		if script == null or not script.can_instantiate():
+			_out("  !! suite failed to compile: %s" % path)
+			failures.append("suite failed to compile: %s" % path)
 			failed += 1
 			continue
 		var inst: Object = script.new()

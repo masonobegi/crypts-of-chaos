@@ -65,6 +65,10 @@ signal subtitle(speaker: String, text: String, seconds: float)
 signal dialogue_started(npc)
 signal dialogue_ended(npc)
 signal codex_unlocked(entry_id: String)
+## Fixtures ask the UI layer to open a screen. context carries whatever the
+## screen needs (patient id, machine reference, terminal mode).
+signal request_ui(id: String, context: Dictionary)
+signal close_ui(id: String)
 signal objective_changed(text: String)
 
 # ---------------------------------------------------------------- meta

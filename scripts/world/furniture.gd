@@ -1,0 +1,345 @@
+class_name Furniture
+extends RefCounted
+## Populates each room with fixtures and physics props.
+##
+## Kept separate from Hospital so the floor plan and its contents can change
+## independently — a new room kind is one match arm here.
+
+static func furnish(h: Hospital) -> void:
+	for r in h.room_list():
+		match r.kind:
+			"ward": _ward(h, r)
+			"corridor": _corridor(h, r)
+			"lobby": _lobby(h, r)
+			"station": _station(h, r)
+			"treatment": _treatment(h, r)
+			"supply": _supply(h, r)
+			"office": _office(h, r)
+			"bathroom": _bathroom(h, r)
+
+# ------------------------------------------------------------------ helpers
+static func _add(h: Hospital, node: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	h.add_child(node)
+	node.global_position = pos
+	node.rotation.y = rot_y
+	return node
+
+static func _prop(h: Hospital, id: String, pos: Vector3, rot_y := 0.0) -> Prop:
+	var p := Items.spawn(id)
+	h.add_child(p)
+	p.global_position = pos
+	p.rotation.y = rot_y
+	return p
+
+## Simple static furniture: a box with collision, no behaviour.
+static func _block(h: Hospital, size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
+	var b := Build.wall(size, color, pos, rot_y)
+	h.add_child(b)
+	return b
+
+static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72,
+		color := Color(0.72, 0.66, 0.55)) -> void:
+	_block(h, Vector3(w, 0.06, d), color, pos + Vector3(0, height, 0))
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			_block(h, Vector3(0.05, height, 0.05), color.darkened(0.3),
+				pos + Vector3(sx * (w * 0.5 - 0.06), height * 0.5, sz * (d * 0.5 - 0.06)))
+
+static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35, 0.48, 0.55)) -> void:
+	var root := Node3D.new()
+	h.add_child(root)
+	root.global_position = pos
+	root.rotation.y = rot_y
+	var seat := Build.wall(Vector3(0.44, 0.06, 0.44), color, Vector3(0, 0.45, 0))
+	root.add_child(seat)
+	var back := Build.wall(Vector3(0.44, 0.5, 0.06), color, Vector3(0, 0.7, -0.19))
+	root.add_child(back)
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			root.add_child(Build.wall(Vector3(0.04, 0.45, 0.04), color.darkened(0.4),
+				Vector3(sx * 0.18, 0.22, sz * 0.18)))
+
+## A rolling cart with loose junk on top. Crashing one is the cheapest, loudest,
+## most reliable distraction in the building.
+static func _cart(h: Hospital, pos: Vector3, rot_y := 0.0) -> Prop:
+	var size := Vector3(0.62, 0.9, 0.46)
+	var metal := Build.mat(Build.METAL, 0.4, 0.6)
+	var cart := Build.make_prop("med_cart", "Medical Cart", size, 26.0, [
+		{"mesh": Build.box_mesh(Vector3(0.62, 0.05, 0.46)), "mat": metal, "pos": Vector3(0, 0.42, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.58, 0.05, 0.42)), "mat": metal, "pos": Vector3(0, 0.1, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.58, 0.28, 0.42)), "mat": Build.mat(Color(0.75, 0.62, 0.35)), "pos": Vector3(0, 0.26, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.05, 0.5, 0.05)), "mat": metal, "pos": Vector3(-0.28, 0.2, -0.2)},
+		{"mesh": Build.box_mesh(Vector3(0.05, 0.5, 0.05)), "mat": metal, "pos": Vector3(0.28, 0.2, -0.2)},
+		{"mesh": Build.box_mesh(Vector3(0.05, 0.5, 0.05)), "mat": metal, "pos": Vector3(-0.28, 0.2, 0.2)},
+		{"mesh": Build.box_mesh(Vector3(0.05, 0.5, 0.05)), "mat": metal, "pos": Vector3(0.28, 0.2, 0.2)},
+		{"mesh": Build.box_mesh(Vector3(0.5, 0.04, 0.05)), "mat": metal, "pos": Vector3(0, 0.62, -0.2)},
+	])
+	cart.noise_radius = 18.0
+	cart.blurb = "Wheels. No brake. Load-bearing to the plot."
+	h.add_child(cart)
+	cart.global_position = pos + Vector3(0, 0.25, 0)
+	cart.rotation.y = rot_y
+	# Loose stock on the top shelf — this is what actually scatters.
+	for i in 3:
+		_prop(h, ["tray", "pill_bottle", "syringe"][i], pos + Vector3(-0.18 + 0.18 * float(i), 0.75, 0))
+	return cart
+
+static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
+	var metal := Build.mat(Build.METAL, 0.35, 0.7)
+	var stand := Build.make_prop("iv_stand", "IV Stand", Vector3(0.35, 1.8, 0.35), 6.0, [
+		{"mesh": Build.cyl_mesh(0.018, 1.7), "mat": metal, "pos": Vector3(0, 0.85, 0)},
+		{"mesh": Build.cyl_mesh(0.2, 0.04, 10), "mat": metal, "pos": Vector3(0, 0.02, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.24, 0.02, 0.02)), "mat": metal, "pos": Vector3(0, 1.68, 0)},
+	])
+	stand.blurb = "Top-heavy by design."
+	stand.noise_radius = 14.0
+	h.add_child(stand)
+	stand.global_position = pos + Vector3(0, 0.9, 0)
+	return stand
+
+static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float, size := 0.1) -> void:
+	var l := Build.label3d(text, size, Color(0.92, 0.94, 0.90), false)
+	h.add_child(l)
+	l.global_position = pos
+	l.rotation.y = rot_y
+
+# ------------------------------------------------------------------ ward
+static func _ward(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	var far_z := r.rect.position.y + r.rect.size.y      # exterior wall
+	var bed_pos := h.bed_position(r.key)
+
+	var bed := PatientBed.new()
+	bed.room_key = r.key
+	bed.name = "Bed_" + r.key
+	h.add_child(bed)
+	bed.build()
+	bed.global_position = bed_pos + Vector3(0, 0.4, 0)
+
+	var vc := VitalsConsole.new()
+	vc.room_key = r.key
+	h.add_child(vc)
+	vc.build()
+	vc.global_position = bed_pos + Vector3(-1.0, 1.5, -0.6)
+
+	# Bedside treatment device.
+	var m := TreatmentMachine.new()
+	m.room_key = r.key
+	m.machine_id = "machine_humour"
+	m.treatment_id = "humour_rebalance"
+	m.units = "HUMOUR GRADIENT"
+	h.add_child(m)
+	m.build("Humour Rebalancer")
+	m.global_position = bed_pos + Vector3(1.5, 0, -0.2)
+	m.rotation.y = PI
+
+	var rb := MachineRunButton.new()
+	rb.room_key = r.key
+	h.add_child(rb)
+	rb.build(m)
+	rb.global_position = m.global_position + Vector3(-0.3, 1.05, -0.4)
+
+	var win := WindowUnit.new()
+	win.room_key = r.key
+	h.add_child(win)
+	win.build(1.8, 1.2)
+	win.global_position = Vector3(c.x + 1.6, 1.7, far_z - 0.12)
+
+	var sw := LightSwitch.new()
+	sw.room_key = r.key
+	h.add_child(sw)
+	sw.build()
+	sw.global_position = Vector3(float(h.LAYOUT[0]["rect"].position.x) + 0.0, 0, 0)
+	# Beside the door, on the corridor wall.
+	sw.global_position = Vector3(_door_x(r) + 1.1, 1.25, r.rect.position.y + 0.14)
+	sw.rotation.y = PI
+
+	_chair(h, Vector3(c.x - 2.2, 0, c.z + 1.0), 1.2)
+	_table(h, Vector3(c.x - 2.6, 0, c.z - 0.6), 0.5, 0.5)
+	_iv_stand(h, bed_pos + Vector3(0.9, 0, -0.9))
+	_prop(h, "flowers", Vector3(c.x - 2.6, 0.95, c.z - 0.6))
+	_prop(h, "bedpan", bed_pos + Vector3(-1.1, 0.3, 0.9))
+	_wall_sign(h, r.display, Vector3(c.x, 2.1, far_z - 0.14), PI, 0.2)
+
+static func _door_x(r: Room) -> float:
+	for entry in Hospital.LAYOUT:
+		if String(entry["key"]) == r.key:
+			return float(entry.get("door", r.rect.get_center().x))
+	return r.rect.get_center().x
+
+# ------------------------------------------------------------------ corridor
+static func _corridor(h: Hospital, r: Room) -> void:
+	var z := r.rect.get_center().y
+	_cart(h, Vector3(7.0, 0, z - 1.1), 0.3)
+	_cart(h, Vector3(26.5, 0, z + 1.1), -1.9)
+	_prop(h, "wet_floor_sign", Vector3(20.0, 0.3, z))
+	_prop(h, "mop", Vector3(34.0, 0.3, z + 1.2), 1.1)
+	_prop(h, "bucket", Vector3(34.4, 0.3, z + 1.4))
+	_prop(h, "extinguisher", Vector3(1.0, 0.3, z + 1.5))
+	_iv_stand(h, Vector3(17.0, 0, z + 1.3))
+	# Benches along the corridor wall.
+	for x in [11.0, 12.4, 38.0, 39.4]:
+		_chair(h, Vector3(x, 0, z + 1.5), PI)
+	_wall_sign(h, "◄  WARDS 101-105        TREATMENT  ►", Vector3(23.0, 2.6, 3.85), PI, 0.16)
+
+# ------------------------------------------------------------------ lobby
+static func _lobby(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	_block(h, Vector3(3.4, 1.05, 0.7), Color(0.45, 0.52, 0.58), Vector3(c.x - 2.0, 0.52, c.z - 2.4))
+	_block(h, Vector3(3.6, 0.08, 0.9), Color(0.62, 0.66, 0.70), Vector3(c.x - 2.0, 1.08, c.z - 2.4))
+	_wall_sign(h, "RECEPTION", Vector3(c.x - 2.0, 1.6, c.z - 2.4), 0.0, 0.14)
+	for i in 4:
+		for j in 2:
+			_chair(h, Vector3(c.x + 1.6 + float(j) * 1.4, 0, c.z - 1.5 + float(i) * 0.95), PI * float(j))
+	# Vending machine.
+	_block(h, Vector3(0.9, 1.9, 0.7), Color(0.75, 0.25, 0.22), Vector3(r.rect.position.x + 0.7, 0.95, c.z + 3.2))
+	_wall_sign(h, "OUT OF ORDER\n(since 2019)", Vector3(r.rect.position.x + 0.7, 1.5, c.z + 2.83), 0.0, 0.07)
+	# Notice board — where complaints and inspection notices get pinned.
+	_block(h, Vector3(1.8, 1.1, 0.08), Color(0.45, 0.35, 0.25), Vector3(c.x + 3.0, 1.6, r.rect.position.y + 0.15))
+	_prop(h, "coffee", Vector3(c.x - 2.0, 1.2, c.z - 2.4))
+	_wall_sign(h, "ST. ARDENT'S  ·  WARD C", Vector3(c.x, 2.5, r.rect.position.y + 0.16), 0.0, 0.2)
+
+# ------------------------------------------------------------------ station
+static func _station(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	# Counter facing the corridor — nurses stand behind it and see everything.
+	_block(h, Vector3(6.0, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(c.x, 0.55, r.rect.position.y + 0.5))
+	_block(h, Vector3(6.2, 0.08, 0.85), Color(0.66, 0.70, 0.72), Vector3(c.x, 1.12, r.rect.position.y + 0.5))
+
+	for i in 2:
+		var t := RecordsTerminal.new()
+		t.room_key = r.key
+		t.mode = "ehr"
+		h.add_child(t)
+		t.build("Ward Terminal", false)
+		t.global_position = Vector3(c.x - 1.4 + float(i) * 2.8, 0.5, c.z - 0.4)
+		t.rotation.y = PI
+
+	_table(h, Vector3(c.x - 2.4, 0, c.z + 2.6), 1.6, 0.8, 0.75)
+	_chair(h, Vector3(c.x - 2.4, 0, c.z + 1.8), 0.0)
+	_chair(h, Vector3(c.x + 1.2, 0, c.z + 2.4), 2.6)
+	# Coffee machine: the single most important object to a nurse's schedule.
+	_block(h, Vector3(0.5, 0.6, 0.45), Color(0.30, 0.32, 0.36), Vector3(c.x + 2.6, 1.05, c.z + 3.2))
+	_table(h, Vector3(c.x + 2.6, 0, c.z + 3.2), 0.8, 0.6, 0.75)
+	_wall_sign(h, "COFFEE", Vector3(c.x + 2.6, 1.5, c.z + 2.95), 0.0, 0.08)
+	_prop(h, "coffee", Vector3(c.x + 2.2, 0.9, c.z + 3.0))
+	_prop(h, "clipboard_blank", Vector3(c.x, 1.2, r.rect.position.y + 0.5))
+	_prop(h, "stapler", Vector3(c.x + 0.6, 1.2, r.rect.position.y + 0.5))
+	# Records cabinet — physical copies. Investigators love these.
+	_block(h, Vector3(1.2, 1.6, 0.5), Color(0.55, 0.57, 0.52), Vector3(r.rect.position.x + 0.8, 0.8, c.z + 3.4))
+	_wall_sign(h, "WARD RECORDS", Vector3(r.rect.position.x + 0.8, 1.72, c.z + 3.4), 0.0, 0.07)
+
+# ------------------------------------------------------------------ treatment
+static func _treatment(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	var specs := [
+		{"id": "machine_vibe", "t": "vibe_stabilize", "n": "Vibe Stabiliser", "u": "RESONANCE INDEX", "x": -2.6},
+		{"id": "machine_dread", "t": "dread_extraction", "n": "Ambient Dread Extractor", "u": "SUCTION GRADE", "x": 1.0},
+	]
+	for s in specs:
+		var m := TreatmentMachine.new()
+		m.room_key = r.key
+		m.machine_id = String(s["id"])
+		m.treatment_id = String(s["t"])
+		m.units = String(s["u"])
+		h.add_child(m)
+		m.build(String(s["n"]))
+		m.global_position = Vector3(c.x + float(s["x"]), 0, r.rect.position.y + 1.0)
+		var rb := MachineRunButton.new()
+		rb.room_key = r.key
+		h.add_child(rb)
+		rb.build(m)
+		rb.global_position = m.global_position + Vector3(0.7, 1.05, 0.4)
+
+	var shelf := SupplyShelf.new()
+	shelf.room_key = r.key
+	h.add_child(shelf)
+	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench"])
+	shelf.global_position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
+	shelf.rotation.y = -PI / 2
+
+	_table(h, Vector3(c.x + 2.6, 0, c.z + 2.0), 1.2, 0.7)
+	_prop(h, "tray", Vector3(c.x + 2.6, 0.85, c.z + 2.0))
+	_prop(h, "dread_canister", Vector3(c.x + 1.6, 0.4, r.rect.position.y + 1.9))
+	_cart(h, Vector3(c.x + 3.0, 0, c.z - 1.0), 1.4)
+	_wall_sign(h, "TREATMENT BAY", Vector3(c.x, 2.4, r.rect.position.y + 0.16), 0.0, 0.18)
+
+# ------------------------------------------------------------------ supply
+static func _supply(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	var stock := [
+		["General Stock", ["compress", "blanket", "pillow", "bedpan", "thermometer"], false],
+		["Pharmacy Stock", ["syringe", "pill_bottle", "iv_bag", "placebex_kit"], true],
+		["Forms & Stationery", ["blank_form", "clipboard_blank", "stapler"], false],
+	]
+	for i in stock.size():
+		var s: Array = stock[i]
+		var shelf := SupplyShelf.new()
+		shelf.room_key = r.key
+		shelf.restricted = bool(s[2])
+		h.add_child(shelf)
+		var items: Array = s[1]
+		# Drop any ids that don't exist yet rather than spawning magenta cubes.
+		var valid: Array = []
+		for it in items:
+			if Items.SPECS.has(String(it)):
+				valid.append(it)
+		shelf.build(String(s[0]), valid)
+		shelf.global_position = Vector3(r.rect.position.x + 0.5, 0, c.z - 2.4 + float(i) * 2.4)
+		shelf.rotation.y = -PI / 2
+
+	_prop(h, "colour_lamp", Vector3(c.x + 1.4, 0.4, c.z - 1.0))
+	_prop(h, "steam_kit", Vector3(c.x + 1.4, 0.4, c.z + 0.2))
+	_prop(h, "extinguisher", Vector3(c.x + 1.6, 0.4, c.z + 2.6))
+	_cart(h, Vector3(c.x + 1.0, 0, c.z + 3.4), 0.2)
+	_wall_sign(h, "SUPPLY", Vector3(c.x, 2.4, r.rect.position.y + 0.16), 0.0, 0.16)
+
+# ------------------------------------------------------------------ office
+static func _office(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	_table(h, Vector3(c.x, 0, c.z + 1.0), 2.0, 1.0, 0.75, Color(0.42, 0.30, 0.22))
+	_chair(h, Vector3(c.x, 0, c.z + 2.0), 0.0, Color(0.30, 0.26, 0.28))
+
+	var t := RecordsTerminal.new()
+	t.room_key = r.key
+	t.mode = "admin"
+	h.add_child(t)
+	t.build("Your Terminal", true)
+	t.global_position = Vector3(c.x - 0.3, 0.55, c.z + 0.7)
+
+	var sh := Shredder.new()
+	sh.room_key = r.key
+	h.add_child(sh)
+	sh.build()
+	sh.global_position = Vector3(c.x + 1.8, 0, c.z + 1.6)
+
+	_block(h, Vector3(1.0, 1.5, 0.5), Color(0.5, 0.52, 0.48), Vector3(r.rect.position.x + 0.8, 0.75, c.z - 2.4))
+	_wall_sign(h, "PERSONAL FILES", Vector3(r.rect.position.x + 0.8, 1.62, c.z - 2.4), 0.0, 0.07)
+
+	var win := WindowUnit.new()
+	win.room_key = r.key
+	h.add_child(win)
+	win.build(1.4, 1.0)
+	win.global_position = Vector3(c.x, 1.7, r.rect.position.y + 0.12)
+
+	_prop(h, "coffee", Vector3(c.x + 0.6, 0.9, c.z + 1.0))
+	_prop(h, "incident_report", Vector3(c.x - 0.6, 0.9, c.z + 1.3))
+	# The debt letters. Purely narrative, entirely load-bearing.
+	_wall_sign(h, "FINAL NOTICE\nFINAL NOTICE\nFINAL NOTICE", Vector3(c.x + 2.2, 1.5, c.z - 2.0), 0.0, 0.075)
+	_wall_sign(h, "DR. YOU", Vector3(c.x, 2.3, r.rect.position.y + 0.14), 0.0, 0.15)
+
+# ------------------------------------------------------------------ bathroom
+static func _bathroom(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	for i in 3:
+		_block(h, Vector3(0.5, 0.2, 0.42), Color(0.92, 0.93, 0.95),
+			Vector3(r.rect.position.x + 0.9, 0.85, c.z - 1.6 + float(i) * 1.1))
+	_wall_sign(h, "STAFF ONLY", Vector3(c.x, 2.3, r.rect.position.y + 0.16), 0.0, 0.12)
+	# Stalls: the only place in the building with no line of sight at all.
+	for i in 2:
+		var x := c.x + 0.9
+		var z := c.z + 1.4 + float(i) * 1.5
+		_block(h, Vector3(1.4, 2.0, 0.08), Color(0.55, 0.62, 0.60), Vector3(x, 1.0, z - 0.7))
+		_block(h, Vector3(0.08, 2.0, 1.4), Color(0.55, 0.62, 0.60), Vector3(x + 0.7, 1.0, z))
+		_block(h, Vector3(0.42, 0.42, 0.42), Color(0.92, 0.93, 0.95), Vector3(x, 0.21, z))
+	_prop(h, "mop", Vector3(c.x - 1.2, 0.3, c.z + 3.0), 0.6)

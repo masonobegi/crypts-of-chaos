@@ -31,5 +31,27 @@ not committed — see docs/BUILDING.md).
 GDScript loader when combined with typed signal params on an autoload. Fixed by
 (a) untyping EventBus signal params and (b) using runtime `load()` in the runner.
 
+- [x] Player controller (FPS, crouch, physics shove) + spring-based grab/throw.
+- [x] Prop system, 25 items as data, procedural silhouettes, breakage, noise.
+- [x] Procedural hospital: 12 rooms (corridor, 5 wards, lobby, nurses' station,
+      treatment bay, supply, staff WC, office), two-tone walls with punched
+      doorways, hinged physics doors, signage, lights, full furniture pass.
+- [x] Custom A* NavGrid (not a baked NavMesh — needs to work headless and be
+      seed-reproducible). Integration test proves every room is reachable.
+- [x] Fixtures: treatment machines (dial + prescribed value + auditable log +
+      invisible calibration sabotage), windows, light switches, EHR terminals,
+      shredder, supply shelves, vitals consoles, patient beds (rigid bodies you
+      can wheel down the corridor with someone still in them).
+- [x] 279 assertions green.
+
+### Gotchas found (both now guarded in the runner / documented)
+1. `preload()` + typed autoload signals deadlocks the GDScript loader.
+2. Adding a script with a new `class_name` leaves the global class cache stale
+   until `--import` runs; run_tests.sh now always does an import pass first.
+3. **Calling `.new()` on a script with parse errors HANGS the process** rather
+   than erroring. run_tests.gd now gates every instantiation on
+   `can_instantiate()`.
+
 ### NEXT UP
-- Player controller + interaction/grab physics.
+- NPC base + perception (vision cones, LOS, hearing) + memory routing.
+- Then: patient system, treatment/recovery, dialogue, economy, shift loop, UI.

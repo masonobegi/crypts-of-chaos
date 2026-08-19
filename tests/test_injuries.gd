@@ -174,3 +174,53 @@ func test_a_single_injury_is_not_yet_arithmetic() -> void:
 	nurse._note_injury_pattern(p)
 	t.eq(nurse.mind.evidence.size(), 1, "two is a thing somebody is doing")
 	nurse.queue_free()
+
+## An incident review reads a different column from every other investigation.
+## A utilisation review pulls the patient who has been here longest; an incident
+## review pulls the one things keep happening to, and those are very rarely the
+## same person.
+func test_an_incident_review_pulls_the_patient_things_happened_to() -> void:
+	var ps := PatientSystem.new()
+	t.root.add_child(ps)
+	var sus := SuspicionSystem.new()
+	t.root.add_child(sus)
+	var inv := InvestigationSystem.new()
+	t.root.add_child(inv)
+	inv.patient_system = ps
+	inv.suspicion = sus
+
+	# Somebody who has simply been here forever.
+	var lingerer := _patient("chronic_beige")
+	lingerer.id = "lingerer"
+	lingerer.display_name = "Mrs Lingering"
+	lingerer.admitted = true
+	lingerer.days_admitted = 14.0
+	lingerer.expected_stay_days = 3.0
+	ps.patients[lingerer.id] = lingerer
+
+	# And somebody who arrived on Tuesday and has had a fortnight of accidents.
+	var unlucky := _patient("fractured_ankle")
+	unlucky.id = "unlucky"
+	unlucky.display_name = "Mr Unlucky"
+	unlucky.admitted = true
+	unlucky.days_admitted = 2.0
+	unlucky.expected_stay_days = 4.0
+	ps.patients[unlucky.id] = unlucky
+	_acquire(unlucky, "fractured_wrist")
+	_acquire(unlucky, "concussion")
+
+	var routine := inv.open("insurance")
+	t.eq(routine.focus_patient, "lingerer",
+		"a utilisation review pulls the longest stay")
+	var review := inv.open("serious_incident")
+	t.eq(review.focus_patient, "unlucky",
+		"an incident review pulls the person things keep happening to")
+
+	# And it is a harder room than a routine chart pull.
+	t.lt(float(InvestigationSystem.KINDS["serious_incident"]["threshold"]),
+		float(InvestigationSystem.KINDS["insurance"]["threshold"]),
+		"an incident review takes less to go badly than a utilisation review")
+
+	inv.free()
+	sus.free()
+	ps.free()

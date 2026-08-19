@@ -142,17 +142,31 @@ func _on_hour(hour: int) -> void:
 	roster_changed.emit()
 	_announce_next()
 
-## A slot you are two hours past is a slot you did not turn up for. Being late is
-## survivable; not coming at all is a thing the person sitting there tells
+## How far past a slot we are, in hours, counted INSIDE the shift.
+##
+## Comparing raw hours-of-day is wrong twice over: on a night shift the numbers
+## wrap, and on any shift a slot that has not come round yet reads as
+## twenty-three hours late rather than as five hours away. Both halves of that
+## mattered — the second one was quietly marking every appointment after the
+## first hour as never-attended at the very first hour tick, so the list
+## expired itself before the player had walked anywhere.
+##
+## Negative means not due yet.
+func hours_late(slot_hour: int) -> int:
+	var start := GameState.shift_start_hour()
+	var slot := slot_hour - start
+	if slot < 0:
+		slot += 24
+	return int(GameState.minutes_into_shift() / 60) - slot
+
+## A slot you are three hours past is a slot you did not turn up for. Being late
+## is survivable; not coming at all is a thing the person sitting there tells
 ## somebody about.
-func _expire_past(hour: int) -> void:
+func _expire_past(_hour: int) -> void:
 	for e in list:
 		if e["done"] or e["missed"]:
 			continue
-		var late := hour - int(e["hour"])
-		if late < 0:
-			late += 24
-		if late >= 3:
+		if hours_late(int(e["hour"])) >= 3:
 			e["missed"] = true
 			_on_missed(e)
 

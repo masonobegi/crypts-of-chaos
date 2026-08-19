@@ -32,6 +32,11 @@ const KINDS := {
 		"days": 3, "threshold": 1.6,
 		"blurb": "A solicitor has requested records for one of your patients.",
 	},
+	"serious_incident": {
+		"title": "Serious Incident Review", "inst": "board", "covert_chance": 0.0,
+		"days": 2, "threshold": 1.15,
+		"blurb": "Somebody has counted the injuries on your ward.",
+	},
 	"police": {
 		"title": "Police Enquiry", "inst": "board", "covert_chance": 0.1,
 		"days": 4, "threshold": 2.2,
@@ -64,9 +69,36 @@ func daily_check() -> void:
 	chance += insurer_sus * 0.3
 	if GameState.sanction_level >= 3:
 		chance += 0.15
+	# The injury review is not a heat roll. Heat is a thing you can manage —
+	# behave for two shifts and it comes down — and if ward-acquired injuries
+	# only ever arrived through it, a patient enough player could run a ward
+	# full of broken people indefinitely by being nice in between. This one
+	# comes from the arithmetic, so the only way to stop it is to stop.
+	# Deliberately NOT an early return. An incident review has to be pressure ON
+	# TOP of whatever heat was already going to bring, not instead of it —
+	# crowding out a malpractice enquiry by breaking more legs is exactly the
+	# wrong incentive, and it is what happened the first time this was wired up.
+	if _injury_review_due():
+		open("serious_incident")
+	if open_investigations.size() >= 2:
+		return
 	if not RNG.chance("investigation_open", clampf(chance, 0.0, 0.85)):
 		return
 	open(_pick_kind(insurer_sus))
+
+## Ward-acquired injuries running well over the expected rate, with nobody
+## already looking into it.
+func _injury_review_due() -> bool:
+	for inv in open_investigations:
+		if inv.kind == "serious_incident":
+			return false
+	var shift = get_tree().get_first_node_in_group("shift_system")
+	if shift == null:
+		return false
+	var rate: float = shift.rolling_injury_rate()
+	if rate < 0.0:
+		return false
+	return rate > SuspicionSystem.BASELINE_INJURY_RATE * 4.0
 
 func _pick_kind(insurer_sus: float) -> String:
 	var weights := {
@@ -95,13 +127,20 @@ func open(kind: String, forced_covert := -1) -> Investigation:
 		else bool(forced_covert)
 
 	# Investigations focus on your worst-looking patient, because that is what
-	# an actual reviewer would pull first.
+	# an actual reviewer would pull first. What "worst" means depends on who is
+	# asking: an incident review is not reading length-of-stay figures, it is
+	# reading the list of things that happened to somebody here.
 	var worst: Patient = null
 	var worst_score := -1.0
 	for p in patient_system.active():
-		var score := maxf(0.0, p.days_admitted - p.expected_stay_days)
-		for c in p.complications:
-			score += c.paper_suspicion()
+		var score := 0.0
+		if kind == "serious_incident":
+			score = float(p.acquired_injuries().size()) * 2.0
+			score += float(p.undocumented_injuries().size())
+		else:
+			score = maxf(0.0, p.days_admitted - p.expected_stay_days)
+			for c in p.complications:
+				score += c.paper_suspicion()
 		if score > worst_score:
 			worst_score = score
 			worst = p

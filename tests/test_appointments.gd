@@ -86,6 +86,59 @@ func test_completing_a_slot_closes_it_and_only_it() -> void:
 	a.patient_system.free()
 	a.free()
 
+## A slot that has not come round yet is not late.
+##
+## This read hours-of-day directly and wrapped negatives by adding 24, which
+## made every appointment more than about an hour ahead look twenty-three hours
+## overdue — so the list marked itself entirely unseen at the first hour tick,
+## before the player had walked anywhere. Counting inside the shift is the only
+## version that is right for a shift that crosses midnight AND for a slot that
+## is simply still in the future.
+func test_an_appointment_in_the_future_is_not_overdue() -> void:
+	GameState.shift_kind = "day"
+	var a := _system()
+	GameState.minute_of_day = 8 * 60
+	t.eq(a.hours_late(8), 0, "the slot happening right now is not late")
+	t.eq(a.hours_late(13), -5, "a slot five hours away is five hours away")
+	t.eq(a.hours_late(15), -7, "and one at the end of the shift is not overdue at all")
+	GameState.minute_of_day = 12 * 60
+	t.eq(a.hours_late(9), 3, "a slot you are three hours past is three hours past")
+	t.eq(a.hours_late(13), -1, "and the next one still has not come round")
+	a.patient_system.free()
+	a.free()
+
+## The same arithmetic, on the shift that wraps.
+func test_lateness_survives_a_shift_that_crosses_midnight() -> void:
+	GameState.shift_kind = "evening"
+	var a := _system()
+	GameState.minute_of_day = 17 * 60
+	t.eq(a.hours_late(16), 1, "an hour into the evening shift")
+	t.eq(a.hours_late(22), -5, "and the late slots are still ahead")
+	GameState.minute_of_day = 1 * 60          # 01:00, still the evening shift
+	t.eq(a.hours_late(22), 3, "past midnight, the 22:00 slot is three hours gone")
+	t.eq(a.hours_late(16), 9, "and the first one is long gone")
+	a.patient_system.free()
+	a.free()
+	GameState.shift_kind = "day"
+
+## A list does not expire itself before the shift has started.
+func test_the_list_survives_the_first_hour_tick() -> void:
+	GameState.shift_kind = "day"
+	GameState.minute_of_day = 8 * 60
+	var a := _system()
+	a.build_for_shift()
+	var booked := a.remaining()
+	GameState.phase = GameState.Phase.SHIFT
+	GameState.minute_of_day = 9 * 60
+	a._on_hour(9)
+	t.eq(a.remaining(), booked, "an hour in, nothing has been given up on")
+	GameState.minute_of_day = 15 * 60
+	a._on_hour(15)
+	t.lt(float(a.remaining()), float(booked), "by the end of the day, plenty has")
+	GameState.phase = GameState.Phase.PRE_SHIFT
+	a.patient_system.free()
+	a.free()
+
 ## Not turning up is its own cost, separate from anything clinical.
 func test_a_slot_you_never_attend_costs_you() -> void:
 	GameState.shift_kind = "day"

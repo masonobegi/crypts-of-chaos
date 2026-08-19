@@ -58,6 +58,40 @@ const ENTRIES := {
 		"text": "Patients count the days. So do their families, and they compare notes. "
 			+ "Moving the date on the chart does not move the date in their head.",
 	},
+	"examination": {
+		"title": "Hands",
+		"text": "Twice now something has given during an examination. The scale on the "
+			+ "chart says what pressure is indicated, and I have been well past it both "
+			+ "times. Nobody writes down how firm you were. They do write down what "
+			+ "happened afterwards.",
+	},
+	"surgical": {
+		"title": "Theatre",
+		"text": "Things go wrong in operations. That is not a suspicion, it is a "
+			+ "statistic, and it is the only place in this building where a complication "
+			+ "surprises nobody. The theatre record does say which way I did each stage, "
+			+ "though, and I do not get to write that one.",
+	},
+	"prescription": {
+		"title": "What they go home with",
+		"text": "Sent somebody out on the wrong thing twice now and both came back inside "
+			+ "the week. A readmission is a new admission — new date, new rate, and a "
+			+ "perfectly honest reason. The pharmacy keeps its own list. I cannot get at "
+			+ "that one.",
+	},
+	"injury_pattern": {
+		"title": "Arithmetic",
+		"text": "One is bad luck. Two on the same person is a sum anybody can do standing "
+			+ "at the end of the bed, and it does not need them to have seen anything. "
+			+ "Spreading it about seems to matter more than explaining it.",
+	},
+	"attribution": {
+		"title": "Who else was on",
+		"text": "Quiet shifts are not safe shifts. On a night there is nobody to see it "
+			+ "and nobody else it could have been. In a full clinic half the building "
+			+ "walks past, and half the building is also a list of other people it might "
+			+ "have been.",
+	},
 	"privacy": {
 		"title": "Where I do it",
 		"text": "Editing records at the nurses' station and editing them in my office with "
@@ -111,12 +145,22 @@ func _on_evidence(_witness, ev) -> void:
 	if e.source == Evidence.Source.WITNESSED and e.base_weight > 0.25:
 		observe("witnesses")
 
-func _on_complication(_p, comp) -> void:
+func _on_complication(p, comp) -> void:
 	var c: Complication = comp
-	if c.true_cause == "machine_deviation":
-		observe("machine_deviation")
-	elif c.true_cause == "facilities":
-		observe("environment")
+	match c.true_cause:
+		"machine_deviation": observe("machine_deviation")
+		"facilities": observe("environment")
+		"examination": observe("examination")
+		"surgical": observe("surgical")
+		"prescription": observe("prescription")
+	# The arithmetic is learned by producing it, not by being caught at it: the
+	# second injury on the same person is the moment the shape becomes visible,
+	# whether or not anybody has said anything yet.
+	if c.is_injury and c.acquired_here and p != null and p.acquired_injuries().size() >= 2:
+		observe("injury_pattern")
+	# And the shift you did it on is part of the record of it.
+	if c.acquired_here and c.staff_present <= 1:
+		observe("attribution")
 
 ## Called by RecordsSystem when a complication is filed cleanly.
 func note_clean_documentation() -> void:

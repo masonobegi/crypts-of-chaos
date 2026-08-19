@@ -21,6 +21,7 @@ const UI_SHOTS := [
 	["20c_surgery", "surgery"],
 	["20d_prescribe", "prescribe"],
 	["21_tablet_ward", "tablet"],
+	["21c_tablet_list", "tablet_list"],
 	["21b_tablet_record", "tablet_record"],
 	["22_chart", "chart"],
 	["23_records", "records"],
@@ -45,11 +46,13 @@ func _tick_ui() -> bool:
 		game.player.camera.global_position = Vector3(5.5, 1.7, -4.0)
 		game.player.camera.look_at(Vector3(5.5, 1.5, 2.0), Vector3.UP)
 		var screen_id := String(shot[1])
-		if screen_id == "tablet_record":
+		var want_tab := ""
+		if screen_id.begins_with("tablet_"):
+			want_tab = screen_id.trim_prefix("tablet_")
 			screen_id = "tablet"
-		game.ui.open(screen_id, _ui_context(screen_id))
-		if String(shot[1]) == "tablet_record" and game.ui.current != null:
-			game.ui.current.set("_tab", "record")
+		game.ui.open(screen_id, _ui_context(String(shot[1])))
+		if want_tab != "" and game.ui.current != null:
+			game.ui.current.set("_tab", want_tab)
 			game.ui.current.rebuild()
 		settle = 0
 		return false

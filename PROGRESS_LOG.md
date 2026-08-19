@@ -216,11 +216,11 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1283 assertions  (test functions across 9 suites)
+1297 assertions  (test functions across 9 suites)
  65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
- 29 screenshots  (every room and every UI screen, rendered offscreen)
+ 30 screenshots  (every room and every UI screen, rendered offscreen)
 ```
 
 Balance at 30 days, seed 90210:
@@ -458,9 +458,48 @@ anybody leave.
 Balance at 16 days, seed 90210: honest £1,196 and clean; careless £11,828 and
 struck off with 44 ward injuries; careful £19,968 and clean with 5.
 
+### Session 3 — making the loop legible, and the bug that found
+The shift loop worked and was almost invisible. The booked list existed as one
+line in the morning briefing and a single objective string, which is not enough
+to plan a shift around — and planning the shift is the entire point of having
+one. The tablet has a **List** tab now: every slot, who it is, where they
+actually are, how late you are, how many injuries they have picked up here, and
+what the fees have come to so far.
+
+Photographing it immediately found a real bug. Slots in the FUTURE were reading
+as "23h late", because lateness compared raw hours-of-day and wrapped negatives
+by adding 24 — a rule written for the shift that crosses midnight, applied to
+every slot that simply had not come round yet. The same arithmetic drives
+`_expire_past`, so **the list was marking itself entirely unseen at the first
+hour tick**, before the player had walked anywhere, quietly bleeding patient
+satisfaction and insurer trust every single day. Counting inside the shift is
+the only version that is right for both cases. Four tests now pin it, including
+one on the shift that wraps.
+
+**Codex entries for the new verbs.** The game teaches by letting you do a thing
+twice and then writing down what your character reckons is going on. The
+examination dial, improvised theatre, the take-home loop, the arithmetic a nurse
+does, and the night-shift trade all have entries now — without them the pressure
+dial was a scale with no feedback and the discovery loop did not close.
+
+**Serious Incident Review.** Ward-acquired injuries had no detection pathway of
+their own; they went through heat, and heat is manageable — behave for two
+shifts and it comes down. A patient enough player could run a ward full of
+broken people indefinitely by being pleasant in between. The review opens off
+the injury RATE instead, is harder to survive than a utilisation review, and
+pulls the patient things keep happening to rather than the one who has been here
+longest — which is very rarely the same person. It is deliberately not an early
+return: it is pressure on top of whatever heat was already bringing, because
+crowding out a malpractice enquiry by breaking more legs is exactly the wrong
+incentive, and that is what happened the first time it was wired up.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
 - A nurse walking past a ward with no bed in it still has no opinion about the
   empty room itself, only about the patient who ended up in the corridor.
+- Endings still read the old career shape: nothing in them knows about ward
+  injuries, improvised theatre or the readmission loop.
+- Walk-ins sit in the treatment bay with no signposting; the List tab says where
+  they are but nothing in the world does.

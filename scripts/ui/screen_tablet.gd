@@ -7,10 +7,14 @@ extends ScreenBase
 var _tab := "ward"
 
 func _build() -> void:
+	# Openable straight onto a tab, so the shift objective and the screenshot
+	# harness can both point at the list rather than at the ward.
+	if ctx.has("tab") and _tab == "ward":
+		_tab = String(ctx["tab"])
 	var v := shell(920, 800, "Tablet", "Day %d · %s" % [GameState.day, GameState.time_string()])
 	var tabs := UIKit.hbox(6)
-	for t in [["ward", "Ward"], ["people", "People"], ["record", "Record"],
-			["money", "Money"], ["codex", "Notes"]]:
+	for t in [["list", "List"], ["ward", "Ward"], ["people", "People"],
+			["record", "Record"], ["money", "Money"], ["codex", "Notes"]]:
 		var key := String(t[0])
 		tabs.add_child(UIKit.button(String(t[1]), func(): _switch(key),
 			UIKit.PANEL_LIGHT if _tab != key else Color(0.20, 0.35, 0.38)))
@@ -19,6 +23,7 @@ func _build() -> void:
 
 	var content := UIKit.vbox(8)
 	match _tab:
+		"list": _build_list(content)
 		"ward": _build_ward(content)
 		"people": _build_people(content)
 		"record": _build_record(content)
@@ -30,6 +35,65 @@ func _build() -> void:
 func _switch(t: String) -> void:
 	_tab = t
 	rebuild()
+
+## Today's booked work. Without this the list existed only as a line in the
+## morning briefing and a single objective string, which is not enough to plan a
+## shift around — and planning the shift is the whole point of having one.
+func _build_list(c: VBoxContainer) -> void:
+	var appts = get_tree().get_first_node_in_group("appointment_system")
+	if appts == null or appts.list.is_empty():
+		c.add_child(UIKit.label("Nothing booked.", 15, UIKit.INK_DIM))
+		return
+	c.add_child(UIKit.label(
+		"%s shift · %d still to see" % [DB.shift_name(GameState.shift_kind),
+			appts.remaining()], 14, UIKit.INK_DIM))
+	var ps = patient_system()
+	for a in appts.list:
+		var kind := String(a["kind"])
+		var box := UIKit.panel(Color(0.14, 0.17, 0.19, 0.93), 6)
+		var bv := UIKit.vbox(3)
+		var status := "waiting"
+		var tint := UIKit.INK
+		if bool(a["done"]):
+			status = "seen"
+			tint = UIKit.GOOD
+		elif bool(a["missed"]):
+			status = "not seen"
+			tint = UIKit.BAD
+		else:
+			var late: int = appts.hours_late(int(a["hour"]))
+			if late >= 1:
+				status = "%dh late" % late
+				tint = UIKit.WARN
+			elif late < 0:
+				status = "in %dh" % -late
+				tint = UIKit.INK_DIM
+		bv.add_child(UIKit.row("%02d:00  %s" % [int(a["hour"]),
+			String(AppointmentSystem.LABELS.get(kind, kind))], status, tint, 16))
+		bv.add_child(UIKit.row("  " + String(a["name"]), String(a["complaint"]),
+			UIKit.INK_DIM, 13))
+		# Where they actually are, so the list is navigable rather than a
+		# reminder that somebody exists.
+		var p = ps.get_patient(String(a["patient_id"])) if ps else null
+		if p != null and not p.discharged:
+			bv.add_child(UIKit.row("  Where",
+				"treatment bay" if not p.admitted else String(p.room).replace("ward_", "Room "),
+				UIKit.INK_DIM, 13))
+			if not p.acquired_injuries().is_empty():
+				bv.add_child(UIKit.row("  Acquired here",
+					"%d" % p.acquired_injuries().size(), UIKit.BAD, 13))
+		box.add_child(bv)
+		c.add_child(box)
+	c.add_child(UIKit.rule())
+	c.add_child(UIKit.row("Fees booked so far",
+		UIKit.money_str(_fees_earned(appts)), UIKit.MONEY))
+
+func _fees_earned(appts) -> int:
+	var total := 0
+	for a in appts.list:
+		if bool(a["done"]):
+			total += int(AppointmentSystem.FEES.get(String(a["kind"]), 0))
+	return total
 
 func _build_ward(c: VBoxContainer) -> void:
 	var ps = patient_system()

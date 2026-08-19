@@ -60,6 +60,11 @@ var reputation := {
 ## personal suspicion into Heat; Heat is what actually opens investigations.
 var heat: float = 0.0
 
+## The day whose morning has already been run, and on which shift. See
+## ShiftSystem.begin_day() — everything in it is a once-a-day effect.
+var last_begun_day: int = 0
+var last_begun_kind: String = ""
+
 ## Escalation ladder position. See SANCTIONS.
 var sanction_level: int = 0
 const SANCTIONS := [
@@ -282,6 +287,15 @@ func to_dict() -> Dictionary:
 		"shift_kind": shift_kind, "ups": owned_upgrades, "depts": unlocked_departments,
 		"covers": active_covers, "flags": flags, "codex": codex_unlocked,
 		"stats": stats, "rng": RNG.save_state(),
+		# The phase, and which day's morning has already been run.
+		#
+		# Neither was persisted, so a loaded save had no idea where in the day
+		# it was. Continue therefore ran begin_day() unconditionally — settling
+		# debts, rolling events, checking investigations, taking readmissions
+		# and building a new appointment list — for a day whose morning had
+		# already happened. Loading an autosave charged the player a second
+		# day's rent.
+		"phase": int(phase), "begun": last_begun_day, "begun_kind": last_begun_kind,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -298,6 +312,10 @@ func from_dict(d: Dictionary) -> void:
 	heat = float(d.get("heat", 0.0))
 	sanction_level = int(d.get("sanc", 0))
 	shift_kind = String(d.get("shift_kind", "day"))
+	phase = d.get("phase", Phase.PRE_SHIFT) as Phase
+	clock_running = (phase == Phase.SHIFT)
+	last_begun_day = int(d.get("begun", 0))
+	last_begun_kind = String(d.get("begun_kind", ""))
 	owned_upgrades.clear()
 	for u in d.get("ups", []):
 		owned_upgrades.append(String(u))

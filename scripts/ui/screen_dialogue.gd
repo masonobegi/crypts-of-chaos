@@ -74,10 +74,40 @@ func _build() -> void:
 				Color(0.18, 0.28, 0.34))
 			rx.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(rx)
+		# The treatments that need no equipment. There is no way to hold "rest"
+		# in your hands, so the item-in-hand grammar every other treatment uses
+		# had no way to express them at all — and six treatments across the
+		# condition table are exactly that, printed on the chart as INDICATED
+		# with "no equipment" beside them. The chart instructed the player to do
+		# something the game had no verb for.
+		for tid in DB.correct_treatments(_patient.condition_id):
+			if String(DB.treatment(String(tid)).get("tool", "")) != "":
+				continue
+			var this_tid := String(tid)
+			var bt := UIKit.button(DB.treatment_name(this_tid), func():
+				_perform(this_tid), Color(0.18, 0.30, 0.26))
+			bt.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			v.add_child(bt)
 	var opts := UIKit.vbox(6)
 	for o in Dialogue.options_for(_mind, _patient):
 		opts.add_child(_option_button(o))
 	v.add_child(UIKit.scroll(opts))
+
+## Do it, right there, with your hands in your pockets.
+func _perform(tid: String) -> void:
+	var ts = get_tree().get_first_node_in_group("treatment_system")
+	if ts == null or _patient == null:
+		close()
+		return
+	var pos: Vector3 = Vector3.ZERO
+	var body = patient_system().get_body(_patient.id) if patient_system() else null
+	if body != null:
+		pos = body.global_position
+	ts.apply(_patient, tid, null, pos)
+	var rs = get_tree().get_first_node_in_group("records_system")
+	if rs:
+		rs.log_real_treatment(_patient, tid)
+	close()
 
 func _option_button(o) -> Control:
 	var h := UIKit.hbox(8)

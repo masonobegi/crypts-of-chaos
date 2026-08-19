@@ -42,6 +42,9 @@ func tick() -> bool:
 				stage = "review"
 		"review":
 			_check_midshift()
+			_check_the_morning_only_happens_once()
+			_check_every_indicated_treatment_can_be_given()
+			_check_the_tutorial_can_advance()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
 			stage = "close"
@@ -423,6 +426,85 @@ func _check_phase_is_not_a_dead_end(want: String) -> void:
 	_ok(String(owed.get("id", "")) == want,
 		"with nothing on screen, %s offers its way out (%s)" % [
 			GameState.Phase.keys()[GameState.phase], String(owed.get("id", "nothing"))])
+
+## Every treatment the chart can print as INDICATED must be performable.
+##
+## Two ways it was not. Splinting and Sling Support name `splint` and `sling` as
+## their tool; both items existed, meshed and priced, and were stocked nowhere
+## in the building — so the only two treatments for a fracture could not be
+## given by anybody, while the chart listed them and named the tool. And six
+## treatments have no tool at all, which the chart renders as "no equipment" —
+## the item-in-hand grammar had no way to express those, so they had no input
+## path either.
+## Running the morning twice for the same day must be a no-op.
+##
+## `Game._start()` calls begin_day() straight after loading a save, and the
+## autosave is written inside clock_out() with the day just worked still
+## current. So pressing Continue re-settled the debts, re-rolled the morning's
+## events, re-ran the investigation checks and rebuilt the appointment list for
+## a shift that was already over. The player was charged a second day of rent
+## for loading their own game.
+func _check_the_morning_only_happens_once() -> void:
+	var money := GameState.personal_money
+	var hosp := GameState.hospital_money
+	var census: int = game.patient_system.active_count()
+	var slots: int = game.appointments.list.size() if game.appointments else 0
+	game.shift.begin_day()
+	_ok(GameState.personal_money == money and GameState.hospital_money == hosp,
+		"running the morning again charges nothing (%d/%d -> %d/%d)" % [
+			money, hosp, GameState.personal_money, GameState.hospital_money])
+	_ok(game.patient_system.active_count() == census,
+		"and admits nobody a second time")
+	_ok(game.appointments == null or game.appointments.list.size() == slots,
+		"and does not rebuild a list that is already half worked")
+	# begin_day() sets PRE_SHIFT; the shift was in progress, so put it back.
+	GameState.set_phase(GameState.Phase.SHIFT)
+
+func _check_every_indicated_treatment_can_be_given() -> void:
+	var obtainable := {}
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is SupplyShelf:
+			for id in f.items:
+				obtainable[String(id)] = true
+	for pr in tree.get_nodes_in_group("prop"):
+		obtainable[String(pr.get_item_id())] = true
+
+	var missing: Array[String] = []
+	var handsfree := 0
+	for tid in DB.TREATMENTS:
+		var tool_id := String(DB.TREATMENTS[tid].get("tool", ""))
+		if tool_id == "":
+			handsfree += 1
+			continue
+		if not Items.SPECS.has(tool_id):
+			continue      # a machine, not a carryable
+		if not obtainable.has(tool_id):
+			missing.append("%s needs %s" % [String(tid), tool_id])
+	_ok(missing.is_empty(),
+		"every hand tool a treatment names is somewhere in the building%s" % (
+			"" if missing.is_empty() else ": " + ", ".join(missing)))
+	_ok(handsfree > 0, "and the no-equipment treatments exist to be offered (%d)" % handsfree)
+
+## The tutorial has six steps and could only ever complete zero of them.
+##
+## Step 1 is "check your list", completed by opening the tablet — and the
+## tutorial listened for `request_ui`, which is a REQUEST. The tablet is opened
+## straight from the input handler and from the pause menu, both of which call
+## the router directly. So the first step never completed, and because the
+## tutorial advances strictly in order, neither did the other five.
+func _check_the_tutorial_can_advance() -> void:
+	var tut = tree.get_first_node_in_group("tutorial")
+	if tut == null:
+		_ok(false, "there is a tutorial system")
+		return
+	tut._active = true
+	tut._index = 0
+	if game.ui != null:
+		game.ui.open("tablet", {})
+		game.ui.close()
+	_ok(tut._index > 0,
+		"opening the tablet advances the tutorial off step 1 (index %d)" % tut._index)
+	tut._active = false
 
 func _check_report(report: Dictionary) -> void:
 	var st: Dictionary = report.get("statement", {})

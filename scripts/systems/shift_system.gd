@@ -77,9 +77,25 @@ func offer_shifts() -> void:
 	shift_choice_ready.emit({"day": GameState.day, "options": options,
 		"personal": GameState.personal_money, "owed": GameState.total_debt()})
 
+## The morning. Debts out, events rolled, investigations checked, readmissions
+## taken, patients admitted, list built — every one of them a once-a-day effect.
+##
+## Which is why it refuses to run twice for the same day and shift. It used to
+## run unconditionally, and `Game._start()` calls it straight after loading a
+## save, so pressing Continue charged the player a second day of rent, rolled a
+## second morning's events, and rebuilt the appointment list under a shift that
+## had already been worked.
 func begin_day(kind: String = "") -> Dictionary:
 	if kind != "":
 		GameState.shift_kind = kind
+	if GameState.last_begun_day == GameState.day \
+			and GameState.last_begun_kind == GameState.shift_kind \
+			and not _pending_briefing.is_empty():
+		GameState.set_phase(GameState.Phase.PRE_SHIFT)
+		briefing_ready.emit(_pending_briefing)
+		return _pending_briefing
+	GameState.last_begun_day = GameState.day
+	GameState.last_begun_kind = GameState.shift_kind
 	GameState.set_phase(GameState.Phase.PRE_SHIFT)
 	GameState.minute_of_day = GameState.shift_start_hour() * 60
 	_apply_rota()

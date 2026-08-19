@@ -216,6 +216,44 @@ func test_the_dial_turns_both_ways_and_only_reports_where_it_stops() -> void:
 	t.eq(m._announced_dial, 0, "and it reports 0 once it has come to rest")
 	m.queue_free()
 
+## Calibration sabotage and log-wiping both existed with no way in.
+##
+## open_panel() and clear_log() had no callers anywhere in the shipping game, so
+## `calibration` was always exactly 1.0, `is_miscalibrated()` could never return
+## true, and the branch of run_cycle that reads it never fired — while the class
+## docstring and SPOILERS.md both describe calibration sabotage as a headline
+## mechanic. This drives the real interact() path rather than calling the
+## private helpers, because calling them directly is exactly what hid it.
+func test_the_maintenance_panel_can_actually_be_opened() -> void:
+	var m = load("res://scripts/world/machine.gd").new()
+	m.treatment_id = "humour_rebalance"
+	t.root.add_child(m)
+	m.build("Test Rebalancer")
+	var wrench = Items.spawn("wrench")
+	t.root.add_child(wrench)
+
+	t.near(m.calibration, 1.0, 0.001, "a machine starts correctly calibrated")
+	t.eq(m.use_seconds(null, wrench), 0.0, "a wrench is a tap, not a hold")
+	m.interact(null, wrench)
+	t.ok(m._panel_open, "a wrench opens the maintenance panel")
+	m.interact(null, wrench)
+	t.lt(m.calibration, 1.0, "and turning the screw genuinely miscalibrates it")
+	for i in 6:
+		m.interact(null, wrench)
+	t.ok(m.is_miscalibrated(), "far enough that is_miscalibrated() can be true at all")
+
+	# Hands free, the same open panel is how a log gets wiped — and it is a
+	# hold, because it is the one act here you have to stand and do.
+	m.log_entries.append({"deviation": 5})
+	m.log_entries.append({"deviation": 0})
+	t.gt(m.use_seconds(null, null), 1.0, "wiping the log is a hold")
+	m.interact(null, null)
+	t.eq(m.log_entries.size(), 0, "empty-handed at an open panel wipes the device log")
+	t.eq(m.log_cleared_count, 1, "and the machine remembers that it was wiped")
+	t.ok(not m._panel_open, "which also shuts the panel behind you")
+	wrench.queue_free()
+	m.queue_free()
+
 func test_machine_keeps_an_auditable_log() -> void:
 	var m = load("res://scripts/world/machine.gd").new()
 	m.treatment_id = "humour_rebalance"

@@ -85,9 +85,25 @@ func _refresh() -> void:
 			_lamp.material_override = Build.unshaded(c)
 
 # ------------------------------------------------------------------ interaction
+## Four states, four prompts. See interact().
 func prompt(player) -> Array:
+	return _prompt_for(player, null)
+
+## Carrying something changes what this machine is for, so the carry prompt is
+## the same decision as the empty-handed one.
+func prompt_with_item(player, held) -> Array:
+	return _prompt_for(player, held)
+
+func _prompt_for(player, held) -> Array:
+	var wrench := _is_wrench(held)
+	if _panel_open and wrench:
+		return ["Turn the calibration screw",
+			"calibration %d%%   ·   nobody checks these" % int(round(calibration * 100.0))]
 	if _panel_open:
-		return ["Adjust calibration screw", "[E] nudge   nobody checks these"]
+		return ["Wipe the %s log" % fixture_name,
+			"%d entries   ·   [hold E]" % log_entries.size()]
+	if wrench:
+		return ["Open the maintenance panel", "the screw is behind it"]
 	var p = _nearby_patient(player)
 	if p == null:
 		return ["%s — dial %d" % [fixture_name, dial],
@@ -95,12 +111,47 @@ func prompt(player) -> Array:
 	return ["%s on %s" % [DB.treatment_name(treatment_id), p.display_name],
 		"dial %d   ·   prescribed %d      [E] up   [Shift+E] down" % [dial, prescribed]]
 
-func use_seconds(_player, _held) -> float:
-	return 0.0
+## Wiping a device log is the one thing here you have to stand and do.
+func use_seconds(_player, held) -> float:
+	return 2.5 if (_panel_open and not _is_wrench(held)) else 0.0
 
-func interact(player, _held) -> void:
+func _is_wrench(held) -> bool:
+	return held != null and is_instance_valid(held) \
+		and held.has_method("get_item_id") and String(held.get_item_id()) == "wrench"
+
+## The maintenance panel had no way in at all.
+##
+## `open_panel()` had no caller anywhere in the shipping game, `_panel_open` was
+## initialised false and never written, and `_nudge_calibration()` is the only
+## code in the project that lowers `calibration`. So calibration was always
+## exactly 1.0, `is_miscalibrated()` could never return true, and the branch in
+## run_cycle that reads it never fired. This class's own docstring calls
+## calibration sabotage a headline mechanic; SPOILERS.md documents it to the
+## developer as a real player verb. It did not exist.
+##
+## Neither did wiping a device log — `clear_log()` had no caller either, and its
+## comment describes it as the act of somebody with something to hide.
+##
+## Both now hang off one object the player can already find: the wrench, which
+## Treatment Stock has been carrying all along.
+##
+##   panel shut,  wrench in hand   →  open the panel
+##   panel open,  wrench in hand   →  turn the screw (tap)
+##   panel open,  hands free       →  wipe the log (hold)
+##   panel shut,  hands free       →  the dial, as before
+func interact(player, held) -> void:
 	if _panel_open:
-		_nudge_calibration()
+		if _is_wrench(held):
+			_nudge_calibration()
+		else:
+			clear_log()
+			_panel_open = false
+		_push_prompt(player, held)
+		return
+	if _is_wrench(held):
+		_panel_open = true
+		AudioMgr.play_at_var("squeak", global_position, -16.0)
+		_push_prompt(player, held)
 		return
 	# Tap turns the dial; the run action is on a separate fixture (the big
 	# button), so you can never fat-finger a treatment you didn't mean to give.
@@ -122,8 +173,7 @@ func interact(player, _held) -> void:
 	# when the thing you are looking at CHANGES, so the readout for the single
 	# most important control in the game sat frozen on whatever it said when you
 	# walked up — you were setting a number while being shown a different one.
-	var pr := prompt(player)
-	EventBus.interact_prompt.emit(String(pr[0]), String(pr[1]))
+	_push_prompt(player)
 
 ## A setting is what the dial is left on, not everything it passed over.
 ##
@@ -131,7 +181,17 @@ func interact(player, _held) -> void:
 ## a dial sweeping past a number; they react to where it stops. Announcing every
 ## intermediate value meant a player who overshot by one and corrected had
 ## published two extreme readings instead of none.
+func _push_prompt(player, held = null) -> void:
+	var pr := _prompt_for(player, held)
+	EventBus.interact_prompt.emit(String(pr[0]), String(pr[1]))
+
 func _process(delta: float) -> void:
+	# A panel left hanging open is a panel somebody will notice. It shuts itself
+	# once you have walked away from it.
+	if _panel_open:
+		var pl = get_tree().get_first_node_in_group("player")
+		if pl == null or pl.global_position.distance_to(global_position) > 3.2:
+			_panel_open = false
 	if _dial_settle >= 0.7:
 		return
 	_dial_settle += delta

@@ -1423,3 +1423,121 @@ Twelve majors and twelve minors, all verified. The ones that matter most:
   debts.
 - The appointment system overwrites the tutorial's instruction line every
   in-game hour.
+
+---
+
+## Session 4 (cont.) — working the audit's majors
+
+Twelve verified majors from the parallel audit. Six of them were features the
+source described in detail and the player could not reach.
+
+### The tutorial could never get past step 1
+
+Six steps, strictly in order, and step 1 is "check your list" — completed by
+`_on_ui("tablet")`, bound to `EventBus.request_ui`.
+
+`request_ui` is a **request**. The tablet is opened straight from the input
+handler (`open("tablet", {})`) and from the pause-menu button, both of which
+call the router directly. Nothing in the codebase has ever emitted
+`request_ui("tablet")`. So step 1 never completed, and because the tutorial
+advances in order, **neither did the other five**.
+
+`EventBus.ui_opened(id)` is now emitted by `UIRoot.open()` *after* a screen is
+actually up, whatever asked for it. The tutorial listens to the opening rather
+than to the asking. The other five hooks worked only by luck of which screens
+happen to route through the bus.
+
+### Six treatments the chart calls indicated and the game had no verb for
+
+`rest`, `reduction`, `counter_yawn`, `talk_therapy_lite`, `sequential_apology`
+and `reorientation_walk` have no `tool`. The only route into
+`TreatmentSystem.apply()` is holding an item whose id equals the treatment's
+tool — and no item has an empty id, so none of them could ever match. The chart
+printed each one under INDICATED TREATMENTS with "no equipment" beside it.
+
+They now appear at the bedside, in the dialogue screen's clinical-action block
+alongside Examine / Theatre / Discharge, which is where they belong: there is no
+way to hold "rest" in your hands.
+
+### And two more the chart named the tool for
+
+`splint` and `sling` are defined, meshed, priced, and are the tools for
+Splinting and Sling Support — and were stocked **nowhere in the building**. The
+only two treatments for a fracture could not be given by anybody, while the
+chart said "Splinting — splint".
+
+Both are now in General Stock and Treatment Stock, and a smoke check walks
+`DB.TREATMENTS`, takes every non-empty `tool` that is a carryable item, and
+asserts it is obtainable somewhere on the floor.
+
+### Calibration sabotage and log-wiping did not exist
+
+`open_panel()` had no caller anywhere in the shipping game. `_panel_open` was
+initialised false and never written, so both branches behind it were dead —
+including `_nudge_calibration()`, **the only code in the project that lowers
+`calibration`**. Calibration was therefore always exactly 1.0, `is_miscalibrated()`
+could never return true, and the branch of `run_cycle` that reads it never fired.
+The class docstring calls calibration sabotage a headline mechanic;
+`docs/SPOILERS.md` documents it to the developer as a real player verb.
+
+`clear_log()` had no caller either, under a comment describing it as *"the act
+of someone with something to hide"*.
+
+Both now hang off one object that has been sitting in Treatment Stock all along:
+
+| | wrench in hand | hands free |
+|---|---|---|
+| **panel shut** | open the maintenance panel | the dial, as before |
+| **panel open** | turn the calibration screw *(tap)* | wipe the device log *(hold 2.5s)* |
+
+A panel left hanging open shuts itself once you walk away from it, because a
+panel hanging open is a thing somebody notices. The regression test drives the
+real `interact()` path rather than the private helpers — calling those directly
+is exactly what hid this for so long.
+
+### The statement did not add up, and the player was paid on the wrong number
+
+`daily_costs()` computed `admissions` and then left it out of `total`. The
+statement printed the admission line inside the cost stack with the profit
+directly underneath it, so the block visibly did not sum — and worse,
+`compute_bonus()` ran on the inflated figure, so **the player's profit share was
+computed on money the hospital had already spent**. (The hospital's cash was
+always right; `ADMISSION_COST` is debited at admission.)
+
+### Loading your own game charged you a second day's rent
+
+`Game._start()` called `begin_day()` unconditionally after loading — and the
+autosave is written inside `clock_out()`, with the day just worked still
+current. So Continue re-settled the debts, re-rolled the morning's events,
+re-ran the investigation checks and rebuilt the appointment list for a shift
+that was over. A save taken from the pause menu mid-shift was worse: it put you
+back at 8am with the ward as it stood at 2pm.
+
+`phase` and `last_begun_day` are now persisted, `begin_day()` refuses to run
+twice for the same day and shift, and Continue resumes where the save was taken:
+mid-shift back onto the floor, chart review back to the review, post-shift
+straight into the next morning.
+
+### Which moved the economy, so the economy moved back
+
+Folding admission workups into the profit share was correct and cost the honest
+doctor about forty per cent of their income — from scraping by to **bankrupt on
+day fifteen**. "Honest is hard" is the premise; "honest is not a playstyle" is a
+missing playstyle.
+
+`BASE_SALARY` 240 → 520. A wage is the right place to put that floor back: it is
+the one income a doctor has that does not depend on what happens to the
+patients, so it keeps an honest career alive and is a rounding error to a rich
+one. It is also still hopeless — fifteen thousand a month against four hundred
+and thirty-five thousand of debt is the whole reason any of this starts.
+
+| | per day | survives |
+|---|---|---|
+| honest | $1,061 | 20d |
+| careless | $2,904 | **13.7d** |
+| mild | $3,206 | 20d |
+| careful | $3,781 | 20d |
+
+All 21 design-intent assertions pass across three seeds.
+
+**1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**

@@ -68,6 +68,15 @@ signal codex_unlocked(entry_id: String)
 ## Fixtures ask the UI layer to open a screen. context carries whatever the
 ## screen needs (patient id, machine reference, terminal mode).
 signal request_ui(id: String, context: Dictionary)
+## Fired by UIRoot AFTER a screen is actually on screen, whatever asked for it.
+##
+## request_ui is a REQUEST, and half the screens in the game are not requested:
+## the tablet is opened straight from the input handler and from the pause menu,
+## and the router is called directly in both places. Anything that wants to know
+## a screen was opened has to listen to the opening, not to the asking — the
+## tutorial listened to the asking, so its very first step, "check your list",
+## could never complete, and the whole tutorial was stuck on step 1 of 6 forever.
+signal ui_opened(id: String)
 signal close_ui(id: String)
 signal objective_changed(text: String)
 

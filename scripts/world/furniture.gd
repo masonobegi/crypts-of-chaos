@@ -333,7 +333,8 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	var shelf := SupplyShelf.new()
 	shelf.room_key = r.key
 	h.add_child(shelf)
-	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench", "duster"])
+	shelf.build("Treatment Stock",
+		["syringe", "iv_bag", "compress", "splint", "sling", "mallet", "wrench", "duster"])
 	shelf.position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
 	shelf.rotation.y = -PI / 2
 	_occupy(r.rect.position.x + 1.2, c.z + 3.2, 0.6, 1.8)
@@ -356,7 +357,12 @@ static func _treatment(h: Hospital, r: Room) -> void:
 static func _supply(h: Hospital, r: Room) -> void:
 	var c := r.center()
 	var stock := [
-		["General Stock", ["compress", "blanket", "pillow", "bedpan", "thermometer", "duster"], false],
+		# splint and sling are the tools for Splinting and Sling Support. They
+		# were defined, meshed, priced and printed on the chart as INDICATED —
+		# and stocked nowhere in the building, so the only two treatments for a
+		# fracture could not be given by anybody.
+		["General Stock", ["compress", "blanket", "splint", "sling", "pillow", "bedpan",
+			"thermometer", "duster"], false],
 		["Pharmacy Stock", ["syringe", "pill_bottle", "iv_bag", "placebex_kit"], true],
 		["Forms & Stationery", ["blank_form", "clipboard_blank", "stapler"], false],
 	]

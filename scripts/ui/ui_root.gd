@@ -111,6 +111,8 @@ func open(id: String, ctx: Dictionary = {}) -> void:
 	current_id = id
 	add_child(screen)
 	_set_modal(true)
+	# After it is genuinely up, and regardless of who asked. See EventBus.
+	EventBus.ui_opened.emit(id)
 
 func close() -> void:
 	if current == null:

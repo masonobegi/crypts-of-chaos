@@ -278,11 +278,37 @@ func _start() -> void:
 	if GameState.flag("continue_save", false):
 		GameState.set_flag("continue_save", false)
 		SaveSystem.load_game(SaveSystem.AUTOSAVE)
-		shift.begin_day()
+		_resume_where_the_save_left_off()
 		return
 	shift.begin_day()
 	if not GameState.flag("tutorial_done", false):
 		EventBus.request_ui.emit("tutorial", {})
+
+## Put the player back where the save was taken, rather than at the top of the
+## morning regardless.
+##
+## The autosave is written inside clock_out(), with the day just worked still
+## current — so "load, then begin_day()" restarted a day that had already
+## happened. Debts were settled twice, the morning's events rolled twice, and
+## the appointment list was rebuilt for a shift that was over. A save taken from
+## the pause menu mid-shift was worse: it put the player back at 8am with the
+## ward as it stood at 2pm.
+func _resume_where_the_save_left_off() -> void:
+	match GameState.phase:
+		GameState.Phase.SHIFT:
+			# Straight back onto the floor, clock running, nothing re-rolled.
+			GameState.set_phase(GameState.Phase.SHIFT)
+			EventBus.objective_changed.emit("Get through the shift.")
+		GameState.Phase.CHART_REVIEW:
+			if not shift.last_review.is_empty():
+				EventBus.request_ui.emit("review", shift.last_review)
+			else:
+				shift.end_shift()
+		GameState.Phase.POST_SHIFT:
+			# The commonest case by far: the autosave is written at clock-out.
+			shift.next_day()
+		_:
+			shift.begin_day()
 
 func _physics_process(_delta: float) -> void:
 	if player and suspicion:

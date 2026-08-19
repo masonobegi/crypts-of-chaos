@@ -23,7 +23,11 @@ var _active := false
 func _ready() -> void:
 	add_to_group("tutorial")
 	EventBus.shift_started.connect(_on_shift_started)
-	EventBus.request_ui.connect(_on_ui)
+	# ui_opened, not request_ui: the tablet is opened straight from the input
+	# handler and from the pause menu without ever going through the bus, so
+	# step 1 of 6 — "check your list" — could never complete and the tutorial
+	# could never advance past it.
+	EventBus.ui_opened.connect(func(id): _on_ui(id, {}))
 	EventBus.treatment_applied.connect(func(_p, _t, _q): complete("treat"))
 	EventBus.shift_ended.connect(func(_d): complete("shift"))
 	# The examination step completes on the act, not on opening the screen —

@@ -6,7 +6,21 @@ extends Node
 ## The debt schedule is tuned so a scrupulously honest doctor cannot service it
 ## on the base bonus. The game never tells you to cheat; the arithmetic does.
 
-const BASE_SALARY := 240              ## per shift, before bonus
+## Per shift, before bonus.
+##
+## Raised from 240 when admission workups were folded into the profit the share
+## is computed on — a correction that was right (the statement printed the line
+## as a cost and then left it out of the total underneath) and that cut the
+## honest doctor's income by about forty per cent, from scraping by to bankrupt
+## on day fifteen. "Honest is hard" is the premise; "honest is not a playstyle"
+## is a missing playstyle.
+##
+## A wage is the right place to put that floor back, because it is the one
+## income a doctor has that does not depend on what happens to the patients —
+## so it keeps an honest career alive and is a rounding error to a rich one. It
+## is also still hopeless: fifteen thousand a month against four hundred and
+## thirty-five thousand of debt is the whole reason any of this starts.
+const BASE_SALARY := 520
 const STAFF_COST_PER_HEAD := 210
 const UTILITIES_BASE := 180
 const SUPPLY_COST_PER_PATIENT := 55
@@ -104,7 +118,14 @@ func close_shift() -> Dictionary:
 	var costs := daily_costs()
 	var fees := procedure_fees
 	procedure_fees = 0
-	var profit: int = int(billing["revenue"]) + fees - int(costs["total"])
+	# Admissions are in the printed cost stack and were left out of the profit
+	# printed directly underneath it, so the statement did not add up — and,
+	# worse, the player's profit share was computed on the inflated figure. The
+	# hospital's CASH was always right (ADMISSION_COST is debited when somebody
+	# is admitted); it was the number on the page, and the one the bonus runs
+	# on, that never saw it.
+	var profit: int = int(billing["revenue"]) + fees \
+		- int(costs["total"]) - int(costs["admissions"])
 	GameState.add_hospital(-int(costs["total"]), "operating costs")
 
 	var bonus := compute_bonus(profit)

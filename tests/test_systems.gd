@@ -353,3 +353,32 @@ func test_you_cannot_decant_into_a_mallet() -> void:
 	t.eq(String(p[0]), "", "solid objects do not accept contents")
 	mallet.queue_free()
 	syringe.queue_free()
+
+func test_subtitles_are_scoped_to_earshot() -> void:
+	# A patient muttering at the far end of the floor should not be captioned.
+	var h = _hospital()
+	var npc := NPCBody.new()
+	npc.display = "Test Patient"
+	t.root.add_child(npc)
+	npc.global_position = h.point_in("ward_105")
+
+	var heard := [false]
+	var conn := func(_speaker: String, _text: String, _secs: float): heard[0] = true
+	EventBus.subtitle.connect(conn)
+
+	# With no player in the tree the line must still come through, so headless
+	# tooling and cutscenes do not silently lose dialogue.
+	npc.say("audible with nobody about", 0.1)
+	t.ok(heard[0], "with no player present, lines are not swallowed")
+
+	EventBus.subtitle.disconnect(conn)
+	npc.queue_free()
+
+func test_earshot_uses_distance_and_room() -> void:
+	var h = _hospital()
+	var npc := NPCBody.new()
+	t.root.add_child(npc)
+	npc.global_position = h.point_in("ward_105")
+	t.gt(float(NPCBody.SUBTITLE_RANGE), 5.0, "earshot is generous enough to be useful")
+	t.lt(float(NPCBody.SUBTITLE_RANGE), 30.0, "but well short of the whole floor")
+	npc.queue_free()

@@ -129,3 +129,32 @@ func test_mind_roundtrip() -> void:
 	t.eq(back.evidence.size(), 1, "evidence roundtrips")
 	t.eq(int(back.burned_covers.get("paperwork", 0)), 1, "burned covers roundtrip")
 	t.near(back.suspicion(0), m.suspicion(0), 0.0001, "suspicion identical after roundtrip")
+
+func test_bedside_manner_is_never_a_gamble() -> void:
+	# Ordinary politeness must not be rolled. Showing a failure chance against
+	# "how are you feeling?" teaches the player to distrust the confidence band
+	# everywhere it actually matters.
+	var m := DB.make_mind("p", "Greg", "patient", "confrontational")
+	m.trust = 0.1
+	var opt = Dialogue.Option.new("How are you feeling?", "small_talk", "", 0.0, "trust")
+	t.near(Dialogue.success_chance(m, opt), 1.0, 0.0001, "small talk always lands")
+	var before := m.trust
+	var res: Dictionary = Dialogue.resolve(m, opt, null)
+	t.ok(bool(res.get("success", false)), "and always succeeds")
+	t.gt(m.trust, before, "and buys a little trust")
+	t.eq(m.evidence.size(), 0, "and never creates evidence")
+
+func test_a_real_excuse_is_still_a_gamble() -> void:
+	var m := DB.make_mind("n", "Nurse", "nurse", "suspicious")
+	m.trust = 0.1
+	var e := Evidence.new()
+	e.kind = "machine_extreme_dial"
+	e.source = Evidence.Source.WITNESSED
+	e.base_weight = 0.7
+	e.certainty = 1.0
+	m.add_evidence(e)
+	var opt = Dialogue.Option.new("That's a known equipment fault.", "deflect",
+		"equipment_variance", 0.4)
+	t.lt(Dialogue.success_chance(m, opt), 0.5,
+		"a suspicious nurse holding strong evidence is hard to talk around")
+	t.gt(Dialogue.success_chance(m, opt), 0.0, "but never impossible")

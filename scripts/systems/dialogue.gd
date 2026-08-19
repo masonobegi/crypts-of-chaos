@@ -161,6 +161,8 @@ static func tone_affinity(arch: String, tone: String) -> float:
 ## Probability this line lands. Deliberately shown to the player as a coarse
 ## band rather than a number — see success_band().
 static func success_chance(mind: Mind, opt: Option) -> float:
+	if opt.tone in ["none", "small_talk"]:
+		return 1.0
 	var base := tone_affinity(mind.archetype, opt.tone)
 	base *= 0.55 + mind.trust * 0.7
 	# Strong evidence makes talk cheap. You cannot smooth-talk your way past
@@ -208,8 +210,12 @@ static func options_for(mind: Mind, p = null) -> Array:
 			opts.append(Option.new("You're right. I'll start your discharge.", "honest", "", 0.0,
 				"discharge_promise"))
 		else:
-			opts.append(Option.new("How are you feeling?", "reassure", "", 0.05, "trust"))
-			opts.append(Option.new("Everything's on track.", "reassure", "", 0.1, "trust"))
+			# Ordinary bedside manner. These cannot fail and must not be rolled:
+			# showing "they are not going to like this" against "how are you
+			# feeling?" is nonsense, and it teaches the player to distrust the
+			# confidence band everywhere else.
+			opts.append(Option.new("How are you feeling?", "small_talk", "", 0.0, "trust"))
+			opts.append(Option.new("Everything's on track.", "small_talk", "", 0.0, "trust"))
 
 	if has_evidence:
 		opts.append(Option.new("That's a known equipment fault. It's logged.", "deflect",
@@ -223,6 +229,7 @@ static func options_for(mind: Mind, p = null) -> Array:
 			opts.append(Option.new("Let's keep this between us.", "bribe", "", 0.6, "neutralize", 200))
 
 	if mind.role == "nurse":
+		opts.append(Option.new("How's the ward?", "small_talk", "", 0.0, "trust"))
 		opts.append(Option.new("Could you check on 103 for me?", "authority", "", 0.15, "delay"))
 	if mind.role == "family":
 		opts.append(Option.new("We're monitoring them closely.", "reassure", "clinical_caution", 0.3))
@@ -236,6 +243,10 @@ static func options_for(mind: Mind, p = null) -> Array:
 static func resolve(mind: Mind, opt: Option, p = null) -> Dictionary:
 	if opt.tone == "none":
 		return {"success": true, "reply": "", "walked_away": true}
+
+	if opt.tone == "small_talk":
+		mind.adjust_trust(0.04)
+		return {"success": true, "reply": _small_talk_reply(mind), "small_talk": true}
 
 	if opt.effect == "deal_accept":
 		if GameState.personal_money < opt.cost:
@@ -322,6 +333,21 @@ static func resolve(mind: Mind, opt: Option, p = null) -> Dictionary:
 	ev.summary = "gave an explanation that did not hold up"
 	mind.add_evidence(ev)
 	return {"success": false, "reply": _failure_reply(mind, opt)}
+
+## Being decent to people is not a mechanic with a roll attached, but it is not
+## free either — it costs shift time, and trust is a genuine defence later.
+static func _small_talk_reply(mind: Mind) -> String:
+	match mind.archetype:
+		"paranoid": return "Fine. Why?"
+		"stoic": return "Mm."
+		"hypochondriac": return "Worse, actually. Much worse. Since you ask."
+		"confrontational": return "How do you think I'm feeling?"
+		"confused": return "Is it Thursday?"
+		"observant": return "I'm alright. You look busy."
+		"litigious": return "I'd rather that went in the notes."
+	return String(RNG.pick("small_talk", [
+		"Not too bad, thanks doctor.", "Bit better today, I think.",
+		"Can't complain. Well. I could.", "Yeah, alright."]))
 
 static func _success_reply(mind: Mind, opt: Option) -> String:
 	match opt.tone:

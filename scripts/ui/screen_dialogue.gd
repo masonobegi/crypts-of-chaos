@@ -21,7 +21,7 @@ func _build() -> void:
 		_patient = patient_system().get_patient(_mind.patient_id) if patient_system() else null
 
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
-	var v := shell(760, 700, _mind.display_name, sub)
+	var v := shell(760, 640, _mind.display_name, sub)
 
 	# What they are currently holding against you, in their words.
 	var worst := _mind.strongest(GameState.career_minutes)
@@ -57,7 +57,9 @@ func _build() -> void:
 func _option_button(o) -> Control:
 	var h := UIKit.hbox(8)
 	var chance := Dialogue.success_chance(_mind, o)
-	var band := Dialogue.success_band(chance) if o.tone != "none" else ""
+	# No band on lines that cannot fail — a confidence readout against "how are
+	# you feeling?" makes the whole readout look untrustworthy.
+	var band := "" if o.tone in ["none", "small_talk"] else Dialogue.success_band(chance)
 	var label_text: String = o.text
 	if o.cost > 0:
 		label_text += "  (%s)" % UIKit.money_str(o.cost)
@@ -94,6 +96,9 @@ func _choose(o) -> void:
 		close()
 		return
 	AudioMgr.play("beep" if bool(res.get("success", false)) else "error", -14.0)
+	if bool(res.get("small_talk", false)):
+		rebuild()
+		return
 	if bool(res.get("success", false)):
 		EventBus.toast.emit("%s seems to accept that." % _mind.display_name, "good")
 	else:

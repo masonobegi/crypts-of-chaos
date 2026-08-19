@@ -212,6 +212,8 @@ func _animate(delta: float) -> void:
 		_head.rotation.x = clampf(asin(clampf(local.y, -1.0, 1.0)) * 0.6, -0.5, 0.5)
 
 # ------------------------------------------------------------------ speech
+const SUBTITLE_RANGE := 14.0
+
 func say(text: String, seconds := 3.2) -> void:
 	if _speech == null:
 		return
@@ -219,8 +221,21 @@ func say(text: String, seconds := 3.2) -> void:
 	_speech.visible = true
 	_speech_timer = seconds
 	spoke.emit(text)
-	EventBus.subtitle.emit(display, text, seconds)
+	# Only caption speech the player could plausibly hear. A global subtitle feed
+	# meant a patient muttering in Room 101 was captioned from the treatment bay,
+	# which made the whole channel read as UI noise rather than as the ward.
+	if _player_can_hear():
+		EventBus.subtitle.emit(display, text, seconds)
 	AudioMgr.play_at_var("grunt", global_position, -26.0, 0.3)
+
+func _player_can_hear() -> bool:
+	var p = get_tree().get_first_node_in_group("player") if is_inside_tree() else null
+	if p == null:
+		return true      # no player (headless tooling) — do not swallow the line
+	if global_position.distance_to(p.global_position) <= SUBTITLE_RANGE:
+		return true
+	# Same room still counts even if the room is a long one.
+	return current_room() != "" and current_room() == p.current_room()
 
 func _tick_speech(delta: float) -> void:
 	if _speech_timer <= 0.0:

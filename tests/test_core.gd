@@ -302,3 +302,41 @@ func test_emergency_conditions_are_short_and_lucrative() -> void:
 			continue
 		t.lt(float(c["base_days"]), 2.0, "%s is a short stay" % cid)
 		t.gt(float(c["revenue"]), 2000.0, "%s bills heavily per day" % cid)
+
+func test_clinical_impression_is_relative_to_expected_progress() -> void:
+	# Absolute bands made every freshly-admitted patient read "not great", which
+	# is true and useless. The question that matters — to a doctor and to a
+	# player checking whether their interference worked — is "on track?".
+	var fresh := Patient.new("f")
+	fresh.expected_stay_days = 4.0
+	fresh.days_admitted = 0.1
+	fresh.recovery = 0.0
+	t.eq(fresh.apparent_state(), "just admitted", "day one is not a diagnosis")
+
+	var on_track := Patient.new("t")
+	on_track.expected_stay_days = 4.0
+	on_track.days_admitted = 2.0
+	on_track.recovery = 0.5
+	t.eq(on_track.apparent_state(), "coming along as expected", "halfway through, halfway better")
+
+	var stalled := Patient.new("s")
+	stalled.expected_stay_days = 4.0
+	stalled.days_admitted = 2.0
+	stalled.recovery = 0.1
+	t.eq(stalled.apparent_state(), "not coming along at all", "a stalled patient reads as stalled")
+
+	var quick := Patient.new("q")
+	quick.expected_stay_days = 4.0
+	quick.days_admitted = 1.0
+	quick.recovery = 0.8
+	t.eq(quick.apparent_state(), "ahead of schedule", "and a fast one reads as fast")
+
+	var done := Patient.new("d")
+	done.days_admitted = 3.0
+	done.recovery = 1.0
+	t.eq(done.apparent_state(), "ready to go home", "recovered beats everything else")
+
+	var worse := Patient.new("w")
+	worse.days_admitted = 3.0
+	worse.recovery = -0.1
+	t.eq(worse.apparent_state(), "worse than on arrival", "and going backwards is unmistakable")

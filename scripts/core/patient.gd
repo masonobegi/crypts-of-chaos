@@ -179,13 +179,27 @@ func vitals() -> Dictionary:
 	}
 
 ## Coarse, honest-ish read a competent doctor gets from looking at them.
+##
+## Deliberately RELATIVE to how far through the projected stay they are, not
+## absolute. "Not great" on the morning of admission is true and useless; what a
+## doctor actually wants to know is whether this person is on track — which is
+## also exactly the question the player is asking about their own interference.
 func apparent_state() -> String:
-	if recovery >= 0.98: return "ready to go home"
-	if recovery >= 0.75: return "nearly there"
-	if recovery >= 0.45: return "improving"
-	if recovery >= 0.2: return "stable"
-	if recovery >= 0.0: return "not great"
-	return "actively worse than on arrival"
+	if recovery < 0.0:
+		return "worse than on arrival"
+	if recovery >= 0.98:
+		return "ready to go home"
+	if days_admitted < 0.3:
+		return "just admitted"
+	var expected: float = clampf(days_admitted / maxf(expected_stay_days, 0.2), 0.0, 1.0)
+	var delta: float = recovery - expected
+	if delta > 0.2:
+		return "ahead of schedule"
+	if delta > -0.08:
+		return "coming along as expected"
+	if delta > -0.25:
+		return "slower than I would like"
+	return "not coming along at all"
 
 func condition_name() -> String:
 	return DB.condition_name(condition_id)

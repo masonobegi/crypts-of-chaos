@@ -19,5 +19,17 @@ not committed — see docs/BUILDING.md).
 - [x] Wiped prior repo contents (owner request), started fresh.
 - [x] Project skeleton: `project.godot`, input map, physics layers, `.gitignore`.
 
+- [x] `docs/DESIGN.md` — critique of the brief + the five design changes made.
+- [x] Autoloads: Log, RNG (seeded, per-stream), EventBus, DB (content), GameState,
+      AudioMgr (fully procedural synthesis — zero audio assets), SaveSystem.
+- [x] Core data model: WorldEvent (truth) / PatientChart (record) / Mind+Evidence
+      (belief) / Patient / Complication.
+- [x] Headless test harness + 118 passing assertions.
+
+### Gotcha found (documented in docs/BUILDING.md)
+`preload()` of scripts that reference many `class_name` types deadlocks the
+GDScript loader when combined with typed signal params on an autoload. Fixed by
+(a) untyping EventBus signal params and (b) using runtime `load()` in the runner.
+
 ### NEXT UP
-- Design critique doc, then core autoloads (EventBus/DB/GameState).
+- Player controller + interaction/grab physics.

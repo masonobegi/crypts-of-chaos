@@ -423,3 +423,46 @@ func test_moderate_thermostat_settings_leave_nothing_behind() -> void:
 	thermo.interact(null, null)     # 19 — comfortable enough
 	t.eq(thermo.suspicious_log_entries().size(), 0,
 		"a small adjustment is not worth an inspector's time")
+
+func test_patients_react_to_chaos_and_it_is_not_free() -> void:
+	# Noise is the distraction economy's currency, but a ward full of startled
+	# patients is unsettled, and unsettled patients are less satisfied.
+	var npc := PatientNPC.new()
+	t.root.add_child(npc)
+	var p := Patient.new("chaos")
+	p.display_name = "Test"
+	p.archetype = "paranoid"
+	p.satisfaction = 0.8
+	npc.bind(p, null)
+
+	var evt := WorldEvent.new("prop_noise", "")
+	evt.pos = npc.global_position
+	evt.hear_radius = 12.0
+	npc.on_heard_noise(evt)
+	t.lt(p.satisfaction, 0.8, "a crash next door costs a little satisfaction")
+	t.gt(p.satisfaction, 0.7, "but only a little — it is not a punishment")
+	npc.queue_free()
+
+func test_distant_noise_matters_less_than_close_noise() -> void:
+	var far := Patient.new("far")
+	far.satisfaction = 0.8
+	var near := Patient.new("near")
+	near.satisfaction = 0.8
+
+	var a := PatientNPC.new()
+	var b := PatientNPC.new()
+	t.root.add_child(a)
+	t.root.add_child(b)
+	a.bind(far, null)
+	b.bind(near, null)
+	a.global_position = Vector3(20, 0, 0)
+	b.global_position = Vector3(1, 0, 0)
+
+	var evt := WorldEvent.new("prop_noise", "")
+	evt.pos = Vector3.ZERO
+	evt.hear_radius = 24.0
+	a.on_heard_noise(evt)
+	b.on_heard_noise(evt)
+	t.lt(near.satisfaction, far.satisfaction, "closer is worse")
+	a.queue_free()
+	b.queue_free()

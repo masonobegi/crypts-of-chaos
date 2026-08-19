@@ -162,6 +162,46 @@ func _tick_symptoms(delta: float) -> void:
 	if _shiver > 0.05 and _symptom_mesh:
 		_symptom_mesh.position.x = sin(float(Time.get_ticks_msec()) * 0.04) * 0.02 * _shiver
 
+## Patients react to chaos, which is most of the reason chaos is worth causing.
+## Perception calls this on anything within hearing range.
+func on_heard_noise(evt: WorldEvent) -> void:
+	if data == null or data.discharged:
+		return
+	var dist := global_position.distance_to(evt.pos)
+	var strength := clampf(1.0 - dist / maxf(evt.hear_radius, 1.0), 0.15, 1.0)
+	startle(strength)
+	# Applied BEFORE the bark gate: being startled costs a little satisfaction
+	# whether or not they happen to say something about it. A ward full of
+	# startled patients is unsettled, so noise is never entirely free.
+	data.satisfaction = clampf(data.satisfaction - 0.012 * strength, 0.0, 1.0)
+	var r = _room_node()
+	if r:
+		r.add_noise(0.35 * strength)
+	if _bark_timer > 0.0 or not RNG.chance("patient_startle_bark", 0.45 * strength):
+		return
+	_bark_timer = 5.0
+	# Personality decides whether a crash is frightening, annoying, or a
+	# development they intend to write down.
+	match data.archetype:
+		"paranoid": say(String(RNG.pick("startle_par", [
+			"What was that? What WAS that?", "Somebody's doing something.",
+			"That wasn't nothing."])), 3.0)
+		"confrontational": say(String(RNG.pick("startle_conf", [
+			"Oh, for God's sake.", "Is anyone running this place?",
+			"That's the third time."])), 3.0)
+		"observant": say(String(RNG.pick("startle_obs", [
+			"That came from the corridor.", "Something went over.",
+			"That was near 103."])), 3.0)
+		"hypochondriac": say(String(RNG.pick("startle_hypo", [
+			"My heart. My actual heart.", "I felt that in my chest.",
+			"I'll need to be monitored after that."])), 3.0)
+		"confused": say(String(RNG.pick("startle_conf2", [
+			"Is that the postman?", "Are we moving?", "Was that me?"])), 3.0)
+		"stoic": say("Hm.", 2.0)
+		_: say(String(RNG.pick("startle_any", [
+			"Ooh.", "Everything alright out there?", "Goodness.",
+			"That sounded expensive."])), 3.0)
+
 func _room_node():
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h == null:

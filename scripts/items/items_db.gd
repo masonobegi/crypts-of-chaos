@@ -118,6 +118,11 @@ const SPECS := {
 		"blurb": "Carrying one of these makes you look busy. Genuinely useful.",
 		"shape": "clipboard", "color": Color(0.72, 0.66, 0.52),
 	},
+	"wheelchair": {
+		"name": "Wheelchair", "mass": 20.0, "size": Vector3(0.66, 1.0, 0.8),
+		"blurb": "Rolls. Keeps rolling. Nobody has ever found the brake.",
+		"shape": "wheelchair", "color": Color(0.28, 0.32, 0.38),
+	},
 	"extinguisher": {
 		"name": "Fire Extinguisher", "mass": 8.0, "size": Vector3(0.18, 0.55, 0.18),
 		"blurb": "Heavy. Loud. Last inspected during a previous administration.",
@@ -290,6 +295,18 @@ static func _shape_parts(shape: String, size: Vector3, color: Color) -> Array:
 				{"mesh": Build.cyl_mesh(0.12, 0.4, 14), "mat": m},
 				{"mesh": Build.cyl_mesh(0.05, 0.07, 10), "mat": metal, "pos": Vector3(0, 0.23, 0)},
 				{"mesh": Build.box_mesh(Vector3(0.16, 0.09, 0.005)), "mat": Build.mat(Build.PAPER), "pos": Vector3(0, 0.02, 0.121)},
+			]
+		"wheelchair":
+			return [
+				{"mesh": Build.box_mesh(Vector3(0.44, 0.06, 0.42)), "mat": m, "pos": Vector3(0, 0.05, 0)},
+				{"mesh": Build.box_mesh(Vector3(0.44, 0.5, 0.06)), "mat": m, "pos": Vector3(0, 0.3, -0.2)},
+				{"mesh": Build.box_mesh(Vector3(0.06, 0.24, 0.36)), "mat": m, "pos": Vector3(-0.22, 0.18, 0.02)},
+				{"mesh": Build.box_mesh(Vector3(0.06, 0.24, 0.36)), "mat": m, "pos": Vector3(0.22, 0.18, 0.02)},
+				{"mesh": Build.cyl_mesh(0.28, 0.05, 16), "mat": metal, "pos": Vector3(-0.28, -0.22, -0.04), "rot": Vector3(0, 0, PI / 2)},
+				{"mesh": Build.cyl_mesh(0.28, 0.05, 16), "mat": metal, "pos": Vector3(0.28, -0.22, -0.04), "rot": Vector3(0, 0, PI / 2)},
+				{"mesh": Build.cyl_mesh(0.09, 0.04, 10), "mat": dark, "pos": Vector3(-0.2, -0.41, 0.3), "rot": Vector3(0, 0, PI / 2)},
+				{"mesh": Build.cyl_mesh(0.09, 0.04, 10), "mat": dark, "pos": Vector3(0.2, -0.41, 0.3), "rot": Vector3(0, 0, PI / 2)},
+				{"mesh": Build.box_mesh(Vector3(0.36, 0.05, 0.05)), "mat": metal, "pos": Vector3(0, 0.56, -0.22)},
 			]
 		"extinguisher":
 			return [

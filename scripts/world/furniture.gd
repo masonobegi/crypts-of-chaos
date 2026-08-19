@@ -190,6 +190,9 @@ static func _corridor(h: Hospital, r: Room) -> void:
 	_prop(h, "mop", Vector3(34.0, 0.3, z + 1.2), 1.1)
 	_prop(h, "bucket", Vector3(34.4, 0.3, z + 1.4))
 	_prop(h, "extinguisher", Vector3(1.0, 0.3, z + 1.5))
+	# Wheelchairs roll. That is the entire feature and it is worth having.
+	_prop(h, "wheelchair", Vector3(9.5, 0.55, z + 1.2), 0.4)
+	_prop(h, "wheelchair", Vector3(30.5, 0.55, z - 1.2), -1.1)
 	_iv_stand(h, Vector3(17.0, 0, z + 1.3))
 	# Benches along the corridor wall.
 	for x in [11.0, 12.4, 38.0, 39.4]:
@@ -205,6 +208,7 @@ static func _lobby(h: Hospital, r: Room) -> void:
 	for i in 4:
 		for j in 2:
 			_chair(h, Vector3(c.x + 1.6 + float(j) * 1.4, 0, c.z - 1.5 + float(i) * 0.95), PI * float(j))
+	_prop(h, "wheelchair", Vector3(c.x - 3.6, 0.55, c.z + 2.4), 1.9)
 	# Vending machine.
 	_block(h, Vector3(0.9, 1.9, 0.7), Color(0.75, 0.25, 0.22), Vector3(r.rect.position.x + 0.7, 0.95, c.z + 3.2))
 	_wall_sign(h, "OUT OF ORDER\n(since 2019)", Vector3(r.rect.position.x + 0.7, 1.5, c.z + 2.83), 0.0, 0.07)

@@ -284,3 +284,72 @@ func test_private_rooms_reduce_witness_quality() -> void:
 	t.near(Upgrades.witness_scale(), 1.0, 0.001, "open ward, full visibility")
 	GameState.owned_upgrades.append("private_rooms")
 	t.lt(Upgrades.witness_scale(), 0.8, "private rooms genuinely reduce what witnesses get")
+
+# ==================================================================== obstruction
+func test_blocking_a_doorway_actually_breaks_pathing() -> void:
+	# The whole point of shoving a cart into a doorway is that staff genuinely
+	# cannot get through it. If nav ignores the block, it is just a visual gag.
+	var h = _hospital()
+	var from: Vector3 = h.point_in("corridor")
+	var to: Vector3 = h.point_in("ward_101")
+	t.gt(float(h.nav.find_path(from, to).size()), 0.0, "ward 101 is reachable to begin with")
+
+	var door_rect := Rect2(4.5 - 0.9, 4.0 - 0.7, 1.8, 1.4)   # ward_101's doorway
+	var cells = h.nav.block_area(door_rect)
+	t.gt(float(cells.size()), 0.0, "blocking the doorway disables nav cells")
+	t.eq(h.nav.find_path(from, to).size(), 0, "and nothing can path through it")
+
+	# Other wards must be unaffected — blocking one door must not sever the floor.
+	t.gt(float(h.nav.find_path(from, h.point_in("ward_103")).size()), 0.0,
+		"other rooms are still reachable")
+
+	h.nav.unblock_cells(cells)
+	t.gt(float(h.nav.find_path(from, to).size()), 0.0, "clearing the doorway restores the route")
+
+func test_block_and_unblock_are_balanced() -> void:
+	# Two things in one doorway then one removed must NOT clear the block.
+	var h = _hospital()
+	var door_rect := Rect2(13.5 - 0.9, 4.0 - 0.7, 1.8, 1.4)
+	var a = h.nav.block_area(door_rect)
+	var b = h.nav.block_area(door_rect)
+	h.nav.unblock_cells(a)
+	t.eq(h.nav.find_path(h.point_in("corridor"), h.point_in("ward_102")).size(), 0,
+		"still blocked while a second obstruction remains")
+	h.nav.unblock_cells(b)
+	t.gt(float(h.nav.find_path(h.point_in("corridor"), h.point_in("ward_102")).size()), 0.0,
+		"clear once everything is removed")
+
+# ==================================================================== decanting
+func test_decanting_changes_contents_but_not_the_label() -> void:
+	var source := Items.spawn("pill_bottle")
+	var target := Items.spawn("syringe")
+	t.root.add_child(source)
+	t.root.add_child(target)
+	source.contents = "saline_plus"        # does nothing at all
+	var label_before: String = target.label
+	t.eq(target.contents, "chalkinol", "the syringe starts out honest")
+
+	var p: Array = target.prompt_with_item(null, source)
+	t.ok(String(p[0]).begins_with("Decant"), "decanting is offered")
+	target.interact(null, source)
+	t.eq(target.contents, "saline_plus", "the contents changed")
+	t.eq(target.label, label_before, "the label did not")
+	t.ok(target.is_mislabelled(), "and the two now disagree")
+	source.queue_free()
+	target.queue_free()
+
+func test_a_substituted_syringe_does_nothing() -> void:
+	# The payoff of the whole substitution mechanic: it looks identical and it
+	# treats nothing.
+	t.eq(Items.substance_effect("chalkinol"), "chalkinol", "real drug maps to a real treatment")
+	t.eq(Items.substance_effect("saline_plus"), "", "Saline Plus maps to nothing whatsoever")
+
+func test_you_cannot_decant_into_a_mallet() -> void:
+	var mallet := Items.spawn("mallet")
+	var syringe := Items.spawn("syringe")
+	t.root.add_child(mallet)
+	t.root.add_child(syringe)
+	var p: Array = mallet.prompt_with_item(null, syringe)
+	t.eq(String(p[0]), "", "solid objects do not accept contents")
+	mallet.queue_free()
+	syringe.queue_free()

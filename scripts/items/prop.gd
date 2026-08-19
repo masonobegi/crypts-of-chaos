@@ -51,6 +51,45 @@ func prompt(_player) -> Array:
 		sub = "Labelled: %s" % label
 	return ["Pick up %s" % display_name(), sub]
 
+# ------------------------------------------------------------------ decanting
+## Holding one container and looking at another lets you move what is inside
+## from one to the other, leaving both labels exactly where they were.
+##
+## This is the substitution verb made physical: no menu, no confirmation, just
+## two objects and whoever happens to be in the room.
+func prompt_with_item(_player, held) -> Array:
+	if held == null or held == self:
+		return ["", ""]
+	if not (held is Prop):
+		return ["", ""]
+	var other: Prop = held
+	if other.contents == "" or contents == other.contents:
+		return ["", ""]
+	if not _accepts_contents():
+		return ["", ""]
+	return ["Decant %s into %s" % [Items.substance_name(other.contents), display_name()],
+		"the label stays as it is"]
+
+func use_seconds(_player, held) -> float:
+	if held is Prop and (held as Prop).contents != "" and _accepts_contents():
+		return 1.4
+	return 0.0
+
+func _accepts_contents() -> bool:
+	return item_id in ["syringe", "iv_bag", "pill_bottle", "bucket", "coffee", "dread_canister"]
+
+func interact(_player, held) -> void:
+	if held == null or not (held is Prop):
+		return
+	var other: Prop = held
+	if other.contents == "" or not _accepts_contents():
+		return
+	var moved := other.contents
+	swap_contents(moved)
+	AudioMgr.play_at_var("squeak", global_position, -16.0, 0.2)
+	EventBus.toast.emit("%s now contains %s. It still says %s." % [
+		display, Items.substance_name(moved), label if label != "" else "nothing"], "info")
+
 func _on_body_entered(_body: Node) -> void:
 	if _impact_cooldown > 0.0:
 		return

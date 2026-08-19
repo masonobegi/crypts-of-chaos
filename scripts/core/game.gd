@@ -103,6 +103,10 @@ func _spawn_systems() -> void:
 	tutorial.name = "TutorialSystem"
 	add_child(tutorial)
 
+	var obstruction := ObstructionMonitor.new()
+	obstruction.name = "ObstructionMonitor"
+	add_child(obstruction)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)

@@ -132,17 +132,28 @@ func bill_day() -> Dictionary:
 ## Billed the moment the work is done rather than at the end of the day, because
 ## the whole point of a booked list is that you can watch it add up.
 var procedure_fees: int = 0
+## Every fee and every theatre cost, in the order they happened.
+##
+## `procedure_fees` was a single total, so the shift report printed a BILLING
+## block of bed lines and then a Revenue row that included the whole appointment
+## economy — fees, clinic overheads, theatre time — with nothing itemising it.
+## The block visibly did not sum to the number underneath it, and the entire
+## day's list of appointments was invisible on the one screen that reports the
+## day.
+var procedure_lines: Array[Dictionary] = []
 
 func bill_procedure(label: String, amount: int) -> void:
 	if amount <= 0:
 		return
 	procedure_fees += amount
+	procedure_lines.append({"label": label, "amount": amount})
 	GameState.add_hospital(amount, label)
 
 func bill_procedure_cost(label: String, amount: int) -> void:
 	if amount <= 0:
 		return
 	procedure_fees -= amount
+	procedure_lines.append({"label": label, "amount": -amount})
 	GameState.add_hospital(-amount, label)
 
 func staff_count() -> int:
@@ -174,7 +185,10 @@ func close_shift() -> Dictionary:
 	var billing := bill_day()
 	var costs := daily_costs()
 	var fees := procedure_fees
+	# Taken before the reset, or the report itemises an empty list.
+	var fee_lines := procedure_lines.duplicate(true)
 	procedure_fees = 0
+	procedure_lines.clear()
 	# Admissions are in the printed cost stack and were left out of the profit
 	# printed directly underneath it, so the statement did not add up — and,
 	# worse, the player's profit share was computed on the inflated figure. The
@@ -199,6 +213,7 @@ func close_shift() -> Dictionary:
 		"bed_revenue": billing["revenue"],
 		"procedure_fees": fees,
 		"lines": billing["lines"],
+		"procedure_lines": fee_lines,
 		"costs": costs,
 		"profit": profit,
 		"salary": salary,

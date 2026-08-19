@@ -8,17 +8,38 @@ func _build() -> void:
 		String(ctx.get("sanction", "Clean")))
 
 	var head := UIKit.panel(Color(0.16, 0.15, 0.12, 0.95), 6, 1, UIKit.WARN)
-	head.add_child(UIKit.label(String(ctx.get("headline", "")), 17, UIKit.WARN,
+	var hv := UIKit.vbox(4)
+	hv.add_child(UIKit.label(String(ctx.get("headline", "")), 17, UIKit.WARN,
 		HORIZONTAL_ALIGNMENT_CENTER))
+	# What the day actually WAS, in flat sentences, under the headline. A table
+	# of numbers is correct and tells you nothing; "Nobody went home." is the
+	# whole shift in three words and is only ever printed when it is true.
+	for note in ctx.get("notes", []):
+		hv.add_child(UIKit.label(String(note), 15, UIKit.INK,
+			HORIZONTAL_ALIGNMENT_CENTER, true))
+	head.add_child(hv)
 	v.add_child(head)
 
 	var content := UIKit.vbox(8)
 
-	content.add_child(UIKit.label("BILLING", 13, UIKit.INK_DIM))
+	content.add_child(UIKit.label("BED DAYS", 13, UIKit.INK_DIM))
 	for line in st.get("lines", []):
 		content.add_child(UIKit.row(String(line["label"]),
 			UIKit.money_str(int(line["amount"])),
 			UIKit.SUS if bool(line.get("overdue", false)) else UIKit.MONEY, 14))
+	if st.get("lines", []).is_empty():
+		content.add_child(UIKit.label("Nobody stayed the night.", 14, UIKit.INK_DIM))
+	# The day's list, itemised. It used to be folded into Revenue as a single
+	# invisible total, so the block did not sum to the number under it and the
+	# whole appointment economy — every fee, every clinic overhead, every hour
+	# of theatre time — appeared nowhere on the one screen that reports the day.
+	var procs: Array = st.get("procedure_lines", [])
+	if not procs.is_empty():
+		content.add_child(UIKit.label("PROCEDURES & CLINIC", 13, UIKit.INK_DIM))
+		for line in procs:
+			var amt := int(line["amount"])
+			content.add_child(UIKit.row(String(line["label"]), UIKit.money_str(amt),
+				UIKit.MONEY if amt >= 0 else UIKit.INK_DIM, 14))
 	content.add_child(UIKit.rule())
 	content.add_child(UIKit.row("Revenue", UIKit.money_str(int(st.get("revenue", 0))), UIKit.MONEY, 16))
 

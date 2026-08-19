@@ -547,6 +547,78 @@ func _patient_summaries() -> Array[Dictionary]:
 	return out
 
 # ================================================================ statement
+## Who actually has something on you.
+##
+## ranked_suspicions() deliberately keeps institutions in the list even at zero,
+## because an institution with nothing on you is still watching. That is right
+## for the tablet and wrong for the shift report, where the empty case is
+## supposed to print "Nobody has anything on you." — three institutional minds
+## are created at start-up and never removed, so the list was never empty and
+## that line had never once been shown to anybody.
+## Three flat observations about the day that just happened.
+##
+## The report was a correct table of numbers with a randomly chosen headline on
+## top, and a table of numbers does not tell you what your shift WAS. These do,
+## by saying the one thing about the day that a person would say — no adjective,
+## no judgement, no suspicion figure. "Nobody went home." is funnier and more
+## damning than any number on the card, and it is only ever printed when it is
+## true.
+##
+## Nothing here is invented: every line is read straight off the same state the
+## table is. The joke is the flatness.
+func _shift_notes() -> Array[String]:
+	var out: Array[String] = []
+	var active := patient_system.active()
+	var discharged: int = int(GameState.stats.patients_discharged) \
+		- int(shift_start_snapshot.get("discharged", 0))
+	var injuries: int = int(GameState.stats.injuries_caused) \
+		- int(shift_start_snapshot.get("injuries", 0))
+	var seen: int = int(GameState.stats.witnessed_acts) \
+		- int(shift_start_snapshot.get("witnessed", 0))
+
+	# The longest anybody has been here, if it is long enough to be a fact.
+	var worst = null
+	for p in active:
+		if worst == null or p.days_admitted > worst.days_admitted:
+			worst = p
+	if worst != null and worst.days_admitted >= worst.expected_stay_days + 1.0:
+		var h = get_tree().get_first_node_in_group("hospital")
+		var room_name: String = h.room(worst.room).display if h != null and h.room(worst.room) != null else "the ward"
+		out.append("%s is on night %d in %s. They were expected to stay %d." % [
+			worst.display_name, int(round(worst.days_admitted)), room_name,
+			int(ceil(worst.expected_stay_days))])
+
+	if discharged == 0 and not active.is_empty():
+		out.append("Nobody went home.")
+	elif discharged >= 3:
+		out.append("%d people went home. The ward is quiet." % discharged)
+
+	if injuries == 1:
+		out.append("One person left the shift with something they did not arrive with.")
+	elif injuries > 1:
+		out.append("%d people left the shift with something they did not arrive with." % injuries)
+
+	if seen > 0 and GameState.stats.complaints == int(shift_start_snapshot.get("complaints", 0)):
+		out.append("You were noticed %d time%s. Nobody said anything." % [
+			seen, "" if seen == 1 else "s"])
+
+	if patient_system.free_wards().is_empty():
+		out.append("Every bed is full. There is nowhere to put anybody.")
+
+	if out.is_empty():
+		out.append("An unremarkable shift, on paper.")
+	return out.slice(0, 3) as Array[String]
+
+func _suspicions_worth_printing() -> Array:
+	var out: Array = []
+	for row in suspicion.ranked_suspicions():
+		if float(row.get("value", 0.0)) <= 0.005:
+			continue
+		out.append(row)
+		if out.size() >= 6:
+			break
+	return out
+
 func clock_out() -> Dictionary:
 	GameState.set_phase(GameState.Phase.POST_SHIFT)
 	var statement := economy.close_shift()
@@ -570,10 +642,11 @@ func clock_out() -> Dictionary:
 		"day": GameState.day,
 		"statement": statement,
 		"headline": Endings.headline(GameState.stats),
+		"notes": _shift_notes(),
 		"heat": GameState.heat,
 		"heat_delta": GameState.heat - float(shift_start_snapshot.get("heat", 0.0)),
 		"sanction": GameState.SANCTIONS[GameState.sanction_level],
-		"suspicions": suspicion.ranked_suspicions().slice(0, 6),
+		"suspicions": _suspicions_worth_printing(),
 		"census": patient_system.active_count(),
 		"overstay": patient_system.average_overstay(),
 		"clean": clean,

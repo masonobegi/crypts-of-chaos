@@ -40,25 +40,18 @@ func _build() -> void:
 
 func _last_statement() -> Dictionary:
 	# Return to the report we came from rather than dropping the player into the
-	# world mid-evening.
+	# world mid-evening — and to the SAME report, not a fresh one.
+	#
+	# This used to rebuild the context by hand with "heat_delta": 0.0 and
+	# "clean": true hardcoded, and re-rolled Endings.headline(), which is a
+	# random pick. So walking into the upgrade shop and back out again changed
+	# the game's verdict on your shift to the flattering one and gave you a
+	# different headline. The two numbers the card exists to show were the two
+	# it threw away.
 	var ss = shift_system()
-	if ss == null:
+	if ss == null or ss.last_statement.is_empty():
 		return {}
-	var eco = get_tree().get_first_node_in_group("economy")
-	return {
-		"day": GameState.day,
-		"statement": eco.last_statement if eco else {},
-		"headline": Endings.headline(GameState.stats),
-		"heat": GameState.heat, "heat_delta": 0.0,
-		"sanction": GameState.SANCTIONS[GameState.sanction_level],
-		"suspicions": suspicion().ranked_suspicions().slice(0, 6) if suspicion() else [],
-		"census": patient_system().active_count() if patient_system() else 0,
-		"overstay": patient_system().average_overstay() if patient_system() else 0.0,
-		"clean": true,
-		"reputation": GameState.reputation.duplicate(),
-		"debt": GameState.total_debt(),
-		"daily_debt": GameState.daily_debt_payment(),
-	}
+	return ss.last_statement
 
 func _buy(id: String) -> void:
 	if Upgrades.purchase(id):

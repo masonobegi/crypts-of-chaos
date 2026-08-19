@@ -124,6 +124,7 @@ func _ui_context(id: String) -> Dictionary:
 				"day": GameState.day,
 				"statement": game.economy.close_shift(),
 				"headline": Endings.headline(GameState.stats),
+				"notes": game.shift._shift_notes(),
 				"heat": GameState.heat, "heat_delta": 0.02,
 				"sanction": GameState.SANCTIONS[GameState.sanction_level],
 				"suspicions": game.suspicion.ranked_suspicions().slice(0, 6),

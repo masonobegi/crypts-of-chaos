@@ -1654,3 +1654,66 @@ tiers barely move.
 | careful | $3,899 | 20d |
 
 **1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**
+
+---
+
+## Session 4 (cont.) — Phase 13: the shift report says what the shift was
+
+The report was a correct table of numbers with a randomly chosen headline on
+top. A table of numbers is right and tells you nothing about what your day *was*.
+
+`ShiftSystem._shift_notes()` reads three flat observations straight off the same
+state the table is built from, and prints them under the headline:
+
+```
+'THE MACHINE WAS LIKE THAT WHEN I GOT HERE', SAYS DOCTOR
+
+              Nobody went home.
+  Every bed is full. There is nowhere to put anybody.
+```
+
+Nothing there is invented and nothing is a judgement — no adjective, no
+suspicion figure, no "questionable". *"Nobody went home."* is the whole shift in
+three words, it is funnier and more damning than any number on the card, and it
+is only ever printed when it is true. The joke is the flatness.
+
+The full set: the longest current stay named with its room and its expected
+length, nobody-went-home / three-or-more-went-home, how many people left the
+shift with something they did not arrive with, "You were noticed 4 times. Nobody
+said anything.", and every bed being full. Failing all of those:
+*"An unremarkable shift, on paper."*
+
+### Three verified bugs on the same screen
+
+**The upgrade shop was rewriting the verdict to the flattering one.**
+`screen_upgrades._last_statement()` rebuilt the report context by hand with
+`"heat_delta": 0.0` and `"clean": true` hardcoded, and re-rolled
+`Endings.headline()` — which is a random pick. So walking into the shop and back
+out changed the game's judgement of your shift and gave you a different
+headline. The two numbers the card exists to show were the two it threw away.
+It now returns the report that was actually issued.
+
+**"Nobody has anything on you." had never once been shown to anybody.**
+`ranked_suspicions()` deliberately keeps institutions in the list at zero,
+because an institution with nothing on you is still watching — right for the
+tablet, wrong for the report, where three institutional minds are created at
+start-up and never removed, so the list was never empty and the clean-shift line
+was dead. The report now prints only the people who actually have something.
+
+**The billing block did not sum to the Revenue under it.** `procedure_fees` was
+a single total, so the whole appointment economy — every consultation fee, every
+clinic overhead, every hour of theatre time — was folded invisibly into Revenue.
+The one screen that reports the day did not mention the day's list. Fees are now
+itemised under PROCEDURES & CLINIC, and the bed lines are headed BED DAYS.
+
+```
+BED DAYS
+Tam Wollop — Mild Gravitational Confusion (premium)      $2,250
+Marlene Blunt — Chronic Beige (Standard)                 $1,001   ← overdue, in colour
+Astrid Muldoon — Excessive Spleen Torque (Standard)      $1,636
+Chip Spleen — Inflamed Funny Bone (Uninsured)              $359
+Kip Bright — Mild Gravitational Confusion (Uninsured)      $405
+Revenue                                                  $5,651
+```
+
+**1,562 assertions · 106 smoke · 21 live · boot check.**

@@ -158,3 +158,17 @@ func test_a_real_excuse_is_still_a_gamble() -> void:
 	t.lt(Dialogue.success_chance(m, opt), 0.5,
 		"a suspicious nurse holding strong evidence is hard to talk around")
 	t.gt(Dialogue.success_chance(m, opt), 0.0, "but never impossible")
+
+func test_gossip_prefers_people_who_get_on() -> void:
+	# Affinity was serialised and never consulted, so who told whom was purely
+	# a matter of who happened to be standing nearby.
+	var a := DB.make_mind("a", "Nurse A", "nurse", "gossip")
+	a.affinity["b"] = 1.0
+	a.affinity["c"] = 0.0
+	t.near(float(a.affinity.get("b", 0.5)), 1.0, 0.001, "a close colleague is close")
+	t.near(float(a.affinity.get("c", 0.5)), 0.0, 0.001, "and a distant one is not")
+	t.near(float(a.affinity.get("nobody", 0.5)), 0.5, 0.001,
+		"strangers fall back to even odds rather than never talking")
+
+	var back := Mind.from_dict(a.to_dict())
+	t.near(float(back.affinity.get("b", 0.0)), 1.0, 0.001, "and it survives a save")

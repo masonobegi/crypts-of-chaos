@@ -4,8 +4,6 @@ extends CharacterBody3D
 ## grab is a physics spring rather than a parent-to-hand, because 90% of the
 ## comedy in this game comes from things going where you did not intend.
 
-signal looked_at(target: Node)
-
 const WALK_SPEED := 3.4
 const SPRINT_SPEED := 5.6
 const CROUCH_SPEED := 1.8

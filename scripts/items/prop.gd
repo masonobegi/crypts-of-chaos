@@ -14,8 +14,6 @@ extends RigidBody3D
 @export var breaks_above := 4.0        ## impact speed that shatters it
 @export var noisy := true
 @export var noise_radius := 11.0
-## Objects that belong somewhere. Found out of place, they are worth noticing.
-@export var belongs_to_room := ""
 ## If set, an NPC that sees this lying around records evidence with this tag.
 @export var incriminating_tag := ""
 @export var incriminating_weight := 0.0

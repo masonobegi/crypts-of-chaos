@@ -147,6 +147,20 @@ func _spawn_player() -> void:
 	player.global_position = hospital.point_in("lobby", "player_spawn") + Vector3(0, 0.2, 0)
 	player.face(Vector3(hospital.point_in("corridor").x, 0, 2.0))
 
+## Seed who talks to whom. Gossip weights by affinity, so which two nurses
+## happen to get on decides how fast something you did travels.
+func _seed_social_graph() -> void:
+	var staff_minds: Array = []
+	for id in suspicion.minds:
+		var m: Mind = suspicion.minds[id]
+		if m.role in ["nurse", "doctor"]:
+			staff_minds.append(m)
+	for a in staff_minds:
+		for b in staff_minds:
+			if a.id == b.id:
+				continue
+			a.affinity[b.id] = RNG.randf_range_s("affinity", 0.15, 1.0)
+
 func _spawn_staff() -> void:
 	var nurse_archetypes: Array = ["gossip", "suspicious", "lazy", "loyal",
 		"rule_follower", "corrupt", "incompetent"]
@@ -162,6 +176,7 @@ func _spawn_staff() -> void:
 	for i in DOCTOR_COUNT:
 		_spawn_doctor(String(RNG.pick("doc_arch",
 			["competitive", "oblivious", "ethical", "arrogant", "investigator", "corrupt_doc"])), i)
+	_seed_social_graph()
 
 func _spawn_nurse(arch: String, index: int) -> void:
 	var n := NurseNPC.new()

@@ -43,6 +43,11 @@ func begin_day() -> Dictionary:
 		GameState.set_flag("evicted", true)
 
 	var fired := events.roll_daily()
+	# Yesterday's warning has to actually mean something, or the notice is just
+	# a scary-sounding no-op.
+	if GameState.flag("inspection_tomorrow", false):
+		GameState.set_flag("inspection_tomorrow", false)
+		investigations.open("inspector", 0)
 	_run_service_contract()
 	_run_second_opinions()
 	investigations.daily_check()

@@ -57,6 +57,13 @@ func interact(player, _held) -> void:
 
 func _dispense(player, id: String) -> void:
 	var p := Items.spawn(id)
+	# During a shortage, pharmacy sends substitutes. Sometimes what comes off
+	# the shelf is not what the label says — and today, that is genuinely not
+	# your fault, which is exactly why a shortage day is worth waiting for.
+	if GameState.flag("supply_shortage", false) and p.contents != "" \
+			and RNG.chance("shortage_swap", 0.35):
+		p.contents = "saline_plus"
+		EventBus.toast.emit("Pharmacy substituted. Again.", "info")
 	# Parent to the hospital rather than current_scene, which is null when the
 	# game is instantiated into the tree instead of loaded as the scene root.
 	var parent: Node = get_tree().get_first_node_in_group("hospital")

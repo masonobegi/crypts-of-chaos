@@ -186,6 +186,11 @@ func _gossip_pass() -> void:
 			var listener: Mind = minds.get(other_id, null)
 			if listener == null:
 				continue
+			# People tell the colleagues they actually get on with. Which two
+			# nurses happen to be friendly decides how fast something travels.
+			var closeness: float = float(speaker.affinity.get(other_id, 0.5))
+			if not RNG.chance("gossip_affinity", closeness):
+				continue
 			# Don't re-tell someone something they already saw with their own eyes.
 			var already := false
 			for ev in listener.evidence:

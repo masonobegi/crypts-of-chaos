@@ -194,6 +194,7 @@ func apply(id: String) -> void:
 						body.goto(hospital.point_in("lobby", "escape_pt"))
 		"family_dispute":
 			GameState.set_flag("families_arguing", true)
+			_spawn_argument()
 		"news_reporter":
 			GameState.set_flag("press_present", true)
 		"insurance_audit":
@@ -259,6 +260,34 @@ func _spawn_student() -> void:
 	mind.talkativeness = 0.85     # tells the staff room everything
 	mind.trust = 0.7
 	sus.register(mind, s)
+
+## Two visitors having it out in the corridor. A standing distraction you did
+## not have to cause and cannot switch off — staff keep drifting over to it.
+func _spawn_argument() -> void:
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if hospital == null or sus == null:
+		return
+	var spot: Vector3 = hospital.point_in("corridor", "argument_spot")
+	for i in 2:
+		var v := VisitorNPC.new()
+		v.npc_id = "argument_%d_%d" % [GameState.day, i]
+		v.archetype = "litigious_family" if i == 0 else "questioner"
+		v.display = "Somebody's %s" % RNG.pick("arg_rel", ["brother", "sister", "cousin", "mother"])
+		v.set_colours(Color(0.76, 0.60, 0.46), Color(0.4, 0.3, 0.35), Color(0.2, 0.15, 0.12))
+		var parent: Node = hospital.get_parent()
+		if parent == null:
+			parent = get_tree().root
+		parent.add_child(v)
+		v.position = spot + Vector3(float(i) * 1.4 - 0.7, 0, 0)
+		v.state = VisitorNPC.State.VISITING
+		var mind := DB.make_mind(v.npc_id, v.display, "family", v.archetype)
+		mind.observance = 0.2      # far too busy with each other to notice you
+		sus.register(mind, v)
+	# Loud, continuous, and entirely innocent — the best kind of cover.
+	WorldEvent.new("argument", "").at(spot, "corridor") \
+		.heard(0.0, 26.0).tag("noise").tag("chaos") \
+		.says("a row in the corridor").emit()
 
 ## Agency cover: barely notices anything, but owes you nothing at all.
 func _spawn_agency_nurse() -> void:

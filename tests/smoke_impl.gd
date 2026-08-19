@@ -6,7 +6,7 @@ extends RefCounted
 var tree: SceneTree = null
 var game: Node = null
 var frames := 0
-var stage := "boot"
+var stage := "firstrun"
 var errors: Array[String] = []
 var notes: Array[String] = []
 var sim_minutes := 0
@@ -26,11 +26,16 @@ func tick() -> bool:
 	# The briefing screen pauses the tree on open; drive things directly.
 	tree.paused = false
 	match stage:
+		"firstrun":
+			if frames > 6:
+				_check_first_run()
+				stage = "boot"
 		"boot":
 			if frames > 6:
 				_check_boot()
 				stage = "shift"
-				game.shift.clock_in()
+				if not GameState.clock_running:
+					game.shift.clock_in()
 		"shift":
 			_run_shift_minute()
 			if sim_minutes >= GameState.SHIFT_HOURS * 60:
@@ -78,6 +83,53 @@ func _ok(cond: bool, msg: String) -> void:
 		errors.append(msg)
 	else:
 		notes.append("  ok: " + msg)
+
+## THE PATH A REAL PLAYER TAKES, which nothing had ever walked.
+##
+## Every other harness sets `tutorial_done` before booting, so all of them
+## skipped straight past the only route a stranger can actually take. Pressing
+## New Career opened the briefing, then opened the tutorial on top of it — and
+## `open()` closes whatever is already up, so the briefing was destroyed before
+## a frame was drawn. The tutorial's button said "Clock in" and did not clock
+## anybody in; the sole caller of clock_in() in the entire game was the button
+## on the briefing that had just been thrown away. The result was a hospital
+## frozen in PRE_SHIFT with a clock stuck at 8:00 AM and no input anywhere that
+## could start the day. The game was unplayable from the main menu and 1526
+## assertions were green.
+func _check_first_run() -> void:
+	_ok(not GameState.flag("tutorial_done", false), "a fresh career has not seen the tutorial")
+	_ok(game.ui != null and game.ui.current != null, "something is on screen at boot")
+	_ok(game.ui != null and game.ui.current_id == "tutorial",
+		"and it is the tutorial (got '%s')" % (game.ui.current_id if game.ui else "<no ui>"))
+
+	_ok(_press_button("brief"), "the tutorial has a button that moves you on")
+	_ok(game.ui.current_id == "briefing",
+		"which opens the morning brief (got '%s')" % game.ui.current_id)
+
+	_ok(_press_button("Clock in"), "the brief has a Clock in button")
+	_ok(GameState.phase == GameState.Phase.SHIFT,
+		"pressing it actually starts the shift (phase %d)" % int(GameState.phase))
+	_ok(GameState.clock_running, "and the clock is running")
+	_ok(game.ui.current == null, "with nothing left in the way")
+
+## Find a button by a fragment of its label and press it, the way a player does.
+func _press_button(fragment: String) -> bool:
+	if game.ui == null or game.ui.current == null:
+		return false
+	var b := _find_button(game.ui.current, fragment)
+	if b == null:
+		return false
+	b.emit_signal("pressed")
+	return true
+
+func _find_button(n: Node, fragment: String) -> Button:
+	if n is Button and String((n as Button).text).to_lower().contains(fragment.to_lower()):
+		return n
+	for c in n.get_children():
+		var f := _find_button(c, fragment)
+		if f != null:
+			return f
+	return null
 
 func _check_boot() -> void:
 	_ok(game.hospital != null and game.hospital.rooms.size() == 15, "hospital built with 15 rooms")

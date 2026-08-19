@@ -21,6 +21,7 @@ var _shots := 0
 var _log: Array[String] = []
 var _marks: Dictionary = {}
 var _held: Array[String] = []
+var _last_beat_frames := 0
 var out_dir := "user://play"
 
 # ------------------------------------------------------------------ lifecycle
@@ -49,6 +50,7 @@ func tick() -> bool:
 	if done or _beat_frames > int(float(b.get("timeout", 20.0)) * FPS):
 		if not done:
 			_say("  ! TIMED OUT after %.1fs: %s" % [_beat_frames / FPS, _describe(b)])
+		_last_beat_frames = _beat_frames
 		_release_all()
 		_beat += 1
 		_beat_frames = 0
@@ -74,7 +76,9 @@ func _run_beat(b: Dictionary) -> bool:
 			_say(String(b["text"]))
 			return true
 		"mark":
-			_marks[String(b["text"])] = _beat_frames / FPS
+			# The duration of the beat BEFORE this one — a mark is its own beat,
+			# so its own frame count is always 1 and always meaningless.
+			_marks[String(b["text"])] = _last_beat_frames / FPS
 			return true
 		"shot":
 			return _shot(String(b["name"]))
@@ -118,21 +122,70 @@ func _describe(b: Dictionary) -> String:
 	return "%s %s" % [String(b["do"]), str(b.get("at", b.get("name", b.get("action", ""))))]
 
 # ------------------------------------------------------------------ acting
-## Walk to a world point using the real movement code: face it, hold forward,
-## stop when close. Everything about acceleration, friction, door shoving and
-## collision is therefore genuinely exercised.
+## Walk to a world point the way a person would: work out a route round the
+## walls, then follow it with the real movement code. Everything about
+## acceleration, friction, door shoving and collision is genuinely exercised —
+## only the wayfinding is scripted, because a player has eyes and this does not.
+##
+## The first version walked in a straight line and spent six minutes standing
+## against the lobby wall. Worth remembering before trusting any harness that
+## reports zeroes.
+var _route: PackedVector3Array = PackedVector3Array()
+var _leg := 0
+var _walk_from := Vector3.ZERO
+var _stuck := 0
+
 func _walk(b: Dictionary) -> bool:
-	var target: Vector3 = b["at"]
 	var p = game.player
-	var flat := Vector3(target.x, p.global_position.y, target.z)
-	var d: float = p.global_position.distance_to(flat)
-	if d < float(b.get("within", 1.2)):
+	if _beat_frames == 1:
+		_walk_from = p.global_position
+		_stuck = 0
+		_leg = 0
+		_route = game.hospital.nav.find_path(p.global_position, b["at"])
+		if _route.is_empty():
+			_say("    ! no route to %s" % str(b["at"]))
+			return true
+	if _leg >= _route.size():
 		_release_all()
 		return true
+
+	var target: Vector3 = _route[_leg]
+	var flat := Vector3(target.x, p.global_position.y, target.z)
+	var d: float = p.global_position.distance_to(flat)
+	var last: bool = _leg == _route.size() - 1
+	# Tight, because doorways are 1.4m wide: advancing to the next waypoint while
+	# still half a metre off line walks you into the door frame instead of
+	# through the gap.
+	if d < (float(b.get("within", 1.0)) if last else 0.45):
+		_leg += 1
+		if _leg >= _route.size():
+			_release_all()
+			return true
+		return false
+
 	_face(flat)
 	_press("move_forward")
 	if bool(b.get("run", false)):
 		_press("sprint")
+
+	# Doors and furniture genuinely stop you. If the real controller is wedged,
+	# that is a finding about the game, so say so rather than hiding it.
+	if Vector2(p.velocity.x, p.velocity.z).length() < 0.35:
+		_stuck += 1
+		if _stuck == 90:
+			_say("    ! wedged for 1.5s at %s heading for %s" % [
+				str(p.global_position.round()), str(flat.round())])
+		# What a person does when they clip a door frame: step off the line and
+		# come at it again. Without this the harness reports a wedge for
+		# something a player would not even notice themselves doing.
+		if _stuck > 40:
+			_release("move_forward")
+			_press("move_right" if (_stuck / 40) % 2 == 0 else "move_left")
+		if _stuck > 130:
+			_stuck = 0
+			_release_all()
+	else:
+		_stuck = 0
 	return false
 
 func _face(at) -> void:
@@ -159,6 +212,8 @@ func _release_all() -> void:
 func _shot(name: String) -> bool:
 	if _beat_frames < 3:
 		return false
+	if DisplayServer.get_name() == "headless":
+		return true
 	var img := tree.root.get_texture().get_image()
 	img.save_png("%s/%02d_%s.png" % [out_dir, _shots, name])
 	_shots += 1
@@ -214,8 +269,12 @@ func _report() -> void:
 		watching += 1
 	_say("    staff who can see you right now: %d" % watching)
 
+## printerr as well as print: Godot's stdout block-buffers when it is not a TTY,
+## so a run that is still going shows nothing at all until it exits. Watching a
+## slow play run is most of the value.
 func _say(s: String) -> void:
 	print(s)
+	printerr(s)
 	_log.append(s)
 
 # ------------------------------------------------------------------ plans

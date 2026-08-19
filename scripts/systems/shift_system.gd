@@ -212,7 +212,13 @@ func clock_in() -> void:
 	GameState.stats.shifts_worked += 1
 	EventBus.shift_started.emit(GameState.day)
 	EventBus.toast.emit("Shift started — %s" % GameState.time_string(), "info")
-	EventBus.objective_changed.emit("Get through the shift.")
+	# The tutorial puts its first step on the objective line inside
+	# shift_started, one signal earlier. Overwriting it here meant the only
+	# instruction a new player ever received was replaced, in the same frame,
+	# with "Get through the shift."
+	var tut = get_tree().get_first_node_in_group("tutorial")
+	if tut == null or not tut.is_active():
+		EventBus.objective_changed.emit("Get through the shift.")
 	AudioMgr.play("ding", -10.0)
 
 ## Emergency admissions arrive mid-shift with no warning. That is the entire

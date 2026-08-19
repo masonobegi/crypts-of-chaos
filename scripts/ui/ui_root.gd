@@ -155,9 +155,23 @@ Nobody will ever ask you to do anything unethical. They don't have to.
 
 Nothing in this game will ever be labelled 'suspicious'. Work it out.""" % [GameState.total_debt(), GameState.daily_debt_payment()], 15))
 	v.add_child(UIKit.spacer())
-	v.add_child(UIKit.button("Clock in", func():
+	# Hands off to the morning brief rather than closing onto an empty hospital.
+	#
+	# This screen used to end with a button labelled "Clock in" that set a flag
+	# and closed. It did not clock anybody in — the ONLY caller of
+	# ShiftSystem.clock_in() in the whole game is the briefing's button, and
+	# open() closes whatever is already up, so the briefing this screen appeared
+	# on top of had already been destroyed. A new player pressing New Career
+	# landed in a hospital stuck in PRE_SHIFT: clock frozen at 8:00, no hour
+	# ticks, no appointments, no tutorial steps (they are gated on
+	# shift_started), and no input anywhere that could start the day. Every
+	# harness sets tutorial_done before booting, so nothing ever walked it.
+	v.add_child(UIKit.button("Read the morning brief", func():
 		GameState.set_flag("tutorial_done", true)
-		close()))
+		close()
+		var ss = get_tree().get_first_node_in_group("shift_system")
+		if ss:
+			open("briefing", ss.briefing()), Color(0.16, 0.32, 0.30)))
 	return parts[0]
 
 # ---- game over

@@ -616,6 +616,66 @@ Note for future sessions: under Xvfb + llvmpipe the harness runs far slower than
 real time, but `--fixed-fps 60` means the SIMULATION still advances 1/60s per
 frame, so every duration it reports is the duration a player would experience.
 
+### THE GAME WAS UNPLAYABLE FROM THE MAIN MENU
+
+Found within the first hour of actually looking. Pressing **New Career** put you
+in a hospital where the clock never started.
+
+`game._start()` calls `shift.begin_day()`, which ends by emitting
+`briefing_ready` — `ui_root` opens the morning brief. The very next line emits
+`request_ui("tutorial")`, and `ui_root.open()` begins with
+`if current != null: close()`. So the brief was destroyed before a frame was
+drawn. The tutorial's own button said **"Clock in"** and did not clock anybody
+in: it set a flag and closed. `grep -rn clock_in scripts/` returns exactly one
+shipping caller — the button on the briefing that had just been thrown away.
+
+The result: PRE_SHIFT forever. `clock_running` false, clock frozen at 8:00 AM,
+no hour ticks, no appointments arriving, no tutorial steps (they are gated on
+`shift_started`), and no input anywhere that could start or end the day.
+
+**Every harness sets `tutorial_done` before booting** (`live_impl.gd:39`,
+`shot_impl.gd:188`, and my own play harness calls `clock_in()` directly), so not
+one of 1526 assertions had ever walked the route a stranger has to take.
+
+Fixed: the tutorial hands off to the brief instead of replacing it, and the
+brief's Clock in button remains the single thing that starts a day. Also fixed
+the second half of the same bug — `clock_in()` emitted `shift_started` (tutorial
+writes step 1 to the objective line) and then overwrote it two lines later with
+"Get through the shift.", so the only instruction a new player ever got was
+destroyed in the same frame.
+
+Guarded by `smoke_impl._check_first_run()`, which boots with no flags set, finds
+the buttons by their labels and presses them the way a person does, then asserts
+the shift is actually running. That test is the real deliverable here.
+
+### You could not walk down your own corridor
+
+The second thing the play harness found, and it needed no code reading at all:
+a scripted walk from one end of the building to the other **timed out at 60
+seconds**, wedged on a wet floor sign at x=20. Sprinting worked. Walking did not.
+
+`Player._handle_movement` scaled its shove impulse by `velocity.length()` AFTER
+`move_and_slide()` — and `move_and_slide` zeroes velocity along the axis you are
+blocked on. So the instant a prop actually stopped you, you could no longer push
+it: you were stuck against it precisely because it was in your way. Sprinting
+escaped only because it left enough residual speed to generate an impulse.
+
+This is the identical bug `NPCBody` was fixed for in session 1 and the player
+never was. Now scaled by `_intended_speed` — how hard you are asking to move,
+captured before collision resolution — through a pure `Player.shove_impulse()`
+so the rule can be asserted without waiting on a physics frame.
+
+Measured, before and after, same route, same seed:
+
+| leg | before | after |
+|---|---|---|
+| corridor west→east, 58m, walking | 59.9s (timed out) | **16.8s** |
+| Room 101 → treatment bay | 20.4s | **8.4s** |
+| corridor east→west, sprinting | 10.2s | 15.5s* |
+
+\* the sprint leg is slower afterwards only because the props are no longer
+where the previous wedged run left them.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on

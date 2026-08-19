@@ -23,6 +23,9 @@ var _bob := 0.0
 var _step_accum := 0.0
 var _crouching := false
 var _target_head_y := STAND_HEIGHT
+## Speed you are asking for this frame, before collision resolution. Needed
+## because move_and_slide overwrites velocity — see _push_obstacles.
+var _intended_speed := 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -102,10 +105,28 @@ func _handle_movement(delta: float) -> void:
 	var target := dir * speed
 	velocity.x = lerpf(velocity.x, target.x, 1.0 - exp(-a * delta))
 	velocity.z = lerpf(velocity.z, target.z, 1.0 - exp(-a * delta))
+	# How hard you are TRYING to move, captured before move_and_slide gets to
+	# have an opinion about it. See _push_obstacles.
+	_intended_speed = Vector2(target.x, target.z).length()
 	move_and_slide()
+	_push_obstacles()
 
-	# Shoving props with your body — walking into an IV stand should topple it,
-	# and walking into a door should open it.
+## Shoving things with your body: walking into an IV stand should topple it, and
+## walking into a door should open it.
+##
+## The impulse is scaled by how hard you are TRYING to move, not by how fast you
+## ended up going. move_and_slide zeroes your velocity along the axis you are
+## blocked on, so gating the shove on post-slide speed means the instant a prop
+## actually stops you, you can no longer push it — you are stuck against it
+## precisely because it is in your way. A play run spent sixty seconds wedged on
+## a wet floor sign in the middle of the corridor, and could only get past by
+## sprinting, because sprinting happened to leave enough residual speed to
+## generate an impulse. This is the same bug NPCBody was fixed for and the player
+## never was.
+func _push_obstacles() -> void:
+	var speed := maxf(Vector2(velocity.x, velocity.z).length(), _intended_speed)
+	if speed < 0.15:
+		return
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i)
 		var door := _door_of(c.get_collider())
@@ -113,8 +134,17 @@ func _handle_movement(delta: float) -> void:
 			door.open_for(global_position)
 			continue
 		var rb := c.get_collider() as RigidBody3D
-		if rb and rb.mass < 60.0:
-			rb.apply_central_impulse(-c.get_normal() * clampf(velocity.length() * 0.25, 0.0, 3.0))
+		if rb == null or rb.mass >= 60.0:
+			continue
+		rb.apply_central_impulse(-c.get_normal() * shove_impulse(rb.mass, speed))
+
+## Light things scatter, heavy things grudgingly give way. A cart left in a
+## doorway should genuinely cost you a second, not a shift.
+##
+## Pure, so the rule that matters — that a blocked walker still generates a real
+## impulse — can be asserted without waiting on a physics frame.
+static func shove_impulse(mass: float, speed: float) -> float:
+	return clampf(30.0 / maxf(mass, 1.0), 0.3, 3.2) * speed * 0.4
 
 func _door_of(body: Object) -> SwingDoor:
 	var n := body as Node

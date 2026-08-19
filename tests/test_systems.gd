@@ -720,3 +720,30 @@ func test_the_tutorial_covers_the_shift_loop() -> void:
 	t.lt(float(ids.find("list")), float(ids.find("examine")),
 		"you are shown the list before you are sent to see anybody")
 	t.eq(ids[ids.size() - 1], "shift", "and clocking out is the last thing")
+
+## You have to be able to walk down your own corridor.
+##
+## The shove impulse used to be scaled by post-slide velocity, and
+## move_and_slide zeroes velocity along the axis you are blocked on — so the
+## instant a prop actually stopped you, you could no longer push it. A play run
+## spent sixty seconds wedged on a wet floor sign in the middle of the corridor
+## and could only get past by sprinting, because sprinting left enough residual
+## speed to generate an impulse. Walking pace could not.
+func test_a_blocked_walker_can_still_shove_what_is_blocking_them() -> void:
+	var light: float = Items.SPECS["wet_floor_sign"]["mass"]
+	# The state that used to be fatal: pinned against something, velocity zero,
+	# still asking to walk forward.
+	t.gt(Player.shove_impulse(light, Player.WALK_SPEED), 0.5,
+		"somebody walking into a light prop shifts it")
+	t.gt(Player.shove_impulse(light, Player.CROUCH_SPEED), 0.2,
+		"and even creeping shifts it eventually")
+	# Heavier things give way more slowly, so a cart in a doorway still costs
+	# you something.
+	var cart := 26.0
+	t.lt(Player.shove_impulse(cart, Player.WALK_SPEED),
+		Player.shove_impulse(light, Player.WALK_SPEED),
+		"a loaded cart is harder work than a plastic sign")
+	t.gt(Player.shove_impulse(cart, Player.WALK_SPEED), 0.3,
+		"but it does move")
+	t.eq(Player.shove_impulse(light, 0.0), 0.0,
+		"and standing still shoves nothing")

@@ -43,6 +43,11 @@ func apply(p: Patient, treatment_id: String, item = null, from_pos := Vector3.ZE
 				var rcorrect := DB.is_correct_treatment(p.condition_id, real_effect_id)
 				effect = float(rspec.get("effect", 0.0)) if rcorrect else float(rspec.get("wrong", 0.0))
 
+	# A substance can be therapeutically inert and still do something specific.
+	var substance_comp := ""
+	if item != null and item.get("contents") != null:
+		substance_comp = Items.substance_complication(String(item.get("contents")))
+
 	var quality := clampf(effect / maxf(0.01, float(spec.get("effect", 0.2))), -1.0, 1.0)
 	p.recovery = clampf(p.recovery + effect, -0.2, 1.0)
 	p.record_treatment(billed_as, quality)
@@ -50,7 +55,9 @@ func apply(p: Patient, treatment_id: String, item = null, from_pos := Vector3.ZE
 	# A wrong treatment can produce a complication with an honest, chartable
 	# cause — "reaction to medication" is true AND useful.
 	var comp_id := ""
-	if not correct and RNG.chance("wrong_treat_comp", 0.45):
+	if substance_comp != "":
+		comp_id = substance_comp
+	elif not correct and RNG.chance("wrong_treat_comp", 0.45):
 		comp_id = _complication_for_treatment(treatment_id)
 	elif substituted and RNG.chance("subst_comp", 0.12):
 		comp_id = "rebound_hiccups"
@@ -117,6 +124,8 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 		tags.append("wrong_treatment")
 	if m.machine_id == "machine_imaging":
 		_record_imaging(p)
+	elif m.machine_id == "machine_dread":
+		_fill_nearest_canister(m)
 
 	var e := WorldEvent.new("machine_treatment", "player") \
 		.at(m.global_position, m.room_key).about(p.id) \
@@ -127,6 +136,23 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 	e.emit()
 	EventBus.treatment_applied.emit(p, m.treatment_id, float(res["recovery"]))
 	return res
+
+## Extraction has to put what it extracted SOMEWHERE. The canister is a physical
+## object with a lid, and nothing in the building stops you carrying it off.
+func _fill_nearest_canister(m: TreatmentMachine) -> void:
+	var best: Node3D = null
+	var best_d := 6.0
+	for prop in get_tree().get_nodes_in_group("prop"):
+		if not prop.has_method("get_item_id") or String(prop.call("get_item_id")) != "dread_canister":
+			continue
+		var d: float = prop.global_position.distance_to(m.global_position)
+		if d < best_d:
+			best_d = d
+			best = prop
+	if best == null:
+		return
+	best.set("contents", "ambient_dread")
+	EventBus.toast.emit("The canister is full again.", "info")
 
 ## Imaging is the only thing in the game that tells you the truth. It also puts
 ## that truth in the record permanently, so every claim you make afterwards has

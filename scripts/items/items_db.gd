@@ -171,10 +171,15 @@ const SUBSTANCES := {
 	"saline": {"name": "Standard Saline", "effect_as": "fluids", "color": Color(0.85, 0.95, 0.92)},
 	"saline_plus": {"name": "Saline Plus", "effect_as": "", "color": Color(0.86, 0.94, 0.90),
 		"blurb": "Identical to saline in every respect including effect."},
-	"ambient_dread": {"name": "Recovered Ambient Dread", "effect_as": "", "color": Color(0.4, 0.35, 0.5),
+	# Administering this puts back exactly what you just took out. Entirely
+	# physical, entirely deniable-looking, and the funniest loop in the game.
+	"ambient_dread": {"name": "Recovered Ambient Dread", "effect_as": "",
+		"complication": "ambient_dread", "color": Color(0.4, 0.35, 0.5),
 		"blurb": "Was in a patient. Is now in a canister. Should stay in the canister."},
-	"mop_water": {"name": "Mop Water", "effect_as": "", "color": Color(0.55, 0.60, 0.50)},
-	"cold_coffee": {"name": "Cold Coffee", "effect_as": "", "color": Color(0.35, 0.25, 0.18)},
+	"mop_water": {"name": "Mop Water", "effect_as": "", "complication": "reactive_shivers",
+		"color": Color(0.55, 0.60, 0.50)},
+	"cold_coffee": {"name": "Cold Coffee", "effect_as": "", "complication": "rebound_hiccups",
+		"color": Color(0.35, 0.25, 0.18)},
 }
 
 static func substance_name(id: String) -> String:
@@ -182,6 +187,11 @@ static func substance_name(id: String) -> String:
 
 static func substance_effect(id: String) -> String:
 	return String(SUBSTANCES.get(id, {}).get("effect_as", ""))
+
+## Some substances do nothing therapeutic but reliably cause something. Saline
+## Plus is inert; recovered dread is not.
+static func substance_complication(id: String) -> String:
+	return String(SUBSTANCES.get(id, {}).get("complication", ""))
 
 static func spec(id: String) -> Dictionary:
 	return SPECS.get(id, {})

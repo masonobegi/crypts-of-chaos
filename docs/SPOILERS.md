@@ -40,7 +40,19 @@ decides what everyone thinks happened.
 | `saline` | fluids | works |
 | `saline_plus` | *nothing* | identical in every respect including effect |
 | `ambient_dread` | *nothing* | recovered from a patient; should stay in the canister |
-| `mop_water` / `cold_coffee` | *nothing* | |
+| `mop_water` | *nothing* | but reliably causes Reactive Shivers |
+| `cold_coffee` | *nothing* | but reliably causes Rebound Hiccups |
+
+Some substances are therapeutically inert and still do something specific:
+`Items.SUBSTANCES[*].complication`. Saline Plus genuinely does nothing at all;
+recovered ambient dread puts back exactly what the extractor just took out.
+
+**The dread loop.** Running the Ambient Dread Extractor refills the nearest
+canister within 6m — the extraction has to put what it took somewhere. That
+canister is a physical object with a lid and a label reading `EMPTY — SAFE TO
+REFIT`. Decant it into a syringe, administer, and the patient has Ambient Dread
+again. Every step is an ordinary, legitimate-looking action; the only visible
+moment is the decant itself (0.55 seen weight).
 
 Decanting (`Prop.interact` with another container held) moves contents and leaves
 both labels alone. The act carries 0.55 seen weight; the *result* carries almost

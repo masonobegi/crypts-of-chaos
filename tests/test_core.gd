@@ -369,3 +369,31 @@ func test_room_tone_loops_seamlessly() -> void:
 		var cycles: float = freq * AudioMgr.HUM_SECONDS
 		t.near(cycles - floor(cycles), 0.0, 0.0001,
 			"%.0fHz fits a whole number of cycles in the loop" % freq)
+
+func test_recovered_dread_goes_back_in() -> void:
+	# The extractor has to put what it took SOMEWHERE, and nothing stops you
+	# carrying that somewhere back to a patient.
+	t.eq(Items.substance_effect("ambient_dread"), "",
+		"recovered dread treats precisely nothing")
+	t.eq(Items.substance_complication("ambient_dread"), "ambient_dread",
+		"but reliably causes what it was extracted from")
+	t.eq(Items.substance_complication("saline_plus"), "",
+		"whereas Saline Plus really is inert")
+	t.eq(Items.substance_complication("mop_water"), "reactive_shivers",
+		"and mop water is its own kind of specific")
+
+func test_every_substance_complication_is_real() -> void:
+	for id in Items.SUBSTANCES:
+		var comp := Items.substance_complication(String(id))
+		if comp == "":
+			continue
+		t.ok(DB.COMPLICATIONS.has(comp),
+			"substance '%s' causes a real complication ('%s')" % [id, comp])
+
+func test_every_substance_effect_is_a_real_treatment() -> void:
+	for id in Items.SUBSTANCES:
+		var eff := Items.substance_effect(String(id))
+		if eff == "":
+			continue
+		t.ok(DB.TREATMENTS.has(eff),
+			"substance '%s' maps to a real treatment ('%s')" % [id, eff])

@@ -433,23 +433,22 @@ static func _intake(h: Hospital, r: Room) -> void:
 	term.rotation.y = PI
 	_occupy(c.x, c.z + 1.2, 4.4, 1.0)
 
-	# Trolleys down the east side. Emergency admissions land on these before
-	# anybody finds them a bed, which is why the room is worth walking into
-	# unannounced.
+	# Trolleys down the east side. These are REAL beds, on wheels, in the bed
+	# group — so when the ward is full an admission physically lands on one of
+	# them, and anybody can push it anywhere. A corridor is a place you can
+	# legitimately put a patient, and the game does not distinguish between
+	# doing that because there was no room and doing it on purpose.
 	for i in 3:
-		var x := east - 3.0
-		var z := r.rect.position.y + 1.8 + float(i) * 2.6
-		_block(h, Vector3(2.0, 0.14, 0.85), Build.LINEN, Vector3(x, 0.68, z))
-		_block(h, Vector3(1.9, 0.10, 0.78), Build.BED_FRAME, Vector3(x, 0.58, z))
-		# Legs and a rail, or it reads as a white box rather than a trolley.
-		for sx in [-1.0, 1.0]:
-			for sz in [-1.0, 1.0]:
-				_block(h, Vector3(0.06, 0.52, 0.06), Build.METAL,
-					Vector3(x + sx * 0.85, 0.27, z + sz * 0.32))
-			_block(h, Vector3(0.05, 0.34, 0.05), Build.METAL, Vector3(x + sx * 0.98, 0.9, z))
-			_block(h, Vector3(0.05, 0.05, 0.7), Build.METAL, Vector3(x + sx * 0.98, 1.06, z))
-		_occupy(x, z, 2.0, 0.85)
-		_iv_stand(h, Vector3(x - 1.3, 0, z))
+		var trolley := PatientBed.new()
+		trolley.room_key = r.key
+		trolley.name = "Trolley_%d" % i
+		h.add_child(trolley)
+		trolley.build()
+		var z := r.rect.position.y + 2.0 + float(i) * 2.6
+		trolley.position = Vector3(east - 2.4, 0.4, z)
+		trolley.rotation.y = PI / 2
+		_occupy(east - 2.4, z, 2.4, 1.3)
+		_iv_stand(h, Vector3(east - 3.9, 0, z))
 
 	# Waiting chairs along the west wall, facing nothing in particular.
 	for i in 5:

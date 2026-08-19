@@ -205,6 +205,7 @@ multiple endings.
 - [x] The west annexe: departments are now ROOMS, shuttered until bought.
 - [x] Imaging has teeth and a counterplay: it writes the true cause into the
       record, colleagues can order it, and the aperture is how you ruin a scan.
+- [x] The Intake trolleys are real beds, so a full ward overflows onto them.
 
 ---
 
@@ -216,7 +217,7 @@ beyond it.
 
 ```
 883 assertions   (test functions across 5 suites)
- 40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+ 49 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
  25 screenshots  (every room and every UI screen, rendered offscreen)
@@ -328,9 +329,31 @@ wheeled in. Two notches off and the scan degrades to artefact — no record, the
 request satisfied on paper, and one line in a device log at the far end of the
 building.
 
+### Trolleys: what a full ward actually feels like
+`waiting` was an `Array[Patient]` and nothing else. When every bed was full an
+admission joined it, invisibly, and popped into the next bed that came free. The
+pressure the ward is built around — five beds, and the whole economy resting on
+that number — was never once visible on the floor.
+
+The three Intake trolleys are now real `PatientBed` nodes. A full ward overflows
+onto one: the patient is admitted, is billing, and is lying in the busiest room
+in the building where everybody walks past. Trolley time costs goodwill about
+four times as fast as merely being kept too long, and discharging a ward patient
+moves whoever has been parked longest into the freed bed. So "the ward is full
+and somebody just arrived" is a decision with two bad halves — send a
+still-profitable overstayer home early, or let the new arrival lie there losing
+you the reputation that brings better-insured patients in.
+
+Two smaller fixes fell out of it: `_bed_in()` returned the first bed matching a
+room, which was fine when every room had exactly one, and Intake has three; and
+patients are now moved between rooms by rebinding the existing body rather than
+freeing it and spawning another, because the body carries its suspicion-system
+registration and its own tree hooks.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- Intake trolleys are scenery. Emergency admissions still go straight to a ward;
-  parking one on a trolley until you find it a bed would be a real decision.
+- `Patient.room` does not follow the body when a bed is wheeled, so deliberately
+  parking a ward patient in Intake to free their bed does not yet register.
+  That is the natural next mechanic and the last piece of the trolley system.

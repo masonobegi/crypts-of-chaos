@@ -88,7 +88,17 @@ func _check_boot() -> void:
 	_ok(game.patient_system.active_count() > 0, "patients admitted at briefing (%d)"
 		% game.patient_system.active_count())
 	_ok(tree.get_nodes_in_group("patient_npc").size() > 0, "patient bodies spawned")
-	_ok(tree.get_nodes_in_group("bed").size() == 5, "five beds exist")
+	# Five ward beds and three Intake trolleys, which are beds in every sense
+	# that matters — they are in the group, they take an occupant, and they roll.
+	var ward_beds := 0
+	var trolleys := 0
+	for b in tree.get_nodes_in_group("bed"):
+		if b.room_key == "intake":
+			trolleys += 1
+		else:
+			ward_beds += 1
+	_ok(ward_beds == 5, "five ward beds exist (%d)" % ward_beds)
+	_ok(trolleys == 3, "three Intake trolleys exist (%d)" % trolleys)
 	_ok(tree.get_nodes_in_group("fixture").size() > 10, "fixtures placed")
 	_ok(game.suspicion != null and game.suspicion.minds.size() >= 4, "minds registered")
 	# Every patient must have a body, a chart and a bed.
@@ -159,6 +169,45 @@ func _check_midshift() -> void:
 
 	# The economy has to actually bill occupied beds.
 	_ok(ps.total_daily_revenue() > 0, "ward generates revenue")
+
+	_check_intake_overflow(ps)
+
+## With Emergency open and every ward full, an admission lands on a trolley in
+## Intake instead of disappearing into an invisible waiting list — and a ward
+## coming free takes them off it again.
+func _check_intake_overflow(ps) -> void:
+	if not GameState.owned_upgrades.has("dept_emergency"):
+		GameState.owned_upgrades.append("dept_emergency")
+	game.hospital.refresh_departments()
+	_ok(game.hospital.is_room_open("intake"), "Intake opened when it was bought")
+
+	var guard := 0
+	while not ps.free_wards().is_empty() and guard < 10:
+		guard += 1
+		ps.admit(ps.generate())
+	_ok(ps.free_wards().is_empty(), "every ward is full")
+
+	var trolleys_before: int = ps.free_trolleys()
+	var overflow = ps.generate()
+	_ok(ps.admit(overflow), "a full ward still admits somebody")
+	_ok(overflow.room == "intake", "and they are on a trolley, not on a list")
+	_ok(ps.free_trolleys() == trolleys_before - 1,
+		"the trolley is occupied (%d free)" % ps.free_trolleys())
+
+	# Free a ward and the longest-waiting trolley patient should end up in it.
+	var victim = null
+	for p in ps.active():
+		if p.room != "intake":
+			victim = p
+			break
+	if victim == null:
+		_fail("no ward patient to discharge")
+		return
+	var freed: String = victim.room
+	ps.discharge(victim, "recovered")
+	ps._relieve_intake(freed)
+	_ok(overflow.room == freed, "a ward coming free gets them off the trolley")
+	_ok(ps.free_trolleys() == trolleys_before, "and the trolley is free again")
 
 func comp_owner(p: Patient) -> Patient:
 	return p

@@ -101,7 +101,18 @@ both and drags toward 8 °C, which is faster and far more obvious.
 The three departments are physical rooms behind roller shutters from day one.
 Opening one changes more than what the shop says it changes:
 
-**Emergency Intake.** Arrivals fire a 60 m hearing event positioned in Intake,
+**Emergency Intake.** The three trolleys are real `PatientBed` nodes in the
+`bed` group, so when all five wards are full an admission physically lands on
+one instead of vanishing into an invisible waiting list. A patient on a trolley
+is admitted and billing — and losing satisfaction about four times as fast as
+one merely kept too long (`0.24 × days × impatience`), in the busiest room in
+the building, where every member of staff and every visitor walks past them.
+Discharging a ward patient calls `_relieve_intake`, which moves the
+longest-parked trolley patient into the freed bed. So a full ward plus an
+arrival is a real decision: send a still-profitable overstayer home early, or
+let the new one lie in Intake losing goodwill you will pay for in reputation.
+
+Arrivals fire a 60 m hearing event positioned in Intake,
 at the far west end of the floor. Every member of staff who hears a noise
 investigates it, so an emergency admission reliably empties the east wards for
 about a minute. Buying Emergency is, mechanically, a scheduled distraction that

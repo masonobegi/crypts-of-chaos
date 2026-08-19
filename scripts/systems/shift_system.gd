@@ -162,7 +162,10 @@ func _maybe_emergency_admission(hour: int) -> void:
 		return
 	if hour < GameState.SHIFT_START_HOUR + 1 or GameState.shift_over():
 		return
-	if patient_system.free_wards().is_empty():
+	# A full ward no longer turns emergencies away: once Intake is open they
+	# land on a trolley in it, which is exactly the sort of thing a hospital
+	# does and exactly the sort of thing that gets written about.
+	if patient_system.free_wards().is_empty() and patient_system.free_trolleys() == 0:
 		return
 	if not RNG.chance("emergency_arrival", 0.22):
 		return

@@ -140,10 +140,19 @@ func admit(p: Patient, ward_key := "") -> bool:
 	if ward_key == "":
 		var free := free_wards()
 		if free.is_empty():
-			waiting.append(p)
-			EventBus.toast.emit("%s is waiting in the lobby — no free bed." % p.display_name, "info")
-			return false
-		ward_key = free[0]
+			# With Emergency open there is somewhere to put them: a trolley in
+			# Intake. They are admitted, they are billing, and they are lying in
+			# the busiest room in the building where everyone can see them.
+			# Nobody has to decide that is acceptable — it just is, until it is
+			# not.
+			if hospital != null and hospital.is_room_open("intake") and free_trolleys() > 0:
+				ward_key = "intake"
+			else:
+				waiting.append(p)
+				EventBus.toast.emit("%s is waiting in the lobby — no free bed." % p.display_name, "info")
+				return false
+		else:
+			ward_key = free[0]
 	p.room = ward_key
 	patients[p.id] = p
 
@@ -196,11 +205,27 @@ func _spawn_chart(p: Patient, ward_key: String) -> void:
 	chart.global_position = pos + Vector3(0.0, 1.05, 1.15)
 	charts[p.id] = chart
 
+## An unoccupied bed in this room, or failing that any bed in it. Intake has
+## three trolleys rather than one bed, so "the first one that matches" is not
+## good enough any more.
 func _bed_in(ward_key: String) -> PatientBed:
+	var fallback: PatientBed = null
 	for b in get_tree().get_nodes_in_group("bed"):
-		if b.room_key == ward_key:
+		if b.room_key != ward_key:
+			continue
+		if b.occupant == null or not is_instance_valid(b.occupant):
 			return b
-	return null
+		if fallback == null:
+			fallback = b
+	return fallback
+
+## How many trolleys in Intake are standing empty right now.
+func free_trolleys() -> int:
+	var n := 0
+	for b in get_tree().get_nodes_in_group("bed"):
+		if b.room_key == "intake" and (b.occupant == null or not is_instance_valid(b.occupant)):
+			n += 1
+	return n
 
 # ================================================================ visitors
 func _maybe_schedule_visitor(p: Patient) -> void:
@@ -261,6 +286,14 @@ func tick(days: float) -> void:
 		p.env_modifier = r.comfort() if r else 1.0
 		var before_ready := p.ready_for_discharge()
 		p.tick(days)
+		# A trolley in the middle of Emergency Intake is not a room. Nobody
+		# sleeps, nobody has any privacy, and the whole hospital walks past.
+		# Being parked there costs goodwill roughly four times as fast as simply
+		# being kept too long, which is what makes "who do I discharge to free a
+		# bed" a decision rather than an inconvenience.
+		if room_key == "intake":
+			p.satisfaction = clampf(p.satisfaction - 0.24 * days
+				* DB.trait_of(p.archetype, "impatience", 1.0), 0.0, 1.0)
 		_maybe_environmental_complication(p, r, days)
 		if p.ready_for_discharge() and not before_ready:
 			EventBus.toast.emit("%s is fit for discharge." % p.display_name, "good")
@@ -382,6 +415,54 @@ func discharge(p: Patient, reason := "recovered") -> void:
 	if not waiting.is_empty():
 		var next: Patient = waiting.pop_front()
 		call_deferred("admit", next, p.room)
+	elif WARD_KEYS.has(p.room):
+		# Nobody in the lobby, but somebody may be lying on a trolley in Intake.
+		# A ward that has just come free is where they go.
+		call_deferred("_relieve_intake", p.room)
+
+## Move whoever has been on an Intake trolley longest into a ward that has just
+## come free. Trolley time is meant to be a pressure the player feels and can
+## shorten — by discharging somebody — not a state patients are abandoned in.
+func _relieve_intake(ward_key: String) -> void:
+	var oldest: Patient = null
+	for id in patients:
+		var p: Patient = patients[id]
+		if p.discharged or p.room != "intake":
+			continue
+		if oldest == null or p.days_admitted > oldest.days_admitted:
+			oldest = p
+	if oldest == null:
+		return
+	if transfer(oldest, ward_key):
+		EventBus.toast.emit("%s finally has a bed." % oldest.display_name, "good")
+
+## Move an admitted patient to another room, bed, chart and all. Deliberately
+## moves the EXISTING body rather than freeing it and spawning a new one: the
+## body is registered with the suspicion system and carries its own tree_exiting
+## hooks, and tearing it down mid-career throws all of that away.
+func transfer(p: Patient, ward_key: String) -> bool:
+	var bed := _bed_in(ward_key)
+	var body = get_body(p.id)
+	if bed == null or body == null:
+		return false
+	var old = body.bed
+	if old != null and is_instance_valid(old) and old != bed:
+		old.occupant = null
+		old.patient_id = ""
+	body.bind(p, bed)
+	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
+	p.room = ward_key
+
+	var chart = charts.get(p.id, null)
+	if chart != null and is_instance_valid(chart):
+		chart.global_position = bed.global_position + Vector3(0.0, 1.05, 1.15)
+
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if f is VitalsConsole and f.room_key == ward_key:
+			f.patient_id = p.id
+		elif f is TreatmentMachine and f.room_key == ward_key:
+			f.set_prescribed_for(p)
+	return true
 
 # ================================================================ queries
 func get_patient(id: String) -> Patient:

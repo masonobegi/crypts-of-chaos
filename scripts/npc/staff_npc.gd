@@ -172,6 +172,36 @@ func _begin_round() -> void:
 	_round_target = p.id
 	goto(h.point_in(p.room, "round_pt"), false)
 
+## Somebody still on a trolley in Intake most of a shift later is not an
+## emergency any more, it is a decision somebody made. The act of ramping them
+## is witnessed at the time; this is the half that keeps mattering afterwards,
+## and it is what stops leaving a patient out there being free.
+func _note_if_left_in_the_corridor(p) -> void:
+	if mind == null or p.room != "intake" or p.corridor_minutes < 240.0:
+		return
+	if not RNG.chance("corridor_note", 0.55 + mind.observance * 0.45):
+		return
+	var hours: float = p.corridor_minutes / 60.0
+	say(String(RNG.pick("corridor_bark", [
+		"%s is still out here, you know." % p.display_name,
+		"Are we finding %s a bed at any point?" % p.display_name,
+		"This one's been on a trolley since this morning.",
+		"We can't keep leaving people out here.",
+	])), 3.6)
+	var ev := Evidence.new()
+	ev.kind = "patient_left_in_corridor"
+	ev.about_actor = "player"
+	ev.patient_id = p.id
+	ev.source = Evidence.Source.WITNESSED
+	ev.time = GameState.career_minutes
+	# Grows with how long they have been out there, so a couple of hours is
+	# nothing and most of a day is a complaint.
+	ev.base_weight = clampf(0.12 + hours * 0.05, 0.12, 0.6)
+	ev.certainty = 0.9
+	ev.cover_tag = "bed_shortage"
+	ev.summary = "%s left on a trolley in Intake for %.0f hours" % [p.display_name, hours]
+	mind.add_evidence(ev)
+
 func _do_round() -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	if ps == null or mind == null:
@@ -179,6 +209,7 @@ func _do_round() -> void:
 	var p = ps.get_patient(_round_target)
 	if p == null or p.discharged:
 		return
+	_note_if_left_in_the_corridor(p)
 	var unnoticed: Array = ps.unnoticed_complications(p)
 	if unnoticed.is_empty():
 		if RNG.chance("round_quiet", 0.3):

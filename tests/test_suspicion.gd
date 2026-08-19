@@ -297,3 +297,35 @@ func test_a_departed_npc_does_not_switch_off_everyone_elses_senses() -> void:
 
 	sus.free()
 	witness.free()
+
+## Leaving somebody on a trolley is the counterweight to being allowed to put
+## them there. The act of ramping is witnessed as it happens; this is the half
+## that keeps costing you afterwards.
+func test_leaving_somebody_on_a_trolley_stops_being_free() -> void:
+	var nurse := NurseNPC.new()
+	t.root.add_child(nurse)
+	nurse.mind = DB.make_mind("n_corridor", "Nurse Corridor", "nurse", "gossip")
+	nurse.mind.observance = 1.0
+	var p := Patient.new("corr1")
+	p.display_name = "Mr Trolley"
+	p.room = "intake"
+
+	p.corridor_minutes = 60.0
+	nurse._note_if_left_in_the_corridor(p)
+	t.eq(nurse.mind.evidence.size(), 0, "an hour on a trolley is just a busy morning")
+
+	p.corridor_minutes = 60.0 * 9.0
+	nurse._note_if_left_in_the_corridor(p)
+	t.eq(nurse.mind.evidence.size(), 1, "most of a shift is a decision somebody made")
+	t.gt(nurse.mind.evidence[0].base_weight, 0.4,
+		"and the longer they are out there the worse it looks")
+	# It is deniable on a day the ward genuinely had no beds, and only then.
+	t.eq(nurse.mind.evidence[0].cover_tag, "bed_shortage",
+		"a real bed shortage is a real defence")
+
+	# A patient who is actually in a ward is nobody's business.
+	p.room = "ward_101"
+	p.corridor_minutes = 0.0
+	nurse._note_if_left_in_the_corridor(p)
+	t.eq(nurse.mind.evidence.size(), 1, "somebody in a bed is not a grievance")
+	nurse.queue_free()

@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-883 assertions   (test functions across 5 suites)
+888 assertions   (test functions across 5 suites)
  54 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -355,7 +355,10 @@ Their chart stays where it was, and a chart in the wrong room is already its own
 finding. And the act is witnessed like any other: `patient_moved_to_corridor`
 carries the player as its actor at visual weight 0.45, and whether it is
 defensible is decided by the floor rather than by the player — a genuinely full
-ward grants the `bed_shortage` cover, a half-empty one grants nothing.
+ward grants the `bed_shortage` cover, a half-empty one grants nothing. And
+leaving them there keeps costing: `corridor_minutes` accumulates while a patient
+is parked, and past four hours any nurse whose round reaches them records it, at
+a weight that grows with the hours.
 
 Two smaller fixes fell out of it: `_bed_in()` returned the first bed matching a
 room, which was fine when every room had exactly one, and Intake has three; and
@@ -367,5 +370,5 @@ registration and its own tree hooks.
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- A nurse walking past a ward with no bed in it still has no opinion about it.
-  The act of ramping is witnessed; the resulting empty room is not.
+- A nurse walking past a ward with no bed in it still has no opinion about the
+  empty room itself, only about the patient who ended up in the corridor.

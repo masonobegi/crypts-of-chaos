@@ -127,7 +127,15 @@ defensible is decided by the floor, not by you: if there was another ward with a
 bed and nobody in it, no cover is granted. If there genuinely was nowhere else,
 `bed_shortage` is added for 420 minutes and any evidence tagged with it is worth
 a quarter of its weight while it lasts. Doing this on a full ward is a
-legitimate clinical decision. Doing it on a half-empty one is four witnesses. So a full ward plus an
+legitimate clinical decision. Doing it on a half-empty one is four witnesses.
+
+And leaving them there keeps costing. `Patient.corridor_minutes` accumulates
+while a patient is parked in Intake and resets the moment they get a real room.
+Past four hours, any nurse whose round reaches them records
+`patient_left_in_corridor` at `0.12 + hours × 0.05` (capped at 0.6) — so a busy
+morning is nothing and most of a shift is a complaint. It carries the
+`bed_shortage` cover tag, which means the same defence applies: worth a quarter
+while the ward genuinely has no beds, worth all of it once it does. So a full ward plus an
 arrival is a real decision: send a still-profitable overstayer home early, or
 let the new one lie in Intake losing goodwill you will pay for in reputation.
 

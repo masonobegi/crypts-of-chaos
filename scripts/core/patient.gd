@@ -58,6 +58,10 @@ var imaged_at: int = -99999
 ## A colleague can ASK for imaging. Ignoring the request is free on the day and
 ## expensive at the end of it, which is the point: the department you bought to
 ## make money is also the one thing in the building that can be pointed at you.
+## In-game minutes spent parked in Intake rather than in a ward. Resets the
+## moment they get a real room, because what staff object to is somebody being
+## LEFT there, not somebody passing through.
+var corridor_minutes: float = 0.0
 var imaging_requested_by: String = ""
 var imaging_requested_day: int = -1
 
@@ -245,6 +249,7 @@ func to_dict() -> Dictionary:
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
+		"corm": corridor_minutes,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -279,6 +284,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.overdue_days = float(d.get("ovd", 0.0))
 	p.knows_expected_date = bool(d.get("ked", true))
 	p.imaged_at = int(d.get("img", -99999))
+	p.corridor_minutes = float(d.get("corm", 0.0))
 	p.imaging_requested_by = String(d.get("imgrb", ""))
 	p.imaging_requested_day = int(d.get("imgrd", -1))
 	var md: Dictionary = d.get("mind", {})

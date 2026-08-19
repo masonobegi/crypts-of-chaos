@@ -309,8 +309,11 @@ func tick(days: float) -> void:
 		# being kept too long, which is what makes "who do I discharge to free a
 		# bed" a decision rather than an inconvenience.
 		if room_key == "intake":
+			p.corridor_minutes += days * float(GameState.MINUTES_PER_DAY)
 			p.satisfaction = clampf(p.satisfaction - 0.24 * days
 				* DB.trait_of(p.archetype, "impatience", 1.0), 0.0, 1.0)
+		elif WARD_KEYS.has(room_key):
+			p.corridor_minutes = 0.0
 		_maybe_environmental_complication(p, r, days)
 		if p.ready_for_discharge() and not before_ready:
 			EventBus.toast.emit("%s is fit for discharge." % p.display_name, "good")

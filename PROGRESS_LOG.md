@@ -1078,3 +1078,61 @@ a ward doorway genuinely cuts the room off the navigation graph, and clearing it
 puts it back. That one already worked; now it cannot quietly stop.
 
 **1,552 assertions · 95 smoke · 17 live.**
+
+---
+
+## Session 4 (cont.) — #9: the building now tells you who is behind each door
+
+Sixty-two metres of identical doors. The room number was an 8cm plate flat
+against the wall, unreadable past about four metres, and *who is in there* —
+the only thing the player actually needs — was available only by walking in or
+by opening a tablet they have to already suspect matters.
+
+**Corridor flag signs.** Projecting into the corridor at right angles, the way
+a real ward is signed, so the floor is legible from anywhere on it. Built as two
+back-to-back single-sided labels: the first render used one double-sided
+`Label3D` and it read `l0l` and `ǝʞɐʇnI ⅋ ʎqqo˥` walking the other way, which is
+worse than no sign at all.
+
+**A door card beside every ward door** (`scripts/world/door_card.gd`) carrying
+the room number, the occupant's name, their condition, how many nights they have
+been in, and a full-width status strip in a colour readable from the far end of
+the ward:
+
+```
+┌──────────────────────────────┐
+│ FIT FOR DISCHARGE            │  ← green
+│ 101                          │
+│ Tam Wollop                   │
+│ Mild Gravitational Confusion │
+│ night 4                      │
+└──────────────────────────────┘
+```
+
+VACANT · UNDER TREATMENT · IMPROVING · FIT FOR DISCHARGE · PAST EXPECTED DATE.
+Nothing on it is a judgement — it is exactly what a ward door card carries in a
+real hospital. That "FIT FOR DISCHARGE" in green is also the most tempting
+sentence in the game is the game's problem, not the card's.
+
+The card polls its own room once a second rather than being pushed to, because
+it has to react to recovery crossing a threshold, a complication, a transfer and
+a discharge — four systems, none of which should have to know door cards exist.
+
+### The landmine found on the way
+
+The first render showed a card reading **FIT FOR DISCHARGE under a blue UNDER
+TREATMENT strip**. `Build.mat()` returns a **shared instance from a colour-keyed
+cache** — correct for a hospital assembled from primitives, and silently wrong
+for anything that changes colour at runtime. All five cards were handed the same
+`StandardMaterial3D`, so every strip turned whichever colour the last card to
+refresh wanted, and writing to it would equally have repainted any other object
+in the building built from the same grey.
+
+`WardDoorCard._own_material()` duplicates the material on build. **Anything that
+mutates a Build material at runtime must own it first** — worth sweeping the rest
+of the codebase for.
+
+Also added `03b_door_card` to the screenshot set, because this is precisely the
+class of thing only a picture catches.
+
+**1,553 assertions · 95 smoke · 17 live. All green.**

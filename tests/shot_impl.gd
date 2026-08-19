@@ -151,6 +151,9 @@ const SHOTS := [
 	["01_lobby", Vector3(5.5, 1.7, -4.0), Vector3(5.5, 1.5, 2.0)],
 	["02_corridor_west", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.5, 2.0)],
 	["03_corridor_east", Vector3(40.0, 1.7, 2.0), Vector3(3.0, 1.5, 2.0)],
+	# Standing in the corridor outside 101, at head height, looking at the door
+	# card — the shot that answers "does the building tell you anything".
+	["03b_door_card", Vector3(3.4, 1.6, 2.6), Vector3(3.55, 1.52, 3.9)],
 	["04_ward_101", Vector3(4.5, 1.7, 5.5), Vector3(4.0, 1.2, 11.0)],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
 	["06_treatment_bay", Vector3(24.0, 1.7, -2.0), Vector3(24.0, 1.3, -9.0)],

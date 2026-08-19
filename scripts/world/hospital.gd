@@ -330,6 +330,38 @@ func _build_signage() -> void:
 		sign.rotation.y = PI if north else 0.0
 		add_child(sign)
 
+		# A flag sign, projecting into the corridor at right angles to the wall.
+		# The plate above reads at four metres and the corridor is sixty-two
+		# long, so from anywhere useful the whole floor was unlabelled — you
+		# navigated by counting doors. This is what a real corridor does.
+		# Two labels back to back, each showing only its front face. A single
+		# double-sided Label3D projecting into a corridor is legible walking one
+		# way and MIRRORED walking the other, which is worse than no sign at all
+		# — the first screenshot of this read "l0l" and "ǝʞɐʇnI ⅋ ʎqqo˥".
+		var short := _short_name(String(entry["display"]))
+		for face in [0.0, PI]:
+			var flag := Build.label3d(short, 0.155, Color(0.93, 0.96, 0.98), false)
+			flag.double_sided = false
+			flag.position = Vector3(centre + w * 0.5 + 0.28, 2.42,
+				z + (0.30 if not north else -0.30))
+			flag.rotation.y = PI * 0.5 + face
+			add_child(flag)
+
+		# ...and beside each ward door, who is behind it.
+		if String(entry["kind"]) == "ward":
+			var card := WardDoorCard.new()
+			card.room_key = String(entry["key"])
+			add_child(card)
+			card.build(_short_name(String(entry["display"])))
+			card.position = Vector3(centre - w * 0.5 - 0.42, 1.52,
+				z + (0.09 if not north else -0.09))
+			card.rotation.y = PI if north else 0.0
+
+## "Room 101" reads as "101" on a corridor flag; "Nurses' Station" does not
+## shorten and should not.
+func _short_name(display: String) -> String:
+	return display.trim_prefix("Room ") if display.begins_with("Room ") else display
+
 # ------------------------------------------------------------------ nav
 func _bake_nav(blocked: Array[Rect2] = []) -> void:
 	for entry in LAYOUT:

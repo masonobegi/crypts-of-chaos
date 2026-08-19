@@ -117,7 +117,37 @@ func open(kind: String, forced_covert := -1) -> Investigation:
 		Log.i("covert investigation opened: %s" % inv.kind, "Invest")
 	if kind == "undercover":
 		_plant_undercover(inv)
+	elif not inv.covert:
+		_send_investigator(inv)
 	return inv
+
+## An investigation you can SEE. The body walks to each chart, each nurse and
+## each machine in turn, which means every one of those is something you can get
+## to first — hide the chart, pull the nurse away, fix the calibration.
+##
+## Covert investigations deliberately get no body: you are meant to spend some
+## shifts wondering whether this is one of them.
+func _send_investigator(inv: Investigation) -> void:
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	if hospital == null:
+		return
+	var npc := InvestigatorNPC.new()
+	npc.npc_id = "inv_%s" % inv.id
+	npc.archetype = "investigator"
+	npc.set_colours(RNG.pick("inv_skin", [
+		Color(0.95, 0.83, 0.72), Color(0.76, 0.60, 0.46), Color(0.44, 0.31, 0.22)]),
+		Color(0.20, 0.22, 0.30), Color(0.15, 0.13, 0.12))
+	var parent: Node = get_parent()
+	if parent == null:
+		parent = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+	parent.add_child(npc)
+	npc.position = hospital.point_in("lobby", "inv_spawn")
+	var mind := DB.make_mind(npc.npc_id, npc.display, "inspector", "investigator")
+	mind.trust = 0.25
+	if suspicion:
+		suspicion.register(mind, npc)
+	npc.begin(inv, inv.kind)
+	inv.npc_id = npc.npc_id
 
 ## The undercover patient is a real patient with a real condition who happens to
 ## be extremely observant and reports everything they see. You will never be
@@ -145,13 +175,19 @@ func daily_tick() -> void:
 
 func _advance(inv: Investigation) -> void:
 	inv.days_left -= 1
+	# An investigation with a body on the floor gathers its evidence by walking
+	# around and looking at things, not by fiat — skip the abstract passes so the
+	# player's interference actually counts for something.
+	var has_body := inv.npc_id != "" and _body_for(inv) != null
 	match inv.stage:
 		Investigation.Stage.OPENED:
 			inv.stage = Investigation.Stage.GATHERING
-			_gather_records(inv)
+			if not has_body:
+				_gather_records(inv)
 		Investigation.Stage.GATHERING:
 			inv.stage = Investigation.Stage.INTERVIEWS
-			_interview_staff(inv)
+			if not has_body:
+				_interview_staff(inv)
 		Investigation.Stage.INTERVIEWS:
 			inv.stage = Investigation.Stage.VERDICT
 	EventBus.investigation_stage.emit(inv, int(inv.stage))
@@ -243,6 +279,9 @@ func _resolve(inv: Investigation) -> void:
 	inv.stage = Investigation.Stage.CLOSED
 	open_investigations.erase(inv)
 	closed_investigations.append(inv)
+	var body := _body_for(inv)
+	if body and is_instance_valid(body) and body.has_method("_leave"):
+		body.call("_leave")
 
 	if total < inv.threshold * 0.55:
 		inv.outcome = "cleared"
@@ -316,6 +355,12 @@ func consider_de_escalation(clean_shift: bool) -> void:
 		GameState.sanction_level = maxi(0, GameState.sanction_level - 1)
 		GameState.adjust_rep("gov_scrutiny", -0.05)
 		EventBus.toast.emit("Standing improved: %s" % GameState.SANCTIONS[GameState.sanction_level], "good")
+
+func _body_for(inv: Investigation) -> Node:
+	for n in get_tree().get_nodes_in_group("investigator"):
+		if n.npc_id == inv.npc_id:
+			return n
+	return null
 
 func active_titles() -> Array[String]:
 	var out: Array[String] = []

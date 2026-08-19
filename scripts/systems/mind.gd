@@ -29,6 +29,13 @@ var affinity: Dictionary = {}
 ## Cover stories the player has burned on this character (tag -> times used).
 var burned_covers: Dictionary = {}
 
+## An open proposition from this character: "none" | "offered" | "paid" |
+## "refused". An enterprising nurse who has seen something does not report it —
+## she names a price, which turns a witness into either an accomplice or a very
+## motivated enemy.
+var deal_state: String = "none"
+var deal_price: int = 0
+
 ## Highest suspicion tier this mind has already reacted to, so a nurse doesn't
 ## re-confront you every frame.
 var reacted_tier: int = 0
@@ -139,6 +146,7 @@ func to_dict() -> Dictionary:
 		"pid": patient_id, "ev": evs, "trust": trust, "obs": observance,
 		"skep": skepticism, "talk": talkativeness, "esc": escalation,
 		"aff": affinity, "burn": burned_covers, "rt": reacted_tier,
+		"deal": deal_state, "price": deal_price,
 	}
 
 static func from_dict(d: Dictionary) -> Mind:
@@ -155,4 +163,6 @@ static func from_dict(d: Dictionary) -> Mind:
 	m.affinity = d.get("aff", {})
 	m.burned_covers = d.get("burn", {})
 	m.reacted_tier = int(d.get("rt", 0))
+	m.deal_state = d.get("deal", "none")
+	m.deal_price = int(d.get("price", 0))
 	return m

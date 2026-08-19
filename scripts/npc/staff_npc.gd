@@ -4,7 +4,7 @@ extends NPCBody
 ## behaviours that make the stealth loop work: WATCHING you when suspicious, and
 ## LEAVING to look at a noise when something falls over somewhere else.
 
-enum State { IDLE, PATROL, INVESTIGATE, WATCH, FOLLOW, TALK, TASK }
+enum State { IDLE, PATROL, INVESTIGATE, WATCH, FOLLOW, TALK, TASK, APPROACH }
 
 @export var patrol_rooms: Array[String] = []
 @export var home_room := "station"
@@ -16,6 +16,7 @@ var _investigate_room := ""
 var _idle_bias := 1.0
 var _patrol_speed := 1.0
 var _talk_cooldown := 0.0
+var _approached := false
 
 func _ready() -> void:
 	super._ready()
@@ -53,6 +54,8 @@ func _enter(s: State) -> void:
 			_timer = 6.0
 		State.TASK:
 			_timer = RNG.randf_range_s("staff_task", 6.0, 14.0)
+		State.APPROACH:
+			_timer = 25.0
 
 func _tick_state(delta: float) -> void:
 	var player = get_tree().get_first_node_in_group("player")
@@ -65,7 +68,23 @@ func _tick_state(delta: float) -> void:
 			if state != State.WATCH and state != State.FOLLOW:
 				_enter(State.WATCH)
 
+	# Somebody who wants something from you comes and finds you. This is the
+	# moment a witness stops being a hazard and becomes a negotiation.
+	if state in [State.IDLE, State.PATROL, State.TASK] and not _approached and player != null:
+		if _wants_a_word():
+			_approached = true
+			_enter(State.APPROACH)
+
 	match state:
+		State.APPROACH:
+			if player == null or _timer <= 0.0:
+				_enter(State.IDLE)
+			elif distance_to(player.global_position) > 2.2:
+				goto(player.global_position)
+			else:
+				stop_moving()
+				look_toward(player.global_position + Vector3(0, 1.5, 0))
+				_deliver_proposition()
 		State.IDLE:
 			if _timer <= 0.0:
 				_enter(State.PATROL if RNG.chance("staff_patrol", 0.7 / _idle_bias) else State.TASK)
@@ -104,6 +123,52 @@ func _tick_state(delta: float) -> void:
 		State.TALK:
 			if _timer <= 0.0:
 				_enter(State.IDLE)
+
+## Only worth crossing the ward for if they actually have something on you.
+func _wants_a_word() -> bool:
+	if mind == null or mind.deal_state != "none":
+		return false
+	if archetype not in ["corrupt", "loyal", "gossip"]:
+		return false
+	var worst := mind.strongest(GameState.career_minutes)
+	if worst == null or worst.current_weight(GameState.career_minutes) < 0.25:
+		return false
+	return RNG.chance("wants_word", 0.5)
+
+func _deliver_proposition() -> void:
+	if mind == null or mind.deal_state != "none":
+		_enter(State.IDLE)
+		return
+	match archetype:
+		"corrupt":
+			# She has a number in mind, and it scales with what she saw.
+			var worst := mind.strongest(GameState.career_minutes)
+			var weight: float = worst.current_weight(GameState.career_minutes) if worst else 0.3
+			mind.deal_price = int(round(180.0 + weight * 900.0))
+			mind.deal_state = "offered"
+			say(String(RNG.pick("bribe_open", [
+				"Doctor. A word. Somewhere that isn't here.",
+				"I saw. And I've not written it down. Yet.",
+				"We should talk about what I'm not going to say.",
+			])), 4.5)
+			EventBus.toast.emit("%s wants a word." % display, "suspicion")
+		"loyal":
+			say(String(RNG.pick("loyal_warn", [
+				"Someone's been asking about your ward. Just so you know.",
+				"I covered for you. I'd rather not do it twice.",
+				"Whatever's going on — be careful. People are noticing.",
+			])), 4.5)
+			mind.deal_state = "refused"      # warning spent; no repeat
+			EventBus.toast.emit("%s is covering for you. For now." % display, "info")
+		"gossip":
+			say(String(RNG.pick("gossip_warn", [
+				"Everyone's talking about 103, by the way. Everyone.",
+				"You didn't hear it from me, but people have opinions.",
+				"I'd keep your head down this week if I were you.",
+			])), 4.5)
+			mind.deal_state = "refused"
+			EventBus.toast.emit("Word is getting around.", "suspicion")
+	_enter(State.IDLE)
 
 func _pick_patrol_target() -> void:
 	var h = get_tree().get_first_node_in_group("hospital")

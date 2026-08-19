@@ -174,3 +174,113 @@ func test_miscalibration_is_persistent_and_invisible() -> void:
 	t.ok(m.is_miscalibrated(), "and persists until someone services it")
 	t.eq(m.suspicious_log_entries().size(), 0, "while leaving the dial log spotless")
 	m.queue_free()
+
+# ==================================================================== deals
+func _mind_with_evidence(arch := "corrupt") -> Mind:
+	var m := DB.make_mind("n_deal", "Nurse Test", "nurse", arch)
+	var e := Evidence.new()
+	e.kind = "machine_extreme_dial"
+	e.about_actor = "player"
+	e.source = Evidence.Source.WITNESSED
+	e.time = GameState.career_minutes
+	e.base_weight = 0.6
+	e.certainty = 1.0
+	m.add_evidence(e)
+	return m
+
+func test_paying_off_a_witness_buys_real_silence() -> void:
+	GameState.start_new_career(4)
+	GameState.personal_money = 5000
+	var m := _mind_with_evidence()
+	m.deal_state = "offered"
+	m.deal_price = 400
+	var before := m.suspicion(GameState.career_minutes)
+	t.gt(before, 0.0, "the witness starts out suspicious")
+
+	var opts: Array = Dialogue.options_for(m, null)
+	t.eq(opts.size(), 4, "a live offer replaces the normal conversation")
+	var pay = opts[0]
+	var res: Dictionary = Dialogue.resolve(m, pay, null)
+	t.ok(bool(res.get("success", false)), "the payment lands")
+	t.eq(m.deal_state, "paid", "the deal is recorded as paid")
+	t.eq(GameState.personal_money, 4600, "and it actually costs money")
+	t.lt(m.suspicion(GameState.career_minutes), before * 0.4,
+		"a bought witness stops being a problem")
+	t.lt(m.escalation, 0.1, "and stops escalating")
+	t.eq(int(GameState.flag("corrupt_staff_count", 0)), 1,
+		"and counts toward the Medical Mafia ending")
+
+func test_cannot_pay_a_bribe_you_cannot_afford() -> void:
+	GameState.start_new_career(5)
+	GameState.personal_money = 50
+	var m := _mind_with_evidence()
+	m.deal_state = "offered"
+	m.deal_price = 400
+	var res: Dictionary = Dialogue.resolve(m, Dialogue.options_for(m, null)[0], null)
+	t.ok(not bool(res.get("success", true)), "you cannot buy what you cannot afford")
+	t.eq(GameState.personal_money, 50, "and no money changes hands")
+	t.eq(m.deal_state, "offered", "the offer stays open")
+
+func test_threatening_a_blackmailer_backfires() -> void:
+	GameState.start_new_career(6)
+	var m := _mind_with_evidence()
+	m.deal_state = "offered"
+	m.deal_price = 400
+	var before := m.suspicion(GameState.career_minutes)
+	var opts: Array = Dialogue.options_for(m, null)
+	var res: Dictionary = Dialogue.resolve(m, opts[1], null)
+	t.ok(not bool(res.get("success", true)), "threatening them does not work")
+	t.gt(m.suspicion(GameState.career_minutes), before,
+		"it makes them more suspicious, not less")
+	t.gt(m.escalation, 0.3, "and much more likely to report you")
+
+func test_only_staff_with_something_on_you_come_over() -> void:
+	var quiet := DB.make_mind("n_quiet", "Nurse Quiet", "nurse", "corrupt")
+	t.eq(quiet.strongest(GameState.career_minutes), null,
+		"a nurse who saw nothing has nothing to trade")
+	var loaded := _mind_with_evidence()
+	t.ok(loaded.strongest(GameState.career_minutes) != null,
+		"a nurse who saw something does")
+
+# ==================================================================== investigators
+func test_missing_chart_is_worse_than_a_bad_one() -> void:
+	# A chart full of inconsistencies is bad. A chart that isn't there is worse,
+	# which is what stops "grab the chart and run" being a free answer.
+	var chart := PatientChart.new()
+	var comp := Complication.new()
+	comp.display_name = "Ambient Dread"
+	comp.plausible_causes = PackedStringArray(["idiopathic"])
+	comp.documented_cause = "dietary"          # impossible cause
+	var bad_findings := chart.audit([], [comp])
+	var bad_weight := 0.0
+	for f in bad_findings:
+		bad_weight += float(f["weight"])
+
+	var shredded := PatientChart.new()
+	shredded.shredded = true
+	var missing_findings := shredded.audit([], [])
+	var missing_weight := 0.0
+	for f in missing_findings:
+		missing_weight += float(f["weight"])
+	t.gt(missing_weight, bad_weight, "a missing chart weighs more than a wrong one")
+
+func test_investigation_threshold_scales_with_legal_retainer() -> void:
+	GameState.start_new_career(7)
+	t.near(Upgrades.investigation_threshold_scale(), 1.0, 0.001, "no retainer, no protection")
+	GameState.owned_upgrades.append("legal_retainer")
+	t.gt(Upgrades.investigation_threshold_scale(), 1.3,
+		"a retainer means findings need to be much stronger to stick")
+
+func test_cameras_only_record_covered_rooms() -> void:
+	GameState.start_new_career(8)
+	t.eq(Upgrades.camera_rooms().size(), 0, "no cameras by default")
+	GameState.owned_upgrades.append("security_cameras")
+	var covered := Upgrades.camera_rooms()
+	t.ok(covered.has("corridor"), "cameras cover the corridor")
+	t.ok(not covered.has("ward_101"), "but never inside a patient room")
+
+func test_private_rooms_reduce_witness_quality() -> void:
+	GameState.start_new_career(9)
+	t.near(Upgrades.witness_scale(), 1.0, 0.001, "open ward, full visibility")
+	GameState.owned_upgrades.append("private_rooms")
+	t.lt(Upgrades.witness_scale(), 0.8, "private rooms genuinely reduce what witnesses get")

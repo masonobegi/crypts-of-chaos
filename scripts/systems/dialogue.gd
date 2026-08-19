@@ -190,6 +190,14 @@ static func options_for(mind: Mind, p = null) -> Array:
 	var opts: Array = []
 	var has_evidence := mind.strongest(GameState.career_minutes) != null
 
+	# A live proposition takes over the conversation entirely.
+	if mind.deal_state == "offered":
+		opts.append(Option.new("Pay them off.", "bribe", "", 0.7, "deal_accept", mind.deal_price))
+		opts.append(Option.new("You didn't see anything.", "intimidate", "", 0.85, "deal_threaten"))
+		opts.append(Option.new("Report yourself before they do.", "honest", "", 0.0, "deal_confess"))
+		opts.append(Option.new("[walk away]", "none", "", 0.0, "none"))
+		return opts
+
 	if p != null and mind.role == "patient":
 		if p.is_overdue():
 			opts.append(Option.new("Just being cautious.", "reassure", "clinical_caution", 0.25))
@@ -228,6 +236,49 @@ static func options_for(mind: Mind, p = null) -> Array:
 static func resolve(mind: Mind, opt: Option, p = null) -> Dictionary:
 	if opt.tone == "none":
 		return {"success": true, "reply": "", "walked_away": true}
+
+	if opt.effect == "deal_accept":
+		if GameState.personal_money < opt.cost:
+			return {"success": false,
+				"reply": "You haven't got it, have you. That's almost worse."}
+		GameState.add_personal(-opt.cost, "an arrangement")
+		mind.deal_state = "paid"
+		mind.adjust_trust(0.45)
+		# Bought silence is real silence: everything they hold is neutralised and
+		# they stop talking to investigators. They are staff now, in the other sense.
+		for ev in mind.evidence:
+			ev.neutralized = true
+		mind.escalation = 0.02
+		mind.talkativeness = 0.05
+		GameState.set_flag("corrupt_staff_count", int(GameState.flag("corrupt_staff_count", 0)) + 1)
+		return {"success": true, "reply": String(RNG.pick("deal_yes", [
+			"Pleasure doing business, doctor.",
+			"I never liked that patient anyway.",
+			"Same again next week, then."])), "deal": "paid"}
+
+	if opt.effect == "deal_threaten":
+		# Threatening someone who is already blackmailing you goes exactly as
+		# well as you would expect.
+		mind.deal_state = "refused"
+		mind.adjust_trust(-0.4)
+		mind.escalation = clampf(mind.escalation + 0.4, 0.0, 1.0)
+		var ev := Evidence.new()
+		ev.kind = "threatened_a_colleague"
+		ev.about_actor = "player"
+		ev.source = Evidence.Source.WITNESSED
+		ev.time = GameState.career_minutes
+		ev.base_weight = 0.5
+		ev.certainty = 1.0
+		ev.summary = "was threatened over it"
+		mind.add_evidence(ev)
+		return {"success": false, "reply": "That's a very interesting thing to say to me."}
+
+	if opt.effect == "deal_confess":
+		mind.deal_state = "refused"
+		GameState.set_flag("self_reported", true)
+		GameState.adjust_rep("doctor", 0.05)
+		GameState.add_heat(0.1, "self-reported")
+		return {"success": true, "reply": "...huh. Well. That's one way to do it."}
 
 	if opt.effect == "discharge_promise":
 		mind.adjust_trust(0.25)

@@ -71,12 +71,23 @@ func refresh() -> void:
 			mark = "x"
 		elif bool(a["missed"]):
 			mark = "-"
-		out.append("%s %02d:00  %-22s %s" % [mark, int(a["hour"]),
+		out.append("%s %-8s %-22s %s" % [mark, GameState.hour_string(int(a["hour"])),
 			String(a["name"]).substr(0, 22),
 			String(AppointmentSystem.LABELS.get(String(a["kind"]), ""))])
 	if appts.list.size() > ROWS:
 		out.append("  ...and %d more" % (appts.list.size() - ROWS))
 	_lines.text = "\n".join(out)
+
+## Reading the board opens the list, the same as the tablet does.
+##
+## The tutorial's first step names the board FIRST — "It's on the board by the
+## treatment bay, and on your tablet [Q]" — and only the tablet completed it,
+## because pressing [E] on the board did nothing whatsoever. A player who
+## followed the instruction as written walked to the board, pressed the use key,
+## got no response, and had no way to know the game wanted a different key.
+func interact(_player, _held) -> void:
+	AudioMgr.play("beep", -14.0)
+	EventBus.request_ui.emit("tablet", {})
 
 func prompt(_player) -> Array:
 	var appts = get_tree().get_first_node_in_group("appointment_system")
@@ -85,4 +96,5 @@ func prompt(_player) -> Array:
 	var next: Dictionary = appts.next_due()
 	if next.is_empty():
 		return [fixture_name, "list cleared"]
-	return [fixture_name, "next: %02d:00  %s" % [int(next["hour"]), String(next["name"])]]
+	return [fixture_name, "next: %s  %s" % [
+		GameState.hour_string(int(next["hour"])), String(next["name"])]]

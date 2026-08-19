@@ -116,6 +116,15 @@ func _break() -> void:
 	EventBus.item_broke.emit(self)
 	# Breaking hospital property is a facilities expense and a small reputational
 	# ding, but it is not evidence of fraud — which makes it a cheap distraction.
+	# A broken thing on the floor is a mess, and mess is a real number that four
+	# separate rules read — comfort, the room's complaint list, whether a fault
+	# is plausible, and the environmental complication roll. Nothing had ever
+	# called soil() or clean(), so cleanliness sat at exactly 1.0 for every room
+	# in the building for the entire game and all four read a spotless hospital.
+	var h = get_tree().get_first_node_in_group("hospital")
+	var r = h.room(h.room_at(global_position)) if h != null else null
+	if r != null:
+		r.soil(0.18 if fragile else 0.09)
 	WorldEvent.new("prop_broken", "player").at(global_position, _room()) \
 		.heard(0.05, noise_radius * 1.6).tag("mess").tag("facilities") \
 		.says("%s broke" % display_name()).emit()

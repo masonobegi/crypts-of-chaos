@@ -81,7 +81,7 @@ func shift_brief() -> VBoxContainer:
 		content.add_child(UIKit.label("YOUR LIST — %s SHIFT" %
 			String(ctx.get("shift_name", "Day")).to_upper(), 13, UIKit.INK_DIM))
 		for a in appts:
-			var row := UIKit.row("%02d:00  %s" % [int(a["hour"]),
+			var row := UIKit.row("%s  %s" % [GameState.hour_string(int(a["hour"])),
 				String(AppointmentSystem.LABELS.get(String(a["kind"]), ""))],
 				String(a["name"]))
 			content.add_child(row)

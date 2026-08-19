@@ -35,10 +35,22 @@ func _build() -> void:
 	var scroll_box := UIKit.vbox(6)
 	scroll_box.add_child(UIKit.rule())
 	scroll_box.add_child(UIKit.label("INDICATED TREATMENTS", 13, UIKit.INK_DIM))
+	# The number the whole game turns on, above the treatments rather than under
+	# them. It used to live on the machine and nowhere else, so the one thing a
+	# player needs BEFORE walking into a room could only be learned by walking
+	# into the room.
+	scroll_box.add_child(UIKit.row("Prescribed setting",
+		"dial %d" % DB.prescribed_setting(p.condition_id), UIKit.ACCENT))
 	for tid in DB.correct_treatments(p.condition_id):
 		var spec: Dictionary = DB.treatment(String(tid))
-		scroll_box.add_child(UIKit.row(String(spec.get("name", tid)),
-			String(spec.get("tool", "")) if String(spec.get("tool", "")) != "" else "no equipment"))
+		var tool_id := String(spec.get("tool", ""))
+		# The name of the thing, not its identifier. A chart that says "iv_bag"
+		# is a chart written by a programmer.
+		var tool_label := "no equipment"
+		if tool_id != "":
+			tool_label = String(Items.SPECS[tool_id]["name"]) if Items.SPECS.has(tool_id) \
+				else "at the machine"
+		scroll_box.add_child(UIKit.row(String(spec.get("name", tid)), tool_label))
 
 	scroll_box.add_child(UIKit.rule())
 	scroll_box.add_child(UIKit.label("COMPLICATIONS", 13, UIKit.INK_DIM))

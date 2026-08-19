@@ -1541,3 +1541,70 @@ and thirty-five thousand of debt is the whole reason any of this starts.
 All 21 design-intent assertions pass across three seeds.
 
 **1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**
+
+---
+
+## Session 4 (cont.) — the audit's minors, and a leak
+
+### The symptom halo was an opaque ball, and it leaked
+
+```gdscript
+col.a = 0.35 + 0.15 * sin(...)
+_symptom_mesh.material_override = Build.unshaded(col)
+```
+
+`Build.unshaded()` caches by colour string and never touches `transparency`, so
+it stays at `TRANSPARENCY_DISABLED` where the alpha channel is not used at all.
+
+Two things wrong at once. The pulse animated a channel that was discarded, so
+the halo that is supposed to say *something is wrong in here* from the doorway
+was an opaque ball sitting on the patient. And because the key includes the
+colour, a pulsing alpha wrote a **new material into a static dictionary sixty
+times a second, per patient**, forever.
+
+The halo owns one material now, with transparency on, and the pulse writes to
+it.
+
+### The appointment roster was wiping the tutorial mid-step
+
+`_announce_next()` writes to `objective_changed` — the single HUD line the
+tutorial writes its six steps to — on every hour tick and every completed slot,
+with no idea a tutorial was running. The identical clobber in `clock_in()` was
+found and guarded a while ago; the guard was never applied here.
+
+It does not need that line any more: the HUD has a dedicated appointment readout
+that counts down live, added earlier this session. So the roster stops writing
+to the objective line altogether, and "List cleared. The rest of the shift is
+yours." became a toast, which is where one-off news belongs.
+
+### Every room in the hospital was permanently spotless
+
+`Room.soil()` and `Room.clean()` were the only writers of `cleanliness` and
+neither had a caller, so it sat at exactly 1.0 for the whole game — and four
+separate rules read it: comfort, the room's complaint list,
+`has_plausible_fault()`, and the environmental complication roll. All four
+evaluated a spotless hospital forever.
+
+Breaking something now soils the room it broke in. Nothing downstream needed
+changing; all four readers already existed.
+
+### Comprehension pass
+
+- **Every clock in the game is 12-hour, except the appointment list**, which
+  printed `09:00` on the briefing, the tablet and the clinic board while the HUD
+  said `9:00 AM`. All of them go through `GameState.hour_string()` now.
+- **The tutorial says the chart states the prescribed dial setting. It did
+  not.** The number lived inside `TreatmentMachine.set_prescribed_for()` as an
+  expression, so the one thing a player needs *before* walking into a room could
+  only be learned by walking into the room. `DB.prescribed_setting()` is now the
+  single definition, and the chart prints it above the indicated treatments.
+- **The chart listed tools by identifier** — `iv_bag`, `machine_vibe`,
+  `blanket`. A chart that says "iv_bag" is a chart written by a programmer. It
+  now says "IV Bag", "Gravitational Blanket", "at the machine".
+- **Pressing [E] on the clinic board did nothing at all**, while the tutorial's
+  first step names the board *first*: "It's on the board by the treatment bay,
+  and on your tablet [Q]". A player who followed the instruction as written got
+  no response and no way to know the game wanted a different key. The board
+  opens the list now.
+
+**1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**

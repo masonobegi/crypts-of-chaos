@@ -212,7 +212,7 @@ func set_prescribed_for(p) -> void:
 		return
 	# Every condition has a by-the-book setting. It is on the chart. Deviating
 	# from it is trivially easy and entirely on you.
-	prescribed = 3 + (hash(p.condition_id) % 5)
+	prescribed = DB.prescribed_setting(p.condition_id)
 	_prescribed_for = p.id
 	_refresh()
 

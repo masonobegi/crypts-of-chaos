@@ -70,6 +70,7 @@ var _booked := {}
 func build_for_shift() -> void:
 	list.clear()
 	_booked.clear()
+	_list_was_cleared = false
 	var spec := GameState.shift_spec()
 	var count := int(spec.get("appointments", 5))
 	var start := GameState.shift_start_hour()
@@ -270,15 +271,28 @@ func remaining() -> int:
 			n += 1
 	return n
 
+## The roster no longer writes to the objective line.
+##
+## objective_changed is one line, and the tutorial writes its six steps to it.
+## This fired on every hour tick — one every couple of real minutes — and on
+## every slot completed, with no idea a tutorial was running, so a first-time
+## player's instruction was wiped mid-step by an appointment reminder. The same
+## clobber in clock_in() was found and guarded months ago; the guard was never
+## applied here.
+##
+## It does not need the line any more either. The HUD carries a dedicated,
+## live-counting appointment readout (hud.gd `_next_appt`), which says the same
+## thing better and updates every minute instead of every hour. So this is now
+## the announcement of a genuine one-off — the list being finished — and it goes
+## through the channel one-off news belongs in.
 func _announce_next() -> void:
 	if GameState.phase != GameState.Phase.SHIFT:
 		return
-	var e := next_due()
-	if e.is_empty():
-		EventBus.objective_changed.emit("List cleared. The rest of the shift is yours.")
-		return
-	EventBus.objective_changed.emit("%02d:00  %s — %s" % [
-		int(e["hour"]), String(LABELS.get(String(e["kind"]), "")), String(e["name"])])
+	if not _list_was_cleared and next_due().is_empty() and not list.is_empty():
+		_list_was_cleared = true
+		EventBus.toast.emit("List cleared. The rest of the shift is yours.", "good")
+
+var _list_was_cleared := false
 
 ## Everything still outstanding when you clock out. Walk-ins go home; admitted
 ## patients simply remember.

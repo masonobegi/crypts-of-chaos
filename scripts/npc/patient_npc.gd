@@ -163,6 +163,25 @@ func _return_to_bed() -> void:
 	if is_instance_valid(self):
 		state = State.IN_BED
 
+## The halo's own material, made once.
+##
+## This used to hand a fresh colour to Build.unshaded() every physics frame,
+## which did two bad things at once. Build.unshaded() caches by colour string,
+## so a pulsing alpha wrote a NEW material into a static dictionary sixty times
+## a second per patient — an unbounded leak that also meant the halo shared its
+## material with anything else that asked for the same colour. And it never
+## rendered as a tint at all: Build.unshaded() leaves transparency at
+## TRANSPARENCY_DISABLED, so the alpha the pulse animates was discarded and the
+## "halo" was an opaque ball sitting on top of the patient.
+var _halo: StandardMaterial3D = null
+
+func _halo_mat() -> StandardMaterial3D:
+	if _halo == null:
+		_halo = (Build.unshaded(Color.WHITE) as StandardMaterial3D).duplicate()
+		_halo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_symptom_mesh.material_override = _halo
+	return _halo
+
 func _tick_symptoms(delta: float) -> void:
 	if data == null or _symptom_mesh == null:
 		return
@@ -179,7 +198,7 @@ func _tick_symptoms(delta: float) -> void:
 		_symptom_mesh.visible = true
 		var col := worst.symptom_color
 		col.a = 0.35 + 0.15 * sin(float(Time.get_ticks_msec()) * 0.003)
-		_symptom_mesh.material_override = Build.unshaded(col)
+		_halo_mat().albedo_color = col
 
 	var r = _room_node()
 	if r and r.temperature < 16.0:

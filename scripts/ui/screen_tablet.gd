@@ -68,7 +68,7 @@ func _build_list(c: VBoxContainer) -> void:
 			elif late < 0:
 				status = "in %dh" % -late
 				tint = UIKit.INK_DIM
-		bv.add_child(UIKit.row("%02d:00  %s" % [int(a["hour"]),
+		bv.add_child(UIKit.row("%s  %s" % [GameState.hour_string(int(a["hour"])),
 			String(AppointmentSystem.LABELS.get(kind, kind))], status, tint, 16))
 		bv.add_child(UIKit.row("  " + String(a["name"]), String(a["complaint"]),
 			UIKit.INK_DIM, 13))

@@ -1043,6 +1043,17 @@ func condition_name(id: String) -> String:
 func condition(id: String) -> Dictionary:
 	return CONDITIONS.get(id, {})
 
+## The by-the-book dial setting for a condition.
+##
+## It lived inside TreatmentMachine.set_prescribed_for() as an expression, which
+## meant the number existed only on the machine — so the chart could not print
+## it, and the tutorial's line "the chart states the prescribed setting" was
+## simply untrue. Deviating from prescription is the central act of the game;
+## the player has to be able to look the number up somewhere other than by
+## walking to the machine.
+func prescribed_setting(cond_id: String) -> int:
+	return 3 + (hash(cond_id) % 5)
+
 func treatment_name(id: String) -> String:
 	return String(TREATMENTS.get(id, {}).get("name", id))
 

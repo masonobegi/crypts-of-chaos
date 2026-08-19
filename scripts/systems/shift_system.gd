@@ -66,8 +66,8 @@ func offer_shifts() -> void:
 		options.append({
 			"kind": kind,
 			"name": String(spec["name"]),
-			"hours": "%02d:00 – %02d:00" % [int(spec["start_hour"]),
-				(int(spec["start_hour"]) + int(spec["hours"])) % 24],
+			"hours": "%s – %s" % [GameState.hour_string(int(spec["start_hour"])),
+				GameState.hour_string(int(spec["start_hour"]) + int(spec["hours"]))],
 			"pay": float(spec["pay"]),
 			"staff": DB.staff_on(kind),
 			"appointments": int(spec["appointments"]),

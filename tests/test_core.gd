@@ -340,3 +340,32 @@ func test_clinical_impression_is_relative_to_expected_progress() -> void:
 	worse.days_admitted = 3.0
 	worse.recovery = -0.1
 	t.eq(worse.apparent_state(), "worse than on arrival", "and going backwards is unmistakable")
+
+# ==================================================================== audio
+func test_every_sound_synthesises_to_real_audio() -> void:
+	# All audio is generated at runtime, so a bad recipe produces silence rather
+	# than a missing-file error — which is much harder to notice.
+	for name in AudioMgr.RECIPES:
+		var st: AudioStreamWAV = AudioMgr._build(String(name))
+		t.ok(st != null, "%s builds a stream" % name)
+		t.gt(float(st.data.size()), 100.0, "%s has samples" % name)
+		var peak := 0
+		for i in range(0, st.data.size(), 2):
+			var v: int = st.data[i] | (st.data[i + 1] << 8)
+			if v > 32767:
+				v -= 65536
+			peak = maxi(peak, absi(v))
+		t.gt(float(peak), 1000.0, "%s is audible rather than silence" % name)
+
+func test_room_tone_loops_seamlessly() -> void:
+	# The hum has to loop without a click. That needs whole cycles inside the
+	# buffer, not a cross-fade.
+	var hum: AudioStreamWAV = AudioMgr._build_hum()
+	t.eq(hum.loop_mode, AudioStreamWAV.LOOP_FORWARD, "the bed is loop-enabled")
+	t.eq(hum.loop_begin, 0, "loops from the start")
+	t.eq(hum.loop_end, int(AudioMgr.HUM_SECONDS * AudioMgr.SR), "to the very end")
+	# Whole cycles in the buffer means the ends line up.
+	for freq in [50.0, 74.0]:
+		var cycles: float = freq * AudioMgr.HUM_SECONDS
+		t.near(cycles - floor(cycles), 0.0, 0.0001,
+			"%.0fHz fits a whole number of cycles in the loop" % freq)

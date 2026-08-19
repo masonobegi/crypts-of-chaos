@@ -39,7 +39,15 @@ const RECIPES := {
 	"drop":      {"w": "sine",  "f": 300.0, "d": 0.1,  "dec": 18.0, "n": 0.15, "sw": -0.4,  "vib": 0.0},
 	"door":      {"w": "saw",   "f": 180.0, "d": 0.35, "dec": 7.0,  "n": 0.2,  "sw": -0.3,  "vib": 3.0},
 	"tick":      {"w": "noise", "f": 1800.0,"d": 0.04, "dec": 40.0, "n": 1.0,  "sw": 0.0,   "vib": 0.0},
+	"cough":     {"w": "noise", "f": 420.0, "d": 0.22, "dec": 13.0, "n": 1.0,  "sw": -0.5,  "vib": 0.0},
+	"monitor":   {"w": "sine",  "f": 1180.0,"d": 0.09, "dec": 16.0, "n": 0.0,  "sw": 0.0,   "vib": 0.0},
+	"trolley":   {"w": "noise", "f": 260.0, "d": 0.5,  "dec": 5.0,  "n": 1.0,  "sw": 0.1,   "vib": 7.0},
+	"pipe":      {"w": "sine",  "f": 95.0,  "d": 0.8,  "dec": 3.5,  "n": 0.12, "sw": -0.15, "vib": 1.5},
 }
+
+## The continuous bed: a long, low, quietly unpleasant loop. Built separately
+## from the one-shots because it needs seamless looping rather than a decay.
+const HUM_SECONDS := 3.0
 
 func _ready() -> void:
 	# UI screens pause the tree; sound must keep working while they are open.
@@ -108,6 +116,58 @@ func _build(name: String) -> AudioStreamWAV:
 	st.data = data
 	_cache[name] = st
 	return st
+
+# ------------------------------------------------------------------ ambience
+var _hum_player: AudioStreamPlayer = null
+
+## Builds the room tone: two detuned low tones plus filtered noise, loop-enabled
+## so it runs continuously without a seam. Cross-faded at the ends so the loop
+## point is inaudible.
+func _build_hum() -> AudioStreamWAV:
+	if _cache.has("__hum"):
+		return _cache["__hum"]
+	var n_samples := int(HUM_SECONDS * SR)
+	var data := PackedByteArray()
+	data.resize(n_samples * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0xA11BEE
+	var lp := 0.0
+	for i in n_samples:
+		var t := float(i) / float(SR)
+		# Frequencies chosen so a whole number of cycles fits the buffer, which
+		# is what makes the loop seamless without any cross-fade.
+		var a := sin(TAU * 50.0 * t) * 0.5
+		var b := sin(TAU * 74.0 * t) * 0.3
+		lp = lerpf(lp, rng.randf_range(-1.0, 1.0), 0.02)
+		var s := a + b + lp * 0.5
+		var v := int(clampf(s * 2600.0, -32768.0, 32767.0))
+		var uv := v & 0xFFFF
+		data[i * 2] = uv & 0xFF
+		data[i * 2 + 1] = (uv >> 8) & 0xFF
+	var st := AudioStreamWAV.new()
+	st.format = AudioStreamWAV.FORMAT_16_BITS
+	st.mix_rate = SR
+	st.stereo = false
+	st.data = data
+	st.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	st.loop_begin = 0
+	st.loop_end = n_samples
+	_cache["__hum"] = st
+	return st
+
+func start_ambience(volume_db := -30.0) -> void:
+	_ensure_voices()
+	if _hum_player == null:
+		_hum_player = AudioStreamPlayer.new()
+		_hum_player.name = "Hum"
+		add_child(_hum_player)
+	_hum_player.stream = _build_hum()
+	_hum_player.volume_db = volume_db + linear_to_db(master_volume)
+	_hum_player.play()
+
+func stop_ambience() -> void:
+	if _hum_player:
+		_hum_player.stop()
 
 # ------------------------------------------------------------------ playback
 func play(name: String, volume_db: float = -6.0, pitch: float = 1.0) -> void:

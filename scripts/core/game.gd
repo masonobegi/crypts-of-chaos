@@ -107,6 +107,10 @@ func _spawn_systems() -> void:
 	obstruction.name = "ObstructionMonitor"
 	add_child(obstruction)
 
+	var ambience := AmbienceSystem.new()
+	ambience.name = "AmbienceSystem"
+	add_child(ambience)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)

@@ -178,6 +178,22 @@ small number of profitable outliers inside that volume.
 - [x] CLAUDE.md with the eight engine gotchas and the load-bearing design rules.
 - [x] 671 assertions, 37 smoke checks, 14 balance checks.
 
+- [x] Device logs persisted (they are evidence — losing them on load made the
+      sabotage free after any save).
+- [x] Clinical impression is relative to expected progress, not absolute.
+- [x] Ambient audio bed: a seamlessly looping room tone plus sparse positional
+      noises placed away from the player, so "background" and "something just
+      happened near me" stay distinguishable — which the whole distraction
+      economy depends on.
+- [x] 767 assertions, 40 smoke checks, 14 balance checks.
+
+### All 21 requested systems are implemented and verified
+architecture · player controller · interaction/physics · hospital environment ·
+patients · treatment/recovery · NPC AI · NPC memory/suspicion · dialogue ·
+economy · shift/day loop · procedural generation · investigations · reputation ·
+progression/upgrades · random events · save/load · UI · audio · tutorial ·
+multiple endings.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - A physical second wing (departments are currently capability unlocks that

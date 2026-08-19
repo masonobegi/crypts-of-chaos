@@ -17,6 +17,7 @@ var investigations: InvestigationSystem = null
 var events: RandomEventSystem = null
 var suspicion: SuspicionSystem = null
 var records: RecordsSystem = null
+var appointments: AppointmentSystem = null
 
 var shift_start_snapshot := {}
 var _pending_briefing := {}
@@ -29,6 +30,7 @@ func _ready() -> void:
 	events = get_tree().get_first_node_in_group("random_events")
 	suspicion = get_tree().get_first_node_in_group("suspicion_system")
 	records = get_tree().get_first_node_in_group("records_system")
+	appointments = get_tree().get_first_node_in_group("appointment_system")
 	EventBus.clock_tick.connect(_on_clock_tick)
 	EventBus.hour_tick.connect(_maybe_emergency_admission)
 
@@ -85,7 +87,15 @@ func begin_day(kind: String = "") -> Dictionary:
 	investigations.daily_check()
 	investigations.daily_tick()
 
+	var returning := patient_system.take_readmissions()
+	for r in returning:
+		EventBus.toast.emit("%s is back." % String(r["name"]), "money")
 	var arrivals := _admit_morning_patients()
+	for r in returning:
+		arrivals.append({"name": String(r["name"]), "condition": String(r["condition"]),
+			"stay": 0.0, "insurance": "", "revenue": 0, "room": "", "archetype": "returning"})
+	if appointments:
+		appointments.build_for_shift()
 
 	_pending_briefing = {
 		"day": GameState.day,
@@ -103,6 +113,7 @@ func begin_day(kind: String = "") -> Dictionary:
 		"sanction": GameState.SANCTIONS[GameState.sanction_level],
 		"census": patient_system.active_count(),
 		"projected_revenue": patient_system.total_daily_revenue(),
+		"appointments": appointments.list.duplicate(true) if appointments else [],
 	}
 	briefing_ready.emit(_pending_briefing)
 	return _pending_briefing
@@ -195,6 +206,7 @@ func clock_in() -> void:
 		"personal": GameState.personal_money,
 		"complications": GameState.stats.complications_caused,
 		"discharged": GameState.stats.patients_discharged,
+		"injuries": GameState.stats.injuries_caused,
 	}
 	GameState.set_phase(GameState.Phase.SHIFT)
 	GameState.stats.shifts_worked += 1
@@ -274,6 +286,8 @@ func end_shift() -> void:
 		if d is DoctorNPC:
 			d.review_charts(patient_system.active())
 
+	if appointments:
+		appointments.settle_unseen()
 	_settle_imaging_requests()
 	_run_ward_clerk()
 	var findings := records.pending_findings()
@@ -401,7 +415,8 @@ func clock_out() -> Dictionary:
 	# a sustained pattern is not.
 	_record_shift_statistics()
 	suspicion.run_statistical_review(patient_system.average_overstay(),
-		patient_system.active_count(), rolling_complication_rate())
+		patient_system.active_count(), rolling_complication_rate(),
+		rolling_injury_rate())
 
 	if GameState.flag("perk_fast_cooling", false):
 		GameState.add_heat(-0.03, "cooperating witness")
@@ -443,7 +458,10 @@ func _record_shift_statistics() -> void:
 		- int(shift_start_snapshot.get("complications", 0))
 	var discharged: int = int(GameState.stats.patients_discharged) \
 		- int(shift_start_snapshot.get("discharged", 0))
-	_complication_window.append({"comps": comps, "discharged": discharged})
+	var injuries: int = int(GameState.stats.injuries_caused) \
+		- int(shift_start_snapshot.get("injuries", 0))
+	_complication_window.append({"comps": comps, "discharged": discharged,
+		"injuries": injuries, "census": patient_system.active_count()})
 	while _complication_window.size() > 6:
 		_complication_window.remove_at(0)
 
@@ -459,6 +477,25 @@ func rolling_complication_rate() -> float:
 	if discharged < 2.0:
 		return -1.0      # too small a sample to mean anything
 	return comps / discharged
+
+## Ward-acquired injuries per patient per shift.
+##
+## Measured against the number of people ON the ward rather than the number who
+## left it, unlike the complication rate. That distinction is load-bearing: a
+## ward that admits everybody it hurts and discharges nobody has no denominator
+## for the complication statistic, and "switch the statistics off by never
+## letting anybody leave" would be a strategy.
+func rolling_injury_rate() -> float:
+	if _complication_window.size() < 3:
+		return -1.0
+	var injuries := 0.0
+	var patient_shifts := 0.0
+	for row in _complication_window:
+		injuries += float(row.get("injuries", 0))
+		patient_shifts += float(row.get("census", 0))
+	if patient_shifts < 3.0:
+		return -1.0
+	return injuries / patient_shifts
 
 func _was_clean_shift() -> bool:
 	if GameState.stats.complaints > int(shift_start_snapshot.get("complaints", 0)):

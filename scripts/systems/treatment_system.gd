@@ -205,6 +205,16 @@ func examine(p: Patient, part: String, pressure: int, from_pos := Vector3.ZERO) 
 		e.says("examined %s" % p.display_name)
 	e.emit()
 
+	# An examination is what a booked physical or review actually consists of,
+	# so doing one satisfies the slot and pays the fee. Including the one where
+	# something went wrong: the appointment happened.
+	var appts = get_tree().get_first_node_in_group("appointment_system")
+	if appts != null:
+		var fee: int = appts.complete("physical", p.id)
+		if fee == 0:
+			fee = appts.complete("followup", p.id)
+		result["fee"] = fee
+
 	# The patient is present for their own examination. They are always a
 	# witness, whatever else is true, and how good a witness they are is a
 	# property of the person rather than of the room.
@@ -222,6 +232,134 @@ func examine(p: Patient, part: String, pressure: int, from_pos := Vector3.ZERO) 
 		p.mind.add_evidence(ev)
 		p.satisfaction = clampf(p.satisfaction - 0.28, 0.0, 1.0)
 	return result
+
+# ------------------------------------------------------------------ surgery
+## A scheduled procedure, in three stages, each of which you can do properly,
+## quickly, or badly.
+##
+## Surgery is the most deniable thing in the game, and that is not an accident:
+## operations genuinely go wrong, "a recognised risk of the procedure" is a real
+## sentence real surgeons write, and a complication that appears on the table is
+## the one complication nobody is surprised by. The catch is the theatre record.
+## Every stage writes down which way you did it, the record is not yours, and
+## three improvised stages on one patient is a document that reads exactly like
+## what it is.
+const SURGERY_STAGES := 3
+const SURGERY_APPROACHES := {
+	"careful": {"name": "By the book", "risk": 0.02, "quality": 1.0, "visual": 0.0,
+		"note": "as per protocol"},
+	"quick": {"name": "Move it along", "risk": 0.14, "quality": 0.75, "visual": 0.12,
+		"note": "expedited"},
+	"improvise": {"name": "Improvise", "risk": 0.6, "quality": 0.3, "visual": 0.45,
+		"note": "approach modified intra-operatively"},
+}
+
+## What goes wrong at each site. Injuries at the operative site, because that is
+## where the hands are.
+const SURGERY_SITES := {
+	"wrist": "fractured_wrist",
+	"shoulder": "dislocated_shoulder",
+	"knee": "torn_knee",
+	"ribs": "cracked_ribs",
+	"general": "ambient_dread",
+}
+
+func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
+	if p == null or p.discharged or not SURGERY_SITES.has(site):
+		return {}
+	GameState.stats.surgeries += 1
+	var quality := 0.0
+	var risk := 0.0
+	var visual := 0.0
+	var notes := PackedStringArray()
+	var improvised := 0
+	for a in approaches:
+		var spec: Dictionary = SURGERY_APPROACHES.get(String(a), SURGERY_APPROACHES["careful"])
+		quality += float(spec["quality"])
+		risk = maxf(risk, float(spec["risk"]))
+		visual = maxf(visual, float(spec["visual"]))
+		notes.append(String(spec["note"]))
+		if String(a) == "improvise":
+			improvised += 1
+	quality /= maxf(1.0, float(approaches.size()))
+
+	# A competent operation genuinely helps. That is what makes the choice a
+	# choice rather than a lever.
+	var gain := 0.34 * quality
+	p.recovery = clampf(p.recovery + gain, -0.2, 1.0)
+	p.record_treatment("surgery", quality)
+
+	var comp := ""
+	if RNG.randf_s("surgery_%s" % p.id) < risk:
+		comp = String(SURGERY_SITES[site])
+		var already := false
+		for c in p.complications:
+			if c.id == comp and not c.resolved:
+				already = true
+		if already:
+			comp = ""
+		else:
+			patient_system.add_complication(p, comp, "surgical")
+			if DB.is_injury(comp):
+				GameState.stats.injuries_caused += 1
+			if improvised > 0:
+				GameState.stats.surgeries_botched += 1
+
+	p.chart.log_surgery(site, notes, GameState.day, comp, improvised)
+
+	var e := WorldEvent.new("surgery", "player").at(patient_system._position_of(p), p.room) \
+		.about(p.id).seen(visual).heard(0.05, 10.0).cover("known_risk") \
+		.tag("clinical").tag("surgery")
+	e.says("operated on %s" % p.display_name)
+	e.emit()
+
+	var appts = get_tree().get_first_node_in_group("appointment_system")
+	var fee := 0
+	if appts != null:
+		fee = appts.complete("surgery", p.id)
+	EventBus.treatment_applied.emit(p, "surgery", quality)
+	return {"quality": quality, "complication": comp, "fee": fee,
+		"improvised": improvised, "site": site}
+
+# ------------------------------------------------------------------ discharge meds
+## What they take home. The indicated one keeps them at home; an inert one means
+## whatever was wrong with them is still wrong with them in a few days; the third
+## kind does something, and what it does turns up at the front desk about a week
+## later looking like bad luck.
+func prescribe(p: Patient, med_id: String) -> Dictionary:
+	if p == null or not DB.PRESCRIPTIONS.has(med_id):
+		return {}
+	var spec := DB.prescription(med_id)
+	var kind := String(spec.get("kind", "inert"))
+	var indicated := DB.prescription_indicated(med_id, p.condition_id)
+	p.chart.prescription = med_id
+	p.chart.prescription_indicated = indicated
+	p.chart.add_note("Discharged on %s." % DB.prescription_name(med_id),
+		GameState.career_minutes, "You", true)
+
+	var readmit := 0.0
+	var reaction := ""
+	if not indicated:
+		GameState.stats.wrong_prescriptions += 1
+		if kind == "reactive":
+			readmit = 0.85
+			reaction = String(spec.get("reaction", ""))
+		else:
+			readmit = 0.5
+	if readmit > 0.0 and RNG.chance("readmit_%s" % p.id, readmit):
+		patient_system.schedule_readmission(p, reaction)
+
+	# Handing somebody a bag of pills is the least visible thing in the game.
+	# The pharmacy is what remembers, and the pharmacy is not yours.
+	WorldEvent.new("prescription", "player").at(patient_system._position_of(p), p.room) \
+		.about(p.id).seen(0.05).cover("clinical").tag("records") \
+		.says("sent %s home on %s" % [p.display_name, DB.prescription_name(med_id)]).emit()
+
+	var appts = get_tree().get_first_node_in_group("appointment_system")
+	var fee := 0
+	if appts != null:
+		fee = appts.complete("discharge", p.id)
+	return {"indicated": indicated, "kind": kind, "fee": fee}
 
 # ------------------------------------------------------------------ machines
 func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:

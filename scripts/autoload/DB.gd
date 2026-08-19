@@ -3,6 +3,88 @@ extends Node
 ## complications, personalities, events and upgrades can be added without
 ## touching a single system. Everything medical is invented.
 
+# =============================================================== PRESCRIPTIONS
+## What somebody goes home with. Entirely invented, like everything else here.
+##
+## The indicated one keeps them at home. An inert one does nothing at all, so
+## whatever was wrong with them is still wrong with them in a few days — and a
+## readmission is a fresh admission, at a fresh daily rate, with a perfectly
+## honest explanation. The third kind does something, and what it does turns up
+## at the front desk about a week later looking like bad luck.
+##
+## The pharmacy keeps a record of all three. It is the only device log in the
+## building the player cannot reach.
+const PRESCRIPTIONS := {
+	"chalkinol_takehome": {
+		"name": "Chalkinol, 40mg", "kind": "indicated",
+		"blurb": "Twice daily with food. Tastes like a library.",
+		"treats": ["funny_bone", "spleen_torque", "percussive_sinus", "knuckle_weather",
+			"recursive_sneeze", "borrowed_ache", "clerical_lung", "lactose_hostility",
+			"premonitory_hangover", "acute_moustache_strain"],
+	},
+	"beigeostat": {
+		"name": "Beigeostat", "kind": "indicated",
+		"blurb": "Holds the colour. Does not restore it.",
+		"treats": ["chronic_beige", "ossified_vibes", "gravitational_confusion",
+			"reverse_shivers", "magnetic_indecision", "residual_monday",
+			"spontaneous_tuesday", "opaque_torso", "latent_geometry"],
+	},
+	"bone_salts": {
+		"name": "Compound Bone Salts", "kind": "indicated",
+		"blurb": "For anything that has recently been the wrong shape.",
+		"treats": ["fractured_wrist", "fractured_ankle", "cracked_ribs",
+			"dislocated_shoulder", "torn_knee", "acute_shatter", "ghost_fracture",
+			"percussive_collapse", "escalating_posture", "acute_deflation"],
+	},
+	"calmitol": {
+		"name": "Calmitol", "kind": "indicated",
+		"blurb": "Takes the edge off having had an opinion.",
+		"treats": ["bilateral_opinions", "calcified_grudge", "recursive_worry",
+			"borrowed_conviction", "chronic_certainty", "ambient_grievance",
+			"concussion", "perforated_patience", "argumentative_reflex",
+			"unfinished_yawn", "catastrophic_yawn"],
+	},
+	"placebex_takehome": {
+		"name": "Placebex, 10mg", "kind": "inert",
+		"blurb": "Well tolerated. Extremely well tolerated.",
+		"treats": [],
+	},
+	"saline_caps": {
+		"name": "Saline Capsules", "kind": "inert",
+		"blurb": "Salt. In a capsule. Entirely above board.",
+		"treats": [],
+	},
+	"dual_course": {
+		"name": "Dual Course (Chalkinol + Calmitol)", "kind": "reactive",
+		"blurb": "Both, together, at the full dose. Rarely indicated.",
+		"treats": [], "reaction": "delayed_reaction",
+	},
+	"loading_dose": {
+		"name": "Beigeostat Loading Dose", "kind": "reactive",
+		"blurb": "The whole course, in the first three days.",
+		"treats": [], "reaction": "escalating_politeness",
+	},
+}
+
+static func prescription(id: String) -> Dictionary:
+	return PRESCRIPTIONS.get(id, {})
+
+static func prescription_name(id: String) -> String:
+	return String(PRESCRIPTIONS.get(id, {}).get("name", id))
+
+## Is this what you would actually send somebody home with?
+static func prescription_indicated(med_id: String, condition_id: String) -> bool:
+	return Array(PRESCRIPTIONS.get(med_id, {}).get("treats", [])).has(condition_id)
+
+## Everything on the shelf that IS indicated for them. Empty means nothing in
+## the pharmacy touches it, which is its own kind of answer.
+static func prescriptions_for(condition_id: String) -> Array[String]:
+	var out: Array[String] = []
+	for id in PRESCRIPTIONS:
+		if prescription_indicated(String(id), condition_id):
+			out.append(String(id))
+	return out
+
 # =============================================================== SHIFTS
 ## Three shifts, and picking one is the first decision of every day.
 ##

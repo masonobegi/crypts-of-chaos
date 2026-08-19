@@ -8,6 +8,16 @@ extends Node
 ## corroboration possible: two people seeing the same thing must know about each
 ## other, or "make sure there's only one witness" would not be a strategy.
 
+## Injuries a normal ward acquires per patient per shift. Not zero: people do
+## fall over in hospitals, which is exactly why "an unwitnessed fall" is a story
+## worth telling.
+##
+## Tuned against a FIVE BED ward, which is a much smaller denominator than a
+## real hospital's. At a stricter baseline the second injury in a fortnight was
+## already a statistical outlier, and no amount of care or paperwork could get
+## a career past it — the statistic stopped being something to manage and became
+## a countdown.
+const BASELINE_INJURY_RATE := 0.06
 const GOSSIP_INTERVAL_MIN := 25       ## in-game minutes between gossip passes
 const GOSSIP_RANGE := 5.0
 
@@ -315,7 +325,7 @@ func report_to_institution(inst_id: String, kind: String, weight: float, summary
 const BASELINE_COMPLICATION_RATE := 0.34   ## per discharged patient, ward average
 
 func run_statistical_review(avg_overstay: float, sample: int,
-		complication_rate: float = -1.0) -> void:
+		complication_rate: float = -1.0, injury_rate: float = -1.0) -> void:
 	if sample < 3:
 		return
 	if avg_overstay >= 0.6:
@@ -331,6 +341,19 @@ func run_statistical_review(avg_overstay: float, sample: int,
 			"complication rate running %.1fx the ward average" % excess)
 		EventBus.toast.emit(
 			"Your complication rate is well above the ward average.", "suspicion")
+
+	# Injuries per patient-shift. Deliberately measured against how many people
+	# are ON the ward rather than how many left it: the complication rate goes
+	# blind on a ward that never discharges anybody, and "fill every bed with
+	# people you hurt and discharge none of them" would otherwise be the way to
+	# switch the statistics off entirely.
+	if injury_rate >= 0.0 and injury_rate > BASELINE_INJURY_RATE * 2.0:
+		var over := injury_rate / maxf(BASELINE_INJURY_RATE, 0.0001)
+		var w := clampf((over - 1.9) * 0.11, 0.04, 0.85)
+		_file_statistic("injury_rate_outlier", w,
+			"ward-acquired injuries running %.1fx the expected rate" % over)
+		EventBus.toast.emit(
+			"Somebody has run the numbers on ward-acquired injuries.", "suspicion")
 
 func _file_statistic(kind: String, weight: float, summary: String) -> void:
 	for inst_id in ["admin", "insurer"]:

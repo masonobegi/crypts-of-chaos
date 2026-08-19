@@ -8,6 +8,8 @@ const SCREEN_SCRIPTS := {
 	"records": "res://scripts/ui/screen_records.gd",
 	"shift_select": "res://scripts/ui/screen_shift_select.gd",
 	"exam": "res://scripts/ui/screen_exam.gd",
+	"surgery": "res://scripts/ui/screen_surgery.gd",
+	"prescribe": "res://scripts/ui/screen_prescribe.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"statement": "res://scripts/ui/screen_statement.gd",

@@ -15,6 +15,8 @@ const SUITES := [
 	"res://tests/test_systems.gd",
 	"res://tests/test_shifts.gd",
 	"res://tests/test_injuries.gd",
+	"res://tests/test_appointments.gd",
+	"res://tests/test_procedures.gd",
 ]
 
 var passed := 0

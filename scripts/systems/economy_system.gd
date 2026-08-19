@@ -57,6 +57,23 @@ func bill_day() -> Dictionary:
 	GameState.add_hospital(revenue, "patient billing")
 	return {"revenue": revenue, "lines": lines}
 
+## A one-off procedure fee: consultations, reviews, operations, discharges.
+## Billed the moment the work is done rather than at the end of the day, because
+## the whole point of a booked list is that you can watch it add up.
+var procedure_fees: int = 0
+
+func bill_procedure(label: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	procedure_fees += amount
+	GameState.add_hospital(amount, label)
+
+func bill_procedure_cost(label: String, amount: int) -> void:
+	if amount <= 0:
+		return
+	procedure_fees -= amount
+	GameState.add_hospital(-amount, label)
+
 func staff_count() -> int:
 	return get_tree().get_nodes_in_group("staff").size()
 
@@ -85,7 +102,9 @@ func compute_bonus(profit: int) -> int:
 func close_shift() -> Dictionary:
 	var billing := bill_day()
 	var costs := daily_costs()
-	var profit: int = int(billing["revenue"]) - int(costs["total"])
+	var fees := procedure_fees
+	procedure_fees = 0
+	var profit: int = int(billing["revenue"]) + fees - int(costs["total"])
 	GameState.add_hospital(-int(costs["total"]), "operating costs")
 
 	var bonus := compute_bonus(profit)
@@ -98,7 +117,9 @@ func close_shift() -> Dictionary:
 
 	admissions_today = 0
 	last_statement = {
-		"revenue": billing["revenue"],
+		"revenue": int(billing["revenue"]) + fees,
+		"bed_revenue": billing["revenue"],
+		"procedure_fees": fees,
 		"lines": billing["lines"],
 		"costs": costs,
 		"profit": profit,

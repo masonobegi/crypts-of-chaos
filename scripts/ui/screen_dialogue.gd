@@ -59,6 +59,21 @@ func _build() -> void:
 			Color(0.18, 0.28, 0.34))
 		ex.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(ex)
+		if _patient.admitted:
+			var op := UIKit.button("Take them to theatre", func():
+				var pid: String = _patient.id
+				close()
+				EventBus.request_ui.emit("surgery", {"patient_id": pid}),
+				Color(0.18, 0.28, 0.34))
+			op.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			v.add_child(op)
+			var rx := UIKit.button("Discharge and prescribe", func():
+				var pid: String = _patient.id
+				close()
+				EventBus.request_ui.emit("prescribe", {"patient_id": pid}),
+				Color(0.18, 0.28, 0.34))
+			rx.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			v.add_child(rx)
 	var opts := UIKit.vbox(6)
 	for o in Dialogue.options_for(_mind, _patient):
 		opts.add_child(_option_button(o))

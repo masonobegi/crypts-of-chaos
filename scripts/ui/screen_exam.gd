@@ -67,8 +67,37 @@ func _build() -> void:
 		v.add_child(UIKit.label(DB.COMPLICATIONS[String(_result["injury"])]["symptom"],
 			15, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(UIKit.label("Nothing has been written down.", 13, UIKit.WARN))
+	if int(_result.get("fee", 0)) > 0:
+		v.add_child(UIKit.row("Consultation billed",
+			UIKit.money_str(int(_result["fee"])), UIKit.MONEY))
+
+	# A walk-in is not a patient yet. This is the decision the clinic exists for
+	# and it is stated as flatly as any other clinical judgement, because that is
+	# what it looks like from the inside.
+	if not _patient.admitted and not _patient.discharged:
+		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label("DISPOSITION", 13, UIKit.INK_DIM))
+		v.add_child(UIKit.button("Admit them — %s/day" %
+			UIKit.money_str(_patient.daily_revenue()), _admit, Color(0.16, 0.32, 0.30)))
+		v.add_child(UIKit.button("Nothing to admit for — send them home", _send_home))
 	v.add_child(UIKit.spacer())
 	v.add_child(UIKit.button("Close", close))
+
+func _admit() -> void:
+	var ps = patient_system()
+	if ps == null:
+		close()
+		return
+	if not ps.admit(_patient):
+		EventBus.toast.emit("No bed for %s." % _patient.display_name, "bad")
+	close()
+
+func _send_home() -> void:
+	var ps = patient_system()
+	if ps:
+		ps.send_home(_patient, "cleared")
+		EventBus.toast.emit("%s sent home." % _patient.display_name, "good")
+	close()
 
 ## What your character actually gleaned. This is the honest half of the verb and
 ## the reason a careful examination is worth the two minutes.

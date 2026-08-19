@@ -18,6 +18,7 @@ var economy: EconomySystem
 var records: RecordsSystem
 var investigations: InvestigationSystem
 var events: RandomEventSystem
+var appointments: AppointmentSystem
 var shift: ShiftSystem
 var codex: Codex
 var ui: Node
@@ -113,6 +114,10 @@ func _spawn_systems() -> void:
 	var ambience := AmbienceSystem.new()
 	ambience.name = "AmbienceSystem"
 	add_child(ambience)
+
+	appointments = AppointmentSystem.new()
+	appointments.name = "AppointmentSystem"
+	add_child(appointments)
 
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
@@ -229,6 +234,7 @@ func _register_saves() -> void:
 	SaveSystem.register("economy", economy.to_dict, economy.from_dict)
 	SaveSystem.register("investigations", investigations.to_dict, investigations.from_dict)
 	SaveSystem.register("events", events.to_dict, events.from_dict)
+	SaveSystem.register("appointments", appointments.to_dict, appointments.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
 	SaveSystem.register("codex", codex.to_dict, codex.from_dict)
 	SaveSystem.register("devices", _save_devices, _load_devices)

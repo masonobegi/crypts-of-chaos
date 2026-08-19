@@ -49,6 +49,21 @@ func shift_brief() -> VBoxContainer:
 			box.add_child(bv)
 			content.add_child(box)
 
+	# ---- the list. What the shift actually is.
+	var appts: Array = ctx.get("appointments", [])
+	if not appts.is_empty():
+		content.add_child(UIKit.rule())
+		content.add_child(UIKit.label("YOUR LIST — %s SHIFT" %
+			String(ctx.get("shift_name", "Day")).to_upper(), 13, UIKit.INK_DIM))
+		for a in appts:
+			var row := UIKit.row("%02d:00  %s" % [int(a["hour"]),
+				String(AppointmentSystem.LABELS.get(String(a["kind"]), ""))],
+				String(a["name"]))
+			content.add_child(row)
+		content.add_child(UIKit.label(
+			"%d other staff on the floor tonight." % int(ctx.get("staff_on", 0)),
+			13, UIKit.INK_DIM))
+
 	var open_inv: Array = ctx.get("open_investigations", [])
 	if not open_inv.is_empty():
 		content.add_child(UIKit.rule())

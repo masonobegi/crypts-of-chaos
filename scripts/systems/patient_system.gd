@@ -170,12 +170,20 @@ func admit(p: Patient, ward_key := "") -> bool:
 				return false
 		else:
 			ward_key = free[0]
+	# A walk-in already has a body standing in the treatment bay; admitting them
+	# moves that same person into a bed rather than spawning a second one.
+	var was_walkin: bool = patients.has(p.id) and not p.admitted
 	p.room = ward_key
+	p.admitted = true
 	patients[p.id] = p
 
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
-	_spawn_body(p, ward_key, sus)
-	_spawn_chart(p, ward_key)
+	if was_walkin:
+		_spawn_chart(p, ward_key)
+		transfer(p, ward_key)
+	else:
+		_spawn_body(p, ward_key, sus)
+		_spawn_chart(p, ward_key)
 
 	GameState.stats.patients_admitted += 1
 	EventBus.patient_admitted.emit(p)
@@ -211,6 +219,109 @@ func _spawn_body(p: Patient, ward_key: String, sus) -> void:
 	for f in get_tree().get_nodes_in_group("fixture"):
 		if f is TreatmentMachine and f.room_key == ward_key:
 			f.set_prescribed_for(p)
+
+## Somebody walks in off the street. They are a real person with a real body
+## standing in the treatment bay, and they are not costing anybody anything
+## until you decide they need a bed.
+func book_walkin(force_condition := "") -> Patient:
+	var p := generate(force_condition)
+	p.admitted = false
+	p.room = "treatment"
+	patients[p.id] = p
+	return p
+
+## ...and turns up for it. The body is spawned when the slot comes round rather
+## than at the start of the shift, so the treatment bay fills up over the day
+## instead of containing everybody you will ever see at eight in the morning.
+func arrive_walkin(p: Patient) -> Patient:
+	if p == null or bodies.has(p.id):
+		return p
+	var npc := PatientNPC.new()
+	npc.name = "Walkin_" + p.id
+	npc.set_colours(p.skin_tone, p.shirt_color, Color(0.22, 0.16, 0.12))
+	npc.display = p.display_name
+	npc.archetype = p.archetype
+	spawn_parent().add_child(npc)
+	npc.bind(p, null)
+	npc.global_position = hospital.point_in("treatment", "walkin_spot") if hospital \
+		else Vector3.ZERO
+	npc.state = PatientNPC.State.SITTING
+	bodies[p.id] = npc
+	npc.tree_exiting.connect(func():
+		if bodies.get(p.id, null) == npc:
+			bodies.erase(p.id))
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if sus:
+		sus.register(p.mind, npc)
+	EventBus.toast.emit("%s is here for a %s." % [p.display_name,
+		"review" if RNG.chance("walkin_word", 0.5) else "check-up"], "info")
+	return p
+
+## Somebody who was sent home on the wrong thing comes back. Not tomorrow and
+## not obviously — a readmission is a fresh admission at a fresh daily rate with
+## a completely honest explanation, and it is the closest thing in the game to
+## a renewable resource.
+##
+## Held as a booking rather than a patient so they genuinely leave the building
+## in between, which is what makes it read as coming back rather than never
+## having gone.
+var readmissions: Array[Dictionary] = []       ## {condition, name, day, complication}
+
+func schedule_readmission(p: Patient, complication := "") -> void:
+	if p == null:
+		return
+	readmissions.append({
+		"condition": p.condition_id,
+		"name": p.display_name,
+		"day": GameState.day + RNG.randi_range_s("readmit_gap", 2, 5),
+		"complication": complication,
+		"skin": [p.skin_tone.r, p.skin_tone.g, p.skin_tone.b],
+	})
+	GameState.stats.readmissions += 1
+
+## Anyone due back today, admitted if there is a bed. Returns what happened for
+## the morning briefing.
+func take_readmissions() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var still: Array[Dictionary] = []
+	for r in readmissions:
+		if int(r["day"]) > GameState.day:
+			still.append(r)
+			continue
+		if free_wards().is_empty():
+			# Nowhere to put them today; they wait, like everybody else.
+			r["day"] = GameState.day + 1
+			still.append(r)
+			continue
+		var p := generate(String(r["condition"]))
+		p.display_name = String(r["name"])
+		p.presenting_complaint = "%s (readmission)" % DB.condition_name(p.condition_id)
+		p.chart.presenting_complaint = p.presenting_complaint
+		# They have been round this once. They are paying attention now.
+		p.mind.observance = clampf(p.mind.observance + 0.2, 0.0, 1.0)
+		p.mind.trust = clampf(p.mind.trust - 0.3, 0.0, 1.0)
+		if admit(p):
+			if String(r.get("complication", "")) != "":
+				add_complication(p, String(r["complication"]), "prescription")
+			out.append({"name": p.display_name, "condition": p.condition_name()})
+	readmissions = still
+	return out
+
+## Cleared and sent away without ever being admitted. Costs nothing, earns the
+## consultation fee, and is the correct thing to do roughly always.
+func send_home(p: Patient, reason := "cleared") -> void:
+	if p == null or p.discharged:
+		return
+	p.discharged = true
+	p.discharge_reason = reason
+	var body = get_body(p.id)
+	if body:
+		body.discharge_and_leave()
+	var chart = charts.get(p.id, null)
+	if chart and is_instance_valid(chart):
+		chart.queue_free()
+	charts.erase(p.id)
+	EventBus.patient_discharged.emit(p, reason)
 
 func _spawn_chart(p: Patient, ward_key: String) -> void:
 	var chart := Items.spawn("chart")
@@ -593,11 +704,23 @@ func get_body(id: String):
 		return null
 	return b
 
+## Everybody on the ward. Walk-ins are deliberately NOT here: they are not
+## admitted, so they are not billed, not ticked, and not part of the census an
+## auditor reads. Turning one into an admission is the whole clinic loop.
 func active() -> Array[Patient]:
 	var out: Array[Patient] = []
 	for id in patients:
 		var p: Patient = patients[id]
-		if not p.discharged:
+		if not p.discharged and p.admitted:
+			out.append(p)
+	return out
+
+## People sitting in the treatment bay waiting to be seen.
+func walkins() -> Array[Patient]:
+	var out: Array[Patient] = []
+	for id in patients:
+		var p: Patient = patients[id]
+		if not p.discharged and not p.admitted:
 			out.append(p)
 	return out
 
@@ -636,7 +759,8 @@ func to_dict() -> Dictionary:
 	var wait: Array = []
 	for w in waiting:
 		wait.append(w.to_dict())
-	return {"patients": out, "next_id": _next_id, "waiting": wait, "visitors": _visitor_pool}
+	return {"patients": out, "next_id": _next_id, "waiting": wait,
+		"visitors": _visitor_pool, "readmits": readmissions}
 
 func from_dict(d: Dictionary) -> void:
 	for id in bodies:
@@ -653,6 +777,9 @@ func from_dict(d: Dictionary) -> void:
 	waiting.clear()
 
 	_next_id = int(d.get("next_id", 1))
+	readmissions.clear()
+	for r in d.get("readmits", []):
+		readmissions.append(r)
 	_visitor_pool = d.get("visitors", [])
 	var stored: Dictionary = d.get("patients", {})
 	var sus = get_tree().get_first_node_in_group("suspicion_system")

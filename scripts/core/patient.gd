@@ -37,6 +37,11 @@ var actual_treatments: Array[Dictionary] = []   ## {id, time, quality}
 var last_treatment_time: int = -999
 
 var room: String = ""
+## False while they are a walk-in sitting in the treatment bay waiting to be
+## seen. A walk-in costs the hospital nothing and earns it nothing; admitting
+## one is what starts the meter, which is why "did I find anything?" is the most
+## profitable question in the building.
+var admitted: bool = false
 var discharged: bool = false
 var discharge_reason: String = ""
 ## 0..1. Low satisfaction produces complaints even with zero suspicion — being
@@ -278,6 +283,7 @@ func to_dict() -> Dictionary:
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
 		"corm": corridor_minutes, "cmpl": complained, "pres": presenting_complaint,
+		"adm": admitted,
 		"exam": examined_at,
 	}
 
@@ -315,6 +321,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.imaged_at = int(d.get("img", -99999))
 	p.corridor_minutes = float(d.get("corm", 0.0))
 	p.presenting_complaint = String(d.get("pres", ""))
+	p.admitted = bool(d.get("adm", true))
 	p.examined_at = int(d.get("exam", -99999))
 	p.complained = bool(d.get("cmpl", false))
 	p.imaging_requested_by = String(d.get("imgrb", ""))

@@ -34,10 +34,18 @@ func _run(strategy: String) -> Dictionary:
 	for day in DAYS:
 		game.shift.clock_in()
 		# Run the shift's worth of minutes.
-		for i in GameState.SHIFT_HOURS * 60:
+		# Interleaved rather than "run the whole clock, then act". Appointments
+		# expire if you are three hours late for them, so a harness that did all
+		# of its time first and all of its work afterwards would arrive to find
+		# every slot already missed and would be measuring that instead of the
+		# design.
+		for i in GameState.shift_hours() * 60:
 			GameState._advance_minute()
 			if GameState.shift_over():
 				break
+			if i % 30 == 0:
+				_work_the_list(game, strategy)
+		_work_the_list(game, strategy)
 		_act(game, strategy)
 		game.shift.end_shift()
 		var report: Dictionary = game.shift.clock_out()
@@ -81,6 +89,8 @@ func _run(strategy: String) -> Dictionary:
 		"admin_sus": game.suspicion.suspicion_of("admin"),
 		"insurer_sus": game.suspicion.suspicion_of("insurer"),
 		"comp_rate": game.shift.rolling_complication_rate(),
+		"injury_rate": game.shift.rolling_injury_rate(),
+		"injuries": int(GameState.stats.injuries_caused),
 		"investigations": game.investigations.closed_investigations.size(),
 		"adverse": _count_adverse(game),
 		"upgrades": GameState.owned_upgrades.duplicate(),
@@ -145,6 +155,98 @@ func _act_honest(game) -> void:
 					true, Vector3.ZERO, p.room)
 		if p.recovery >= 0.98:
 			game.treatment.attempt_discharge(p)
+
+## Work the booked list. Every strategy attends its appointments — not turning
+## up for people is a way to lose that has nothing to do with the crime, and a
+## harness that skipped the list would be measuring that instead of the design.
+##
+## The strategies differ in what happens once the door is shut: honest examines
+## at the indicated pressure and sends walk-ins home, careless leans on
+## everybody, and careful leans on the ones whose insurance makes it worth the
+## risk and files a mechanism immediately afterwards.
+func _work_the_list(game, strategy: String) -> void:
+	var appts = game.appointments
+	if appts == null:
+		return
+	for e in appts.list.duplicate():
+		if e["done"] or e["missed"]:
+			continue
+		var p = game.patient_system.get_patient(String(e["patient_id"]))
+		if p == null or p.discharged:
+			continue
+		var kind := String(e["kind"])
+		if kind == "physical" or kind == "followup":
+			_see_them(game, p, strategy)
+		elif kind == "surgery":
+			_operate(game, p, strategy)
+		elif kind == "discharge":
+			_send_them_home(game, p, strategy)
+
+## Three stages, done properly, quickly, or badly. Careless improvises all three
+## on everybody; careful improvises only where the insurance justifies the risk
+## and files a mechanism straight afterwards.
+func _operate(game, p, strategy: String) -> void:
+	var worth_it: bool = DB.insurance_multiplier(p.insurance) >= 1.5
+	var how := "careful"
+	if strategy == "careless":
+		how = "improvise"
+	elif strategy == "careful" and worth_it and p.acquired_injuries().is_empty():
+		how = "quick"
+	var res: Dictionary = game.treatment.perform_surgery(p, "knee", [how, how, how])
+	if strategy == "careful" and String(res.get("complication", "")) != "":
+		for c in p.active_complications():
+			if c.documented_cause == "" and c.plausible_causes.size() > 0:
+				game.records.document_complication(p, c, String(c.plausible_causes[0]),
+					true, Vector3.ZERO, p.room)
+
+## Send them home on the right thing, or on something that brings them back.
+func _send_them_home(game, p, strategy: String) -> void:
+	var options := DB.prescriptions_for(p.condition_id)
+	var med := String(options[0]) if not options.is_empty() else "placebex_takehome"
+	if strategy == "careless":
+		med = "dual_course"
+	elif strategy == "careful" and DB.insurance_multiplier(p.insurance) >= 1.5 \
+			and p.acquired_injuries().is_empty() and p.chart.surgery_log.is_empty():
+		# Only on somebody nothing else has already been done to.
+		med = "placebex_takehome"
+	game.treatment.prescribe(p, med)
+	game.patient_system.discharge(p, "discharged")
+
+func _see_them(game, p, strategy: String) -> void:
+	var worth_it: bool = DB.insurance_multiplier(p.insurance) >= 1.5
+	var pressure: int = TreatmentSystem.EXAM_INDICATED
+	match strategy:
+		"careless":
+			pressure = TreatmentSystem.EXAM_DIAL_MAX
+		"careful":
+			# One angle per patient, not three. A careful cheater who leans on
+			# somebody in clinic AND improvises their operation AND sends them
+			# home on the wrong thing is not a careful cheater, and a harness
+			# that models it that way is measuring recklessness.
+			# And the lowest pressure that has any chance at all, not the
+			# highest that might work. The difference is entirely in how
+			# obvious it looks to whoever is standing there.
+			if worth_it and not p.admitted:
+				pressure = TreatmentSystem.EXAM_INDICATED + 3
+	var res: Dictionary = game.treatment.examine(p, String(RNG.pick("bal_part",
+		["wrist", "ankle", "shoulder", "knee"])), pressure, Vector3.ZERO)
+
+	# Paperwork, immediately, for anyone who does paperwork.
+	if strategy == "careful" and String(res.get("injury", "")) != "":
+		for c in p.acquired_injuries():
+			if c.documented_cause == "" and c.plausible_causes.size() > 0:
+				game.records.document_complication(p, c, String(c.plausible_causes[0]),
+					true, Vector3.ZERO, p.room)
+
+	if p.admitted:
+		return
+	# A walk-in with something wrong with them is an admission. A walk-in with
+	# nothing wrong with them is a consultation fee and a wave goodbye.
+	var found: bool = not p.acquired_injuries().is_empty()
+	if found and not game.patient_system.free_wards().is_empty():
+		game.patient_system.admit(p)
+	else:
+		game.patient_system.send_home(p, "cleared")
 
 ## Crank every machine, document nothing, bill for everything.
 func _act_careless(game) -> void:
@@ -219,6 +321,9 @@ func report() -> void:
 		print("  institutions    : admin %.0f%%   insurer %.0f%%" % [
 			float(r["admin_sus"]) * 100.0, float(r["insurer_sus"]) * 100.0])
 		print("  complication/dc : %.2f   (ward baseline 0.34)" % float(r["comp_rate"]))
+		print("  ward injuries   : %d caused, rate %.3f per patient-shift (baseline %.2f)" % [
+			int(r.get("injuries", 0)), float(r.get("injury_rate", -1.0)),
+			SuspicionSystem.BASELINE_INJURY_RATE])
 		print("  investigations  : %d closed, %d adverse" % [
 			int(r["investigations"]), int(r["adverse"])])
 		print("  bought          : %s" % ", ".join(PackedStringArray(r["upgrades"])))
@@ -274,8 +379,13 @@ func _assert_design_intent() -> void:
 		"careful cheating runs cooler than careless cheating")
 	_check(float(honest.get("comp_rate", 1.0)) <= 0.34,
 		"an honest ward sits at or under the baseline complication rate")
-	_check(float(careless.get("comp_rate", 0.0)) > 0.34 * 3.0,
+	_check(float(careless.get("comp_rate", 0.0)) > 0.34 * 3.0
+			or float(careless.get("injury_rate", 0.0)) > 0.06,
 		"a careless ward is a glaring statistical outlier")
+	# The injury statistic exists precisely so that filling every bed with
+	# people you hurt and discharging nobody cannot switch the numbers off.
+	_check(float(careless.get("injury_rate", 0.0)) > float(honest.get("injury_rate", 0.0)),
+		"and hurting people shows up in the ward-acquired injury rate")
 	_check(float(careful.get("insurer_sus", 0.0)) > float(honest.get("insurer_sus", 1.0)),
 		"careful cheating still accumulates insurer attention — safe, not invisible")
 	_check(int(careful.get("adverse", 99)) == 0 and int(careless.get("adverse", 0)) > 0,

@@ -38,6 +38,20 @@ var imaging_day: int = -1
 ## precisely what makes it dangerous. Everything else here can be edited, forged
 ## or fed to the shredder; this cannot, and it states the TRUE cause.
 var imaging_findings: Array = []
+## The theatre record: one entry per operation, listing how each stage was done.
+## Written by the theatre, not by you.
+var surgery_log: Array = []          ## {day, site, notes, complication, improvised}
+## What they were sent home on, and whether it was indicated for what they had.
+## The pharmacy keeps its own copy.
+var prescription: String = ""
+var prescription_indicated: bool = true
+
+func log_surgery(site: String, notes: PackedStringArray, day: int,
+		complication: String, improvised: int) -> void:
+	surgery_log.append({
+		"day": day, "site": site, "notes": Array(notes),
+		"complication": complication, "improvised": improvised,
+	})
 
 func _day_of(career_minute: int) -> int:
 	return 1 + int(career_minute / GameState.MINUTES_PER_DAY)
@@ -170,6 +184,26 @@ func audit(actual_treatments: Array, complications: Array) -> Array[Dictionary]:
 				presenting_complaint if presenting_complaint != "" else recorded_condition,
 				acquired.size(), ", ".join(parts)],
 		})
+	# ---- theatre records. An operation that went wrong is ordinary. An
+	# operation where all three stages were improvised is a paragraph.
+	var improvised_ops := 0
+	for op in surgery_log:
+		if int(op.get("improvised", 0)) >= 2:
+			improvised_ops += 1
+	if improvised_ops > 0:
+		findings.append({
+			"kind": "improvised_procedure", "weight": 0.4 + 0.25 * float(improvised_ops),
+			"text": "%d procedure(s) recorded as modified intra-operatively at most stages." % improvised_ops,
+		})
+	# ---- pharmacy. Sending somebody home on something that does not treat what
+	# they had is not a crime. It is a question somebody eventually asks.
+	if prescription != "" and not prescription_indicated:
+		findings.append({
+			"kind": "prescription_mismatch", "weight": 0.45,
+			"text": "Discharged on %s, which is not indicated for %s." % [
+				DB.prescription_name(prescription),
+				presenting_complaint if presenting_complaint != "" else recorded_condition],
+		})
 	if times_forged >= 3:
 		findings.append({
 			"kind": "handwriting", "weight": 0.3 * float(times_forged - 2),
@@ -182,7 +216,8 @@ func to_dict() -> Dictionary:
 		"pid": patient_id, "cond": recorded_condition, "lt": logged_treatments,
 		"notes": notes, "pdd": promised_discharge_day, "te": times_edited,
 		"tf": times_forged, "shred": shredded, "imgf": imaging_findings,
-		"pres": presenting_complaint,
+		"pres": presenting_complaint, "surg": surgery_log,
+		"rx": prescription, "rxi": prescription_indicated,
 	}
 
 static func from_dict(d: Dictionary) -> PatientChart:
@@ -202,4 +237,7 @@ static func from_dict(d: Dictionary) -> PatientChart:
 	c.imaging_day = int(d.get("imgd", -1))
 	c.imaging_findings = d.get("imgf", [])
 	c.presenting_complaint = String(d.get("pres", ""))
+	c.surgery_log = d.get("surg", [])
+	c.prescription = String(d.get("rx", ""))
+	c.prescription_indicated = bool(d.get("rxi", true))
 	return c

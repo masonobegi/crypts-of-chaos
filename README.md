@@ -116,9 +116,10 @@ changed because of it, is in [`docs/DESIGN.md`](docs/DESIGN.md).
 ## Tests
 
 ```
-327 assertions   — units, integration, save round-trips, floor connectivity
- 37 smoke checks — boots the real scene and plays a whole shift headless
-  8 balance checks — three full careers, asserting the design intent holds
+1008 assertions   — units, integration, save round-trips, floor connectivity
+  54 smoke checks — boots the real scene and plays a whole shift headless
+  13 live checks   — 7000 fixed-timestep frames of real NPC AI, pathing and doors
+  14 balance checks — three full careers, asserting the design intent holds
 ```
 
 The balance harness (`tests/balance_sim.gd`) plays sixteen-day careers with three
@@ -129,20 +130,25 @@ inverted the entire premise. That's why admission is expensive and marginal days
 
 ## Departments
 
-Three departments unlock by purchase, and each one adds a mechanic rather than a room:
+Three departments unlock by purchase. Each one is a real room in the west annexe — built,
+lit and furnished from the first shift, and sealed behind a roller shutter you walk past
+every day until you can afford to open it — and each adds a mechanic as well:
 
 - **Emergency Intake** — short stays with enormous day rates, and patients who arrive
   *mid-shift* with no warning. A bed you were using fills up and everyone on the floor
   turns to look at whatever you were in the middle of.
-- **Radiology Bench** — imaging is the only thing in the game that tells you the truth:
-  it makes one patient's vitals exact for a day. It also writes what it saw into the
-  record permanently, so everything you claim afterwards has to agree with it. Blaming
-  a complication on an underlying condition that imaging explicitly ruled out is the
-  most specific contradiction available anywhere in the game.
+- **Radiology** — imaging is the only thing in the game that tells you the truth, and the
+  only entry in the record you did not write. It cannot be edited, forged or shredded, and
+  it names the cause the *simulation* knows about rather than the one on the chart. A
+  perfectly documented complication passes every audit in the game until somebody points a
+  scanner at it — and you are not the only person who can: colleagues order imaging on
+  patients whose stay has run long. The aperture is the counterplay.
 - **Psychiatric Liaison** — long, lucrative admissions that recover on comfort and
   satisfaction rather than on equipment, which makes a cold dark ward a far more
-  effective way to hold one than any machine. They are also the most observant people
-  in the building, for reasons that are entirely their own business.
+  effective way to hold one than any machine. They leave their beds for the day room and
+  stay a while, and recovery is scored against the room a patient is actually IN — so one
+  thermostat slows every psychiatric admission on the floor at once. They are also the most
+  observant people in the building, for reasons that are entirely their own business.
 
 ## Careers
 
@@ -164,5 +170,6 @@ no amount of simulation testing could see.
 
 ## Status
 
-Milestone 1 (playable vertical slice) is complete and verified end to end. Next up:
-departments beyond the ward, and a human playtest for feel.
+Milestone 1 (playable vertical slice) is complete and verified end to end, and so are the
+three departments beyond it. Next up: a human playtest for feel — movement speed, shift
+length, and whether the prompts read clearly to somebody who has not been staring at this.

@@ -17,6 +17,7 @@ var _idle_bias := 1.0
 var _patrol_speed := 1.0
 var _talk_cooldown := 0.0
 var _approached := false
+var _round_target := ""
 ## Set for a shadowing student: they follow you all shift and see everything.
 var shadow_player := false
 
@@ -56,6 +57,7 @@ func _enter(s: State) -> void:
 			_timer = 6.0
 		State.TASK:
 			_timer = RNG.randf_range_s("staff_task", 6.0, 14.0)
+			_begin_round()
 		State.APPROACH:
 			_timer = 25.0
 
@@ -131,11 +133,77 @@ func _tick_state(delta: float) -> void:
 				else:
 					stop_moving()
 		State.TASK:
+			if _round_target != "" and not is_moving():
+				_do_round()
+				_round_target = ""
 			if _timer <= 0.0:
 				_enter(State.IDLE)
 		State.TALK:
 			if _timer <= 0.0:
 				_enter(State.IDLE)
+
+## Nurses do rounds. This is not flavour: a round is how an undocumented
+## complication gets NOTICED, which is the clock the player is racing.
+func _begin_round() -> void:
+	_round_target = ""
+	if role != "nurse":
+		return
+	var ps = get_tree().get_first_node_in_group("patient_system")
+	var h = get_tree().get_first_node_in_group("hospital")
+	if ps == null or h == null:
+		return
+	var list: Array = ps.active()
+	if list.is_empty():
+		return
+	# A lazy nurse does not do rounds. That is worth knowing about her.
+	if archetype == "lazy" and RNG.chance("lazy_skip_round", 0.7):
+		return
+	var p = RNG.pick("round_pick", list)
+	_round_target = p.id
+	goto(h.point_in(p.room, "round_pt"), false)
+
+func _do_round() -> void:
+	var ps = get_tree().get_first_node_in_group("patient_system")
+	if ps == null or mind == null:
+		return
+	var p = ps.get_patient(_round_target)
+	if p == null or p.discharged:
+		return
+	var unnoticed: Array = ps.unnoticed_complications(p)
+	if unnoticed.is_empty():
+		if RNG.chance("round_quiet", 0.3):
+			say(String(RNG.pick("round_ok", [
+				"All fine here.", "No change.", "Doing nicely, this one.",
+			])), 2.4)
+		return
+	for c in unnoticed:
+		# Severe things are hard to miss; subtle ones need somebody attentive.
+		var chance: float = clampf(0.25 + c.severity * 0.8 + mind.observance * 0.4, 0.1, 0.98)
+		if not RNG.chance("round_notice", chance):
+			continue
+		ps.notice_complication(p, c, npc_id, display)
+		say(String(RNG.pick("round_notice_bark", [
+			"Hang on — when did this start?",
+			"This wasn't in the notes.",
+			"Doctor? You'll want to see this.",
+			"That's new, that is.",
+		])), 3.4)
+		# Finding something undocumented on your ward is not proof of anything,
+		# but it is exactly the kind of thing that accumulates.
+		if c.documented_cause == "":
+			var ev := Evidence.new()
+			ev.kind = "undocumented_complication_seen"
+			ev.about_actor = "player"
+			ev.patient_id = p.id
+			ev.source = Evidence.Source.WITNESSED
+			ev.time = GameState.career_minutes
+			ev.base_weight = 0.18 + c.severity * 0.3
+			ev.certainty = 0.8
+			ev.cover_tag = "clinical_findings"
+			ev.summary = "found %s on %s with nothing in the notes" % [
+				c.display_name, p.display_name]
+			mind.add_evidence(ev)
+		return
 
 ## Only worth crossing the ward for if they actually have something on you.
 func _wants_a_word() -> bool:

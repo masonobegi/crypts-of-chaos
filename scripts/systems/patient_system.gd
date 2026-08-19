@@ -304,6 +304,32 @@ func add_complication(p: Patient, comp_id: String, true_cause: String) -> Compli
 	EventBus.toast.emit("%s: %s" % [p.display_name, c.display_name], "suspicion")
 	return c
 
+## Somebody walked in and saw it.
+##
+## This is the other half of the game's central mechanic and it was missing:
+## Complication.noticed_time was read by the records system and set by nothing,
+## so "document it BEFORE anyone notices" was free — every plausible cause filed
+## at any time counted as clean. Now there is a real window between a
+## complication appearing and the next person walking into that room.
+func notice_complication(p: Patient, comp: Complication, by_id: String, by_name: String) -> void:
+	if comp.resolved or comp.noticed_by.has(by_id):
+		return
+	comp.noticed_by.append(by_id)
+	if comp.noticed_time < 0:
+		comp.noticed_time = GameState.career_minutes
+		# The first person to see it is the one that costs you. After that it is
+		# already common knowledge on the ward.
+		EventBus.toast.emit("%s noticed %s's %s." % [by_name, p.display_name, comp.display_name],
+			"suspicion" if comp.documented_cause == "" else "info")
+
+## Undocumented complications a given observer would spot on this patient.
+func unnoticed_complications(p: Patient) -> Array[Complication]:
+	var out: Array[Complication] = []
+	for c in p.active_complications():
+		if c.noticed_time < 0:
+			out.append(c)
+	return out
+
 # ================================================================ discharge
 func discharge(p: Patient, reason := "recovered") -> void:
 	if p.discharged:

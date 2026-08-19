@@ -54,6 +54,19 @@ func _physics_process(delta: float) -> void:
 func _visit_bark() -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	var p = ps.get_patient(patient_id) if ps else null
+	# Somebody sitting in the room all afternoon sees things. This is why the
+	# constantly-visiting archetype is genuinely dangerous.
+	if p != null and ps != null and mind != null:
+		for c in ps.unnoticed_complications(p):
+			if not RNG.chance("visitor_notice", 0.3 + c.severity * 0.6 + mind.observance * 0.3):
+				continue
+			ps.notice_complication(p, c, npc_id, display)
+			say(String(RNG.pick("visitor_notice_bark", [
+				"What is THAT? That wasn't there this morning.",
+				"Has anybody written this down?",
+				"Right. I want to speak to somebody about this.",
+			])), 4.0)
+			return
 	if p != null and p.is_overdue() and RNG.chance("visitor_overdue", 0.65):
 		say(String(RNG.pick("visitor_overdue_bark", [
 			"They were supposed to be home by now.",

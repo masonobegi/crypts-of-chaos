@@ -498,3 +498,75 @@ func test_the_errand_option_reports_that_it_did_something() -> void:
 			sent = true
 			break
 	t.ok(sent, "a trusted nurse eventually agrees, and the result says so")
+
+# ==================================================================== noticing
+func test_noticing_a_complication_closes_the_window() -> void:
+	# The central mechanic: filing a plausible cause is only CLEAN if you get
+	# there before somebody walks in. noticed_time was read by the records
+	# system and set by nothing at all, so that clause was free.
+	var h = _hospital()
+	var ps = h.get_tree().get_first_node_in_group("patient_system")
+	var standalone := ps == null
+	if standalone:
+		ps = load("res://scripts/systems/patient_system.gd").new()
+		t.root.add_child(ps)
+
+	var p := Patient.new("notice")
+	p.display_name = "Greg"
+	var c := Complication.new()
+	c.display_name = "Ambient Dread"
+	c.plausible_causes = PackedStringArray(["idiopathic"])
+	c.severity = 0.4
+	p.complications.append(c)
+
+	t.eq(c.noticed_time, -1, "nobody has seen it yet")
+	t.eq(ps.unnoticed_complications(p).size(), 1, "and it is listed as unnoticed")
+
+	# Filing now is clean.
+	c.documented_cause = "idiopathic"
+	c.documented_at = 100
+	t.ok(c.is_clean(), "documented before anyone noticed is clean")
+	t.near(c.paper_suspicion(), 0.0, 0.001, "and costs nothing")
+
+	# Same paperwork, filed after somebody saw it, is not.
+	c.documented_cause = ""
+	c.documented_at = -1
+	GameState.career_minutes = 200
+	ps.notice_complication(p, c, "nurse_0", "Nurse Test")
+	t.eq(c.noticed_time, 200, "the moment it was seen is recorded")
+	t.eq(ps.unnoticed_complications(p).size(), 0, "and it stops being unnoticed")
+	c.documented_cause = "idiopathic"
+	c.documented_at = 300
+	t.ok(not c.is_clean(), "filing it afterwards is not clean")
+	t.gt(c.paper_suspicion(), 0.0, "and now costs something")
+	if standalone:
+		ps.queue_free()
+
+func test_only_the_first_witness_sets_the_clock() -> void:
+	var ps = load("res://scripts/systems/patient_system.gd").new()
+	t.root.add_child(ps)
+	var p := Patient.new("first")
+	var c := Complication.new()
+	p.complications.append(c)
+
+	GameState.career_minutes = 500
+	ps.notice_complication(p, c, "nurse_0", "A")
+	GameState.career_minutes = 900
+	ps.notice_complication(p, c, "nurse_1", "B")
+	t.eq(c.noticed_time, 500, "the clock is set by whoever got there first")
+	t.eq(c.noticed_by.size(), 2, "but every witness is recorded")
+
+	ps.notice_complication(p, c, "nurse_0", "A")
+	t.eq(c.noticed_by.size(), 2, "and the same person cannot notice it twice")
+	ps.queue_free()
+
+func test_resolved_complications_cannot_be_noticed() -> void:
+	var ps = load("res://scripts/systems/patient_system.gd").new()
+	t.root.add_child(ps)
+	var p := Patient.new("res")
+	var c := Complication.new()
+	c.resolved = true
+	p.complications.append(c)
+	ps.notice_complication(p, c, "nurse_0", "A")
+	t.eq(c.noticed_time, -1, "something already dealt with is not a discovery")
+	ps.queue_free()

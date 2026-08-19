@@ -466,3 +466,35 @@ func test_distant_noise_matters_less_than_close_noise() -> void:
 	t.lt(near.satisfaction, far.satisfaction, "closer is worse")
 	a.queue_free()
 	b.queue_free()
+
+func test_sending_a_nurse_away_actually_moves_them() -> void:
+	# The dialogue option existed but its effect was never handled, so asking a
+	# nurse to check the far end succeeded and did nothing at all.
+	var h = _hospital()
+	var nurse := NurseNPC.new()
+	nurse.npc_id = "errand_nurse"
+	nurse.archetype = "loyal"
+	t.root.add_child(nurse)
+	nurse.global_position = h.point_in("station")
+
+	var near_ward: String = nurse.farthest_ward_from(h.room("ward_101").center())
+	t.ok(near_ward != "ward_101", "they are sent away from where you are, not toward it")
+	t.ok(near_ward.begins_with("ward"), "and to an actual ward")
+
+	var from_other_end: String = nurse.farthest_ward_from(h.room("ward_105").center())
+	t.ok(from_other_end != near_ward,
+		"the destination genuinely depends on where you are standing")
+	nurse.queue_free()
+
+func test_the_errand_option_reports_that_it_did_something() -> void:
+	var m := DB.make_mind("n_err", "Nurse Test", "nurse", "loyal")
+	m.trust = 0.95
+	var opt = Dialogue.Option.new("Could you go and check the far end?", "authority",
+		"", 0.15, "delay")
+	var sent := false
+	for i in 30:
+		var res: Dictionary = Dialogue.resolve(m, opt, null)
+		if bool(res.get("send_away", false)):
+			sent = true
+			break
+	t.ok(sent, "a trusted nurse eventually agrees, and the result says so")

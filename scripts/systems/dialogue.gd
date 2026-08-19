@@ -230,7 +230,10 @@ static func options_for(mind: Mind, p = null) -> Array:
 
 	if mind.role == "nurse":
 		opts.append(Option.new("How's the ward?", "small_talk", "", 0.0, "trust"))
-		opts.append(Option.new("Could you check on 103 for me?", "authority", "", 0.15, "delay"))
+		# A directed distraction: same effect as a thrown bedpan, except you
+		# chose where they went and nobody heard a thing.
+		opts.append(Option.new("Could you go and check the far end?", "authority",
+			"", 0.15, "delay"))
 	if mind.role == "family":
 		opts.append(Option.new("We're monitoring them closely.", "reassure", "clinical_caution", 0.3))
 		opts.append(Option.new("I'd rather not discuss it in the corridor.", "deflect",
@@ -308,6 +311,12 @@ static func resolve(mind: Mind, opt: Option, p = null) -> Dictionary:
 
 	if opt.cover != "":
 		mind.burn_cover(opt.cover)
+
+	if success and opt.effect == "delay":
+		mind.adjust_trust(0.02)
+		return {"success": true, "send_away": true,
+			"reply": String(RNG.pick("errand_yes", [
+				"Suppose so.", "Fine, yes.", "You're the doctor."]))}
 
 	if success:
 		var worst := mind.strongest(GameState.career_minutes)

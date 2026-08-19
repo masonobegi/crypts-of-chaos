@@ -9,7 +9,8 @@ var _tab := "ward"
 func _build() -> void:
 	var v := shell(920, 800, "Tablet", "Day %d · %s" % [GameState.day, GameState.time_string()])
 	var tabs := UIKit.hbox(6)
-	for t in [["ward", "Ward"], ["people", "People"], ["money", "Money"], ["codex", "Notes"]]:
+	for t in [["ward", "Ward"], ["people", "People"], ["record", "Record"],
+			["money", "Money"], ["codex", "Notes"]]:
 		var key := String(t[0])
 		tabs.add_child(UIKit.button(String(t[1]), func(): _switch(key),
 			UIKit.PANEL_LIGHT if _tab != key else Color(0.20, 0.35, 0.38)))
@@ -20,6 +21,7 @@ func _build() -> void:
 	match _tab:
 		"ward": _build_ward(content)
 		"people": _build_people(content)
+		"record": _build_record(content)
 		"money": _build_money(content)
 		"codex": _build_codex(content)
 	v.add_child(UIKit.scroll(content))
@@ -96,6 +98,82 @@ func _build_people(c: VBoxContainer) -> void:
 					UIKit.INK_DIM if ev.neutralized else UIKit.WARN))
 		box.add_child(bv)
 		c.add_child(box)
+
+## What an auditor would find if they pulled your charts right now.
+##
+## The same view as the end-of-shift review, but available at any moment — the
+## whole point of the paperwork half of the game is being able to get in front
+## of things, and you cannot do that if you only find out on your way home.
+func _build_record(c: VBoxContainer) -> void:
+	var rs = records()
+	if rs == null:
+		return
+	var findings: Array = rs.pending_findings()
+	var exposure: float = rs.total_exposure()
+
+	var band := "Nothing to find."
+	var colour := UIKit.GOOD
+	if exposure > 2.2:
+		band = "This would not survive an audit."
+		colour = UIKit.BAD
+	elif exposure > 1.0:
+		band = "There is enough here to start something."
+		colour = UIKit.WARN
+	elif exposure > 0.25:
+		band = "Minor gaps. Probably fine."
+		colour = Color(0.85, 0.82, 0.5)
+
+	var head := UIKit.panel(Color(0.14, 0.16, 0.19, 0.94), 6, 1, colour)
+	var hv := UIKit.vbox(5)
+	hv.add_child(UIKit.label(band, 17, colour))
+	hv.add_child(UIKit.bar(clampf(exposure / 3.0, 0.0, 1.0), colour, 460.0, 10.0))
+	head.add_child(hv)
+	c.add_child(head)
+
+	# Undocumented complications first — they are the most findable thing in a
+	# record and the easiest to fix while the terminals are still on.
+	var ps = patient_system()
+	var undocumented: Array = []
+	if ps:
+		for p in ps.active():
+			for comp in p.active_complications():
+				if comp.documented_cause == "":
+					undocumented.append({"patient": p.display_name, "comp": comp.display_name})
+	if not undocumented.is_empty():
+		c.add_child(UIKit.rule())
+		c.add_child(UIKit.label("NO CAUSE FILED", 13, UIKit.INK_DIM))
+		for u in undocumented:
+			c.add_child(UIKit.row(String(u["patient"]), String(u["comp"]), UIKit.BAD))
+
+	c.add_child(UIKit.rule())
+	c.add_child(UIKit.label("FINDINGS", 13, UIKit.INK_DIM))
+	if findings.is_empty():
+		c.add_child(UIKit.label("Your records are consistent. Genuinely.", 15, UIKit.GOOD))
+	for f in findings:
+		var w := float(f["weight"])
+		var fc := UIKit.WARN if w < 0.5 else UIKit.BAD
+		var box := UIKit.panel(Color(0.15, 0.14, 0.16, 0.9), 6)
+		var bv := UIKit.vbox(2)
+		bv.add_child(UIKit.row(String(f["patient"]), String(f["kind"]).replace("_", " "), fc))
+		bv.add_child(UIKit.label(String(f["text"]), 13, UIKit.INK,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		box.add_child(bv)
+		c.add_child(box)
+
+	# Device logs are records too, and are the thing players most reliably forget.
+	var machine_rows: Array = []
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if f is TreatmentMachine and not f.suspicious_log_entries().is_empty():
+			machine_rows.append("%s — %d flagged run(s)" % [
+				f.fixture_name, f.suspicious_log_entries().size()])
+		elif f is Thermostat and not f.suspicious_log_entries().is_empty():
+			machine_rows.append("%s — %d extreme setting(s)" % [
+				f.fixture_name, f.suspicious_log_entries().size()])
+	if not machine_rows.is_empty():
+		c.add_child(UIKit.rule())
+		c.add_child(UIKit.label("DEVICE LOGS", 13, UIKit.INK_DIM))
+		for row in machine_rows:
+			c.add_child(UIKit.label("· %s" % String(row), 13, UIKit.WARN))
 
 func _build_money(c: VBoxContainer) -> void:
 	c.add_child(UIKit.row("In your account", UIKit.money_str(GameState.personal_money),

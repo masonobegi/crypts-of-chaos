@@ -17,6 +17,7 @@ var phase := "world"
 const UI_SHOTS := [
 	["20_briefing", "briefing"],
 	["21_tablet_ward", "tablet"],
+	["21b_tablet_record", "tablet_record"],
 	["22_chart", "chart"],
 	["23_records", "records"],
 	["24_dialogue", "dialogue"],
@@ -39,7 +40,13 @@ func _tick_ui() -> bool:
 		_set_ceilings_visible(true)
 		game.player.camera.global_position = Vector3(5.5, 1.7, -4.0)
 		game.player.camera.look_at(Vector3(5.5, 1.5, 2.0), Vector3.UP)
-		game.ui.open(String(shot[1]), _ui_context(String(shot[1])))
+		var screen_id := String(shot[1])
+		if screen_id == "tablet_record":
+			screen_id = "tablet"
+		game.ui.open(screen_id, _ui_context(screen_id))
+		if String(shot[1]) == "tablet_record" and game.ui.current != null:
+			game.ui.current.set("_tab", "record")
+			game.ui.current.rebuild()
 		settle = 0
 		return false
 	settle += 1

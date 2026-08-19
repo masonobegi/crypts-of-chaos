@@ -125,16 +125,27 @@ static func row(key: String, value: String, value_color := INK, size := 15) -> H
 	return h
 
 ## A 0..1 bar. Used for reputations, exposure and suspicion.
+## A 0..1 bar. Built from two ColorRects inside a fixed-size Control rather than
+## a PanelContainer: a PanelContainer in a VBox stretches to the full row width,
+## which made a nearly-empty bar read as an empty text field.
 static func bar(value: float, color := ACCENT, width := 180.0, height := 8.0) -> Control:
-	var back := PanelContainer.new()
-	back.custom_minimum_size = Vector2(width, height)
-	back.add_theme_stylebox_override("panel", stylebox(Color(1, 1, 1, 0.10), 3))
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(width, height)
+	root.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	root.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	var back := ColorRect.new()
+	back.color = Color(1, 1, 1, 0.10)
+	back.position = Vector2.ZERO
+	back.size = Vector2(width, height)
+	root.add_child(back)
+
 	var fill := ColorRect.new()
 	fill.color = color
-	fill.custom_minimum_size = Vector2(maxf(2.0, width * clampf(value, 0.0, 1.0)), height)
-	fill.size_flags_horizontal = 0
-	back.add_child(fill)
-	return back
+	fill.position = Vector2.ZERO
+	fill.size = Vector2(maxf(2.0, width * clampf(value, 0.0, 1.0)), height)
+	root.add_child(fill)
+	return root
 
 static func money_str(amount: int) -> String:
 	var neg := amount < 0

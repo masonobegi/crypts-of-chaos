@@ -260,6 +260,36 @@ func _on_reached_investigation() -> void:
 func interrupt_for_talk() -> void:
 	_enter(State.TALK)
 
+## Send them somewhere on an errand. This is the player's own distraction tool:
+## the same effect a thrown bedpan has, except you chose the destination and
+## nobody heard anything.
+func send_to_room(room_key: String, seconds: float) -> void:
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h == null:
+		return
+	_approached = true          # they are busy; no propositions mid-errand
+	_enter(State.TASK)
+	_timer = seconds
+	goto(h.point_in(room_key, "errand_pt"), false)
+	say(String(RNG.pick("errand_bark", [
+		"Right, I'll go and look.", "Give me a minute.",
+		"On my way.", "If you like.",
+	])), 2.6)
+
+## Where to send someone so they are genuinely out of your way.
+func farthest_ward_from(pos: Vector3) -> String:
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h == null:
+		return "corridor"
+	var best := "corridor"
+	var best_d := -1.0
+	for r in h.wards():
+		var d: float = r.center().distance_to(pos)
+		if d > best_d:
+			best_d = d
+			best = r.key
+	return best
+
 func prompt(_player) -> Array:
 	var sub := ""
 	if mind:

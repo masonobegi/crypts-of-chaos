@@ -82,6 +82,18 @@ func _option_button(o) -> Control:
 		b.text = "%s  (used before)" % label_text
 	return h
 
+## Walk them to the far end of the ward and keep them there for a while.
+func _send_away() -> void:
+	var sus = suspicion()
+	var body = sus.body_of(_mind.id) if sus else null
+	var p = player()
+	if body != null and body.has_method("send_to_room") and p != null:
+		var target: String = body.farthest_ward_from(p.global_position)
+		body.send_to_room(target, 26.0)
+		EventBus.toast.emit("%s heads off to check the far end." % _mind.display_name, "good")
+	AudioMgr.play("beep", -14.0)
+	close()
+
 func _choose(o) -> void:
 	if o.tone == "none":
 		close()
@@ -95,6 +107,10 @@ func _choose(o) -> void:
 		EventBus.toast.emit("%s is being discharged." % _patient.display_name, "good")
 		close()
 		return
+	if bool(res.get("send_away", false)):
+		_send_away()
+		return
+
 	AudioMgr.play("beep" if bool(res.get("success", false)) else "error", -14.0)
 	if bool(res.get("small_talk", false)):
 		rebuild()

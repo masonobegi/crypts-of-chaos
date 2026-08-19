@@ -56,6 +56,8 @@ func generate(force_condition := "") -> Patient:
 		RNG.randf_range_s("patient_col", 0.3, 0.9))
 
 	p.condition_id = force_condition if force_condition != "" else _roll_condition()
+	p.presenting_complaint = DB.condition_name(p.condition_id)
+	p.chart.presenting_complaint = p.presenting_complaint
 	var cond: Dictionary = DB.condition(p.condition_id)
 	p.expected_stay_days = float(cond.get("base_days", 2.0)) * RNG.randf_range_s("patient_stay", 0.85, 1.2)
 	p.recovery_rate = 1.0 / maxf(p.expected_stay_days, 0.4)
@@ -358,6 +360,13 @@ func add_complication(p: Patient, comp_id: String, true_cause: String) -> Compli
 	c.recovery_delta = float(spec.get("rec", -0.05))
 	c.severity = float(spec.get("sev", 0.3))
 	c.symptom = String(spec.get("symptom", ""))
+	c.is_injury = bool(spec.get("injury", false))
+	c.body_part = String(spec.get("part", ""))
+	# Anything added after admission happened here. That is what makes the
+	# arrival-versus-discharge gap readable at all.
+	c.acquired_here = true
+	c.caused_on_shift = GameState.shift_kind
+	c.staff_present = DB.staff_on(GameState.shift_kind)
 	c.symptom_color = spec.get("color", Color.WHITE)
 	c.true_cause = true_cause
 	c.plausible_causes = PackedStringArray(spec.get("causes", []))

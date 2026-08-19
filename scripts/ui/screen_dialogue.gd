@@ -49,6 +49,16 @@ func _build() -> void:
 		v.add_child(rp)
 
 	v.add_child(UIKit.rule())
+	# The clinical action, kept out of the conversation list because it is not a
+	# thing you say to somebody.
+	if _patient != null and not _patient.discharged:
+		var ex := UIKit.button("Examine them", func():
+			var pid: String = _patient.id
+			close()
+			EventBus.request_ui.emit("exam", {"patient_id": pid}),
+			Color(0.18, 0.28, 0.34))
+		ex.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		v.add_child(ex)
 	var opts := UIKit.vbox(6)
 	for o in Dialogue.options_for(_mind, _patient):
 		opts.add_child(_option_button(o))

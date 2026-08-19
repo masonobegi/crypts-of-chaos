@@ -50,6 +50,16 @@ const SPECS := {
 		"blurb": "Emits a frequency. The frequency is not for you.",
 		"shape": "duster", "color": Color(0.45, 0.65, 0.72),
 	},
+	"splint": {
+		"name": "Padded Splint", "mass": 0.5, "size": Vector3(0.09, 0.06, 0.42),
+		"blurb": "Holds a thing still. Does not ask how the thing got that way.",
+		"shape": "box", "color": Color(0.88, 0.84, 0.70),
+	},
+	"sling": {
+		"name": "Arm Sling", "mass": 0.2, "size": Vector3(0.22, 0.06, 0.26),
+		"blurb": "Navy. One size. Universally resented.",
+		"shape": "box", "color": Color(0.24, 0.30, 0.42),
+	},
 	"wrench": {
 		"name": "Spleen Torque Wrench", "mass": 2.2, "size": Vector3(0.09, 0.09, 0.55),
 		"blurb": "Calibrated. Do not overtighten. Please.",

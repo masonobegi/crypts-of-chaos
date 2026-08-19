@@ -11,6 +11,10 @@ var skin_tone: Color = Color(0.87, 0.72, 0.6)
 var shirt_color: Color = Color(0.5, 0.7, 0.9)
 
 var condition_id: String = ""
+## What they walked in with, in the words the intake clerk used. Frozen at
+## admission and never touched again, because the entire pattern the game is
+## about is the difference between this and what they leave with.
+var presenting_complaint: String = ""
 var archetype: String = "trusting"
 
 ## HIDDEN TRUTH. 0 = just admitted, 1 = fit to leave.
@@ -55,6 +59,9 @@ var overdue_days: float = 0.0
 ## Career minute of the last imaging run. While recent, vitals stop being noisy —
 ## the one way to actually see the truth layer.
 var imaged_at: int = -99999
+## Career minute of the last hands-on examination. Briefly sharpens your read on
+## where they actually are — the cheap, free, legitimate version of imaging.
+var examined_at: int = -99999
 ## A colleague can ASK for imaging. Ignoring the request is free on the day and
 ## expensive at the end of it, which is the point: the department you bought to
 ## make money is also the one thing in the building that can be pointed at you.
@@ -222,6 +229,24 @@ func apparent_state() -> String:
 func condition_name() -> String:
 	return DB.condition_name(condition_id)
 
+## Injuries that happened under this hospital's care. Not what they arrived
+## with — what you gave them.
+func acquired_injuries() -> Array[Complication]:
+	var out: Array[Complication] = []
+	for c in complications:
+		if c.is_injury and c.acquired_here and not c.resolved:
+			out.append(c)
+	return out
+
+## The ones nobody has written a mechanism for. A broken wrist with no
+## explanation is a different document from a broken wrist that fell over.
+func undocumented_injuries() -> Array[Complication]:
+	var out: Array[Complication] = []
+	for c in acquired_injuries():
+		if c.documented_cause == "":
+			out.append(c)
+	return out
+
 func imaging_requested() -> bool:
 	return imaging_requested_by != ""
 
@@ -252,7 +277,8 @@ func to_dict() -> Dictionary:
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
-		"corm": corridor_minutes, "cmpl": complained,
+		"corm": corridor_minutes, "cmpl": complained, "pres": presenting_complaint,
+		"exam": examined_at,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -288,6 +314,8 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.knows_expected_date = bool(d.get("ked", true))
 	p.imaged_at = int(d.get("img", -99999))
 	p.corridor_minutes = float(d.get("corm", 0.0))
+	p.presenting_complaint = String(d.get("pres", ""))
+	p.examined_at = int(d.get("exam", -99999))
 	p.complained = bool(d.get("cmpl", false))
 	p.imaging_requested_by = String(d.get("imgrb", ""))
 	p.imaging_requested_day = int(d.get("imgrd", -1))

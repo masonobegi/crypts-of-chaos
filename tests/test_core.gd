@@ -410,6 +410,8 @@ func test_no_complication_is_unreachable() -> void:
 		reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
 	for k in PatientSystem.ENVIRONMENTAL_COMPLICATIONS:
 		reachable[String(PatientSystem.ENVIRONMENTAL_COMPLICATIONS[k])] = true
+	for k in TreatmentSystem.EXAM_PARTS:
+		reachable[String(TreatmentSystem.EXAM_PARTS[k])] = true
 	for k in Items.SUBSTANCES:
 		var c := Items.substance_complication(String(k))
 		if c != "":

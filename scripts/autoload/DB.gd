@@ -347,6 +347,58 @@ const CONDITIONS := {
 		"dept": "radiology", "tell": "Casts a shadow with one corner too many.",
 		"color": Color(0.55, 0.66, 0.80),
 	},
+	# ---- injuries, as the thing somebody walks in WITH. The same six ids exist
+	# in COMPLICATIONS as the thing somebody leaves with, which is the entire
+	# point: a fractured wrist reads identically on the chart whether they
+	# arrived with it or acquired it here. What differs is when it was written.
+	"fractured_wrist": {
+		"name": "Fractured Wrist", "injury": true, "part": "wrist",
+		"desc": "Fell off something. Says it was a kerb.",
+		"base_days": 3.0, "rate": 0.4, "revenue": 1500,
+		"treats": ["splinting", "pressure_bath", "rest"],
+		"dept": "ward", "tell": "Wrist held very carefully still.",
+		"color": Color(0.86, 0.72, 0.66),
+	},
+	"fractured_ankle": {
+		"name": "Fractured Ankle", "injury": true, "part": "ankle",
+		"desc": "Stairs. It is always stairs.",
+		"base_days": 4.0, "rate": 0.34, "revenue": 1650,
+		"treats": ["splinting", "rest", "pressure_bath"],
+		"dept": "ward", "tell": "Foot at an opinionated angle.",
+		"color": Color(0.80, 0.66, 0.60),
+	},
+	"cracked_ribs": {
+		"name": "Cracked Ribs", "injury": true, "part": "ribs",
+		"desc": "Breathing has become a considered decision.",
+		"base_days": 4.5, "rate": 0.3, "revenue": 1750,
+		"treats": ["rest", "pressure_bath", "sling_support"],
+		"dept": "ward", "tell": "Laughs once, regrets it.",
+		"color": Color(0.78, 0.62, 0.62),
+	},
+	"dislocated_shoulder": {
+		"name": "Dislocated Shoulder", "injury": true, "part": "shoulder",
+		"desc": "Out. Was in this morning.",
+		"base_days": 2.5, "rate": 0.5, "revenue": 1450,
+		"treats": ["reduction", "sling_support", "rest"],
+		"dept": "ward", "tell": "One shoulder noticeably further away.",
+		"color": Color(0.84, 0.70, 0.64),
+	},
+	"torn_knee": {
+		"name": "Torn Knee", "injury": true, "part": "knee",
+		"desc": "Went one way. Knee went the other.",
+		"base_days": 5.0, "rate": 0.26, "revenue": 1800,
+		"treats": ["splinting", "rest", "pressure_bath"],
+		"dept": "ward", "tell": "Will not put weight on it.",
+		"color": Color(0.76, 0.68, 0.62),
+	},
+	"concussion": {
+		"name": "Concussion", "injury": true, "part": "head",
+		"desc": "Present, mostly. Asks the same question twice.",
+		"base_days": 1.6, "rate": 0.62, "revenue": 2400,
+		"treats": ["rest", "reorientation_walk", "imaging"],
+		"dept": "emergency", "tell": "Asks what day it is. Then asks again.",
+		"color": Color(0.72, 0.74, 0.80),
+	},
 }
 
 # =============================================================== TREATMENTS
@@ -465,6 +517,21 @@ const TREATMENTS := {
 		"name": "Reorientation Walk", "verb": "walked them round the ward",
 		"effect": 0.22, "wrong": 0.02, "tool": "", "time": 3.5,
 		"desc": "Twice round the corridor. Point out the windows.",
+	},
+	"splinting": {
+		"name": "Splinting", "verb": "splinted it",
+		"effect": 0.34, "wrong": -0.03, "tool": "splint", "time": 3.0,
+		"desc": "Immobilise the part. It will be furious about it either way.",
+	},
+	"sling_support": {
+		"name": "Sling Support", "verb": "put it in a sling",
+		"effect": 0.3, "wrong": -0.02, "tool": "sling", "time": 2.2,
+		"desc": "Take the weight off it and let it get on with things.",
+	},
+	"reduction": {
+		"name": "Reduction", "verb": "put it back in",
+		"effect": 0.42, "wrong": -0.08, "tool": "", "time": 3.4,
+		"desc": "Put it back where it was. There is a knack and you have it.",
 	},
 }
 
@@ -591,6 +658,51 @@ const COMPLICATIONS := {
 		"color": Color(0.70, 0.66, 0.58),
 		"causes": ["medication_reaction", "dietary", "idiopathic"],
 	},
+	# ---- the same six, as the thing that happened to somebody under your care.
+	# Far more severe than the ward's ordinary absurdities, because a fractured
+	# wrist is not something anybody has to be observant to notice.
+	"fractured_wrist": {
+		"name": "Fractured Wrist", "injury": true, "part": "wrist",
+		"days": 3.0, "rec": -0.26, "sev": 0.7,
+		"symptom": "Wrist held very carefully still.",
+		"color": Color(0.86, 0.72, 0.66),
+		"causes": ["fall", "pre_existing", "transfer", "patient_noncompliance"],
+	},
+	"fractured_ankle": {
+		"name": "Fractured Ankle", "injury": true, "part": "ankle",
+		"days": 4.0, "rec": -0.3, "sev": 0.72,
+		"symptom": "Foot at an opinionated angle.",
+		"color": Color(0.80, 0.66, 0.60),
+		"causes": ["fall", "pre_existing", "transfer", "patient_noncompliance"],
+	},
+	"cracked_ribs": {
+		"name": "Cracked Ribs", "injury": true, "part": "ribs",
+		"days": 4.5, "rec": -0.32, "sev": 0.75,
+		"symptom": "Breathing has become a considered decision.",
+		"color": Color(0.78, 0.62, 0.62),
+		"causes": ["fall", "pre_existing", "known_risk", "transfer"],
+	},
+	"dislocated_shoulder": {
+		"name": "Dislocated Shoulder", "injury": true, "part": "shoulder",
+		"days": 2.5, "rec": -0.22, "sev": 0.68,
+		"symptom": "One shoulder noticeably further away than the other.",
+		"color": Color(0.84, 0.70, 0.64),
+		"causes": ["fall", "transfer", "known_risk", "patient_noncompliance"],
+	},
+	"torn_knee": {
+		"name": "Torn Knee", "injury": true, "part": "knee",
+		"days": 5.0, "rec": -0.34, "sev": 0.7,
+		"symptom": "Will not put weight on it.",
+		"color": Color(0.76, 0.68, 0.62),
+		"causes": ["fall", "pre_existing", "transfer", "known_risk"],
+	},
+	"concussion": {
+		"name": "Concussion", "injury": true, "part": "head",
+		"days": 2.0, "rec": -0.28, "sev": 0.85,
+		"symptom": "Asks what day it is. Then asks again.",
+		"color": Color(0.72, 0.74, 0.80),
+		"causes": ["fall", "pre_existing", "patient_noncompliance"],
+	},
 }
 
 ## Cause tags you can write on a chart. Some are always available; filing one
@@ -608,11 +720,53 @@ const CAUSES := {
 	"equipment_variance": "equipment variance",
 	"administrative": "administrative burden",
 	"physician_error": "physician error",
+	# ---- mechanisms. What you write down when somebody leaves with something
+	# they did not arrive with. All three are things that genuinely happen on
+	# wards, which is exactly what makes them worth writing down.
+	"fall": "an unwitnessed fall on the ward",
+	"pre_existing": "present on admission",
+	"transfer": "occurred during transfer",
+	"known_risk": "a recognised risk of the procedure",
 	# Truth-side tags. These never appear in the file-a-cause menu — they are
 	# what the simulation knows, and they only ever surface when something
 	# outside the player's handwriting reports them.
 	"machine_deviation": "a treatment device run well off its prescribed setting",
+	"examination": "the examination itself",
+	"surgical": "the procedure itself",
+	"prescription": "what they were sent home with",
 }
+
+## Mechanisms the simulation knows about but no chart will ever accept, because
+## there is no box on the form for them. Filing one is not an option; the game
+## only ever uses these as TRUTH.
+const TRUTH_ONLY_CAUSES := ["machine_deviation", "examination", "surgical", "prescription"]
+
+## Cause tags that can be filed against an acquired injury and be believed.
+const INJURY_MECHANISMS := ["fall", "pre_existing", "transfer", "known_risk",
+	"patient_noncompliance"]
+
+## Is this id an injury rather than one of the ward's ordinary absurdities?
+## Injuries are the loud half of the catalogue: obvious to anybody, expensive,
+## and impossible to describe as "one of those things".
+static func is_injury(id: String) -> bool:
+	if CONDITIONS.has(id):
+		return bool(CONDITIONS[id].get("injury", false))
+	return bool(COMPLICATIONS.get(id, {}).get("injury", false))
+
+static func body_part(id: String) -> String:
+	if CONDITIONS.has(id):
+		return String(CONDITIONS[id].get("part", ""))
+	return String(COMPLICATIONS.get(id, {}).get("part", ""))
+
+static func injury_ids() -> Array[String]:
+	var out: Array[String] = []
+	for id in COMPLICATIONS:
+		if bool(COMPLICATIONS[id].get("injury", false)):
+			out.append(String(id))
+	return out
+
+static func is_truth_only(cause: String) -> bool:
+	return TRUTH_ONLY_CAUSES.has(cause)
 
 # =============================================================== INSURANCE
 const INSURANCE := {

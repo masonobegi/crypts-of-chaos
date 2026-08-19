@@ -173,7 +173,43 @@ func _check_midshift() -> void:
 	# The economy has to actually bill occupied beds.
 	_ok(ps.total_daily_revenue() > 0, "ward generates revenue")
 
+	_check_examination(ps)
 	_check_intake_overflow(ps)
+
+## The examination, end to end: the honest setting is safe and useful, and
+## leaning on somebody produces a real injury that lands in the record as a gap.
+func _check_examination(ps) -> void:
+	var p = null
+	for q in ps.active():
+		if q.acquired_injuries().is_empty():
+			p = q
+			break
+	if p == null:
+		_fail("no patient to examine")
+		return
+	var before: int = p.complications.size()
+	game.treatment.examine(p, "wrist", TreatmentSystem.EXAM_INDICATED, Vector3.ZERO)
+	_ok(p.complications.size() == before, "an examination at the indicated pressure harms nobody")
+	_ok(p.examined_at > -99999, "and does tell you something")
+
+	# Top of the dial, repeatedly, so this does not hang on one roll.
+	var got := ""
+	for i in 12:
+		var res: Dictionary = game.treatment.examine(p, "ankle",
+			TreatmentSystem.EXAM_DIAL_MAX, Vector3.ZERO)
+		if String(res.get("injury", "")) != "":
+			got = String(res["injury"])
+			break
+	_ok(got == "fractured_ankle", "leaning on an ankle breaks the ankle (%s)" % got)
+	var acquired: Array = p.acquired_injuries()
+	_ok(acquired.size() == 1, "and it is recorded as having happened here")
+	_ok(acquired[0].true_cause == "examination", "with the truth attached to it")
+	_ok(acquired[0].staff_present == DB.staff_on(GameState.shift_kind),
+		"and a note of how many people could possibly have done it")
+	var kinds: Array = []
+	for f in p.chart.audit(p.actual_treatments, p.complications):
+		kinds.append(String(f["kind"]))
+	_ok(kinds.has("unexplained_injury"), "an unexplained injury is findable in the chart")
 
 ## With Emergency open and every ward full, an admission lands on a trolley in
 ## Intake instead of disappearing into an invisible waiting list — and a ward

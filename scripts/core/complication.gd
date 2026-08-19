@@ -40,6 +40,22 @@ var symptom_color: Color = Color(1, 1, 1)
 
 var resolved: bool = false
 
+## ---- injuries.
+## An injury is a complication with a body part attached, and it behaves
+## differently in one way that matters: it is obvious. Nobody has to be
+## observant to notice that a wrist is the wrong shape.
+var is_injury: bool = false
+var body_part: String = ""
+## True when this happened HERE, under this hospital's care, rather than being
+## what they walked in with. The gap between what somebody arrived with and what
+## they leave with is the single most legible pattern in the game.
+var acquired_here: bool = false
+## Which shift it happened on, and how many other people were in the building.
+## Attribution runs on this: an injury acquired on a shift with one other member
+## of staff is not a mystery anybody has to solve.
+var caused_on_shift: String = ""
+var staff_present: int = 1
+
 ## Documented, with a cause the chart finds plausible, before anyone noticed.
 ## This is the clean kill: revenue, no suspicion.
 func is_clean() -> bool:
@@ -71,6 +87,8 @@ func to_dict() -> Dictionary:
 		"pc": Array(plausible_causes), "sym": symptom,
 		"col": [symptom_color.r, symptom_color.g, symptom_color.b],
 		"res": resolved,
+		"inj": is_injury, "part": body_part, "acq": acquired_here,
+		"shift": caused_on_shift, "staff": staff_present,
 	}
 
 static func from_dict(d: Dictionary) -> Complication:
@@ -82,6 +100,11 @@ static func from_dict(d: Dictionary) -> Complication:
 	c.recovery_delta = float(d.get("rd", 0.0))
 	c.severity = float(d.get("sev", 0.3))
 	c.true_cause = d.get("tc", "")
+	c.is_injury = bool(d.get("inj", false))
+	c.body_part = String(d.get("part", ""))
+	c.acquired_here = bool(d.get("acq", false))
+	c.caused_on_shift = String(d.get("shift", ""))
+	c.staff_present = int(d.get("staff", 1))
 	c.documented_cause = d.get("dc", "")
 	c.documented_at = int(d.get("da", -1))
 	c.onset_time = int(d.get("ot", 0))

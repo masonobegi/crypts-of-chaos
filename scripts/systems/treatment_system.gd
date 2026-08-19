@@ -124,6 +124,105 @@ func _emit_treatment_event(p: Patient, tid: String, correct: bool, substituted: 
 		e.tag(String(t))
 	e.emit()
 
+# ------------------------------------------------------------------ examination
+## Examining a patient is a real clinical act with a real dial on it.
+##
+## The screen shows APPLIED PRESSURE and an indicated value, exactly like every
+## machine in the building, and says nothing at all about what happens above it.
+## At or near the indicated pressure this is a straightforwardly good thing to
+## do: you learn where they actually are, they feel looked after, and it costs
+## you nothing. Above it, the part you are examining is the part that gives.
+##
+## This is deliberately the same shape as the treatment machines. The player
+## already knows that dials have a prescribed value and that going past it does
+## something — the game teaches that on day one with a vibe stabiliser. Reusing
+## the grammar for a pair of hands is how it stays a discovery rather than a
+## menu option labelled "hurt them".
+const EXAM_INDICATED := 2
+const EXAM_DIAL_MAX := 11
+
+## Body parts you can examine, and what gives when you lean on them.
+const EXAM_PARTS := {
+	"wrist": "fractured_wrist",
+	"ankle": "fractured_ankle",
+	"ribs": "cracked_ribs",
+	"shoulder": "dislocated_shoulder",
+	"knee": "torn_knee",
+	"head": "concussion",
+}
+
+## Chance that a given pressure produces the injury. Deliberately smooth and
+## deliberately not certain: a firm examination that happens to be fine is what
+## makes a firm examination worth trying.
+static func injury_chance(pressure: int) -> float:
+	var over := pressure - EXAM_INDICATED
+	if over < 2:
+		return 0.0
+	# Slope chosen so the curve is still climbing at the top of the dial. A
+	# chance that saturates halfway up makes the top half of the scale
+	# meaningless, and the player stops reading it.
+	return clampf(float(over - 1) * 0.115, 0.0, 0.92)
+
+## How obvious the act looks to anybody who happens to be watching.
+static func exam_visibility(pressure: int) -> float:
+	var over := maxi(0, pressure - EXAM_INDICATED)
+	return clampf(0.04 + float(over) * 0.095, 0.04, 0.92)
+
+func examine(p: Patient, part: String, pressure: int, from_pos := Vector3.ZERO) -> Dictionary:
+	if p == null or p.discharged or not EXAM_PARTS.has(part):
+		return {}
+	pressure = clampi(pressure, 0, EXAM_DIAL_MAX)
+	var result := {
+		"part": part, "pressure": pressure, "injury": "",
+		"deviation": pressure - EXAM_INDICATED,
+	}
+
+	# The honest half. An examination at the indicated pressure is worth doing
+	# for its own sake, or the dial is a button that only exists for crime.
+	p.examined_at = GameState.career_minutes
+	p.satisfaction = clampf(p.satisfaction + 0.03, 0.0, 1.0)
+
+	if RNG.randf_s("exam_%s" % p.id) < injury_chance(pressure):
+		var comp_id := String(EXAM_PARTS[part])
+		var existing := false
+		for c in p.complications:
+			if c.id == comp_id and not c.resolved:
+				existing = true
+		if not existing:
+			patient_system.add_complication(p, comp_id, "examination")
+			result["injury"] = comp_id
+			GameState.stats.injuries_caused += 1
+
+	var visual := exam_visibility(pressure)
+	var e := WorldEvent.new("examination", "player") \
+		.at(from_pos if from_pos != Vector3.ZERO else patient_system._position_of(p), p.room) \
+		.about(p.id).seen(visual).heard(0.02 if visual < 0.4 else 0.3, 8.0) \
+		.cover("clinical").tag("clinical").tag("examination")
+	if result["injury"] != "":
+		e.tag("injury")
+		e.says("%s came out of that examination worse" % p.display_name)
+	else:
+		e.says("examined %s" % p.display_name)
+	e.emit()
+
+	# The patient is present for their own examination. They are always a
+	# witness, whatever else is true, and how good a witness they are is a
+	# property of the person rather than of the room.
+	if result["injury"] != "" and p.mind != null:
+		var ev := Evidence.new()
+		ev.kind = "hurt_during_examination"
+		ev.about_actor = "player"
+		ev.patient_id = p.id
+		ev.source = Evidence.Source.WITNESSED
+		ev.time = GameState.career_minutes
+		ev.base_weight = 0.55
+		ev.certainty = clampf(0.35 + p.mind.observance * 0.6, 0.2, 1.0)
+		ev.cover_tag = "clinical"
+		ev.summary = "their %s went during an examination" % part
+		p.mind.add_evidence(ev)
+		p.satisfaction = clampf(p.satisfaction - 0.28, 0.0, 1.0)
+	return result
+
 # ------------------------------------------------------------------ machines
 func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 	if m == null or p == null or p.discharged:

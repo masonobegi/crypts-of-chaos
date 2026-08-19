@@ -10,6 +10,10 @@ extends RefCounted
 var patient_id: String = ""
 ## What you told the system was wrong with them. May not be the real condition.
 var recorded_condition: String = ""
+## What the intake clerk wrote down on the way in. Copied here at admission so
+## an audit can be done against the chart alone, which is exactly how an audit
+## is actually done — the auditor never gets to see the patient.
+var presenting_complaint: String = ""
 ## Treatments you *billed for*. Entries not backed by a real treatment are
 ## phantom billing: excellent money, career-ending if audited.
 var logged_treatments: Array[Dictionary] = []   ## {id, time, real:bool}
@@ -34,6 +38,9 @@ var imaging_day: int = -1
 ## precisely what makes it dangerous. Everything else here can be edited, forged
 ## or fed to the shredder; this cannot, and it states the TRUE cause.
 var imaging_findings: Array = []
+
+func _day_of(career_minute: int) -> int:
+	return 1 + int(career_minute / GameState.MINUTES_PER_DAY)
 
 func log_treatment(id: String, time: int, real: bool) -> void:
 	logged_treatments.append({"id": id, "time": time, "real": real})
@@ -128,6 +135,41 @@ func audit(actual_treatments: Array, complications: Array) -> Array[Dictionary]:
 				DB.cause_name(String(f.get("cause", ""))),
 				"nothing at all" if stated == "" else DB.cause_name(stated)],
 		})
+	# ---- injuries acquired here. This is the loudest thing in the record, and
+	# it is loud because it is legible: somebody came in with one thing and is
+	# going home with three, and every one of them happened on the ward.
+	var acquired: Array = []
+	var unexplained: Array = []
+	for c in complications:
+		var comp := c as Complication
+		if not (comp.is_injury and comp.acquired_here and not comp.resolved):
+			continue
+		acquired.append(comp)
+		if comp.documented_cause == "":
+			unexplained.append(comp)
+		elif comp.documented_cause == "pre_existing":
+			# The one mechanism that the dates themselves contradict.
+			findings.append({
+				"kind": "injury_predated", "weight": 0.75,
+				"text": "\"%s\" is recorded as present on admission. It first appears in the record on day %d." % [
+					comp.display_name, _day_of(comp.onset_time)],
+			})
+	for comp in unexplained:
+		findings.append({
+			"kind": "unexplained_injury", "weight": 0.35 + comp.severity * 0.45,
+			"text": "\"%s\" was sustained on the ward with no mechanism recorded." % comp.display_name,
+		})
+	# Two is a coincidence and three is a paragraph somebody writes about you.
+	if acquired.size() >= 2:
+		var parts := PackedStringArray()
+		for comp in acquired:
+			parts.append(comp.display_name)
+		findings.append({
+			"kind": "injury_pattern", "weight": 0.55 + 0.3 * float(acquired.size() - 1),
+			"text": "Admitted with %s. Has since sustained %d further injuries here: %s." % [
+				presenting_complaint if presenting_complaint != "" else recorded_condition,
+				acquired.size(), ", ".join(parts)],
+		})
 	if times_forged >= 3:
 		findings.append({
 			"kind": "handwriting", "weight": 0.3 * float(times_forged - 2),
@@ -140,6 +182,7 @@ func to_dict() -> Dictionary:
 		"pid": patient_id, "cond": recorded_condition, "lt": logged_treatments,
 		"notes": notes, "pdd": promised_discharge_day, "te": times_edited,
 		"tf": times_forged, "shred": shredded, "imgf": imaging_findings,
+		"pres": presenting_complaint,
 	}
 
 static func from_dict(d: Dictionary) -> PatientChart:
@@ -158,4 +201,5 @@ static func from_dict(d: Dictionary) -> PatientChart:
 	c.imaging_clear = bool(d.get("imgc", false))
 	c.imaging_day = int(d.get("imgd", -1))
 	c.imaging_findings = d.get("imgf", [])
+	c.presenting_complaint = String(d.get("pres", ""))
 	return c

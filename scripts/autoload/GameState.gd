@@ -77,6 +77,8 @@ var stats := {
 	"witnessed_acts": 0, "investigations_survived": 0, "longest_stay": 0.0,
 	"longest_stay_name": "", "shifts_worked": 0, "cover_stories_used": 0,
 	"items_broken": 0, "complaints": 0,
+	"injuries_caused": 0, "injuries_documented": 0, "surgeries": 0,
+	"surgeries_botched": 0, "wrong_prescriptions": 0, "readmissions": 0,
 }
 
 func _ready() -> void:

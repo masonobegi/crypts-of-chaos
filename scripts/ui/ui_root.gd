@@ -7,6 +7,7 @@ const SCREEN_SCRIPTS := {
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"records": "res://scripts/ui/screen_records.gd",
 	"shift_select": "res://scripts/ui/screen_shift_select.gd",
+	"exam": "res://scripts/ui/screen_exam.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"statement": "res://scripts/ui/screen_statement.gd",

@@ -266,25 +266,49 @@ func report_to_institution(inst_id: String, kind: String, weight: float, summary
 
 ## Statistical inference — run at end of shift. Nobody saw anything, but your
 ## numbers are wrong and someone who reads numbers for a living noticed.
-func run_statistical_review(avg_overstay: float, sample: int) -> void:
-	if sample < 3 or avg_overstay < 0.6:
+##
+## Two independent signals, because they catch different play:
+##  * length of stay catches stalling
+##  * complication RATE catches the immaculately-documented player, whose every
+##    complication is plausible and filed on time, but who produces three times
+##    as many of them as anyone else on the floor. Perfect paperwork is not a
+##    defence against being a statistical outlier — that is the whole point of
+##    an analytics team, and it is what stops clean filing being a free win.
+const BASELINE_COMPLICATION_RATE := 0.34   ## per discharged patient, ward average
+
+func run_statistical_review(avg_overstay: float, sample: int,
+		complication_rate: float = -1.0) -> void:
+	if sample < 3:
 		return
-	var weight := clampf((avg_overstay - 0.5) * 0.35, 0.05, 0.75)
+	if avg_overstay >= 0.6:
+		var weight := clampf((avg_overstay - 0.5) * 0.35, 0.05, 0.75)
+		_file_statistic("length_of_stay_outlier", weight,
+			"average length of stay running %.1f days over projection" % avg_overstay)
+		EventBus.toast.emit("Your average length of stay is drifting.", "suspicion")
+
+	if complication_rate >= 0.0 and complication_rate > BASELINE_COMPLICATION_RATE * 1.6:
+		var excess := complication_rate / BASELINE_COMPLICATION_RATE
+		var weight := clampf((excess - 1.5) * 0.22, 0.04, 0.7)
+		_file_statistic("complication_rate_outlier", weight,
+			"complication rate running %.1fx the ward average" % excess)
+		EventBus.toast.emit(
+			"Your complication rate is well above the ward average.", "suspicion")
+
+func _file_statistic(kind: String, weight: float, summary: String) -> void:
 	for inst_id in ["admin", "insurer"]:
 		var inst: Mind = minds.get(inst_id, null)
 		if inst == null:
 			continue
 		var ev := Evidence.new()
-		ev.kind = "length_of_stay_outlier"
+		ev.kind = kind
 		ev.about_actor = "player"
 		ev.source = Evidence.Source.INFERRED
 		ev.time = GameState.career_minutes
 		ev.base_weight = weight
 		ev.certainty = 0.8
-		ev.summary = "average length of stay running %.1f days over projection" % avg_overstay
+		ev.summary = summary
 		ev.tags = PackedStringArray(["statistics"])
 		inst.add_evidence(ev)
-	EventBus.toast.emit("Your average length of stay is drifting.", "suspicion")
 
 # ------------------------------------------------------------------ queries
 func suspicion_of(id: String) -> float:

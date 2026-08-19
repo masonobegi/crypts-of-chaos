@@ -99,6 +99,10 @@ func _spawn_systems() -> void:
 	pa.name = "PASystem"
 	add_child(pa)
 
+	var tutorial := TutorialSystem.new()
+	tutorial.name = "TutorialSystem"
+	add_child(tutorial)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)

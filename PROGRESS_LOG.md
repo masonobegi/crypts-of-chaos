@@ -122,7 +122,31 @@ runtime for exactly this reason.
       opinion policy puts a colleague through every extended stay.
 - [x] 519 assertions, 37 smoke checks, 8 balance checks.
 
+- [x] Tutorial: five objective beats through the legitimate job only. It never
+      mentions the other thing — the player is taught what a good doctor does
+      and handed a debt a good doctor cannot service.
+- [x] Whistleblower is now an actual action (private terminal only), so all
+      nine endings are reachable. Test walks every one and asserts it.
+- [x] Second statistical signal: complication RATE, not just length of stay.
+      Perfect paperwork is no defence against being an outlier. Two bugs found
+      writing it — the denominator originally included still-admitted patients
+      (diluting exactly the behaviour being measured) and it averaged per-shift
+      ratios instead of summing the window (complications and discharges do not
+      land on the same shifts, so a 3x ward looked average).
+- [x] 549 assertions, 37 smoke checks, 12 balance checks.
+
+### Balance, 30 days, seed 90210
+| strategy | earned | comp/discharge | insurer | outcome |
+|---|---|---|---|---|
+| honest   | $21,249 | 0.17 | 0% | Clean, rep 1.00, still broke |
+| careless | $22,496 | 10.00 | 99% | Struck off, day 16 |
+| careful  | $89,537 | 0.38 | 26% | Tycoon, clean, 2 investigations survived |
+
+The careful line is doing what the brief asked for without being scripted: it
+cures a high volume of people quickly to keep the numbers clean, and hides a
+small number of profitable outliers inside that volume.
+
 ### NEXT UP
-- Tutorial objective beats for the first shift.
-- Mid-game tuning: careful play may be slightly too safe once mastered.
 - Departments beyond the ward (each unlocks new mechanics).
+- More physical sabotage verbs (currently machine/environment/paperwork-led).
+- Playtest with a human for feel: movement speed, shift length, prompt clarity.

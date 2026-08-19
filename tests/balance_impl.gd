@@ -9,7 +9,8 @@ extends RefCounted
 ##
 ## If honest play services the debt, the whole premise is broken.
 
-const DAYS := 16
+## Override with BALANCE_DAYS=30 to probe the mid/late game.
+var DAYS := int(OS.get_environment("BALANCE_DAYS")) if OS.get_environment("BALANCE_DAYS") != "" else 16
 
 var tree: SceneTree = null
 var results: Array[Dictionary] = []
@@ -76,6 +77,11 @@ func _run(strategy: String) -> Dictionary:
 		"rep_doctor": GameState.rep("doctor"),
 		"rep_patient": GameState.rep("patient_sat"),
 		"caught_on": caught_on,
+		"admin_sus": game.suspicion.suspicion_of("admin"),
+		"insurer_sus": game.suspicion.suspicion_of("insurer"),
+		"comp_rate": game.shift.rolling_complication_rate(),
+		"investigations": game.investigations.closed_investigations.size(),
+		"adverse": _count_adverse(game),
 		"ending": Endings.evaluate(GameState.stats),
 		"log": day_log,
 	}
@@ -84,6 +90,13 @@ func _run(strategy: String) -> Dictionary:
 	tree.root.remove_child(game)
 	game.free()
 	return out
+
+func _count_adverse(game) -> int:
+	var n := 0
+	for inv in game.investigations.closed_investigations:
+		if inv.outcome == "adverse":
+			n += 1
+	return n
 
 # ------------------------------------------------------------------ strategies
 func _act(game, strategy: String) -> void:
@@ -178,6 +191,11 @@ func report() -> void:
 			_money(int(r["final_personal"])), _money(int(r["earned"]))])
 		print("  debt remaining  : %s" % _money(int(r["final_debt"])))
 		print("  standing        : %s   heat %.0f%%" % [String(r["sanction_name"]), float(r["heat"]) * 100.0])
+		print("  institutions    : admin %.0f%%   insurer %.0f%%" % [
+			float(r["admin_sus"]) * 100.0, float(r["insurer_sus"]) * 100.0])
+		print("  complication/dc : %.2f   (ward baseline 0.34)" % float(r["comp_rate"]))
+		print("  investigations  : %d closed, %d adverse" % [
+			int(r["investigations"]), int(r["adverse"])])
 		print("  patients cured  : %d" % int(r["cured"]))
 		print("  complications   : %d caused, %d filed cleanly" % [
 			int(r["complications"]), int(r["clean"])])
@@ -227,6 +245,14 @@ func _assert_design_intent() -> void:
 		"careful play actually produces clean paperwork")
 	_check(float(careful.get("heat", 1.0)) < float(careless.get("heat", 0.0)),
 		"careful cheating runs cooler than careless cheating")
+	_check(float(honest.get("comp_rate", 1.0)) <= 0.34,
+		"an honest ward sits at or under the baseline complication rate")
+	_check(float(careless.get("comp_rate", 0.0)) > 0.34 * 3.0,
+		"a careless ward is a glaring statistical outlier")
+	_check(float(careful.get("insurer_sus", 0.0)) > float(honest.get("insurer_sus", 1.0)),
+		"careful cheating still accumulates insurer attention — safe, not invisible")
+	_check(int(careful.get("adverse", 99)) == 0 and int(careless.get("adverse", 0)) > 0,
+		"careful play survives its investigations and careless play does not")
 	print("")
 
 func _check(cond: bool, msg: String) -> void:

@@ -170,3 +170,37 @@ func test_every_machine_treatment_is_indicated_somewhere() -> void:
 			if DB.is_correct_treatment(String(cid), String(tid)):
 				indicated = true
 		t.ok(indicated, "machine treatment %s is indicated for some condition" % tid)
+
+func test_every_ending_is_reachable() -> void:
+	# An ending nothing can produce is dead content. Drive each one's conditions
+	# and confirm the evaluator actually selects it.
+	var cases := {
+		"prison": func(): GameState.sanction_level = 9,
+		"license_revoked": func(): GameState.sanction_level = 8,
+		"whistleblower": func(): GameState.set_flag("whistleblew", true),
+		"bankrupt": func(): GameState.personal_money = -5000,
+		"legendary": func():
+			GameState.stats.forged_entries = 14
+			GameState.adjust_rep("doctor", 0.4)
+			GameState.heat = 0.05,
+		"medical_mafia": func(): GameState.set_flag("corrupt_staff_count", 4),
+		"fraud_king": func():
+			GameState.stats.forged_entries = 25
+			GameState.stats.personal_earned = 40000,
+		"tycoon": func(): GameState.stats.personal_earned = 30000,
+		"saint": func():
+			GameState.stats.patients_cured = 20
+			GameState.stats.complications_caused = 0
+			GameState.adjust_rep("patient_sat", 0.3),
+	}
+	for id in cases:
+		GameState.start_new_career(1)
+		(cases[id] as Callable).call()
+		t.eq(Endings.evaluate(GameState.stats), id, "ending '%s' is reachable" % id)
+	GameState.start_new_career(1)
+
+func test_headline_generator_never_returns_empty() -> void:
+	for i in 20:
+		GameState.stats.longest_stay_name = "Greg Pumbleton" if i % 2 == 0 else ""
+		GameState.stats.longest_stay = float(i)
+		t.ok(Endings.headline(GameState.stats).length() > 8, "headline %d is real text" % i)

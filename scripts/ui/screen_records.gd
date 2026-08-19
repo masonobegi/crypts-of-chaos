@@ -121,6 +121,17 @@ func _build() -> void:
 				"  (already filed)" if rr.facilities_ticket_filed else ""],
 				func(): _ticket(rr)))
 
+	# The exit nobody signposts. Only from a private terminal, because doing this
+	# in front of the ward is a different act entirely.
+	if _private:
+		content.add_child(UIKit.rule())
+		content.add_child(UIKit.label("MEDICAL BOARD", 13, UIKit.INK_DIM))
+		content.add_child(UIKit.label(
+			"There is a form here for reporting concerns about clinical practice. "
+			+ "It does not ask whose practice.", 13, UIKit.INK_DIM))
+		content.add_child(UIKit.button("Submit a report on this ward — including yourself",
+			_whistleblow, Color(0.30, 0.24, 0.14)))
+
 	v.add_child(UIKit.scroll(content))
 	v.add_child(UIKit.button("Close", close))
 
@@ -184,6 +195,15 @@ func _discharge(p) -> void:
 		EventBus.toast.emit("%s discharged early. That will be on the record." % p.display_name, "suspicion")
 	_selected = ""
 	rebuild()
+
+## Ends the career on your own terms. Everything comes out, including your part
+## in it, which is the whole point of it being an ending rather than an escape.
+func _whistleblow() -> void:
+	GameState.set_flag("whistleblew", true)
+	EventBus.toast.emit("Report submitted. All of it.", "info")
+	AudioMgr.play("stamp", -6.0)
+	close()
+	EventBus.game_over.emit("whistleblower")
 
 func _ticket(r) -> void:
 	var rs = records()

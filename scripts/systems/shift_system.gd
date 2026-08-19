@@ -138,6 +138,8 @@ func clock_in() -> void:
 		"complaints": GameState.stats.complaints,
 		"witnessed": GameState.stats.witnessed_acts,
 		"personal": GameState.personal_money,
+		"complications": GameState.stats.complications_caused,
+		"discharged": GameState.stats.patients_discharged,
 	}
 	GameState.set_phase(GameState.Phase.SHIFT)
 	GameState.stats.shifts_worked += 1
@@ -245,8 +247,11 @@ func clock_out() -> Dictionary:
 	var statement := economy.close_shift()
 
 	# The insurer's analytics team notices what nobody in the building did.
+	# Rolling window rather than one shift, so a single bad day is survivable and
+	# a sustained pattern is not.
+	_record_shift_statistics()
 	suspicion.run_statistical_review(patient_system.average_overstay(),
-		patient_system.active_count())
+		patient_system.active_count(), rolling_complication_rate())
 
 	var clean := _was_clean_shift()
 	investigations.consider_de_escalation(clean)
@@ -271,6 +276,37 @@ func clock_out() -> Dictionary:
 	statement_ready.emit(report)
 	SaveSystem.save_game(SaveSystem.AUTOSAVE)
 	return report
+
+## Rolling record of complications caused and patients discharged, per shift.
+##
+## Stored as raw counts rather than a per-shift ratio on purpose: averaging
+## ratios is the wrong statistic here. Complications and discharges do not land
+## on the same shifts, so a ward genuinely running three times the normal rate
+## averaged out to "slightly above baseline" and never got noticed. Summing the
+## window and dividing once is what an analyst would actually compute.
+var _complication_window: Array[Dictionary] = []
+
+func _record_shift_statistics() -> void:
+	var comps: int = int(GameState.stats.complications_caused) \
+		- int(shift_start_snapshot.get("complications", 0))
+	var discharged: int = int(GameState.stats.patients_discharged) \
+		- int(shift_start_snapshot.get("discharged", 0))
+	_complication_window.append({"comps": comps, "discharged": discharged})
+	while _complication_window.size() > 6:
+		_complication_window.remove_at(0)
+
+## Complications per patient discharged, over the recent window.
+func rolling_complication_rate() -> float:
+	if _complication_window.size() < 3:
+		return -1.0      # not enough data to draw a conclusion from
+	var comps := 0.0
+	var discharged := 0.0
+	for row in _complication_window:
+		comps += float(row["comps"])
+		discharged += float(row["discharged"])
+	if discharged < 2.0:
+		return -1.0      # too small a sample to mean anything
+	return comps / discharged
 
 func _was_clean_shift() -> bool:
 	if GameState.stats.complaints > int(shift_start_snapshot.get("complaints", 0)):

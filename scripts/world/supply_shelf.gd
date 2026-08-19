@@ -57,7 +57,12 @@ func interact(player, _held) -> void:
 
 func _dispense(player, id: String) -> void:
 	var p := Items.spawn(id)
-	get_tree().current_scene.add_child(p)
+	# Parent to the hospital rather than current_scene, which is null when the
+	# game is instantiated into the tree instead of loaded as the scene root.
+	var parent: Node = get_tree().get_first_node_in_group("hospital")
+	if parent == null:
+		parent = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+	parent.add_child(p)
 	p.global_position = global_position + Vector3(0, 1.25, 0) + global_transform.basis.z * 0.5
 	AudioMgr.play_at_var("pickup", global_position, -12.0)
 	if restricted:

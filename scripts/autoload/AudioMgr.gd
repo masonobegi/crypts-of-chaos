@@ -42,6 +42,8 @@ const RECIPES := {
 }
 
 func _ready() -> void:
+	# UI screens pause the tree; sound must keep working while they are open.
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	for i in MAX_VOICES:
 		var p := AudioStreamPlayer.new()
 		add_child(p)

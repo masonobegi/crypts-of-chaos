@@ -52,6 +52,33 @@ GDScript loader when combined with typed signal params on an autoload. Fixed by
    than erroring. run_tests.gd now gates every instantiation on
    `can_instantiate()`.
 
+- [x] NPC layer: bodies, perception (FOV/LOS/hearing/attention), SuspicionSystem
+      (witness routing, corroboration, gossip, complaints, institutional minds,
+      statistical inference), Dialogue (barks + conversations with real odds).
+- [x] Simulation: PatientSystem, TreatmentSystem, EconomySystem, RecordsSystem,
+      InvestigationSystem (incl. covert/undercover), RandomEventSystem, Upgrades,
+      Endings, ShiftSystem (full day loop).
+- [x] UI: procedural toolkit + HUD + 13 screens (briefing, chart, records
+      terminal, dialogue, chart review, shift report, upgrades, tablet, pause,
+      tutorial, game over, vitals, treatment).
+- [x] Game root wiring, Game.tscn, MainMenu.tscn with run seeds.
+- [x] **Headless playthrough test** (`tests/smoke_run.gd`): boots the real scene,
+      plays a full shift, exercises sabotage → complication → documentation →
+      audit → billing → save/load → day rollover. 37 checks.
+      **This caught two real bugs that compilation could not:**
+      1. Spawning into `get_tree().current_scene`, which is null whenever the
+         game is instantiated into the tree rather than loaded as the scene root
+         — silently dropped every patient body and chart.
+      2. A ternary that bound to `box_mesh()`'s argument instead of the whole
+         expression, passing a Vector3 where a Mesh was expected (null mesh).
+- [x] 314 assertions + 37 smoke checks, all green.
+
+### Gotcha #4
+Autoload singletons are NOT resolvable at compile time from a `--script` main
+loop. `tests/smoke_run.gd` is a thin runner that `load()`s `smoke_impl.gd` at
+runtime for exactly this reason.
+
 ### NEXT UP
-- NPC base + perception (vision cones, LOS, hearing) + memory routing.
-- Then: patient system, treatment/recovery, dialogue, economy, shift loop, UI.
+- Playtest-driven tuning pass (difficulty curve, money balance).
+- Wire remaining upgrade effects (camera rooms, witness_scale) into perception.
+- Codex unlock triggers; more conditions/complications/events.

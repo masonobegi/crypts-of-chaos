@@ -19,6 +19,16 @@ func _ready() -> void:
 	add_to_group("patient_system")
 	EventBus.hour_tick.connect(_on_hour)
 
+## Where spawned bodies, charts and visitors are parented. Deliberately NOT
+## get_tree().current_scene: that is null whenever the game is instantiated into
+## the tree rather than loaded as the current scene (headless runs, tests, and
+## any future in-game level swap), which silently drops every spawn.
+func spawn_parent() -> Node:
+	var p := get_parent()
+	if p != null:
+		return p
+	return get_tree().current_scene if get_tree().current_scene != null else get_tree().root
+
 # ================================================================ generation
 ## Build a brand new patient. Everything about them is rolled: condition,
 ## personality, insurance, how much they are worth, and whether someone is going
@@ -135,7 +145,7 @@ func _spawn_body(p: Patient, ward_key: String, sus) -> void:
 	npc.set_colours(p.skin_tone, p.shirt_color, Color(0.22, 0.16, 0.12))
 	npc.display = p.display_name
 	npc.archetype = p.archetype
-	get_tree().current_scene.add_child(npc)
+	spawn_parent().add_child(npc)
 	npc.bind(p, bed)
 	if bed:
 		npc.global_position = bed.global_position + Vector3(0, 0.5, 0)
@@ -155,7 +165,7 @@ func _spawn_body(p: Patient, ward_key: String, sus) -> void:
 
 func _spawn_chart(p: Patient, ward_key: String) -> void:
 	var chart := Items.spawn("chart")
-	get_tree().current_scene.add_child(chart)
+	spawn_parent().add_child(chart)
 	if chart.has_method("bind"):
 		chart.call("bind", p)
 	var bed := _bed_in(ward_key)
@@ -204,7 +214,7 @@ func _spawn_visitor(p: Patient, arch: String) -> void:
 	vis.set_colours(p.skin_tone, Color(RNG.randf_range_s("vis_col", 0.25, 0.6),
 		RNG.randf_range_s("vis_col", 0.25, 0.6), RNG.randf_range_s("vis_col", 0.3, 0.6)),
 		Color(0.2, 0.15, 0.12))
-	get_tree().current_scene.add_child(vis)
+	spawn_parent().add_child(vis)
 	vis.global_position = hospital.point_in("lobby", "visitor_spawn")
 	var mind := DB.make_mind(vis.npc_id, vis.display, "family", arch)
 	mind.patient_id = p.id

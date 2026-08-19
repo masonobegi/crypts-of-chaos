@@ -54,9 +54,11 @@ func build(a: Vector3, b: Vector3, flip: bool) -> void:
 	mesh_root.add_child(Build.mi(Build.box_mesh(shape.size), Build.mat(Color(0.78, 0.74, 0.66)),
 		offset + Vector3(0, HEIGHT * 0.5, 0)))
 	# Window pane — you can be seen through it, which is the point.
-	mesh_root.add_child(Build.mi(Build.box_mesh(Vector3(shape.size.x * 0.45, 0.55, THICK * 1.4)
-			if absf(along.x) > absf(along.z) else Vector3(THICK * 1.4, 0.55, shape.size.z * 0.45),
-		), Build.mat(Color(0.60, 0.72, 0.75, 1.0), 0.25),
+	var pane_size := Vector3(shape.size.x * 0.45, 0.55, THICK * 1.4) \
+		if absf(along.x) > absf(along.z) \
+		else Vector3(THICK * 1.4, 0.55, shape.size.z * 0.45)
+	mesh_root.add_child(Build.mi(Build.box_mesh(pane_size),
+		Build.mat(Color(0.60, 0.72, 0.75, 1.0), 0.25),
 		offset + Vector3(0, 1.5, 0)))
 	# Handle, so which side it opens from is readable at a glance.
 	mesh_root.add_child(Build.mi(Build.sphere_mesh(0.05), Build.mat(Build.METAL, 0.3, 0.7),

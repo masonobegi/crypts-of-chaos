@@ -61,6 +61,12 @@ func prompt_with_item(_player, held) -> Array:
 	if not (held is Prop):
 		return ["", ""]
 	var other: Prop = held
+	# Rewriting the label is the tidying-up half of the substitution. Decanting
+	# leaves a container that says one thing and holds another, which is the
+	# whole point while you are using it and a found object afterwards.
+	if _is_paperwork(other) and is_mislabelled():
+		return ["Rewrite the label on %s" % display_name(),
+			"so it says what is actually in it"]
 	if other.contents == "" or contents == other.contents:
 		return ["", ""]
 	if not _accepts_contents():
@@ -68,7 +74,12 @@ func prompt_with_item(_player, held) -> Array:
 	return ["Decant %s into %s" % [Items.substance_name(other.contents), display_name()],
 		"the label stays as it is"]
 
+static func _is_paperwork(p: Prop) -> bool:
+	return p != null and p.item_id in ["blank_form", "clipboard_blank", "clipboard"]
+
 func use_seconds(_player, held) -> float:
+	if held is Prop and _is_paperwork(held) and is_mislabelled():
+		return 2.0
 	if held is Prop and (held as Prop).contents != "" and _accepts_contents():
 		return 1.4
 	return 0.0
@@ -80,6 +91,11 @@ func interact(_player, held) -> void:
 	if held == null or not (held is Prop):
 		return
 	var other: Prop = held
+	if _is_paperwork(other) and is_mislabelled():
+		relabel(Items.substance_name(contents))
+		AudioMgr.play_at_var("tick", global_position, -18.0)
+		EventBus.toast.emit("%s now says %s. Which is true." % [display, label], "info")
+		return
 	if other.contents == "" or not _accepts_contents():
 		return
 	var moved := other.contents
@@ -152,7 +168,26 @@ func on_grabbed(_player) -> void:
 			.at(global_position, _room()).seen(incriminating_weight * 0.5) \
 			.tag(incriminating_tag).says("handling %s" % display_name()).emit()
 
-func on_dropped(_player) -> void: pass
+## Putting down a container that says one thing and holds another.
+##
+## `is_mislabelled()` is commented "what an observant nurse spots" and had
+## exactly one reader in the whole repository: a unit test. Decanting worked,
+## and produced a mislabelled container the game could neither relabel nor
+## detect — so substituting the contents of a syringe was a completely free
+## action with no risk attached to it at all, which is not a mechanic, it is a
+## cheat code.
+##
+## The moment it goes down is the moment somebody could see it, so that is when
+## it is offered to be seen. Low weight: a mislabelled bottle on a trolley is
+## odd rather than damning, and it carries a cover, because mislabelled bottles
+## do genuinely happen in hospitals.
+func on_dropped(_player) -> void:
+	if not is_mislabelled():
+		return
+	WorldEvent.new("mislabelled_left", "player").at(global_position, _room()) \
+		.seen(0.3).tag("substitution").cover("administrative") \
+		.says("left %s labelled %s, containing %s" % [
+			display_name(), label, Items.substance_name(contents)]).emit()
 
 func on_thrown(_player) -> void:
 	WorldEvent.new("prop_thrown", "player").at(global_position, _room()) \
@@ -173,5 +208,16 @@ func relabel(new_label: String) -> void:
 		.says("relabelled %s" % display_name()).emit()
 
 ## True when the label no longer matches reality — what an observant nurse spots.
+##
+## Compared against the substance's DISPLAY name, not its id. It used to compare
+## the label against the raw id, so a container honestly labelled "Ambient
+## Dread" and containing `ambient_dread` read as mislabelled — every multi-word
+## substance in the game was permanently lying. It only ever looked correct
+## because the one substance anybody tested with, `chalkinol`, happens to be a
+## single word.
 func is_mislabelled() -> bool:
-	return contents != "" and label != "" and not label.to_lower().contains(contents.to_lower())
+	if contents == "" or label == "":
+		return false
+	var truth := Items.substance_name(contents).to_lower()
+	var written := label.to_lower()
+	return not (written.contains(truth) or written.contains(contents.to_lower()))

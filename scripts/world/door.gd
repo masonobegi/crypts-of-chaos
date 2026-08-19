@@ -238,6 +238,10 @@ func pull_shut() -> void:
 	AudioMgr.play_at_var("door", global_position, -14.0)
 
 func slam() -> void:
+	_closing = false
+	_open_dir = 0.0
+	_latch = 0.0
+	_held = 0
 	angle = 0.0
 	angular_velocity = 0.0
 	if leaf:

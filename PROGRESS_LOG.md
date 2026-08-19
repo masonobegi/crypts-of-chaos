@@ -1717,3 +1717,52 @@ Revenue                                                  $5,651
 ```
 
 **1,562 assertions · 106 smoke · 21 live · boot check.**
+
+---
+
+## Session 4 (cont.) — the last of the audit's verified list
+
+### The tablet showed the three OLDEST things anybody had on you
+
+`m.evidence` is iterated in insertion order, and `add_evidence()` appends.
+Institutional records decay at a hundredth of their weight per day and the three
+institutions are always listed — so the first three filings an insurer ever made
+stayed above the display floor for an entire thirty-day career, and **every
+statistic filed after them was unreachable on the only screen that shows what
+anybody has on you**, including the ones about to sink you. Sorted by current
+weight now, which is what `Mind.strongest()` has always returned for dialogue.
+
+### Substituting a syringe's contents was completely free
+
+Decanting worked and produced a container that says one thing and holds another.
+`is_mislabelled()`, commented *"what an observant nurse spots"*, had exactly one
+reader in the whole repository: a unit test. `relabel()` had no caller at all.
+So the verb the source calls *"the single most useful in the game"* had no risk
+and no undo — which is not a mechanic, it is a cheat code.
+
+Both halves now exist:
+
+- **Leaving one where it can be seen is an act.** Putting down a mislabelled
+  container emits a low-weight, covered `substitution` event — a mislabelled
+  bottle on a trolley is odd rather than damning, and mislabelled bottles do
+  genuinely happen in hospitals. It fires the moment you put it down, which is
+  the moment somebody could see it.
+- **Rewriting the label is the tidying-up.** Hold a blank form or a clipboard
+  and hold [E] on a container that is lying, and it stops lying. Which makes the
+  loop: decant (seen, risky) → use it → *either* drop it and leave a found
+  object, *or* spend two seconds putting the label right first.
+
+And `is_mislabelled()` was itself broken: it compared the label against the raw
+substance **id**, so a container honestly labelled "Ambient Dread" containing
+`ambient_dread` read as lying. Every multi-word substance in the game was
+permanently mislabelled. It only ever looked right because the substance
+everything was tested with, `chalkinol`, happens to be one word.
+
+### And doors can be slammed
+
+`SwingDoor.slam()` had no caller — it zeroes the leaf, thuds, and emits a
+sixteen-metre noise event, which is one of the loudest distractions available
+and could not be produced. `[Shift+E]` on an open door slams it, matching the
+"other way round" modifier the supply shelf and the treatment dial already use.
+
+**1,568 assertions · 106 smoke · 21 live · boot check.**

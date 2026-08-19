@@ -156,13 +156,27 @@ func _build_people(c: VBoxContainer) -> void:
 		bv.add_child(UIKit.label("%s · %s" % [String(s["role"]).capitalize(),
 			DB.archetype_name(m.archetype) if m else ""], 13, UIKit.INK_DIM))
 		if m:
-			var shown := 0
+			# The three WORST things they hold, not the three oldest.
+			#
+			# This iterated m.evidence in insertion order, and add_evidence()
+			# appends. Institutional records decay at a hundredth of their
+			# weight per day and are always listed, so the three oldest filings
+			# an insurer ever made stayed above the display floor for a whole
+			# career — and every statistic filed after them, including the ones
+			# that were actually about to sink you, was unreachable on the only
+			# screen that shows what anybody has on you.
+			var by_weight: Array = []
 			for ev in m.evidence:
+				var wt := ev.current_weight(GameState.career_minutes)
+				if wt < 0.02:
+					continue
+				by_weight.append({"ev": ev, "w": wt})
+			by_weight.sort_custom(func(a, b): return float(a["w"]) > float(b["w"]))
+			var shown := 0
+			for row in by_weight:
 				if shown >= 3:
 					break
-				var w := ev.current_weight(GameState.career_minutes)
-				if w < 0.02:
-					continue
+				var ev = row["ev"]
 				shown += 1
 				var txt := "· %s (%s)" % [ev.label(), ev.source_label()]
 				if ev.neutralized:

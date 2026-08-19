@@ -254,6 +254,40 @@ func test_the_maintenance_panel_can_actually_be_opened() -> void:
 	wrench.queue_free()
 	m.queue_free()
 
+## Substituting the contents of a container had no risk and no undo.
+##
+## Decanting worked and produced a container that says one thing and holds
+## another — and is_mislabelled(), commented "what an observant nurse spots",
+## had exactly one reader in the repository: a unit test. Nothing in the game
+## looked at it, and relabel() had no caller at all. So the single most useful
+## verb in the game was completely free, which is not a mechanic.
+func test_a_mislabelled_container_is_both_noticeable_and_fixable() -> void:
+	var syringe = Items.spawn("syringe")
+	var canister = Items.spawn("dread_canister")
+	var form = Items.spawn("blank_form")
+	for n in [syringe, canister, form]:
+		t.root.add_child(n)
+
+	syringe.contents = "chalkinol"
+	syringe.label = "Chalkinol"
+	t.ok(not syringe.is_mislabelled(), "an honest syringe is honest")
+
+	# Decant the canister into it. The label is deliberately left alone.
+	syringe.interact(null, canister)
+	t.eq(syringe.contents, canister.contents, "the syringe now holds what the canister did")
+	t.ok(syringe.is_mislabelled(), "and it is now lying about it")
+	t.gt(syringe.use_seconds(null, form), 1.0,
+		"paperwork in hand offers to rewrite the label, as a hold")
+
+	# Rewriting it makes it honest again — the tidying-up half of the trick.
+	syringe.interact(null, form)
+	t.ok(not syringe.is_mislabelled(), "rewriting the label makes it true again")
+	t.eq(syringe.use_seconds(null, form), 0.0,
+		"and there is nothing left to rewrite")
+
+	for n in [syringe, canister, form]:
+		n.queue_free()
+
 func test_machine_keeps_an_auditable_log() -> void:
 	var m = load("res://scripts/world/machine.gd").new()
 	m.treatment_id = "humour_rebalance"

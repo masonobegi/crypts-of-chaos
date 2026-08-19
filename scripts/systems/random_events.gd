@@ -61,6 +61,22 @@ const EVENTS := {
 		"title": "Multiple Admissions", "weight": 0.35,
 		"body": "A coach did something unwise. Every bed you have will be full by lunch.",
 	},
+	"student_shadowing": {
+		"title": "Student On Placement", "weight": 0.8,
+		"body": "A medical student has been assigned to shadow you. All day. At close range.",
+	},
+	"coffee_broken": {
+		"title": "Coffee Machine Down", "weight": 0.6,
+		"body": "The nurses' station coffee machine has failed. The nurses will be walking about.",
+	},
+	"agency_nurse": {
+		"title": "Agency Cover", "weight": 0.7,
+		"body": "An agency nurse is covering today. Doesn't know anyone, doesn't owe anyone.",
+	},
+	"bed_closed": {
+		"title": "Bed Out Of Service", "weight": 0.5,
+		"body": "One room is closed for deep cleaning. Fewer beds, same targets.",
+	},
 	"good_review": {
 		"title": "Glowing Review", "weight": 0.5,
 		"body": "A discharged patient left a five-star review. Administration has printed it out.",
@@ -121,6 +137,12 @@ func _pick() -> String:
 				w *= 1.0 if patient_system and patient_system.free_wards().size() >= 3 else 0.1
 			"patient_escape":
 				w *= 1.0 if patient_system and patient_system.active_count() > 1 else 0.0
+			"coffee_broken":
+				w *= 1.6 if GameState.has_upgrade("coffee_machine") else 0.4
+			"student_shadowing":
+				w *= 0.5 + GameState.rep("hospital") * 1.5
+			"bed_closed":
+				w *= 1.0 if patient_system and patient_system.free_wards().size() >= 2 else 0.0
 		if w > 0.0:
 			weights[id] = w
 	if weights.is_empty():
@@ -204,6 +226,60 @@ func apply(id: String) -> void:
 		"good_review":
 			GameState.adjust_rep("hospital", 0.05)
 			GameState.adjust_rep("patient_sat", 0.04)
+		"student_shadowing":
+			_spawn_student()
+		"coffee_broken":
+			GameState.set_flag("coffee_broken", true)
+		"agency_nurse":
+			_spawn_agency_nurse()
+		"bed_closed":
+			GameState.set_flag("bed_closed", true)
+
+## A student is a witness with legs. High observance, low escalation, glued to
+## you — the single most disruptive thing that can happen to a plan.
+func _spawn_student() -> void:
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if hospital == null or sus == null:
+		return
+	var s := NurseNPC.new()
+	s.npc_id = "student_%d" % GameState.day
+	s.archetype = "rule_follower"
+	s.display = "%s (student)" % RNG.pick("student_name", DB.STAFF_FIRST)
+	s.set_colours(Color(0.87, 0.72, 0.60), Color(0.62, 0.66, 0.72), Color(0.2, 0.16, 0.12))
+	s.shadow_player = true
+	var parent: Node = hospital.get_parent()
+	if parent == null:
+		parent = get_tree().root
+	parent.add_child(s)
+	s.position = hospital.point_in("lobby", "student_spawn")
+	var mind := DB.make_mind(s.npc_id, s.display, "nurse", "rule_follower")
+	mind.observance = 0.95
+	mind.escalation = 0.25
+	mind.talkativeness = 0.85     # tells the staff room everything
+	mind.trust = 0.7
+	sus.register(mind, s)
+
+## Agency cover: barely notices anything, but owes you nothing at all.
+func _spawn_agency_nurse() -> void:
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if hospital == null or sus == null:
+		return
+	var n := NurseNPC.new()
+	n.npc_id = "agency_%d" % GameState.day
+	n.archetype = "incompetent"
+	n.display = "Agency Nurse"
+	n.set_colours(Color(0.76, 0.60, 0.46), Color(0.35, 0.52, 0.48), Color(0.18, 0.14, 0.1))
+	var parent: Node = hospital.get_parent()
+	if parent == null:
+		parent = get_tree().root
+	parent.add_child(n)
+	n.position = hospital.point_in("station", "agency_spawn")
+	var mind := DB.make_mind(n.npc_id, n.display, "nurse", "incompetent")
+	mind.trust = 0.2              # no history with you, and no reason to cover
+	mind.escalation = 0.7
+	sus.register(mind, n)
 
 func is_active(id: String) -> bool:
 	return active_flags.has(id)
@@ -214,6 +290,8 @@ func clear_day() -> void:
 	GameState.set_flag("press_present", false)
 	GameState.set_flag("families_arguing", false)
 	GameState.set_flag("supply_shortage", false)
+	GameState.set_flag("coffee_broken", false)
+	GameState.set_flag("bed_closed", false)
 
 func to_dict() -> Dictionary:
 	return {"fired": fired_today, "flags": active_flags}

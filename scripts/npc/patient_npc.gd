@@ -209,10 +209,19 @@ func _treatment_for_item(held) -> String:
 		var as_treatment := Items.substance_effect(held.contents)
 		if as_treatment != "":
 			return as_treatment
+	# One tool can serve several treatments (the wrench detorques a spleen AND
+	# realigns wrist opinions). Prefer whichever is actually indicated for this
+	# patient — otherwise picking up a wrench would silently perform the wrong
+	# procedure depending on dictionary order.
+	var fallback := ""
 	for tid in DB.TREATMENTS:
-		if String(DB.TREATMENTS[tid].get("tool", "")) == item_id:
-			return tid
-	return ""
+		if String(DB.TREATMENTS[tid].get("tool", "")) != item_id:
+			continue
+		if DB.is_correct_treatment(data.condition_id, String(tid)):
+			return String(tid)
+		if fallback == "":
+			fallback = String(tid)
+	return fallback
 
 func interact(player, held) -> void:
 	if data == null:

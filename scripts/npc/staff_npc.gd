@@ -17,6 +17,8 @@ var _idle_bias := 1.0
 var _patrol_speed := 1.0
 var _talk_cooldown := 0.0
 var _approached := false
+## Set for a shadowing student: they follow you all shift and see everything.
+var shadow_player := false
 
 func _ready() -> void:
 	super._ready()
@@ -67,6 +69,17 @@ func _tick_state(delta: float) -> void:
 		if tier >= 2 and perception and perception.sees_player():
 			if state != State.WATCH and state != State.FOLLOW:
 				_enter(State.WATCH)
+
+	# A student on placement is a mobile witness attached to your hip. They do
+	# not escalate much on their own, but they see absolutely everything and
+	# they talk to the staff room at the end of the day.
+	if shadow_player and player != null and state not in [State.TALK]:
+		look_toward(player.global_position + Vector3(0, 1.5, 0))
+		if distance_to(player.global_position) > 2.8:
+			goto(player.global_position)
+		elif is_moving():
+			stop_moving()
+		return
 
 	# Somebody who wants something from you comes and finds you. This is the
 	# moment a witness stops being a hazard and becomes a negotiation.
@@ -184,6 +197,7 @@ func _pick_patrol_target() -> void:
 	# A decent coffee machine is, mechanically, a nurse-retention device. Staff
 	# spend more of the shift at the station and less of it in your wards.
 	elif role == "nurse" and GameState.has_upgrade("coffee_machine") \
+			and not GameState.flag("coffee_broken", false) \
 			and RNG.chance("coffee_pull", 0.45):
 		pool = ["station"]
 	var key := String(RNG.pick("staff_patrol_pick", pool))

@@ -95,6 +95,10 @@ func _spawn_systems() -> void:
 	codex.name = "Codex"
 	add_child(codex)
 
+	var pa := PASystem.new()
+	pa.name = "PASystem"
+	add_child(pa)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)

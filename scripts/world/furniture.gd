@@ -261,7 +261,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	var shelf := SupplyShelf.new()
 	shelf.room_key = r.key
 	h.add_child(shelf)
-	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench"])
+	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench", "duster"])
 	shelf.position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
 	shelf.rotation.y = -PI / 2
 
@@ -275,7 +275,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 static func _supply(h: Hospital, r: Room) -> void:
 	var c := r.center()
 	var stock := [
-		["General Stock", ["compress", "blanket", "pillow", "bedpan", "thermometer"], false],
+		["General Stock", ["compress", "blanket", "pillow", "bedpan", "thermometer", "duster"], false],
 		["Pharmacy Stock", ["syringe", "pill_bottle", "iv_bag", "placebex_kit"], true],
 		["Forms & Stationery", ["blank_form", "clipboard_blank", "stapler"], false],
 	]

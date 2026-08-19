@@ -42,6 +42,8 @@ func begin_day() -> Dictionary:
 		GameState.set_flag("evicted", true)
 
 	var fired := events.roll_daily()
+	_run_service_contract()
+	_run_second_opinions()
 	investigations.daily_check()
 	investigations.daily_tick()
 
@@ -63,6 +65,49 @@ func begin_day() -> Dictionary:
 	}
 	briefing_ready.emit(_pending_briefing)
 	return _pending_briefing
+
+## Equipment service contract: machines get serviced, which fixes miscalibration
+## — and a technician who finds a machine badly out of calibration writes that
+## down. The upgrade that protects your equipment also audits it.
+func _run_service_contract() -> void:
+	if not GameState.has_upgrade("maintenance_contract"):
+		return
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if not (f is TreatmentMachine):
+			continue
+		var m: TreatmentMachine = f
+		if not m.is_miscalibrated():
+			continue
+		var was := m.calibration
+		m.calibration = 1.0
+		if was < 0.65:
+			suspicion.report_to_institution("admin", "machine_miscalibrated", 0.3,
+				"%s found significantly out of calibration during service" % m.fixture_name,
+				"", ["equipment"])
+			EventBus.toast.emit("%s was serviced. It needed it." % m.fixture_name, "suspicion")
+		else:
+			EventBus.toast.emit("%s serviced." % m.fixture_name, "info")
+
+## Second opinion policy: a colleague signs off every extended stay. Great for
+## the hospital's standing, and it means another doctor reads all of your
+## extensions — with a chart audit attached.
+func _run_second_opinions() -> void:
+	if not GameState.has_upgrade("second_opinion_policy"):
+		return
+	var reviewer: DoctorNPC = null
+	for d in get_tree().get_nodes_in_group("staff"):
+		if d is DoctorNPC:
+			reviewer = d
+			break
+	if reviewer == null:
+		return
+	var extended: Array[Patient] = []
+	for p in patient_system.active():
+		if p.days_admitted > p.expected_stay_days + 0.5:
+			extended.append(p)
+	if extended.is_empty():
+		return
+	reviewer.review_charts(extended)
 
 func _admit_morning_patients() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
@@ -134,6 +179,7 @@ func end_shift() -> void:
 		if d is DoctorNPC:
 			d.review_charts(patient_system.active())
 
+	_run_ward_clerk()
 	var findings := records.pending_findings()
 	var data := {
 		"day": GameState.day,
@@ -144,6 +190,30 @@ func end_shift() -> void:
 	}
 	review_ready.emit(data)
 	EventBus.objective_changed.emit("Finish your paperwork before you leave.")
+
+## Ward clerk: chases up your undocumented complications so they stop being
+## record gaps. She files them as "idiopathic", which is plausible for most
+## things — but she also notices how often she has to do it, and mentions it.
+func _run_ward_clerk() -> void:
+	if not GameState.has_upgrade("admin_assistant"):
+		return
+	var filed := 0
+	for p in patient_system.active():
+		for c in p.active_complications():
+			if c.documented_cause != "":
+				continue
+			if not c.plausible_causes.has("idiopathic"):
+				continue
+			c.documented_cause = "idiopathic"
+			c.documented_at = GameState.career_minutes
+			filed += 1
+	if filed == 0:
+		return
+	EventBus.toast.emit("The ward clerk tidied up %d unfiled complication(s)." % filed, "info")
+	if filed >= 3:
+		suspicion.report_to_institution("admin", "clerk_pattern", 0.18 * float(filed),
+			"ward clerk filed %d complications with no stated cause this shift" % filed,
+			"", ["records", "statistics"])
 
 func _undocumented_complications() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

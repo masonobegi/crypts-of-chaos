@@ -135,3 +135,38 @@ func test_serialization_roundtrip() -> void:
 	t.eq(back.complications[0].documented_cause, "weather", "documented cause survives")
 	t.eq(back.chart.logged_treatments.size(), 1, "chart survives roundtrip")
 	t.eq(back.mind.archetype, "paranoid", "mind survives roundtrip")
+
+func test_every_condition_has_reachable_treatments() -> void:
+	# A condition whose indicated treatments need a tool that does not exist is
+	# unwinnable and would only show up as a patient who never gets better.
+	for cid in DB.CONDITIONS:
+		var treats: Array = DB.correct_treatments(String(cid))
+		t.gt(float(treats.size()), 0.0, "%s has indicated treatments" % cid)
+		for tid in treats:
+			var spec: Dictionary = DB.treatment(String(tid))
+			t.ok(not spec.is_empty(), "%s references a real treatment (%s)" % [cid, tid])
+			var tool := String(spec.get("tool", ""))
+			if tool == "" or tool.begins_with("machine_"):
+				continue
+			t.ok(Items.SPECS.has(tool),
+				"treatment %s needs tool '%s', which must be a real item" % [tid, tool])
+
+func test_every_complication_has_at_least_one_plausible_cause() -> void:
+	for cid in DB.COMPLICATIONS:
+		var causes: Array = Array(DB.COMPLICATIONS[cid].get("causes", []))
+		t.gt(float(causes.size()), 0.0, "%s can be attributed to something" % cid)
+		for c in causes:
+			t.ok(DB.CAUSES.has(String(c)), "%s uses a real cause tag (%s)" % [cid, c])
+
+func test_every_machine_treatment_is_indicated_somewhere() -> void:
+	# A machine whose treatment is correct for no condition is a trap with no
+	# legitimate use, which is not the same as a tempting one.
+	for tid in DB.TREATMENTS:
+		var tool := String(DB.treatment(String(tid)).get("tool", ""))
+		if not tool.begins_with("machine_"):
+			continue
+		var indicated := false
+		for cid in DB.CONDITIONS:
+			if DB.is_correct_treatment(String(cid), String(tid)):
+				indicated = true
+		t.ok(indicated, "machine treatment %s is indicated for some condition" % tid)

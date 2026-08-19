@@ -45,6 +45,11 @@ const SPECS := {
 		"blurb": "A tent. Some steam. Assembly required.",
 		"shape": "box", "color": Color(0.60, 0.72, 0.78),
 	},
+	"duster": {
+		"name": "Ultrasonic Duster", "mass": 1.2, "size": Vector3(0.12, 0.12, 0.42),
+		"blurb": "Emits a frequency. The frequency is not for you.",
+		"shape": "duster", "color": Color(0.45, 0.65, 0.72),
+	},
 	"wrench": {
 		"name": "Spleen Torque Wrench", "mass": 2.2, "size": Vector3(0.09, 0.09, 0.55),
 		"blurb": "Calibrated. Do not overtighten. Please.",
@@ -220,6 +225,12 @@ static func _shape_parts(shape: String, size: Vector3, color: Color) -> Array:
 			return [
 				{"mesh": Build.box_mesh(Vector3(size.x, size.y, 0.06)), "mat": Build.mat(color, 0.3)},
 				{"mesh": Build.cyl_mesh(0.012, 0.1), "mat": Build.mat(Build.PLASTIC), "pos": Vector3(0, -size.y * 0.5 - 0.04, 0)},
+			]
+		"duster":
+			return [
+				{"mesh": Build.cyl_mesh(0.035, 0.24), "mat": m, "rot": Vector3(PI / 2, 0, 0)},
+				{"mesh": Build.cyl_mesh(0.06, 0.1, 12), "mat": Build.mat(color.lightened(0.25), 0.3, 0.0, color * 0.5), "pos": Vector3(0, 0, -0.17), "rot": Vector3(PI / 2, 0, 0)},
+				{"mesh": Build.box_mesh(Vector3(0.05, 0.02, 0.06)), "mat": dark, "pos": Vector3(0, 0.04, 0.06)},
 			]
 		"wrench":
 			return [

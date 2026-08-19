@@ -105,7 +105,24 @@ runtime for exactly this reason.
 | careless | $12,301 | Struck off day 12 | heat 100% |
 | careful  | $38,645 | Tycoon | Clean, rep 0.89 |
 
+- [x] Investigators with bodies: they walk to each chart, nurse and machine in
+      turn, so every step is interceptable. Covert ones still get no body.
+- [x] Staff propositions: corrupt nurses name a price, loyal ones warn you,
+      gossips tell you what's going around. Paying buys real silence and counts
+      toward Medical Mafia; threatening backfires into fresh evidence.
+- [x] Content: 19 conditions, 17 treatments, 14 complications, 19 random events.
+      Added validation tests that walk ALL content and assert every condition has
+      reachable treatments with real tools, every complication has real cause
+      tags, and every machine treatment is indicated somewhere.
+- [x] PA tannoy system — atmosphere that doubles as an institutional-mood signal.
+- [x] Student-on-placement event (a witness with legs), agency nurse (owes you
+      nothing), coffee machine failure (defeats the coffee upgrade), bed closure.
+- [x] Remaining upgrade behaviours wired: service contract fixes AND reports
+      miscalibration, ward clerk files your gaps but notices the pattern, second
+      opinion policy puts a colleague through every extended stay.
+- [x] 519 assertions, 37 smoke checks, 8 balance checks.
+
 ### NEXT UP
-- More conditions, complications and random events.
-- Remaining NPC archetype behaviours (corrupt nurse bribes, investigator doctor).
+- Tutorial objective beats for the first shift.
 - Mid-game tuning: careful play may be slightly too safe once mastered.
+- Departments beyond the ward (each unlocks new mechanics).

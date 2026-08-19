@@ -106,7 +106,12 @@ func _roll_archetype() -> String:
 # ================================================================ admission
 func free_wards() -> Array[String]:
 	var out: Array[String] = []
+	# A room closed for deep cleaning is genuinely out of service for the day.
+	var closed: String = WARD_KEYS[GameState.day % WARD_KEYS.size()] \
+		if GameState.flag("bed_closed", false) else ""
 	for key in WARD_KEYS:
+		if key == closed:
+			continue
 		var taken := false
 		for id in patients:
 			var p: Patient = patients[id]

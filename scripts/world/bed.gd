@@ -28,9 +28,9 @@ func _ready() -> void:
 	_apply_brake()
 
 func build() -> void:
-	var frame := Build.mat(Build.BED_FRAME, 0.4, 0.5)
+	var frame := Build.mat(Build.BED_FRAME, 0.45, 0.10)
 	var linen := Build.mat(Build.LINEN)
-	var rail := Build.mat(Build.METAL, 0.3, 0.7)
+	var rail := Build.mat(Build.METAL, 0.35, 0.15)
 	var cs := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(1.0, 0.7, 2.1)

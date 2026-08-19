@@ -103,7 +103,7 @@ func build(a: Vector3, b: Vector3, _flip: bool) -> void:
 	_mesh_root.add_child(Build.mi(Build.box_mesh(Vector3(THICK * 1.4, 0.55, width * 0.45)),
 		Build.mat(Color(0.60, 0.72, 0.75), 0.25), Vector3(0, 1.5, width * 0.5)))
 	_mesh_root.add_child(Build.mi(Build.sphere_mesh(0.05),
-		Build.mat(Build.METAL, 0.3, 0.7), Vector3(0, 1.05, width * 0.85)))
+		Build.mat(Build.METAL, 0.30, 0.25), Vector3(0, 1.05, width * 0.85)))
 
 	var area := Area3D.new()
 	area.name = "UseArea"

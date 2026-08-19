@@ -156,6 +156,10 @@ const SHOTS := [
 	# card — the shot that answers "does the building tell you anything".
 	["03b_door_card", Vector3(3.4, 1.6, 2.6), Vector3(3.55, 1.52, 3.9)],
 	["04_ward_101", Vector3(4.5, 1.7, 5.5), Vector3(4.0, 1.2, 11.0)],
+	# Close enough to see a face. Characters are the one thing in this game that
+	# has to read at four metres AND at forty, and every other shot is framed
+	# for the room.
+	["04b_bedside", Vector3(4.9, 1.55, 8.4), Vector3(3.1, 1.15, 10.4)],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
 	["06_treatment_bay", Vector3(24.0, 1.7, -2.0), Vector3(24.0, 1.3, -9.0)],
 	["07_supply", Vector3(32.0, 1.7, -2.0), Vector3(31.0, 1.3, -8.0)],

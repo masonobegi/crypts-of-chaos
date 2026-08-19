@@ -232,7 +232,7 @@ static func spawn(id: String) -> Prop:
 ## mallet from across a ward while a nurse is walking toward you.
 static func _shape_parts(shape: String, size: Vector3, color: Color) -> Array:
 	var m := Build.mat(color)
-	var metal := Build.mat(Build.METAL, 0.35, 0.8)
+	var metal := Build.mat(Build.METAL, 0.38, 0.18)
 	var dark := Build.mat(color.darkened(0.4))
 	match shape:
 		"mallet":

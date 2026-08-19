@@ -101,19 +101,23 @@ func _build_floor_and_ceiling(r: Room) -> void:
 		Vector3(0, WALL_H, 0))
 	r.add_child(c)
 
+## A different, bright floor per room kind. These are how you know which room
+## you are in from the doorway, so they are proper colours rather than eleven
+## shades of the same grey — which is what they were, and it is why the whole
+## floor plan read as one continuous corridor.
 func _floor_colour(kind: String) -> Color:
 	match kind:
-		"corridor": return Color(0.66, 0.69, 0.68)
-		"ward": return Color(0.74, 0.76, 0.71)
-		"lobby": return Color(0.60, 0.63, 0.66)
-		"station": return Color(0.56, 0.62, 0.64)
-		"treatment": return Color(0.68, 0.72, 0.75)
-		"supply": return Color(0.58, 0.57, 0.54)
-		"bathroom": return Color(0.72, 0.75, 0.78)
-		"office": return Color(0.52, 0.45, 0.38)
-		"intake": return Color(0.63, 0.60, 0.58)
-		"radiology": return Color(0.50, 0.54, 0.60)
-		"day_room": return Color(0.70, 0.66, 0.56)
+		"corridor": return Color(0.66, 0.75, 0.78)
+		"ward": return Color(0.74, 0.81, 0.72)
+		"lobby": return Color(0.78, 0.72, 0.60)
+		"station": return Color(0.58, 0.74, 0.80)
+		"treatment": return Color(0.64, 0.76, 0.84)
+		"supply": return Color(0.74, 0.68, 0.56)
+		"bathroom": return Color(0.70, 0.80, 0.86)
+		"office": return Color(0.72, 0.56, 0.44)
+		"intake": return Color(0.84, 0.71, 0.60)
+		"radiology": return Color(0.60, 0.68, 0.84)
+		"day_room": return Color(0.80, 0.72, 0.50)
 	return Build.FLOOR_A
 
 func _build_room_lights(r: Room) -> void:
@@ -124,7 +128,7 @@ func _build_room_lights(r: Room) -> void:
 			var x := r.rect.position.x + r.rect.size.x * (float(i) + 0.5) / float(cols)
 			var z := r.rect.position.y + r.rect.size.y * (float(j) + 0.5) / float(rows)
 			var lamp := Build.ceiling_light(
-				Vector3(x, WALL_H - 0.25, z) - r.center(), 1.25, Color(1.0, 0.98, 0.92), 8.5)
+				Vector3(x, WALL_H - 0.25, z) - r.center(), 1.05, Color(1.0, 0.97, 0.90), 8.5)
 			lamp.set_meta("is_light", true)
 			r.add_child(lamp)
 

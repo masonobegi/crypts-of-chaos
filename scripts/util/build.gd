@@ -16,6 +16,13 @@ static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 
 	m.albedo_color = color
 	m.roughness = rough
 	m.metallic = metal
+	# A soft rim, tinted toward the surface's own colour. This is most of what
+	# separates "a grey box" from "a stylised grey box": every object picks up a
+	# light edge where it turns away from you, so silhouettes read at distance
+	# and nothing dissolves into the wall behind it.
+	m.rim_enabled = true
+	m.rim = 0.42
+	m.rim_tint = 0.55
 	if emission.r + emission.g + emission.b > 0.0:
 		m.emission_enabled = true
 		m.emission = emission
@@ -170,24 +177,42 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 	lamp.light_color = color
 	lamp.omni_range = range_m
 	lamp.shadow_enabled = false
+	lamp.light_specular = 0.15
 	root.add_child(lamp)
 	root.add_child(mi(box_mesh(Vector3(1.1, 0.06, 0.35)), unshaded(color), Vector3(0, 0.06, 0)))
 	return root
 
 # ------------------------------------------------------------------ palette
-const FLOOR_A := Color(0.72, 0.74, 0.70)
-const FLOOR_B := Color(0.64, 0.67, 0.64)
-const WALL_LOWER := Color(0.42, 0.55, 0.55)
-const WALL_UPPER := Color(0.86, 0.87, 0.83)
-const CEILING := Color(0.90, 0.90, 0.88)
-const TRIM := Color(0.30, 0.38, 0.40)
-const BED_FRAME := Color(0.80, 0.82, 0.84)
-const LINEN := Color(0.93, 0.95, 0.96)
-const SCRUB_BLUE := Color(0.24, 0.45, 0.62)
-const SCRUB_GREEN := Color(0.28, 0.55, 0.45)
-const METAL := Color(0.70, 0.72, 0.76)
-const PLASTIC := Color(0.85, 0.86, 0.88)
-const WARN := Color(0.90, 0.62, 0.20)
-const BAD := Color(0.80, 0.28, 0.26)
-const GOOD := Color(0.35, 0.72, 0.45)
-const PAPER := Color(0.95, 0.94, 0.88)
+##
+## Bright and cartoon, not clinical. The old palette was correct hospital
+## colours — desaturated sage, institutional grey-green, muted teal — and the
+## result looked like a documentary about a hospital rather than a comedy set
+## in one. Everything here is pushed up in both saturation and value: a wall is
+## cream rather than off-grey, a dado is a real teal rather than a suggestion of
+## one, and a warning is a proper sunny orange.
+##
+## The rule for adding to this: if you would describe the colour with the word
+## "slightly", it is wrong. Pick the actual colour.
+const FLOOR_A := Color(0.72, 0.80, 0.74)
+const FLOOR_B := Color(0.66, 0.75, 0.72)
+const WALL_LOWER := Color(0.22, 0.62, 0.60)
+const WALL_UPPER := Color(0.94, 0.90, 0.78)
+const CEILING := Color(0.84, 0.84, 0.80)
+const TRIM := Color(0.13, 0.50, 0.54)
+const BED_FRAME := Color(0.90, 0.92, 0.95)
+const LINEN := Color(0.96, 0.97, 0.99)
+const SCRUB_BLUE := Color(0.20, 0.56, 0.94)
+const SCRUB_GREEN := Color(0.16, 0.78, 0.56)
+## Not really metal any more — see the metallic values at its call sites. A
+## stylised interior has no reflection probes, so anything above about 0.2
+## metallic has nothing to reflect and renders as grey mud. Chrome in this game
+## is painted chrome.
+const METAL := Color(0.80, 0.85, 0.92)
+const PLASTIC := Color(0.90, 0.92, 0.95)
+const WARN := Color(1.00, 0.74, 0.14)
+const BAD := Color(0.98, 0.32, 0.32)
+const GOOD := Color(0.28, 0.86, 0.46)
+const PAPER := Color(0.97, 0.96, 0.89)
+## Two more, because a cartoon needs an accent that is not a warning.
+const SUNNY := Color(1.00, 0.85, 0.32)
+const GRAPE := Color(0.60, 0.44, 0.90)

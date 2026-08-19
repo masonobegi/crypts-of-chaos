@@ -39,28 +39,85 @@ func _ready() -> void:
 func _build_environment() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.10, 0.12, 0.15)
+
+	# A real sky rather than a dark grey void. It is only ever seen through the
+	# windows and off the ends of the corridor, and those were the two places
+	# the building looked like it had been cut out of a larger, sadder game.
+	var sky_mat := ProceduralSkyMaterial.new()
+	sky_mat.sky_top_color = Color(0.24, 0.60, 0.95)
+	sky_mat.sky_horizon_color = Color(0.62, 0.80, 0.96)
+	sky_mat.ground_bottom_color = Color(0.52, 0.72, 0.55)
+	sky_mat.ground_horizon_color = Color(0.62, 0.80, 0.96)
+	sky_mat.sun_angle_max = 24.0
+	sky_mat.sun_curve = 0.2
+	var sky := Sky.new()
+	sky.sky_material = sky_mat
+	env.sky = sky
+	env.background_mode = Environment.BG_SKY
+
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.62, 0.66, 0.70)
-	# Low enough that a dark room is genuinely dark. At 0.55 the ambient term
-	# alone lit every ward, so switching the lights off changed nothing anybody
-	# could see, and the room-comfort penalty had no visual counterpart.
-	env.ambient_light_energy = 0.28
-	env.fog_enabled = true
-	env.fog_light_color = Color(0.55, 0.60, 0.64)
-	env.fog_density = 0.006
+	env.ambient_light_color = Color(0.72, 0.82, 0.92)
+	# High enough that the building is BRIGHT and nothing sits in a black
+	# corner, low enough that switching a ward's lights off is still an obvious,
+	# visible act — which it has to be, because it is a mechanic. The room lamps
+	# were raised to match, so the on/off delta is bigger than it was even at
+	# this much higher floor.
+	env.ambient_light_energy = 0.34
+
+	# No fog. Distance haze is what makes a corridor look grim, and this one is
+	# sixty-two metres long — it was the single biggest reason the far end of
+	# the ward read as a bad place to be.
+	env.fog_enabled = false
+
+	# FILMIC, not LINEAR. Linear keeps colours pure right up to 1.0 and then
+	# clips flat, and this scene has an ambient term, a key, a fill and a ceiling
+	# lamp every five metres all landing on the same white wall — the first
+	# render of this restyle was a photograph of a lightbulb. Filmic rolls the
+	# top off, which is what lets everything below it be bright.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 0.92
+	env.tonemap_white = 3.2
+
+	# One global knob for "more cartoon". Everything else in the restyle is a
+	# colour choice somewhere; this is the finish over the top of all of them.
+	env.adjustment_enabled = true
+	env.adjustment_saturation = 1.16
+	env.adjustment_contrast = 1.04
+	env.adjustment_brightness = 1.0
+
+	# Soft bloom on the lamps and the signage, which is most of what makes a
+	# stylised interior feel lit rather than merely visible.
+	env.glow_enabled = true
+	env.glow_intensity = 0.32
+	env.glow_bloom = 0.06
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+	env.glow_hdr_threshold = 1.15
+
 	env.ssao_enabled = false
 	we.environment = env
 	add_child(we)
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, -38, 0)
-	sun.light_energy = 0.7
-	sun.light_color = Color(1.0, 0.96, 0.88)
+	sun.light_energy = 0.85
+	sun.light_color = Color(1.0, 0.98, 0.93)
 	sun.shadow_enabled = true
+	# Soft, pale shadows. A hard black shadow under every chair is the other
+	# half of "grim"; this style wants shape, not drama.
+	sun.shadow_blur = 2.4
+	sun.directional_shadow_blend_splits = true
+	sun.light_specular = 0.35
 	add_child(sun)
+
+	# A cold fill from the opposite side, at a fifth of the key. Nothing in a
+	# cartoon has a black side — it has a cooler side.
+	var fill := DirectionalLight3D.new()
+	fill.rotation_degrees = Vector3(-28, 148, 0)
+	fill.light_energy = 0.22
+	fill.light_color = Color(0.74, 0.86, 1.0)
+	fill.shadow_enabled = false
+	fill.light_specular = 0.0
+	add_child(fill)
 
 func _build_world() -> void:
 	hospital = Hospital.new()

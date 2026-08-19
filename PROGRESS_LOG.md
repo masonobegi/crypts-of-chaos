@@ -1766,3 +1766,89 @@ and could not be produced. `[Shift+E]` on an open door slams it, matching the
 "other way round" modifier the supply shelf and the treatment dial already use.
 
 **1,568 assertions · 106 smoke · 21 live · boot check.**
+
+---
+
+## Session 4 (cont.) — bright and cartoony
+
+Asked for: make the graphics bright and cartoony, Fortnite-ish. The game has no
+art assets at all — every mesh is primitives assembled at runtime — so this is
+entirely a palette, lighting and proportion problem.
+
+A parallel inventory first, because a missed constant leaves one object the old
+colour and looks like a bug. Five sweeps established that `Build.mat()` and
+`Build.unshaded()` are the **only** two places a `StandardMaterial3D` is ever
+constructed, that the palette was 16 constants of which ten sat below S=0.10 in
+HSV, and that `hospital.gd` hard-codes eleven room floor colours that bypass the
+palette entirely. It also turned up two dead constants — `FLOOR_B` and `TRIM`
+have zero references anywhere — and that **interior lights cast no shadows at
+all**; the sun is the only shadow caster in the game.
+
+### Environment
+
+- **A real sky.** `BG_COLOR` with `Color(0.10, 0.12, 0.15)` — a dark grey void —
+  became a `ProceduralSkyMaterial`. It is only ever seen through the windows and
+  off the ends of the corridor, and those were the two places the building
+  looked cut out of a larger, sadder game.
+- **No fog.** Distance haze is what makes a corridor look grim, and this one is
+  sixty-two metres long. It was the single biggest reason the far end of the
+  ward read as a bad place to be.
+- **Ambient 0.28 → 0.34, room lamps 1.25 → 1.05, plus a cold fill light** at a
+  quarter of the key from the opposite side. Nothing in a cartoon has a black
+  side; it has a cooler side.
+- **Soft shadows** — `shadow_blur = 2.4`, specular down. A hard black shadow
+  under every chair is the other half of "grim".
+- **Saturation 1.16, contrast 1.04, soft glow.** One global knob over the top of
+  every other choice.
+
+The first attempt used `TONE_MAPPER_LINEAR` for maximum colour purity and
+produced a photograph of a lightbulb — an ambient term, a key, a fill and a
+ceiling lamp every five metres all landing on the same white wall. Linear keeps
+colours pure right up to 1.0 and then clips flat. Filmic rolls the top off,
+which is precisely what lets everything below it be bright.
+
+### Palette
+
+Every constant pushed up in saturation and value: a wall is cream rather than
+off-grey, the dado is a real teal rather than a suggestion of one, a warning is
+a proper sunny orange. **The rule for adding to it: if you would describe the
+colour with the word "slightly", it is wrong — pick the actual colour.**
+
+The eleven per-room floor tints were eleven shades of the same grey, which is
+why the whole floor plan read as one continuous corridor. They are now
+distinguishable colours, so you know which room you are in from the doorway.
+
+And **a soft rim on every material**, tinted toward the surface's own colour.
+This is most of what separates "a grey box" from "a stylised grey box": every
+object picks up a light edge where it turns away from you, so silhouettes read
+at distance and nothing dissolves into the wall behind it.
+
+Metals stopped being metals. Bed rails, IV stands, cart frames and the door
+handle were at 0.5–0.8 metallic; a stylised interior has no reflection probes,
+so anything above about 0.2 metallic has nothing to reflect and renders as grey
+mud. Chrome in this game is painted chrome now.
+
+### People
+
+Built to realistic proportions — a 0.155m head on a 0.22m torso with 0.062m
+arms — which at the distance you actually see people in this game, across a
+sixty-two metre corridor, reads as a set of grey sticks. Everything is about a
+third heavier and the head about a fifth too big, which is what makes a
+silhouette legible at forty metres and a face legible at four. Plus a collar in
+a lighter shade of the outfit, and **eyes with whites behind them** — a dot on a
+sphere is a mole; a dot on a white oval is an eye.
+
+The first pass gave them a 0.37m hair cap on a 0.40m head, centred. That is a
+helmet — and a patient lying in a bed is rotated ninety degrees, so the first
+rendered close-up was a brown block where a face should be with two eyes peering
+over the top of it. Narrower, set back, and on the crown now.
+
+Verified: full suite green, and `play.sh doors` unchanged at seven timeouts —
+the three shuttered annexe rooms and the known ward_102 lateral case — so the
+fatter collision capsule (0.26 → 0.30) still fits every 1.4m doorway.
+
+A new permanent screenshot, `04b_bedside`, frames a character close enough to
+see a face. Characters are the one thing in this game that has to read at four
+metres *and* at forty, and every other shot was framed for the room.
+
+**1,568 assertions · 106 smoke · 21 live · boot check · 33 screenshots.**

@@ -102,7 +102,7 @@ static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35,
 ## most reliable distraction in the building.
 static func _cart(h: Hospital, pos: Vector3, rot_y := 0.0) -> Prop:
 	var size := Vector3(0.62, 0.9, 0.46)
-	var metal := Build.mat(Build.METAL, 0.4, 0.6)
+	var metal := Build.mat(Build.METAL, 0.45, 0.12)
 	var cart := Build.make_prop("med_cart", "Medical Cart", size, 26.0, [
 		{"mesh": Build.box_mesh(Vector3(0.62, 0.05, 0.46)), "mat": metal, "pos": Vector3(0, 0.42, 0)},
 		{"mesh": Build.box_mesh(Vector3(0.58, 0.05, 0.42)), "mat": metal, "pos": Vector3(0, 0.1, 0)},
@@ -124,7 +124,7 @@ static func _cart(h: Hospital, pos: Vector3, rot_y := 0.0) -> Prop:
 	return cart
 
 static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
-	var metal := Build.mat(Build.METAL, 0.35, 0.7)
+	var metal := Build.mat(Build.METAL, 0.40, 0.15)
 	var stand := Build.make_prop("iv_stand", "IV Stand", Vector3(0.35, 1.8, 0.35), 6.0, [
 		{"mesh": Build.cyl_mesh(0.018, 1.7), "mat": metal, "pos": Vector3(0, 0.85, 0)},
 		{"mesh": Build.cyl_mesh(0.2, 0.04, 10), "mat": metal, "pos": Vector3(0, 0.02, 0)},

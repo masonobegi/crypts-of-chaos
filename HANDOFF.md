@@ -37,7 +37,7 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance design
+**1,568 assertions · 106 smoke · 21 live · boot check · 21/21 balance design
 checks over 3 seeds.** Windows and Linux both export, and the exported Linux
 build boots and exits cleanly.
 
@@ -69,22 +69,12 @@ See the Session 4 sections of `PROGRESS_LOG.md`. Headlines:
 ## Immediately next
 
 The parallel audit (`chronic-care-audit` workflow) produced **28 verified
-findings, 26 refuted**. All four criticals and eight of twelve majors are fixed
-— full detail in `PROGRESS_LOG.md`. Still outstanding, all verified, none
-blocking:
-
-- `Prop.relabel()` is never called and `is_mislabelled()` never read, so half
-  the substitution mechanic does not exist.
-- `SwingDoor.slam()` has no caller.
-- The `keycard` item is fully specified, never spawned, and read by nothing.
-- `cold_coffee` has no source, because the coffee item has no contents.
-- The tablet shows the three OLDEST things a mind holds, not the three worst.
-- Returning from the upgrade shop rewrites the shift report's verdict to the
-  flattering one.
-- "Nobody has anything on you." can never print — three institutional minds are
-  always in the list.
-- The booked list is billed into Revenue but never itemised, so the BILLING
-  block does not sum to the Revenue printed under it.
+findings, 26 refuted**. **All 28 are now fixed.** Full detail in
+`PROGRESS_LOG.md` — the headline ones were: no door in the building had ever
+closed anything; three separate ways to end a career by pressing Escape;
+throwing something to distract a nurse had never worked; the tutorial could
+never get past step 1 of 6; calibration sabotage and log-wiping had no way in;
+and substituting a syringe's contents was completely free.
 
 Brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy pass), 7
 (emergent chaos), 8 (events that change strategy), 9 (soften accidental

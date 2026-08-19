@@ -210,8 +210,9 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-778 assertions   (91 test functions across 5 suites)
+807 assertions   (test functions across 5 suites)
  40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+ 10 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
  21 screenshots  (every room and every UI screen, rendered offscreen)
 ```
@@ -229,11 +230,14 @@ Balance at 30 days, seed 90210:
 |---|---|
 | unit/integration | stay maths, chart auditing, evidence decay, floor connectivity |
 | `smoke_run.gd` | spawns silently dropped; a Vector3 passed where a Mesh was expected |
+| `live_run.gd` | **every door in the building was welded shut** — no member of staff could enter any patient room; NPCs could not push anything; navigation ignored furniture; nurses abandoned their rounds |
 | `balance_sim.gd` | cheating originally paid LESS than honesty; wrong-machine use was invisible; the whole upgrade catalogue bought out by day 20 |
 | `screenshots.sh` | HUD wrapping per-character; three HUD blocks never drawing; patients standing in beds; day-one economy; a confidence band on "how are you feeling?" |
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
+- Open door leaves are not in the nav graph, so staff bump them and rely on
+  stuck-recovery. Works, but could be modelled properly.
 - A physical second wing (departments are currently capability unlocks that
   reuse the existing floor; new rooms would need Hospital.LAYOUT to become
   data-driven per-run rather than a const).

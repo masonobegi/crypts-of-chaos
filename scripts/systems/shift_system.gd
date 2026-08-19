@@ -21,6 +21,19 @@ var appointments: AppointmentSystem = null
 
 var shift_start_snapshot := {}
 var _pending_briefing := {}
+## The last chart review, kept so it can be re-opened.
+##
+## It used to be emitted once and thrown away, and the review screen shipped a
+## "Go fix something" button wired straight to close(). Taking the game up on
+## its own offer freed the only screen that could ever call clock_out(), and
+## end_shift() cannot run twice — it sets CHART_REVIEW, which stops the clock,
+## which is the only thing that calls it. The career ended there: no report, no
+## pay, no next day, and nothing in the building that could end the shift.
+var last_review := {}
+## ...and the same for the shift report, for the same reason: the statement is
+## the only screen that can call next_day(), and the upgrade shop it opens can
+## be dismissed with Escape.
+var last_statement := {}
 
 func _ready() -> void:
 	add_to_group("shift_system")
@@ -381,8 +394,10 @@ func end_shift() -> void:
 		"acquired": _acquired_injury_summary(),
 		"patients": _patient_summaries(),
 	}
+	last_review = data
 	review_ready.emit(data)
-	EventBus.objective_changed.emit("Finish your paperwork before you leave.")
+	EventBus.objective_changed.emit(
+		"Finish your paperwork, then clock out at the terminal in your office.")
 
 ## A colleague who asked for a scan this morning notices at going-home time that
 ## it never happened. There is no way to explain this in the record, because
@@ -550,6 +565,7 @@ func clock_out() -> Dictionary:
 		"debt": GameState.total_debt(),
 		"daily_debt": GameState.daily_debt_payment(),
 	}
+	last_statement = report
 	statement_ready.emit(report)
 	SaveSystem.save_game(SaveSystem.AUTOSAVE)
 	return report

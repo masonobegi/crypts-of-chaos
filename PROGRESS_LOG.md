@@ -1320,3 +1320,106 @@ supporting evidence.
 
 **1,553 assertions · 95 smoke · 18 live · boot check · every door in the
 building, three ways.**
+
+---
+
+## Session 4 (cont.) — three ways to end a career by pressing Escape
+
+I ran a seven-way parallel audit over the codebase looking for one shape:
+*code that exists, has a comment saying what it is for, and is never reached*.
+Every finding was then handed to an adversarial verifier told to refute it by
+default. **28 survived, 26 were killed.**
+
+The four criticals were all the same bug wearing different clothes.
+
+### The chart review offered to end your career, politely
+
+```gdscript
+buttons.add_child(UIKit.button("Go fix something", close))
+```
+
+`ShiftSystem.clock_out()` had **exactly one caller in the shipping game**: the
+button three lines below that one. And `end_shift()` cannot run twice — it sets
+`CHART_REVIEW`, which sets `clock_running = false`, and the clock tick is the
+only thing that calls `end_shift()`.
+
+So: you reach 4:00 PM, the review tells you what an auditor would find, and
+offers to let you go and fix it. The screen's own copy encourages it —
+*"Terminals are still on."* — and the objective line reads *"Finish your
+paperwork before you leave."* You take the game up on it. The clock is now
+stopped forever. No report, no pay, no profit share, no upgrade shop, no next
+day, no ending. The only exit is Quit to Menu, which throws the whole shift
+away. Saving from the pause menu bakes the dead state into the autosave.
+
+The irony the auditor found: `ui_root.gd` explicitly refuses to let Escape
+dismiss the review, listing it among the screens that *"are not dismissible"* —
+and the screen ships a button that dismisses it anyway.
+
+### And the same trap twice more
+
+- **Escape on the first-run tutorial** softlocked a brand-new career in
+  PRE_SHIFT. The briefing underneath it is the only caller of `clock_in()`.
+- **Escape on the upgrade shop** softlocked the day in POST_SHIFT. The statement
+  it was opened from is the only caller of `next_day()`.
+
+Three of the game's five phases could only be left through one button on one
+screen, and every one of those screens could be dismissed.
+
+### One rule, not three patches
+
+Adding "tutorial" and "upgrades" to the non-dismissible list would have made the
+tutorial unskippable and the shop a trap of its own. Instead: **Escape with
+nothing on screen puts back the screen the phase is owed.**
+
+```
+PRE_SHIFT     → the briefing
+CHART_REVIEW  → the chart review
+POST_SHIFT    → the shift report
+```
+
+Dismissing is always allowed. Losing the game to it is not. `ShiftSystem` now
+keeps `last_review` and `last_statement` for exactly this.
+
+### And a way home that is in the building
+
+"Go fix something" is a good offer and should stay a good offer, so it now reads
+**"Go and fix it"** and tells you where to sign off. The **admin terminal in
+your office** offers *"Finish the shift — sign off and go home"* during chart
+review, and clocking out there ends the day.
+
+That puts the last act of the day in the room where the records are, which is
+where it belongs, and makes "go and fix something first" a real errand with a
+real way back rather than a one-way door.
+
+Three new smoke checks cover it, including a general one: **with nothing on
+screen, every phase that can only be left through a screen must be able to put
+that screen back.**
+
+```
+ok: the chart review is kept, so closing it is not the end of the career
+ok: there is an admin terminal to sign off at
+ok: and after the review it offers to end the day (Finish the shift)
+ok: with nothing on screen, CHART_REVIEW offers its way out (review)
+ok: with nothing on screen, POST_SHIFT offers its way out (statement)
+```
+
+**1,553 assertions · 100 smoke · 21 live · boot check.**
+
+### Still open from the same audit
+
+Twelve majors and twelve minors, all verified. The ones that matter most:
+
+- The tutorial can never get past step 1 — nothing emits `request_ui("tablet")`.
+- The machine maintenance panel can never be opened, so calibration sabotage —
+  and everything downstream of it — is dead code.
+- `clear_log()` has no player route, so wiping a device log, described in the
+  source as one of the most incriminating acts in the game, cannot be done.
+- Splint and Sling are defined but never placed, so two treatments are
+  impossible; and **no treatment with an empty `tool` can ever be given**,
+  though the chart lists six of them as indicated.
+- The shift report prints the admission-cost line but leaves it out of the
+  profit above it — and out of the share the player is paid.
+- Continue re-runs the whole morning after loading, charging a second day of
+  debts.
+- The appointment system overwrites the tutorial's instruction line every
+  in-game hour.

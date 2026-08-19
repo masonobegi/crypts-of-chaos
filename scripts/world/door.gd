@@ -40,6 +40,9 @@ var _mesh_root: Node3D = null
 var _open_dir := 0.0
 var _held := 0
 var _latch := 0.0
+## Deliberately being pulled shut. Distinct from the passive closer, which only
+## ever eases a door that has run out of momentum.
+var _closing := false
 
 ## How long a swing keeps its direction before the door will listen to where the
 ## person leaning on it is standing again.
@@ -122,6 +125,20 @@ func _physics_process(delta: float) -> void:
 	var held := _held > 0
 	_held = maxi(0, _held - 1)
 	_latch = maxf(0.0, _latch - delta)
+	if _closing:
+		var was := angle
+		angle += angular_velocity * delta
+		# Stop AT the frame, not past it and out the other side.
+		if signf(angle) != signf(was) or absf(angle) < 0.02:
+			angle = 0.0
+			angular_velocity = 0.0
+			_closing = false
+			_open_dir = 0.0
+			_latch = 0.0
+			AudioMgr.play_at_var("door", global_position, -16.0, 0.1)
+		leaf.rotation.y = angle
+		_was_open = is_open()
+		return
 	if absf(angular_velocity) > 0.001 or absf(angle) > 0.001:
 		angle += angular_velocity * delta
 		angular_velocity = lerpf(angular_velocity, 0.0, 1.0 - exp(-DAMPING * delta))
@@ -180,6 +197,7 @@ func open_for(pos: Vector3, speed := OPEN_SPEED) -> void:
 	# office door for forty-five and sixty seconds each, while the prompt in
 	# front of them said "or just walk into it".
 	_held = 3
+	_closing = false
 	var normal := global_transform.basis.x
 	var d := (pos - opening_centre()).dot(normal)
 	# Ignore anybody standing IN the plane of the door: their side is a rounding
@@ -200,7 +218,23 @@ func open_for(pos: Vector3, speed := OPEN_SPEED) -> void:
 	angular_velocity = _open_dir * speed
 
 func push(from: Vector3) -> void:
+	_closing = false
 	open_for(from, PUSH_SPEED)
+	AudioMgr.play_at_var("door", global_position, -14.0)
+
+## Pull it shut behind you.
+##
+## There was no way to do this. `door_use.gd` prompted "Pull door" whenever the
+## door was open and then called push(), which opens it — so the one verb the
+## entire stealth layer rests on did not exist. Shutting the door is how you get
+## a room to yourself; it is what the vision-blocker layer on the leaf is FOR,
+## and what half the upgrade tree is priced against.
+func pull_shut() -> void:
+	if leaf == null or absf(angle) < 0.02:
+		return
+	_closing = true
+	_held = 0
+	angular_velocity = -signf(angle) * PUSH_SPEED
 	AudioMgr.play_at_var("door", global_position, -14.0)
 
 func slam() -> void:

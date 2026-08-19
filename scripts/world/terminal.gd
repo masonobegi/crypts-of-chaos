@@ -27,11 +27,27 @@ func build(disp: String, private: bool) -> void:
 	add_child(glow)
 
 func prompt(_player) -> Array:
+	if _going_home():
+		return ["Finish the shift", "sign off and go home"]
 	var sub := "in full view of the ward" if not is_private else "door's shut. nobody's looking."
 	return ["Use terminal", sub]
 
+## After the chart review, this is how the day ends.
+##
+## It used to end at a button on a screen that the screen's OTHER button freed
+## forever. Ending the shift at a terminal, in the world, means "go and fix
+## something first" is a real errand with a real way back — and it puts the last
+## act of the day in the room where the records are, which is where it belongs.
+func _going_home() -> bool:
+	return GameState.phase == GameState.Phase.CHART_REVIEW and mode == "admin"
+
 func interact(_player, _held) -> void:
 	AudioMgr.play("beep", -12.0)
+	if _going_home():
+		var ss = get_tree().get_first_node_in_group("shift_system")
+		if ss != null:
+			ss.clock_out()
+		return
 	EventBus.request_ui.emit("records", {
 		"mode": mode, "private": is_private, "room": room_key,
 		"position": global_position,

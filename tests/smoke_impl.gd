@@ -43,10 +43,12 @@ func tick() -> bool:
 		"review":
 			_check_midshift()
 			game.shift.end_shift()
+			_check_the_day_can_still_end()
 			stage = "close"
 		"close":
 			var report: Dictionary = game.shift.clock_out()
 			_check_report(report)
+			_check_phase_is_not_a_dead_end("statement")
 			stage = "nextday"
 		"nextday":
 			game.shift.next_day()
@@ -375,6 +377,52 @@ func _check_wheeling(ps) -> void:
 
 func comp_owner(p: Patient) -> Patient:
 	return p
+
+## The chart review offers "Go and fix it", which closes it. Everything that
+## ends a day has to survive that.
+##
+## It did not. clock_out() had exactly one caller in the whole shipping game —
+## the review screen's other button — and end_shift() cannot run twice, because
+## it sets CHART_REVIEW, which stops the clock, which is the only thing that
+## calls end_shift(). Taking the game up on its own offer ended the career: no
+## report, no pay, no next day, and no object anywhere in the building that
+## could finish the shift. Nothing caught it because every harness, including
+## this one, called end_shift() and clock_out() back to back.
+func _check_the_day_can_still_end() -> void:
+	_ok(not game.shift.last_review.is_empty(),
+		"the chart review is kept, so closing it is not the end of the career")
+	_check_phase_is_not_a_dead_end("review")
+	# The player walks away and comes back to it.
+	if game.ui != null:
+		game.ui.close()
+	var term = null
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is RecordsTerminal and f.mode == "admin":
+			term = f
+	_ok(term != null, "there is an admin terminal to sign off at")
+	if term == null:
+		return
+	var p: Array = term.prompt(game.player)
+	_ok(String(p[0]) == "Finish the shift",
+		"and after the review it offers to end the day (%s)" % String(p[0]))
+
+## With nothing on screen, every phase that can only be left through a screen
+## has to be able to put that screen back.
+##
+## Three of the five could not. PRE_SHIFT is left by the briefing's Clock in,
+## CHART_REVIEW by the review's Clock out, POST_SHIFT by the statement's Go
+## home — and all three screens could be dismissed with Escape, or in the
+## review's case by its own second button. Each one ended the career silently:
+## a running game, a stopped clock, and no input anywhere that could advance
+## the day.
+func _check_phase_is_not_a_dead_end(want: String) -> void:
+	if game.ui == null:
+		return
+	game.ui.close()
+	var owed: Dictionary = game.ui._owed_screen()
+	_ok(String(owed.get("id", "")) == want,
+		"with nothing on screen, %s offers its way out (%s)" % [
+			GameState.Phase.keys()[GameState.phase], String(owed.get("id", "nothing"))])
 
 func _check_report(report: Dictionary) -> void:
 	var st: Dictionary = report.get("statement", {})

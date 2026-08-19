@@ -44,11 +44,51 @@ func _unhandled_input(event: InputEvent) -> void:
 				return          # these are not dismissible
 			close()
 		else:
-			open("pause", {})
+			var owed := _owed_screen()
+			if owed.is_empty():
+				open("pause", {})
+			else:
+				open(String(owed["id"]), owed["ctx"])
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("tablet") and current == null:
 		open("tablet", {})
 		get_viewport().set_input_as_handled()
+
+## The screen the current phase cannot proceed without, if it is not on screen.
+##
+## Three of the game's five phases can only be left through one button on one
+## screen, and every one of those screens could be dismissed:
+##
+##   PRE_SHIFT     the briefing calls clock_in()  — and the first-run tutorial
+##                 sits on top of it, so Escape there ended a brand-new career
+##                 before it started
+##   CHART_REVIEW  the review calls clock_out()   — and the review's OTHER
+##                 button, "Go fix something", closes it on purpose
+##   POST_SHIFT    the statement calls next_day() — and Escape on the upgrade
+##                 shop it opens closes the lot
+##
+## In every case the result was the same: a running game with no screen, a
+## stopped clock, and no input anywhere in the building that could advance the
+## day. The career was over and nothing said so.
+##
+## Rather than adding two more names to the non-dismissible list — which would
+## have made the tutorial unskippable and the shop a trap of its own — Escape
+## with nothing on screen puts the owed screen back. Dismissing is always
+## allowed; losing the game to it is not.
+func _owed_screen() -> Dictionary:
+	var ss = get_tree().get_first_node_in_group("shift_system")
+	if ss == null:
+		return {}
+	match GameState.phase:
+		GameState.Phase.PRE_SHIFT:
+			return {"id": "briefing", "ctx": ss.briefing()}
+		GameState.Phase.CHART_REVIEW:
+			if not ss.last_review.is_empty():
+				return {"id": "review", "ctx": ss.last_review}
+		GameState.Phase.POST_SHIFT:
+			if not ss.last_statement.is_empty():
+				return {"id": "statement", "ctx": ss.last_statement}
+	return {}
 
 # ------------------------------------------------------------------ routing
 func open(id: String, ctx: Dictionary = {}) -> void:

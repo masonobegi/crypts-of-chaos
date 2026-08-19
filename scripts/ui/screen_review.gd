@@ -86,7 +86,10 @@ func _build() -> void:
 
 	v.add_child(UIKit.scroll(content))
 	var buttons := UIKit.hbox(10)
-	buttons.add_child(UIKit.button("Go fix something", close))
+	buttons.add_child(UIKit.button("Go and fix it", func():
+		close()
+		EventBus.toast.emit(
+			"Sign off at the terminal in your office when you're done.", "info")))
 	buttons.add_child(UIKit.button("Clock out", func():
 		var ss = shift_system()
 		close()

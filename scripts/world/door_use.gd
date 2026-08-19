@@ -13,4 +13,9 @@ func prompt(_player) -> Array:
 func interact(player, _held) -> void:
 	if door == null:
 		return
-	door.push(player.global_position if player else global_position)
+	# Open it if it is shut, pull it shut if it is open. It used to call push()
+	# either way, so "Pull door" opened the door.
+	if door.is_open():
+		door.pull_shut()
+	else:
+		door.push(player.global_position if player else global_position)

@@ -41,6 +41,9 @@ var _blocker = null
 var _distraction_from: Dictionary = {}
 var _distraction_worked := -1
 var _investigating := 0
+## Does shutting a door actually buy you the room? -1 means the probe never ran.
+var _seen_door_open := -1
+var _seen_door_shut := -1
 
 func start() -> void:
 	GameState.start_new_career(555111)
@@ -72,6 +75,19 @@ func tick() -> bool:
 		_check_doorway_blocked()
 	if frames == FRAMES - 500:
 		_check_doorway_cleared()
+	# Four separate frames on purpose. Posing a leaf and querying the physics
+	# server in the same frame reads the shape's OLD transform — the first
+	# version of this probe reported "cannot see through an open door", which
+	# was the door still being shut as far as the space state was concerned.
+	if frames == FRAMES - 700:
+		_door_probe_setup()
+	if frames == FRAMES - 660:
+		_seen_door_open = _door_probe_look()
+	if frames == FRAMES - 640:
+		_door_probe_pose(0.0)
+	if frames == FRAMES - 600:
+		_seen_door_shut = _door_probe_look()
+		_door_probe_finish()
 	if frames == FRAMES - 300:
 		_test_perception()
 	if frames % 60 == 0:
@@ -252,6 +268,62 @@ func _check_doorway_cleared() -> void:
 		_blocker.queue_free()
 		_blocker = null
 
+## The whole reason a door leaf is on the vision-blocker layer.
+##
+## Until this session no door in the building spanned its own doorway — every
+## leaf stood perpendicular to its opening — so a shut door blocked a
+## seven-centimetre sliver of nothing and "close the door behind you" was a move
+## the game described and did not have. Both halves are checked here: that the
+## corridor CAN see into a ward through an open door, and that it cannot once
+## the door is shut. The first half matters as much as the second, because a
+## test that only asserts the blocking passes just as well on a floor made of
+## solid concrete.
+var _probe_door = null
+var _probe_watcher = null
+var _probe_at := Vector3.ZERO
+
+func _door_probe_setup() -> void:
+	var h = game.hospital
+	for d in h.get_children():
+		if d is SwingDoor and d.room_key == "ward_101":
+			_probe_door = d
+	if _probe_door == null:
+		return
+	for n in tree.get_nodes_in_group("staff"):
+		if n is StaffNPC and n.perception != null:
+			_probe_watcher = n
+			break
+	if _probe_watcher == null:
+		return
+	# Straight through the middle of the doorway, from the corridor to a point
+	# just inside the room. Deliberately not the bed: the bed is off to one side
+	# and that sightline clips the frame, so a failure there would say something
+	# about furniture placement rather than about the door.
+	_probe_at = _probe_door.opening_centre() + Vector3(0, 1.0, 1.5)
+	_probe_watcher.global_position = _probe_door.opening_centre() + Vector3(0, 0, -1.6)
+	_probe_watcher.look_toward(_probe_at)
+	# Nothing else may move the leaf while it is posed — the passive closer
+	# would ease it shut underneath the measurement.
+	_probe_door.set_physics_process(false)
+	_door_probe_pose(-1.4)
+
+func _door_probe_pose(a: float) -> void:
+	if _probe_door == null:
+		return
+	_probe_door.angle = a
+	_probe_door.leaf.rotation.y = a
+
+func _door_probe_look() -> int:
+	if _probe_watcher == null or _probe_door == null:
+		return -1
+	return 1 if _probe_watcher.perception.has_line_of_sight(_probe_at) else 0
+
+func _door_probe_finish() -> void:
+	if _probe_door != null:
+		_probe_door.set_physics_process(true)
+	notes.append("line of sight into Room 101 from the corridor: door open=%s shut=%s" % [
+		str(_seen_door_open == 1), str(_seen_door_shut == 1)])
+
 func _finish() -> void:
 	var moved := 0
 	var total := 0
@@ -291,6 +363,10 @@ func _finish() -> void:
 		"a noise at the far end of the floor pulls somebody off station")
 	_ok(_investigating > 0 or _distraction_worked == 1,
 		"and it is the noise doing it, not a coincidence of patrol routes")
+	_ok(_seen_door_open == 1,
+		"the corridor can see into a ward through an open door")
+	_ok(_seen_door_shut == 0,
+		"and cannot once the door is shut — which is the entire point of shutting it")
 	_ok(_door_block_worked == 1,
 		"a heavy prop left in a ward doorway genuinely cuts the room off")
 	_ok(path.size() > 0 and _door_block_worked == 1,

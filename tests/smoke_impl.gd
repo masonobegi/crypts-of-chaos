@@ -225,8 +225,31 @@ func _check_midshift() -> void:
 	# The economy has to actually bill occupied beds.
 	_ok(ps.total_daily_revenue() > 0, "ward generates revenue")
 
+	_check_supply_shelf()
 	_check_examination(ps)
 	_check_intake_overflow(ps)
+
+## You have to be able to pick up a syringe.
+##
+## Every shelf in the building was a dead end: tap was unreachable because
+## use_seconds() returned a hold time, and the hold path cycled instead of
+## dispensing. No treatment tool could be obtained by any input, so no patient
+## could be treated by hand, and the tutorial pointed straight at it.
+func _check_supply_shelf() -> void:
+	var shelf: SupplyShelf = null
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is SupplyShelf and f.items.size() > 1:
+			shelf = f
+			break
+	if shelf == null:
+		_fail("no stocked supply shelf in the building")
+		return
+	_ok(shelf.use_seconds(null, null) == 0.0,
+		"a shelf is a tap, not a hold — a hold can never reach the tap branch")
+	var before := tree.get_nodes_in_group("prop").size()
+	shelf.interact(game.player, null)
+	var after := tree.get_nodes_in_group("prop").size()
+	_ok(after > before, "tapping a shelf actually puts an object in the world (%d -> %d)" % [before, after])
 
 ## The examination, end to end: the honest setting is safe and useful, and
 ## leaning on somebody produces a real injury that lands in the record as a gap.

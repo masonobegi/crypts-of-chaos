@@ -509,6 +509,11 @@ func add_complication(p: Patient, comp_id: String, true_cause: String) -> Compli
 			"Was that meant to—", "Oh, that's not good.",
 		])), 3.4)
 		body.startle(0.8)
+		# The moment something goes wrong is the moment the whole game is about.
+		# It gets a sound at the person it happened to, not a line in a box.
+		AudioMgr.play_at("gasp", body.global_position, -6.0)
+		if c.is_injury:
+			AudioMgr.play_at("snap", body.global_position, -7.0)
 	EventBus.toast.emit("%s: %s" % [p.display_name, c.display_name], "suspicion")
 	return c
 

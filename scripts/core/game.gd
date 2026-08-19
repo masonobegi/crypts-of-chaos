@@ -43,7 +43,10 @@ func _build_environment() -> void:
 	env.background_color = Color(0.10, 0.12, 0.15)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.66, 0.70)
-	env.ambient_light_energy = 0.55
+	# Low enough that a dark room is genuinely dark. At 0.55 the ambient term
+	# alone lit every ward, so switching the lights off changed nothing anybody
+	# could see, and the room-comfort penalty had no visual counterpart.
+	env.ambient_light_energy = 0.28
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.55, 0.60, 0.64)
 	env.fog_density = 0.006

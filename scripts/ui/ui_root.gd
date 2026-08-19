@@ -96,8 +96,6 @@ func _build_simple(id: String, ctx: Dictionary) -> Control:
 		"tutorial": return _tutorial_screen()
 		"game_over": return _game_over_screen(String(ctx.get("ending", "saint")))
 		"vitals": return _vitals_screen(String(ctx.get("patient_id", "")))
-		"apply_treatment": return _apply_treatment(ctx)
-		"run_machine": return _run_machine(ctx)
 	Log.w("unknown screen '%s'" % id, "UI")
 	return null
 

@@ -27,6 +27,23 @@ func _build() -> void:
 		v.add_child(UIKit.button("Close", close))
 		return
 
+	# The arithmetic, stated flatly, at the exact moment it matters. Nothing here
+	# is advice and nothing here is labelled — it is two numbers and the player
+	# can do what they like with them. This is the moment the whole game is
+	# waiting for a stranger to notice.
+	var money_box := UIKit.panel(Color(0.13, 0.16, 0.14, 0.95), 6, 1, UIKit.MONEY)
+	var bx := UIKit.vbox(3)
+	bx.add_child(UIKit.row("Send them home today", "your bonus is settled at %s"
+		% UIKit.money_str(0), UIKit.INK_DIM))
+	bx.add_child(UIKit.row("Every further night", "hospital %s   ·   you %s" % [
+		UIKit.money_str(_patient.daily_revenue()),
+		UIKit.money_str(_patient.your_cut_per_day())], UIKit.MONEY))
+	bx.add_child(UIKit.label("Day %d of a projected %d." % [
+		int(ceil(_patient.days_admitted)), int(ceil(_patient.expected_stay_days))],
+		13, UIKit.INK_DIM))
+	money_box.add_child(bx)
+	v.add_child(money_box)
+
 	v.add_child(UIKit.row("Condition on file", _patient.condition_name()))
 	for c in _patient.active_complications():
 		v.add_child(UIKit.row("  " + c.display_name,

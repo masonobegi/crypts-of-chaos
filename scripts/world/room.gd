@@ -94,13 +94,18 @@ func set_lights(on: bool, by_player: bool) -> void:
 	if lights_on == on:
 		return
 	lights_on = on
+	# Hide the whole fitting, not just the OmniLight3D inside it.
+	#
+	# Build.ceiling_light() puts an UNSHADED emissive panel next to the lamp, so
+	# recursing for the light alone left every fitting in the room glowing at
+	# full brightness with the lights "off". Turning a ward's lights out — one of
+	# the few purely environmental levers in the game — looked like nothing had
+	# happened at all.
 	for c in get_children():
 		if c is OmniLight3D:
 			(c as OmniLight3D).visible = on
 		elif c.has_meta("is_light"):
-			for gc in c.get_children():
-				if gc is OmniLight3D:
-					(gc as OmniLight3D).visible = on
+			(c as Node3D).visible = on
 	AudioMgr.play_at("beep_low", global_position, -18.0)
 	if by_player:
 		WorldEvent.new("lights_off" if not on else "lights_on", "player") \

@@ -39,6 +39,10 @@ var deal_price: int = 0
 ## Highest suspicion tier this mind has already reacted to, so a nurse doesn't
 ## re-confront you every frame.
 var reacted_tier: int = 0
+## Career minute this person last visibly clocked something. Throttles the
+## glance-and-mutter beat so being watched reads as a person noticing rather
+## than as a chorus.
+var last_noticed_at: int = -9999
 ## Set while the player is actively being watched — drives the "tell" behaviours.
 var watching: bool = false
 

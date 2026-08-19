@@ -24,4 +24,18 @@ func use_seconds(_player, _held) -> float:
 func interact(player, _held) -> void:
 	if machine == null:
 		return
-	EventBus.request_ui.emit("run_machine", {"machine": machine, "player": player})
+	var ts = get_tree().get_first_node_in_group("treatment_system")
+	if ts == null:
+		return
+	var p = machine._nearby_patient(player)
+	if p == null:
+		EventBus.toast.emit("The cycle runs. There is nobody in it.", "info")
+		AudioMgr.play_at_var("machine_on", global_position, -14.0)
+		return
+	# Straight into the world. No modal, nothing paused: the machine makes its
+	# noise, the patient reacts where you can see them, and whoever is standing
+	# in the doorway gets to watch you do it.
+	ts.run_machine(machine, p)
+	var rs = get_tree().get_first_node_in_group("records_system")
+	if rs:
+		rs.log_real_treatment(p, machine.treatment_id)

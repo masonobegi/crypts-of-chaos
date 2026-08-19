@@ -19,6 +19,7 @@ var _watch_panel: PanelContainer
 var _subtitle: Label
 var _subtitle_panel: PanelContainer
 var _toasts: VBoxContainer
+var _ticker: VBoxContainer
 var _crosshair: Control
 var _subtitle_timer := 0.0
 
@@ -35,6 +36,7 @@ func _ready() -> void:
 	EventBus.toast.connect(_on_toast)
 	EventBus.subtitle.connect(_on_subtitle)
 	EventBus.money_changed.connect(_on_money)
+	EventBus.transaction.connect(_on_transaction)
 	EventBus.clock_tick.connect(_on_clock)
 	EventBus.objective_changed.connect(_on_objective)
 	EventBus.sanction_applied.connect(func(_l, _r): _refresh_static())
@@ -66,6 +68,12 @@ func _build() -> void:
 	add_child(tr_bg)
 	var tr := UIKit.vbox(2)
 	UIKit.place(tr, Control.PRESET_TOP_RIGHT, -248, 18, 228, 100)
+	_ticker = UIKit.vbox(1)
+	UIKit.place(_ticker, Control.PRESET_TOP_RIGHT, -330, 118, 310, 200)
+	_ticker.alignment = BoxContainer.ALIGNMENT_BEGIN
+	_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_ticker)
+
 	_personal = UIKit.label("$0", 26, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hospital = UIKit.label("Hospital $0", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
 	_census = UIKit.label("0 admitted", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
@@ -81,8 +89,13 @@ func _build() -> void:
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc.add_child(_objective)
 
-	_watch_panel = UIKit.panel(Color(0.35, 0.12, 0.12, 0.85), 6, 1, UIKit.BAD)
-	_watch = UIKit.label("", 15, Color(1, 0.85, 0.82), HORIZONTAL_ALIGNMENT_CENTER, true)
+	# Neutral by default and restyled per tier in _refresh_watchers. It used to
+	# be hardcoded alarm-red, and it shows for anybody with line of sight
+	# including the patient lying in the bed you are treating — so it was on
+	# almost permanently, in the colour that means DANGER, and read as wallpaper
+	# by the time it actually mattered.
+	_watch_panel = UIKit.panel(Color(0.10, 0.13, 0.16, 0.72), 6, 1, Color(0.35, 0.42, 0.48))
+	_watch = UIKit.label("", 15, Color(0.86, 0.90, 0.92), HORIZONTAL_ALIGNMENT_CENTER, true)
 	_watch_panel.add_child(_watch)
 	_watch_panel.visible = false
 	tc.add_child(_watch_panel)
@@ -163,7 +176,20 @@ func _refresh_watchers() -> void:
 	elif worst >= 2:
 		verb = "is paying attention"
 	_watch.text = "%s %s" % [", ".join(names), verb]
-	_watch.add_theme_color_override("font_color", UIKit.tier_color(maxi(worst, 1)))
+	# Escalates with the worst tier present. At tier 0 — somebody who simply has
+	# eyes and no opinion — it stays a quiet grey note, so the red means
+	# something when it arrives.
+	var tint := UIKit.tier_color(worst) if worst >= 1 else Color(0.80, 0.86, 0.88)
+	_watch.add_theme_color_override("font_color", tint)
+	var bg: Color = Color(0.10, 0.13, 0.16, 0.72)
+	if worst >= 3:
+		bg = Color(0.38, 0.11, 0.11, 0.88)
+	elif worst >= 2:
+		bg = Color(0.32, 0.20, 0.09, 0.84)
+	elif worst >= 1:
+		bg = Color(0.24, 0.22, 0.10, 0.80)
+	_watch_panel.add_theme_stylebox_override("panel",
+		UIKit.stylebox(bg, 6, 1, tint))
 
 func _refresh_static() -> void:
 	_day.text = "Day %d" % GameState.day
@@ -201,6 +227,38 @@ func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
 	_subtitle.text = "%s: \"%s\"" % [speaker, text]
 	_subtitle_panel.visible = true
 	_subtitle_timer = seconds
+
+## Every movement of money, as it happens, next to the figure it changed.
+##
+## `EventBus.transaction` was emitted from both halves of GameState and
+## connected to nothing at all. Five debts totalling $695 a day drained the
+## starting $820 in silence before the player had read either number, and their
+## own balance then sat still for twelve real minutes — so the one thing the
+## entire game is about, money arriving because somebody stayed another night,
+## was never once visible arriving.
+func _on_transaction(label: String, amount: int, is_hospital: bool) -> void:
+	if amount == 0:
+		return
+	var l := UIKit.label("%s%s  %s" % ["+" if amount > 0 else "−",
+		UIKit.money_str(absi(amount)), label],
+		15 if not is_hospital else 13,
+		(UIKit.MONEY if amount > 0 else UIKit.BAD) if not is_hospital
+			else Color(0.62, 0.72, 0.68), HORIZONTAL_ALIGNMENT_RIGHT)
+	_ticker.add_child(l)
+	if not is_hospital:
+		AudioMgr.play("money" if amount > 0 else "beep_low", -17.0)
+	while _ticker.get_child_count() > 7:
+		_ticker.get_child(0).free()
+	if not is_inside_tree():
+		return
+	await get_tree().create_timer(4.5).timeout
+	if not is_instance_valid(l) or not is_inside_tree():
+		return
+	var tw := create_tween()
+	tw.tween_property(l, "modulate:a", 0.0, 0.6)
+	await tw.finished
+	if is_instance_valid(l):
+		l.queue_free()
 
 func _on_toast(text: String, kind: String) -> void:
 	var colour := UIKit.INK

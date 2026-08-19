@@ -113,6 +113,8 @@ func _build_ward(c: VBoxContainer) -> void:
 			UIKit.WARN if p.is_overdue() else UIKit.INK))
 		bv.add_child(UIKit.row("Impression", p.apparent_state()))
 		bv.add_child(UIKit.row("Billing", "%s/day" % UIKit.money_str(p.daily_revenue()), UIKit.MONEY))
+		bv.add_child(UIKit.row("  your share", "%s/day" % UIKit.money_str(p.your_cut_per_day()),
+			UIKit.MONEY))
 		bv.add_child(UIKit.row("Insurance", DB.insurance_name(p.insurance)))
 		bv.add_child(UIKit.row("Personality", DB.archetype_name(p.archetype)))
 		for note in p.read_notes():

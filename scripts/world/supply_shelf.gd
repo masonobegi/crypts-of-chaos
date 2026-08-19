@@ -40,18 +40,29 @@ func prompt(_player) -> Array:
 		return [fixture_name, "empty"]
 	var id: String = items[_index % items.size()]
 	return ["Take %s" % Items.display_name(id),
-		"[E] take   [hold E] next item (%d/%d)" % [(_index % items.size()) + 1, items.size()]]
+		"[E] take   [Shift] next  (%d of %d)" % [(_index % items.size()) + 1, items.size()]]
 
+## Tap takes; Shift+E cycles. One key, two verbs, and neither of them is a hold.
+##
+## This used to be "tap takes, HOLD cycles", which could not work and meant no
+## shelf in the building ever dispensed anything. `use_seconds()` returned 0.6
+## whenever there was more than one item — every shelf — so the interactor's tap
+## branch (`hold_time <= 0.0`) was unreachable, and the only surviving route was
+## the hold-completion call, which fires while E is still physically down. That
+## made `Input.is_action_pressed("interact")` true, so it cycled and returned.
+## `_dispense()` was dead code on every shelf. You could not pick up a syringe,
+## an IV bag, a compress or a splint — which is to say you could not treat
+## anybody — and the tutorial cheerfully sent you to the supply room to try.
 func use_seconds(_player, _held) -> float:
-	return 0.6 if items.size() > 1 else 0.0
+	return 0.0
 
-## Hold cycles the shelf; tap dispenses. Two verbs, one key.
 func interact(player, _held) -> void:
 	if items.is_empty():
 		return
-	if Input.is_action_pressed("interact") and items.size() > 1:
+	if Input.is_action_pressed("sprint") and items.size() > 1:
 		_index += 1
-		AudioMgr.play_at_var("tick", global_position, -16.0)
+		AudioMgr.play_at_var("tick", global_position, -14.0)
+		EventBus.interact_prompt.emit(prompt(player)[0], prompt(player)[1])
 		return
 	_dispense(player, items[_index % items.size()])
 

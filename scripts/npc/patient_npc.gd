@@ -287,9 +287,16 @@ func interact(player, held) -> void:
 	if held != null:
 		var tid := _treatment_for_item(held)
 		if tid != "":
-			EventBus.request_ui.emit("apply_treatment", {
-				"patient_id": data.id, "treatment_id": tid, "item": held,
-			})
+			var ts = get_tree().get_first_node_in_group("treatment_system")
+			if ts != null:
+				# In the world, unpaused. This used to open a modal that paused
+				# the tree and then did the treatment inside the screen builder,
+				# so the patient could not react to what had just been done to
+				# them until after you had closed the box describing it.
+				ts.apply(data, tid, held, held.global_position)
+				var rs = get_tree().get_first_node_in_group("records_system")
+				if rs:
+					rs.log_real_treatment(data, tid)
 			return
 	look_toward(player.global_position if player else global_position)
 	state = State.TALKING

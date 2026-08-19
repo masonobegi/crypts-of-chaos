@@ -183,6 +183,30 @@ func _react(id: String, mind: Mind, ev: Evidence) -> void:
 	var body = _body(id)
 	if body == null:
 		return
+	# A NOTICE beat, below the tier ladder.
+	#
+	# The tiers need roughly 0.28 of accumulated evidence before anybody says a
+	# word, and a one-notch machine deviation is worth 0.05 — so for the first
+	# several shifts you could be watched committing the entire premise of the
+	# game and the world would not move. Being clocked has to be perceptible the
+	# first time it happens, or the stealth layer is invisible exactly when the
+	# player is trying to learn it. Throttled per mind so it stays a glance
+	# rather than a chorus.
+	if ev.base_weight >= 0.1 and GameState.career_minutes - mind.last_noticed_at >= 20:
+		mind.last_noticed_at = GameState.career_minutes
+		var p = get_tree().get_first_node_in_group("player")
+		if p != null:
+			body.look_toward(p.global_position)
+		if RNG.chance("notice_bark", 0.55):
+			body.say(String(RNG.pick("notice_bark_line", [
+				"...sorry, what was that?",
+				"Everything alright in here?",
+				"Hm.",
+				"Doctor?",
+				"Was that meant to happen?",
+			])), 2.6)
+		AudioMgr.play_at_var("tick", body.global_position, -20.0)
+
 	var tier := mind.tier(GameState.career_minutes, GameState.active_covers)
 	if tier <= mind.reacted_tier or tier < 1:
 		return

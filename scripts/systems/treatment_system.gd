@@ -65,6 +65,10 @@ func apply(p: Patient, treatment_id: String, item = null, from_pos := Vector3.ZE
 		patient_system.add_complication(p, comp_id, "medication_reaction" if item else "physician_error")
 
 	_emit_treatment_event(p, treatment_id, correct, substituted, from_pos)
+	# Named, so a wrong tool is a thing you can see yourself doing rather than a
+	# number that moves somewhere you are not looking.
+	EventBus.toast.emit("%s — %s" % [p.display_name, DB.treatment_name(billed_as)],
+		"info" if correct else "suspicion")
 	EventBus.treatment_applied.emit(p, billed_as, quality)
 	if item != null and item.has_method("get_item_id"):
 		AudioMgr.play_at_var("beep", from_pos, -12.0)
@@ -431,6 +435,16 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 		_record_imaging(p, int(res["deviation"]))
 	elif m.machine_id == "machine_dread":
 		_fill_nearest_canister(m)
+
+	# What the room hears, and what you are told happened. Both used to live in a
+	# modal that paused the world; a treatment now announces itself where you
+	# are standing.
+	var dev: int = absi(int(res["deviation"]))
+	AudioMgr.play_at("machine_bad" if dev >= 3 else "machine_on", m.global_position,
+		-3.0 if dev >= 3 else -9.0)
+	EventBus.toast.emit("%s — %s at %d%s" % [p.display_name, m.fixture_name, m.dial,
+		"" if dev == 0 else " (prescribed %d)" % m.prescribed],
+		"suspicion" if dev >= 2 else "info")
 
 	var e := WorldEvent.new("machine_treatment", "player") \
 		.at(m.global_position, m.room_key).about(p.id) \

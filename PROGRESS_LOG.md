@@ -676,6 +676,67 @@ Measured, before and after, same route, same seed:
 \* the sprint leg is slower afterwards only because the props are no longer
 where the previous wedged run left them.
 
+### You could not pick up a syringe
+
+Third blocker, same first ten minutes. `SupplyShelf.use_seconds()` returned 0.6
+whenever the shelf had more than one item — which is every shelf in the building
+— so the interactor's tap branch (`hold_time <= 0.0`) was unreachable. The only
+surviving route was the hold-completion call, which fires while E is still
+physically down, and `interact()` read `Input.is_action_pressed("interact")` and
+cycled the index instead of dispensing. **`_dispense()` was dead code on every
+shelf.** No treatment tool could be obtained by any input, so no patient could be
+treated by hand, and tutorial step five sends you to the supply room to try.
+
+Now: tap takes, Shift+E cycles, neither is a hold. Guarded in smoke.
+
+### The crime happened inside a paused text box
+
+The single biggest FEEL problem, and the heart of the brief. `ui_root` ran the
+treatment INSIDE a screen builder — and `open()` calls `get_tree().paused = true`
+before the builder runs. So the entire premise of the game, turning a dial past
+its prescribed value and seeing what happens to a person, arrived as a 480x340
+dim panel printing one of four flavour lines over a frozen world. The patient's
+`say()` and `startle()` fired into a paused tree behind a modal. The same was
+true of every hand treatment.
+
+Both now resolve in the world, unpaused:
+- the machine sounds, loudly and differently when the dial is off (`machine_bad`
+  at −3 dB from three notches out)
+- the patient gasps where they are lying, and an injury adds the snap
+- a toast names what you just did and at what setting
+- whoever is standing in the doorway is present for all of it
+
+**Being seen now registers the first time.** `_react` was gated on the tier
+ladder, which needs ~0.28 of accumulated evidence, and a one-notch deviation is
+worth 0.05 — so for the first several shifts you could be watched committing the
+premise and the world would not move. There is now a NOTICE beat below the
+ladder: any evidence over 0.1 makes that person turn and look at you, sometimes
+mutter, throttled to once per 20 in-game minutes each.
+
+**Sabotage is visible.** `Build.ceiling_light()` puts an unshaded emissive panel
+beside the lamp, and `Room.set_lights()` only hid the `OmniLight3D` — so turning
+a ward's lights off left every fitting glowing at full brightness. Ambient was
+0.55, which lit the room anyway. Now the whole fitting hides and ambient is 0.28.
+
+### Money you can see moving
+
+`EventBus.transaction` was emitted from both halves of `GameState` and connected
+to **nothing**. Five debts totalling $695/day drained the starting $820 in
+silence before the player had read either number, and their own balance then sat
+still for twelve real minutes. The thing the entire game is about — money
+arriving because somebody stayed another night — was never visible arriving.
+
+There is now a ticker under the money readout: every transaction, as it happens,
+with a sound. And `bonus_rate` (0.08) had never been rendered by any screen, so
+"keeping them pays ME" was something the design knew and the player could not
+find out. `Patient.your_cut_per_day()` is now on the tablet ward row, and the
+discharge screen leads with the arithmetic the brief asked for:
+
+> Send them home today — your bonus is settled at $0
+> Every further night — hospital $1,335 · you $107
+
+Stated flatly, never labelled, and the player can do what they like with it.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on

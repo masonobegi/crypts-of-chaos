@@ -92,6 +92,14 @@ func _init(p_id: String = "") -> void:
 	chart.patient_id = p_id
 
 # ------------------------------------------------------------------ economics
+## Your share of one more night. The single most important number in the game
+## and it was not printed anywhere: bonus_rate lived in GameState, was never
+## rendered by any screen, and the player's own balance did not move for twelve
+## real minutes — so "keeping them pays ME" was a thing the design knew and the
+## player could not find out.
+func your_cut_per_day() -> int:
+	return int(round(float(daily_revenue()) * GameState.bonus_rate))
+
 func daily_revenue() -> int:
 	var mult: float = DB.insurance_multiplier(insurance)
 	var comp_bonus := 1.0

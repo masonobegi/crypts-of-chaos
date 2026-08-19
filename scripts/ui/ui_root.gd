@@ -130,7 +130,7 @@ func _pause_screen() -> Control:
 func _tutorial_screen() -> Control:
 	var parts := _shell(700, 560, "Ward C — First Shift")
 	var v: VBoxContainer = parts[1]
-	v.add_child(UIKit.rich("""[b]You are $%d in debt and you make $240 a shift.[/b]
+	v.add_child(UIKit.rich("""[b]You are $%d in debt, your bills are $%d a day, and you make $240 a shift.[/b]
 
 The hospital bills for every day a patient stays. Your bonus is a share of that.
 Nobody will ever ask you to do anything unethical. They don't have to.
@@ -148,7 +148,7 @@ Nobody will ever ask you to do anything unethical. They don't have to.
 · Machines keep their own logs. So does everyone's memory.
 · Noise moves people. That's all a thrown bedpan is: a way to move someone.
 
-Nothing in this game will ever be labelled 'suspicious'. Work it out.""" % GameState.total_debt(), 15))
+Nothing in this game will ever be labelled 'suspicious'. Work it out.""" % [GameState.total_debt(), GameState.daily_debt_payment()], 15))
 	v.add_child(UIKit.spacer())
 	v.add_child(UIKit.button("Clock in", func():
 		GameState.set_flag("tutorial_done", true)

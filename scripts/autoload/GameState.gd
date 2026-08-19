@@ -19,7 +19,11 @@ var _minute_accum: float = 0.0
 var clock_running: bool = false
 
 # ------------------------------------------------------------------ money
-var personal_money: int = 40
+## Enough to clear exactly one day of debts and nothing more. Day one is paid;
+## day two is the problem. Starting below the daily outflow meant the first
+## screen the player ever saw was five missed payments for things they had not
+## yet had a chance to do anything about.
+var personal_money: int = 820
 var hospital_money: int = 12000
 ## Your cut of hospital profit, improved by upgrades and by being liked.
 var bonus_rate: float = 0.08
@@ -200,7 +204,7 @@ func start_new_career(run_seed: int = 0) -> void:
 	day = 1
 	minute_of_day = SHIFT_START_HOUR * 60
 	career_minutes = 0
-	personal_money = 40
+	personal_money = 820
 	hospital_money = 12000
 	bonus_rate = 0.08
 	heat = 0.0

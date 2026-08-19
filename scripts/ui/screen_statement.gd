@@ -4,7 +4,7 @@ extends ScreenBase
 
 func _build() -> void:
 	var st: Dictionary = ctx.get("statement", {})
-	var v := shell(880, 740, "Shift Report — Day %d" % int(ctx.get("day", 1)),
+	var v := shell(920, 800, "Shift Report — Day %d" % int(ctx.get("day", 1)),
 		String(ctx.get("sanction", "Clean")))
 
 	var head := UIKit.panel(Color(0.16, 0.15, 0.12, 0.95), 6, 1, UIKit.WARN)

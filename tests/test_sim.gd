@@ -19,7 +19,7 @@ func test_shift_bounds() -> void:
 func test_new_career_resets() -> void:
 	GameState.start_new_career(12345)
 	t.eq(GameState.day, 1, "day resets")
-	t.eq(GameState.personal_money, 40, "personal money resets")
+	t.eq(GameState.personal_money, 820, "personal money resets")
 	t.gt(float(GameState.total_debt()), 400000.0, "career begins in a hole")
 	t.gt(float(GameState.daily_debt_payment()), 600.0, "and the hole has a daily rate")
 
@@ -59,6 +59,38 @@ func test_gamestate_roundtrip() -> void:
 	GameState.start_new_career(1)
 	GameState.from_dict(d)
 	t.eq(GameState.day, 7, "day roundtrips")
-	t.eq(GameState.personal_money, 540, "money roundtrips")
+	t.eq(GameState.personal_money, 1320, "money roundtrips")
 	t.near(GameState.rep("doctor"), 0.7, 0.0001, "reputation roundtrips")
 	t.near(GameState.heat, 0.3, 0.0001, "heat roundtrips")
+
+func test_day_one_is_survivable() -> void:
+	# The first briefing must not be a wall of missed payments for things the
+	# player has not yet had a chance to do anything about.
+	GameState.start_new_career(11)
+	t.gt(float(GameState.personal_money), float(GameState.daily_debt_payment()),
+		"starting money covers the first day's debts")
+	t.lt(float(GameState.personal_money), float(GameState.daily_debt_payment()) * 2.0,
+		"but not the second — the squeeze arrives on day two")
+
+func test_missing_rent_repeatedly_ends_the_career() -> void:
+	# This path existed but its counter was never incremented, so eviction was
+	# unreachable and the bankrupt ending could not occur.
+	GameState.start_new_career(12)
+	GameState.personal_money = 0
+	t.eq(int(GameState.flag("missed_rent_days", 0)), 0, "starts with no missed rent")
+	var eco := EconomySystem.new()
+	for i in 4:
+		eco.settle_debts()
+	t.eq(int(GameState.flag("missed_rent_days", 0)), 4, "four missed rent days are counted")
+	eco.free()
+
+func test_paying_rent_resets_the_counter() -> void:
+	GameState.start_new_career(13)
+	GameState.personal_money = 0
+	var eco := EconomySystem.new()
+	eco.settle_debts()
+	t.eq(int(GameState.flag("missed_rent_days", 0)), 1, "one missed day")
+	GameState.personal_money = 20000
+	eco.settle_debts()
+	t.eq(int(GameState.flag("missed_rent_days", 0)), 0, "paying up clears the streak")
+	eco.free()

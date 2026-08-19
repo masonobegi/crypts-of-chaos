@@ -4,7 +4,7 @@ extends ScreenBase
 ## visible".
 
 func _build() -> void:
-	var v := shell(880, 720, "Capital Spending",
+	var v := shell(920, 800, "Capital Spending",
 		"Hospital funds: %s" % UIKit.money_str(GameState.hospital_money))
 	var content := UIKit.vbox(8)
 

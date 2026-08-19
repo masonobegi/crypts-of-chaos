@@ -21,7 +21,7 @@ func _build() -> void:
 		_patient = patient_system().get_patient(_mind.patient_id) if patient_system() else null
 
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
-	var v := shell(720, 620, _mind.display_name, sub)
+	var v := shell(760, 700, _mind.display_name, sub)
 
 	# What they are currently holding against you, in their words.
 	var worst := _mind.strongest(GameState.career_minutes)

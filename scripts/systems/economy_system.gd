@@ -119,10 +119,17 @@ func settle_debts() -> Dictionary:
 			GameState.add_personal(-due, String(d.get("name", "debt")))
 			d["amount"] = maxi(0, int(d.get("amount", 0)) - due)
 			d["missed"] = 0
+			if String(d.get("id", "")) == "rent":
+				GameState.set_flag("missed_rent_days", 0)
 			paid.append({"name": d.get("name", ""), "amount": due,
 				"remaining": d.get("amount", 0)})
 		else:
 			d["missed"] = int(d.get("missed", 0)) + 1
+			# Consecutive missed rent is the one that ends a career rather than
+			# just costing money.
+			if String(d.get("id", "")) == "rent":
+				GameState.set_flag("missed_rent_days",
+					int(GameState.flag("missed_rent_days", 0)) + 1)
 			# Interest, penalties, and in one case a phone call.
 			d["amount"] = int(float(d.get("amount", 0)) * 1.04) + 60
 			d["daily"] = int(float(d.get("daily", 0)) * 1.06)

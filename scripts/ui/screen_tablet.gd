@@ -7,7 +7,7 @@ extends ScreenBase
 var _tab := "ward"
 
 func _build() -> void:
-	var v := shell(880, 700, "Tablet", "Day %d · %s" % [GameState.day, GameState.time_string()])
+	var v := shell(920, 800, "Tablet", "Day %d · %s" % [GameState.day, GameState.time_string()])
 	var tabs := UIKit.hbox(6)
 	for t in [["ward", "Ward"], ["people", "People"], ["money", "Money"], ["codex", "Notes"]]:
 		var key := String(t[0])

@@ -5,7 +5,7 @@ extends ScreenBase
 func _build() -> void:
 	var findings: Array = ctx.get("findings", [])
 	var exposure := float(ctx.get("exposure", 0.0))
-	var v := shell(900, 720, "Chart Review",
+	var v := shell(940, 800, "Chart Review",
 		"Before you go home. This is what a reviewer would find right now.")
 
 	var band := "Nothing to find."

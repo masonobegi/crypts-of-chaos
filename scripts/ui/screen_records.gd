@@ -20,7 +20,7 @@ func _build() -> void:
 		return
 
 	var privacy := "OFFICE TERMINAL · door's shut" if _private else "WARD TERMINAL · anyone can see this screen"
-	var v := shell(880, 700, "Records", privacy)
+	var v := shell(920, 800, "Records", privacy)
 	if GameState.flag("ehr_down", false):
 		v.add_child(UIKit.label("SYSTEM DEGRADED — entries today are not timestamped.", 14, UIKit.WARN))
 
@@ -34,7 +34,9 @@ func _build() -> void:
 
 	var tabs := UIKit.hbox(6)
 	for p in list:
-		var b := UIKit.button(p.display_name.split(" ")[0], func(): _select(p.id),
+		var parts: PackedStringArray = p.display_name.split(" ")
+		var tab_name: String = parts[parts.size() - 1]
+		var b := UIKit.button(tab_name, func(): _select(p.id),
 			UIKit.PANEL_LIGHT if p.id != _selected else Color(0.20, 0.35, 0.38))
 		tabs.add_child(b)
 	v.add_child(UIKit.scroll_horizontal(tabs))

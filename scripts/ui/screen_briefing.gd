@@ -11,7 +11,7 @@ func _build() -> void:
 		close(), Color(0.16, 0.32, 0.30)))
 
 func shift_brief() -> VBoxContainer:
-	var v := shell(880, 720, "Day %d" % int(ctx.get("day", 1)),
+	var v := shell(920, 800, "Day %d" % int(ctx.get("day", 1)),
 		"%s · %s" % [String(ctx.get("sanction", "Clean")),
 			"%d admitted" % int(ctx.get("census", 0))])
 

@@ -333,7 +333,7 @@ func _check_run_over() -> bool:
 	if GameState.sanction_level >= 8:
 		EventBus.game_over.emit(Endings.evaluate(GameState.stats))
 		return true
-	if GameState.flag("evicted", false) and GameState.personal_money < 0:
+	if GameState.flag("evicted", false):
 		EventBus.game_over.emit("bankrupt")
 		return true
 	if GameState.day > 30:

@@ -9,8 +9,92 @@ var frames := 0
 var index := 0
 var settle := 0
 var out_dir := "user://shots"
+var ui_index := 0
+var phase := "world"
+
+## Modal screens, photographed after the world pass. UI layout bugs are invisible
+## to every other kind of test — all three found so far were only visible here.
+const UI_SHOTS := [
+	["20_briefing", "briefing"],
+	["21_tablet_ward", "tablet"],
+	["22_chart", "chart"],
+	["23_records", "records"],
+	["24_dialogue", "dialogue"],
+	["25_review", "review"],
+	["26_statement", "statement"],
+	["27_upgrades", "upgrades"],
+	["28_pause", "pause"],
+	["29_game_over", "game_over"],
+]
 
 ## name, position, look-at
+func _tick_ui() -> bool:
+	phase = "ui"
+	if ui_index >= UI_SHOTS.size():
+		print("captured %d frames to %s" % [
+			SHOTS.size() + UI_SHOTS.size(), ProjectSettings.globalize_path(out_dir)])
+		return true
+	var shot: Array = UI_SHOTS[ui_index]
+	if game.ui.current == null:
+		_set_ceilings_visible(true)
+		game.player.camera.global_position = Vector3(5.5, 1.7, -4.0)
+		game.player.camera.look_at(Vector3(5.5, 1.5, 2.0), Vector3.UP)
+		game.ui.open(String(shot[1]), _ui_context(String(shot[1])))
+		settle = 0
+		return false
+	settle += 1
+	if settle < 4:
+		return false
+	settle = 0
+	var img := tree.root.get_texture().get_image()
+	var path := "%s/%s.png" % [out_dir, String(shot[0])]
+	img.save_png(path)
+	print("  shot: ", ProjectSettings.globalize_path(path))
+	game.ui.close()
+	ui_index += 1
+	return false
+
+## Screens that normally receive data from a shift transition need it supplied.
+func _ui_context(id: String) -> Dictionary:
+	match id:
+		"briefing":
+			return game.shift.briefing()
+		"chart", "dialogue":
+			var list: Array = game.patient_system.active()
+			if list.is_empty():
+				return {}
+			var p = list[0]
+			return {"patient_id": p.id, "npc_id": p.id}
+		"records":
+			return {"mode": "admin", "private": true, "room": "office",
+				"position": Vector3(43, 1, -5)}
+		"review":
+			return {
+				"day": GameState.day,
+				"findings": game.records.pending_findings(),
+				"exposure": game.records.total_exposure(),
+				"undocumented": [],
+				"patients": [],
+			}
+		"statement":
+			return {
+				"day": GameState.day,
+				"statement": game.economy.close_shift(),
+				"headline": Endings.headline(GameState.stats),
+				"heat": GameState.heat, "heat_delta": 0.02,
+				"sanction": GameState.SANCTIONS[GameState.sanction_level],
+				"suspicions": game.suspicion.ranked_suspicions().slice(0, 6),
+				"census": game.patient_system.active_count(),
+				"overstay": game.patient_system.average_overstay(),
+				"clean": true,
+				"reputation": GameState.reputation.duplicate(),
+				"debt": GameState.total_debt(),
+				"daily_debt": GameState.daily_debt_payment(),
+			}
+		"game_over":
+			return {"ending": "legendary"}
+	return {}
+
 func _set_ceilings_visible(v: bool) -> void:
 	if game == null or game.hospital == null:
 		return
@@ -48,14 +132,13 @@ func tick() -> bool:
 		return frames > 60
 	# The briefing screen opens on day one and pauses the tree; close whatever
 	# modal is up so the camera is photographing the world, not an overlay.
-	if game.ui != null and game.ui.current != null:
+	if phase == "world" and game.ui != null and game.ui.current != null:
 		game.ui.close()
 		return false
 	if frames < 45:
 		return false
 	if index >= SHOTS.size():
-		print("captured %d frames to %s" % [SHOTS.size(), ProjectSettings.globalize_path(out_dir)])
-		return true
+		return _tick_ui()
 
 	var shot: Array = SHOTS[index]
 	var cam: Camera3D = game.player.camera

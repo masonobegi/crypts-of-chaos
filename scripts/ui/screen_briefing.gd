@@ -45,7 +45,7 @@ func shift_brief() -> VBoxContainer:
 			var box := UIKit.panel(Color(0.15, 0.17, 0.20, 0.92), 6)
 			var bv := UIKit.vbox(3)
 			bv.add_child(UIKit.label(String(e["title"]), 17, UIKit.WARN))
-			bv.add_child(UIKit.label(String(e["body"]), 14, UIKit.INK))
+			bv.add_child(UIKit.label(String(e["body"]), 14, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 			box.add_child(bv)
 			content.add_child(box)
 
@@ -71,7 +71,7 @@ func shift_brief() -> VBoxContainer:
 			UIKit.MONEY if String(a["insurance"]) in ["Good", "Excellent", "Platinum Concierge"] else UIKit.INK))
 		bv.add_child(UIKit.row("Daily billing", UIKit.money_str(int(a["revenue"])), UIKit.MONEY))
 		bv.add_child(UIKit.row("Room", String(a["room"]).replace("ward_", "Room ")))
-		bv.add_child(UIKit.label(DB.archetype_blurb(_arch_key(String(a["archetype"]))), 12, UIKit.INK_DIM))
+		bv.add_child(UIKit.label(DB.archetype_blurb(_arch_key(String(a["archetype"]))), 12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		box.add_child(bv)
 		content.add_child(box)
 

@@ -40,13 +40,18 @@ static func panel(color := PANEL, radius := 8, border := 0, border_color := ACCE
 	p.add_theme_stylebox_override("panel", stylebox(color, radius, border, border_color))
 	return p
 
-static func label(text: String, size := 16, color := INK, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+## `wrap` is opt-in on purpose. A Label with autowrap inside a container that
+## has no explicit width collapses to one character per line — which is exactly
+## what the HUD clock did before this was a parameter. Only turn it on for text
+## that has a width to wrap within.
+static func label(text: String, size := 16, color := INK,
+		align := HORIZONTAL_ALIGNMENT_LEFT, wrap := false) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
 	l.horizontal_alignment = align
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 	return l
 
 static func title(text: String, size := 30, color := INK) -> Label:
@@ -143,16 +148,44 @@ static func money_str(amount: int) -> String:
 			out = "," + out
 	return ("-$" if neg else "$") + out
 
+## Anchor a control to a screen edge with explicit offsets.
+##
+## Setting `position` on a Control that has non-zero anchors does NOT do what it
+## looks like: the rect is derived from the offsets, so the node ends up with
+## zero size and never draws. Several HUD blocks were invisible for exactly this
+## reason. Always go through here.
+## Anchors are set explicitly rather than via set_anchors_preset(), whose
+## keep_offsets behaviour recomputes offsets from the node's current (zero) rect
+## and quietly leaves the control unsized.
+static func place(node: Control, preset: int, left: float, top: float,
+		width: float, height: float) -> Control:
+	var ax := 0.0
+	var ay := 0.0
+	match preset:
+		Control.PRESET_TOP_RIGHT: ax = 1.0
+		Control.PRESET_CENTER_TOP: ax = 0.5
+		Control.PRESET_CENTER: ax = 0.5; ay = 0.5
+		Control.PRESET_CENTER_BOTTOM: ax = 0.5; ay = 1.0
+		Control.PRESET_BOTTOM_LEFT: ay = 1.0
+		Control.PRESET_BOTTOM_RIGHT: ax = 1.0; ay = 1.0
+	node.anchor_left = ax
+	node.anchor_right = ax
+	node.anchor_top = ay
+	node.anchor_bottom = ay
+	node.offset_left = left
+	node.offset_top = top
+	node.offset_right = left + width
+	node.offset_bottom = top + height
+	return node
+
 static func full_screen(node: Control) -> Control:
-	node.set_anchors_preset(Control.PRESET_FULL_RECT)
+	node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	return node
 
 static func center_panel(width: float, height: float) -> PanelContainer:
 	var p := panel(BG_SOLID, 10, 2, Color(1, 1, 1, 0.10))
-	p.set_anchors_preset(Control.PRESET_CENTER)
+	place(p, Control.PRESET_CENTER, -width * 0.5, -height * 0.5, width, height)
 	p.custom_minimum_size = Vector2(width, height)
-	p.pivot_offset = Vector2(width, height) * 0.5
-	p.position = Vector2(-width * 0.5, -height * 0.5)
 	return p
 
 static func scroll(child: Control) -> ScrollContainer:
@@ -175,7 +208,7 @@ static func scroll_horizontal(child: Control) -> ScrollContainer:
 static func dim_background(alpha := 0.72) -> ColorRect:
 	var r := ColorRect.new()
 	r.color = Color(0, 0, 0, alpha)
-	r.set_anchors_preset(Control.PRESET_FULL_RECT)
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	r.mouse_filter = Control.MOUSE_FILTER_STOP
 	return r
 

@@ -7,7 +7,7 @@ var ui = null
 var body: VBoxContainer = null
 
 func shell(width: float, height: float, heading: String, subheading := "") -> VBoxContainer:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(UIKit.dim_background())
 	var panel := UIKit.center_panel(width, height)
 	add_child(panel)

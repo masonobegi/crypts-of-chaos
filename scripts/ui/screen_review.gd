@@ -33,7 +33,7 @@ func _build() -> void:
 		content.add_child(UIKit.label("UNDOCUMENTED COMPLICATIONS", 13, UIKit.INK_DIM))
 		content.add_child(UIKit.label(
 			"A complication with no stated cause is the single most findable thing in a record. "
-			+ "Terminals are still on.", 13, UIKit.INK_DIM))
+			+ "Terminals are still on.", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		for u in undoc:
 			content.add_child(UIKit.row(String(u["patient"]), String(u["complication"]), UIKit.BAD))
 		content.add_child(UIKit.rule())
@@ -47,7 +47,7 @@ func _build() -> void:
 		var box := UIKit.panel(Color(0.15, 0.14, 0.16, 0.9), 6)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.row(String(f["patient"]), String(f["kind"]).replace("_", " "), c))
-		bv.add_child(UIKit.label(String(f["text"]), 13, UIKit.INK))
+		bv.add_child(UIKit.label(String(f["text"]), 13, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 		box.add_child(bv)
 		content.add_child(box)
 

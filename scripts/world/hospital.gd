@@ -210,8 +210,11 @@ func _build_signage() -> void:
 		var centre := float(entry.get("door", rect.get_center().x))
 		var north := rect.position.y > 0.0
 		var z := (4.0 - 0.2) if north else (0.0 + 0.2)
-		var sign := Build.label3d(String(entry["display"]), 0.16, Color(0.95, 0.96, 0.92), false)
-		sign.position = Vector3(centre, 2.45, z)
+		var sign := Build.label3d(String(entry["display"]), 0.085, Color(0.96, 0.97, 0.94), false)
+		# Offset to the side of the doorway rather than over it, so the sign
+		# reads as a door plate instead of a banner across the opening.
+		var w := float(entry.get("door_w", DOOR_W))
+		sign.position = Vector3(centre + w * 0.5 + 0.45, 2.05, z + (0.11 if not north else -0.11))
 		sign.rotation.y = PI if north else 0.0
 		add_child(sign)
 

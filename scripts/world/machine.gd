@@ -46,9 +46,9 @@ func build(disp: String) -> void:
 	_lamp = Build.mi(Build.sphere_mesh(0.05), Build.unshaded(Build.GOOD), Vector3(0.44, 1.3, 0.36))
 	get_node("Mesh").add_child(_lamp)
 
-	_readout = Build.label3d("", 0.075, Color(0.5, 1.0, 0.75), false)
-	_readout.position = Vector3(0, 1.3, 0.39)
-	_readout.width = 620
+	_readout = Build.label3d("", 0.052, Color(0.5, 1.0, 0.75), false)
+	_readout.position = Vector3(0, 1.29, 0.39)
+	_readout.width = 1100
 	_readout.autowrap_mode = TextServer.AUTOWRAP_WORD
 	add_child(_readout)
 

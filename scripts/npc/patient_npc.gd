@@ -13,14 +13,16 @@ var _timer := 0.0
 var _bark_timer := 0.0
 var _symptom_mesh: MeshInstance3D = null
 var _shiver := 0.0
+var _reclined := false
 
 func _ready() -> void:
 	role = "patient"
 	outfit = Color(0.72, 0.78, 0.82)     # gown
 	super._ready()
 	add_to_group("patient_npc")
+	# Sits above the head whichever way up the patient is.
 	_symptom_mesh = Build.mi(Build.sphere_mesh(0.22), Build.unshaded(Color(1, 1, 1, 0.0)),
-		Vector3(0, 1.42, 0))
+		Vector3(0, 1.15, 0))
 	_symptom_mesh.visible = false
 	add_child(_symptom_mesh)
 	_timer = RNG.randf_range_s("patient_idle_t", 8.0, 20.0)
@@ -48,10 +50,13 @@ func _physics_process(delta: float) -> void:
 ## While in bed the patient is pinned to the bed's mount point — which means
 ## wheeling the bed wheels the patient, exactly as it should.
 func _hold_bed_pose(_delta: float) -> void:
-	if state != State.IN_BED or bed == null or not is_instance_valid(bed):
+	var in_bed := state == State.IN_BED and bed != null and is_instance_valid(bed)
+	if in_bed != _reclined:
+		_reclined = in_bed
+		set_reclined(in_bed)
+	if not in_bed:
 		return
-	var mount := bed.mount_point()
-	global_position = mount - Vector3(0, 0.86, 0)
+	global_position = bed.global_position
 	rotation.y = bed.rotation.y
 	velocity = Vector3.ZERO
 

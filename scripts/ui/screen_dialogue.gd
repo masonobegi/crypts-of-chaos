@@ -29,7 +29,7 @@ func _build() -> void:
 		var box := UIKit.panel(Color(0.22, 0.13, 0.13, 0.7), 6, 1, UIKit.BAD)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.label("They %s: %s" % [worst.source_label(), worst.label()],
-			15, Color(1, 0.86, 0.84)))
+			15, Color(1, 0.86, 0.84), HORIZONTAL_ALIGNMENT_LEFT, true))
 		if worst.corroborators.size() > 0:
 			bv.add_child(UIKit.label("And they are not the only one.", 13, UIKit.WARN))
 		box.add_child(bv)
@@ -45,7 +45,7 @@ func _build() -> void:
 
 	if _reply != "":
 		var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.9), 6)
-		rp.add_child(UIKit.label("\"%s\"" % _reply, 16, UIKit.INK))
+		rp.add_child(UIKit.label("\"%s\"" % _reply, 16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(rp)
 
 	v.add_child(UIKit.rule())

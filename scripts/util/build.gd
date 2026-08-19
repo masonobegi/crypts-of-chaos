@@ -157,8 +157,8 @@ static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard 
 	l.double_sided = true
 	l.no_depth_test = false
 	l.shaded = false
-	l.outline_size = 8
-	l.outline_modulate = Color(0, 0, 0, 0.75)
+	l.outline_size = 12
+	l.outline_modulate = Color(0, 0, 0, 0.85)
 	return l
 
 # ------------------------------------------------------------------ lighting

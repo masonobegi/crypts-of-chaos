@@ -23,7 +23,11 @@ var _crosshair: Control
 var _subtitle_timer := 0.0
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# ...and_offsets_, not set_anchors_preset(). The latter sets anchors only and
+	# leaves a freshly created Control at zero size, so every child anchored to
+	# the right or bottom edge resolves against a zero-width parent and lands
+	# off-screen. That is exactly what happened to the money readout.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build()
 	EventBus.interact_prompt.connect(_on_prompt)
@@ -39,42 +43,46 @@ func _ready() -> void:
 	_on_money(GameState.personal_money, GameState.hospital_money)
 
 func _build() -> void:
+	# HUD text sits over everything from a white ceiling to a dark corridor, so
+	# each block gets a soft dark backing rather than relying on the world
+	# behind it happening to have contrast.
 	# ---- top left: when you are
+	var tl_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
+	UIKit.place(tl_bg, Control.PRESET_TOP_LEFT, 12, 10, 210, 104)
+	add_child(tl_bg)
 	var tl := UIKit.vbox(2)
-	tl.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	tl.position = Vector2(18, 14)
+	UIKit.place(tl, Control.PRESET_TOP_LEFT, 26, 18, 300, 100)
 	_day = UIKit.label("Day 1", 20, UIKit.INK)
 	_clock = UIKit.label("8:00 AM", 30, UIKit.ACCENT)
-	_sanction = UIKit.label("Clean", 13, UIKit.INK_DIM)
+	_sanction = UIKit.label("Clean", 13, Color(0.78, 0.82, 0.84))
 	tl.add_child(_day)
 	tl.add_child(_clock)
 	tl.add_child(_sanction)
 	add_child(tl)
 
 	# ---- top right: money
+	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
+	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -256, 10, 244, 104)
+	add_child(tr_bg)
 	var tr := UIKit.vbox(2)
-	tr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	tr.position = Vector2(-230, 14)
-	tr.custom_minimum_size.x = 212
+	UIKit.place(tr, Control.PRESET_TOP_RIGHT, -248, 18, 228, 100)
 	_personal = UIKit.label("$0", 26, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
-	_hospital = UIKit.label("Hospital $0", 14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
-	_census = UIKit.label("0 admitted", 14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_RIGHT)
+	_hospital = UIKit.label("Hospital $0", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
+	_census = UIKit.label("0 admitted", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
 	for n in [_personal, _hospital, _census]:
-		n.custom_minimum_size.x = 212
+		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tr.add_child(n)
 	add_child(tr)
 
 	# ---- top centre: objective, and the single most important tell in the game
 	var tc := UIKit.vbox(6)
-	tc.set_anchors_preset(Control.PRESET_CENTER_TOP)
-	tc.position = Vector2(-190, 16)
-	tc.custom_minimum_size.x = 380
-	_objective = UIKit.label("", 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	_objective.custom_minimum_size.x = 380
+	UIKit.place(tc, Control.PRESET_CENTER_TOP, -230, 16, 460, 90)
+	_objective = UIKit.label("", 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc.add_child(_objective)
 
 	_watch_panel = UIKit.panel(Color(0.35, 0.12, 0.12, 0.85), 6, 1, UIKit.BAD)
-	_watch = UIKit.label("", 15, Color(1, 0.85, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
+	_watch = UIKit.label("", 15, Color(1, 0.85, 0.82), HORIZONTAL_ALIGNMENT_CENTER, true)
 	_watch_panel.add_child(_watch)
 	_watch_panel.visible = false
 	tc.add_child(_watch_panel)
@@ -92,12 +100,10 @@ func _build() -> void:
 
 	# ---- interaction prompt
 	_prompt_panel = UIKit.panel(Color(0.08, 0.10, 0.12, 0.86), 6)
-	_prompt_panel.set_anchors_preset(Control.PRESET_CENTER)
-	_prompt_panel.position = Vector2(-170, 40)
-	_prompt_panel.custom_minimum_size = Vector2(340, 0)
+	UIKit.place(_prompt_panel, Control.PRESET_CENTER, -200, 44, 400, 62)
 	var pv := UIKit.vbox(2)
 	_prompt = UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	_prompt_sub = UIKit.label("", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	_prompt_sub = UIKit.label("", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	pv.add_child(_prompt)
 	pv.add_child(_prompt_sub)
 	_prompt_panel.add_child(pv)
@@ -106,29 +112,25 @@ func _build() -> void:
 
 	# ---- subtitles
 	_subtitle_panel = UIKit.panel(Color(0.05, 0.06, 0.08, 0.80), 6)
-	_subtitle_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	_subtitle_panel.position = Vector2(-320, -120)
-	_subtitle_panel.custom_minimum_size = Vector2(640, 0)
-	_subtitle = UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	_subtitle.custom_minimum_size.x = 612
+	UIKit.place(_subtitle_panel, Control.PRESET_CENTER_BOTTOM, -330, -132, 660, 66)
+	_subtitle = UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_subtitle_panel.add_child(_subtitle)
 	_subtitle_panel.visible = false
 	add_child(_subtitle_panel)
 
 	# ---- toasts
 	_toasts = UIKit.vbox(6)
-	_toasts.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-	_toasts.position = Vector2(18, -260)
-	_toasts.custom_minimum_size = Vector2(400, 240)
+	UIKit.place(_toasts, Control.PRESET_BOTTOM_LEFT, 18, -286, 410, 268)
 	_toasts.alignment = BoxContainer.ALIGNMENT_END
 	add_child(_toasts)
 
 	# ---- controls reminder
 	var help := UIKit.label("[E] use   [LMB] grab   [RMB] throw   [Q] tablet   [Esc] pause",
-		12, Color(1, 1, 1, 0.28), HORIZONTAL_ALIGNMENT_RIGHT)
-	help.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	help.position = Vector2(-460, -28)
-	help.custom_minimum_size.x = 440
+		12, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT)
+	help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+	help.add_theme_constant_override("shadow_offset_y", 1)
+	UIKit.place(help, Control.PRESET_BOTTOM_RIGHT, -478, -32, 460, 22)
 	add_child(help)
 
 func _process(delta: float) -> void:
@@ -208,7 +210,7 @@ func _on_toast(text: String, kind: String) -> void:
 		"money": colour = UIKit.MONEY
 		"suspicion": colour = UIKit.SUS
 	var p := UIKit.panel(Color(0.08, 0.10, 0.12, 0.88), 5, 0)
-	var l := UIKit.label(text, 14, colour)
+	var l := UIKit.label(text, 14, colour, HORIZONTAL_ALIGNMENT_LEFT, true)
 	l.custom_minimum_size.x = 370
 	p.add_child(l)
 	_toasts.add_child(p)

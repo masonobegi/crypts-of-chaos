@@ -5,11 +5,11 @@ extends Control
 var _seed_field: LineEdit = null
 
 func _ready() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	var bg := ColorRect.new()
 	bg.color = Color(0.07, 0.09, 0.11)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 
 	var panel := UIKit.center_panel(620, 560)
@@ -19,7 +19,7 @@ func _ready() -> void:
 
 	v.add_child(UIKit.title("CHRONIC CARE", 44, UIKit.ACCENT))
 	v.add_child(UIKit.label("A broke doctor. A struggling hospital.\nPatients who really should have gone home by now.",
-		16, UIKit.INK_DIM))
+		16, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.rule())
 
 	v.add_child(UIKit.button("New Career", _new_career, Color(0.16, 0.32, 0.30)))

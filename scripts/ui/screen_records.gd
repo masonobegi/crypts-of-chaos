@@ -65,7 +65,7 @@ func _build() -> void:
 			DB.cause_name(c.documented_cause) if c.documented_cause != "" else "no cause filed",
 			UIKit.GOOD if c.documented_cause != "" and not c.is_inconsistent() else UIKit.BAD))
 		if c.symptom != "":
-			bv.add_child(UIKit.label(c.symptom, 12, UIKit.INK_DIM))
+			bv.add_child(UIKit.label(c.symptom, 12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		if c.documented_cause == "":
 			var causes := UIKit.vbox(4)
 			var rs = records()
@@ -128,7 +128,7 @@ func _build() -> void:
 		content.add_child(UIKit.label("MEDICAL BOARD", 13, UIKit.INK_DIM))
 		content.add_child(UIKit.label(
 			"There is a form here for reporting concerns about clinical practice. "
-			+ "It does not ask whose practice.", 13, UIKit.INK_DIM))
+			+ "It does not ask whose practice.", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		content.add_child(UIKit.button("Submit a report on this ward — including yourself",
 			_whistleblow, Color(0.30, 0.24, 0.14)))
 

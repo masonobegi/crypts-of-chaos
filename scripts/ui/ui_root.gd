@@ -98,7 +98,7 @@ func _build_simple(id: String, ctx: Dictionary) -> Control:
 
 func _shell(width: float, height: float, heading: String) -> Array:
 	var root := Control.new()
-	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(UIKit.dim_background())
 	var panel := UIKit.center_panel(width, height)
 	root.add_child(panel)
@@ -160,7 +160,7 @@ func _game_over_screen(ending_id: String) -> Control:
 	var spec := Endings.spec(ending_id)
 	var parts := _shell(760, 620, String(spec["title"]))
 	var v: VBoxContainer = parts[1]
-	v.add_child(UIKit.label(String(spec["line"]), 17, UIKit.INK))
+	v.add_child(UIKit.label(String(spec["line"]), 17, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.label(String(spec["epitaph"]), 14, UIKit.INK_DIM))
 	v.add_child(UIKit.rule())
 	var s := GameState.stats
@@ -244,7 +244,7 @@ func _apply_treatment(ctx: Dictionary) -> Control:
 		"They wince, then apologise for wincing.",
 		"Hard to say. That's medicine.",
 		"They thank you, which is nice.",
-	])), 15, UIKit.INK_DIM))
+	])), 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 	if String(res.get("complication", "")) != "":
 		v.add_child(UIKit.label("Something else has started happening.", 15, UIKit.SUS))
 	v.add_child(UIKit.spacer())
@@ -282,7 +282,7 @@ func _run_machine(ctx: Dictionary) -> Control:
 		"Cycle complete. The readout blinks twice.",
 		"A smell of warm dust.",
 		"It makes the noise it makes.",
-	])), 15, UIKit.INK_DIM))
+	])), 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 	if String(res.get("complication", "")) != "":
 		v.add_child(UIKit.label("%s looks different." % p.display_name, 15, UIKit.SUS))
 	v.add_child(UIKit.label("Logged to device history.", 12, UIKit.INK_DIM))

@@ -18,6 +18,21 @@ GODOT=/path/to/godot ./run_tests.sh
 
 Exit code is non-zero if anything fails.
 
+## Screenshots
+
+```
+GODOT=/path/to/godot ./screenshots.sh
+```
+
+Renders the real game offscreen through Xvfb and photographs it from ten fixed
+vantage points. It uses the **GL Compatibility** renderer rather than Forward+,
+because a headless machine usually has no Vulkan device.
+
+This is worth running after any UI or world change — it has already caught three
+layout bugs that no test could see (the HUD clock wrapping one character per
+line, the money readout rendering off-screen, and patients standing upright
+inside their beds).
+
 ## Note on `preload` in test/tooling scripts
 `preload()` resolves at compile time and pulls the entire `class_name` graph into
 the compiling script. Because the core classes emit through the `EventBus`

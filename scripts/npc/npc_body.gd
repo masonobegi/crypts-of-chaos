@@ -250,8 +250,28 @@ func refresh_tell(player_pos: Vector3) -> void:
 	if mind.watching:
 		look_toward(player_pos + Vector3(0, 1.5, 0))
 
+## Lay the character down (or stand them back up). Rotating the visual Body node
+## rather than the whole node keeps the collision capsule upright, which is what
+## every other system expects.
+##
+## A -90 degree rotation about X maps local +Y to local -Z, so the head ends up
+## at the -Z end of the body — which is the pillow end of the bed.
+func set_reclined(on: bool) -> void:
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	var b: Node3D = body
+	b.rotation.x = -PI * 0.5 if on else 0.0
+	b.position = Vector3(0, 0.86, 0.52) if on else Vector3.ZERO
+	if _nametag:
+		_nametag.position.y = 1.35 if on else 1.92 * height_scale
+	if _speech:
+		_speech.position.y = 1.6 if on else 2.12 * height_scale
+
 func head_position() -> Vector3:
-	return _head.global_position if _head else global_position + Vector3(0, 1.5, 0)
+	if _head and _head.is_inside_tree():
+		return _head.global_position
+	return global_position + Vector3(0, 1.5, 0)
 
 func display_name() -> String:
 	return display

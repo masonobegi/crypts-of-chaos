@@ -38,6 +38,29 @@ func _build() -> void:
 			content.add_child(UIKit.row(String(u["patient"]), String(u["complication"]), UIKit.BAD))
 		content.add_child(UIKit.rule())
 
+	# Injuries get their own block. Filing a mechanism closes the individual gap
+	# and does nothing at all about the fact that this is the third thing to
+	# happen to the same person on your ward, and the screen should not imply
+	# otherwise by folding them in with everything else.
+	var acquired: Array = ctx.get("acquired", [])
+	if not acquired.is_empty():
+		content.add_child(UIKit.label("SUSTAINED ON THE WARD", 13, UIKit.INK_DIM))
+		for a in acquired:
+			var n := int(a["count"])
+			var box := UIKit.panel(Color(0.18, 0.14, 0.14, 0.9), 6)
+			var bv := UIKit.vbox(2)
+			bv.add_child(UIKit.row("%s — in with %s" % [String(a["patient"]),
+				String(a["presenting"])],
+				"%d since" % n, UIKit.BAD if n > 1 else UIKit.WARN))
+			for line in a["injuries"]:
+				var cause := String(line["cause"])
+				bv.add_child(UIKit.row("    " + String(line["name"]),
+					cause if cause != "" else "no mechanism recorded",
+					UIKit.INK_DIM if cause != "" else UIKit.BAD, 13))
+			box.add_child(bv)
+			content.add_child(box)
+		content.add_child(UIKit.rule())
+
 	content.add_child(UIKit.label("FINDINGS", 13, UIKit.INK_DIM))
 	if findings.is_empty():
 		content.add_child(UIKit.label("Your records are consistent. Genuinely.", 15, UIKit.GOOD))

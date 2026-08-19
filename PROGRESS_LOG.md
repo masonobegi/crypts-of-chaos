@@ -576,6 +576,14 @@ its bias, trolley time, the theatre record including which site was indicated,
 the pharmacy record, and the injury with its true cause, its acquired-here flag
 and its staffing count all survive.
 
+**The clock-out review reads the new shape.** Injuries sustained on the ward get
+their own block above the findings, listing what each patient came in with and
+what has happened to them since, with the filed mechanism beside each one or
+"no mechanism recorded". Deliberately separate from the undocumented-complication
+list: filing a cause closes the individual gap and does nothing at all about the
+fact that this is the third thing to happen to the same person, and the screen
+should not imply otherwise by folding them together.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on

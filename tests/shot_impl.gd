@@ -102,12 +102,22 @@ func _ui_context(id: String) -> Dictionary:
 			return {"mode": "admin", "private": true, "room": "office",
 				"position": Vector3(43, 1, -5)}
 		"review":
+			# Give the shot something to photograph: the review screen is the
+			# "am I getting away with it" beat, and a blank one shows nothing.
+			var victim = null
+			for q in game.patient_system.active():
+				victim = q
+				break
+			if victim != null and victim.acquired_injuries().is_empty():
+				game.patient_system.add_complication(victim, "fractured_wrist", "examination")
+				game.patient_system.add_complication(victim, "concussion", "examination")
 			return {
 				"day": GameState.day,
 				"findings": game.records.pending_findings(),
 				"exposure": game.records.total_exposure(),
-				"undocumented": [],
-				"patients": [],
+				"undocumented": game.shift._undocumented_complications(),
+				"acquired": game.shift._acquired_injury_summary(),
+				"patients": game.shift._patient_summaries(),
 			}
 		"statement":
 			return {

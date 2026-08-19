@@ -296,6 +296,7 @@ func end_shift() -> void:
 		"findings": findings,
 		"exposure": records.total_exposure(),
 		"undocumented": _undocumented_complications(),
+		"acquired": _acquired_injury_summary(),
 		"patients": _patient_summaries(),
 	}
 	review_ready.emit(data)
@@ -390,6 +391,33 @@ func _undocumented_complications() -> Array[Dictionary]:
 					"patient_id": p.id, "patient": p.display_name,
 					"complication": c.display_name, "id": c.id,
 				})
+	return out
+
+## Everything that has happened to somebody HERE, per patient, whether or not a
+## mechanism has been filed for it. Separated from the undocumented-complication
+## list because it is a different kind of exposure: filing a cause closes the
+## individual gap and does nothing about the fact that this is the third thing
+## to happen to the same person on your ward, and the review screen should not
+## imply otherwise.
+func _acquired_injury_summary() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for p in patient_system.active():
+		var acquired: Array = p.acquired_injuries()
+		if acquired.is_empty():
+			continue
+		var lines: Array = []
+		for c in acquired:
+			lines.append({
+				"name": c.display_name,
+				"cause": DB.cause_name(c.documented_cause) if c.documented_cause != "" \
+					else "",
+			})
+		out.append({
+			"patient": p.display_name,
+			"presenting": p.presenting_complaint,
+			"count": acquired.size(),
+			"injuries": lines,
+		})
 	return out
 
 func _patient_summaries() -> Array[Dictionary]:

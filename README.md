@@ -104,10 +104,15 @@ daily rate. *Did I find anything?* is the most profitable question in the
 building, and you are the one who answers it.
 
 There is an examination screen with a site and a dial marked APPLIED PRESSURE.
-There is a theatre where each of three stages is done properly, quickly, or
-badly. There is a pharmacy where the drug that treats what they had is one entry
-among eight, and the ones that do not will bring them back in a week at a fresh
-daily rate.
+There is a theatre with an indicated operative site and three stages, each done
+properly, quickly, or badly. There is a pharmacy where the drug that treats what
+they had is one entry among eight, and the ones that do not will bring them back
+in a week at a fresh daily rate.
+
+Your read on a patient — whether they are watching you, whether they are the
+sort who asks for things in writing — is your character's guess until you have
+actually examined them, which is the quiet argument for doing the honest version
+of that first.
 
 None of it is labelled. The game never tells you which choice is the bad one,
 and the record never asks what you meant — only what happened, and when. Somebody
@@ -145,8 +150,8 @@ changed because of it, is in [`docs/DESIGN.md`](docs/DESIGN.md).
 ## Tests
 
 ```
-1283 assertions   — units, integration, save round-trips, floor connectivity
-  65 smoke checks — boots the real scene and plays a whole shift headless
+1526 assertions   — units, integration, save round-trips, floor connectivity
+  80 smoke checks — boots the real scene and plays a whole shift headless
   13 live checks   — 7000 fixed-timestep frames of real NPC AI, pathing and doors
   15 balance checks — three full careers, asserting the design intent holds
 ```

@@ -3,6 +3,9 @@ extends Node
 ## slow-moving institutional numbers that decide how your career ends.
 
 const MINUTES_PER_DAY := 1440
+## The day shift, kept as the default so anything that does not care which shift
+## it is still gets a sensible answer. The live values are shift_start_hour()
+## and shift_hours(), which follow whichever shift was picked this morning.
 const SHIFT_START_HOUR := 8
 const SHIFT_HOURS := 8
 ## In-game minutes per real second while on shift. 8h shift ≈ 12 real minutes.
@@ -12,6 +15,8 @@ enum Phase { TITLE, PRE_SHIFT, SHIFT, CHART_REVIEW, POST_SHIFT, GAME_OVER }
 
 # ------------------------------------------------------------------ clock
 var day: int = 1
+## Which of DB.SHIFTS is being worked today. Picked before the briefing.
+var shift_kind: String = "day"
 var minute_of_day: int = SHIFT_START_HOUR * 60
 var career_minutes: int = 0
 var phase: Phase = Phase.TITLE
@@ -107,12 +112,30 @@ func time_string() -> String:
 		hh = 12
 	return "%d:%02d %s" % [hh, m, suffix]
 
+func shift_spec() -> Dictionary:
+	return DB.shift(shift_kind)
+
+func shift_start_hour() -> int:
+	return int(shift_spec().get("start_hour", SHIFT_START_HOUR))
+
+func shift_hours() -> int:
+	return int(shift_spec().get("hours", SHIFT_HOURS))
+
+## Minutes elapsed since the shift started, counted the long way round so the
+## evening shift can end at midnight and the night shift can start there.
+## Comparing minute_of_day against an end hour breaks the moment a shift crosses
+## the day boundary, and one of the three does.
+func minutes_into_shift() -> int:
+	var m := minute_of_day - shift_start_hour() * 60
+	if m < 0:
+		m += MINUTES_PER_DAY
+	return m
+
 func shift_minutes_remaining() -> int:
-	var end := (SHIFT_START_HOUR + SHIFT_HOURS) * 60
-	return maxi(0, end - minute_of_day)
+	return maxi(0, shift_hours() * 60 - minutes_into_shift())
 
 func shift_over() -> bool:
-	return minute_of_day >= (SHIFT_START_HOUR + SHIFT_HOURS) * 60
+	return minutes_into_shift() >= shift_hours() * 60
 
 func set_phase(p: Phase) -> void:
 	phase = p
@@ -202,6 +225,7 @@ func start_new_career(run_seed: int = 0) -> void:
 		run_seed = randi()
 	RNG.reseed(run_seed)
 	day = 1
+	shift_kind = "day"
 	minute_of_day = SHIFT_START_HOUR * 60
 	career_minutes = 0
 	personal_money = 820
@@ -235,7 +259,7 @@ func to_dict() -> Dictionary:
 		"day": day, "mod": minute_of_day, "cm": career_minutes,
 		"pm": personal_money, "hm": hospital_money, "br": bonus_rate,
 		"debts": debts, "rep": reputation, "heat": heat, "sanc": sanction_level,
-		"ups": owned_upgrades, "depts": unlocked_departments,
+		"shift_kind": shift_kind, "ups": owned_upgrades, "depts": unlocked_departments,
 		"covers": active_covers, "flags": flags, "codex": codex_unlocked,
 		"stats": stats, "rng": RNG.save_state(),
 	}
@@ -253,6 +277,7 @@ func from_dict(d: Dictionary) -> void:
 	reputation = d.get("rep", reputation)
 	heat = float(d.get("heat", 0.0))
 	sanction_level = int(d.get("sanc", 0))
+	shift_kind = String(d.get("shift_kind", "day"))
 	owned_upgrades.clear()
 	for u in d.get("ups", []):
 		owned_upgrades.append(String(u))

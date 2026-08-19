@@ -55,6 +55,10 @@ var _stuck_time := 0.0
 var _last_progress_pos: Vector3 = Vector3.ZERO
 ## Set while physically startled — drives the flail animation.
 var _startle := 0.0
+## Whether this character is rostered on right now. See set_on_duty().
+var on_duty := true
+var _duty_layer := 8
+var _off_duty_at := Vector3.ZERO
 
 func _ready() -> void:
 	add_to_group("npc")
@@ -368,6 +372,33 @@ func refresh_tell(player_pos: Vector3) -> void:
 ##
 ## A -90 degree rotation about X maps local +Y to local -Z, so the head ends up
 ## at the -Z end of the body — which is the pillow end of the bed.
+## Off-duty staff are not in the building. Their mind stays registered with the
+## suspicion system — somebody who saw you on Tuesday still saw you on Tuesday —
+## but they cannot witness, be talked to, or be walked into while they are at
+## home, and perception skips them.
+func set_on_duty(v: bool) -> void:
+	if on_duty == v:
+		return
+	on_duty = v
+	visible = v
+	set_physics_process(v)
+	set_process(v)
+	collision_layer = _duty_layer if v else 0
+	if not v:
+		stop_moving()
+		_off_duty_at = global_position if is_inside_tree() else Vector3.ZERO
+		if is_inside_tree():
+			global_position = Vector3(_off_duty_at.x, -40.0, _off_duty_at.z)
+	elif is_inside_tree():
+		var h = get_tree().get_first_node_in_group("hospital")
+		if h == null:
+			global_position = _off_duty_at
+		else:
+			var back := String(get("home_room") if get("home_room") != null else "corridor")
+			if back == "" or not h.is_room_open(back):
+				back = "corridor"
+			global_position = h.point_in(back, "duty_return")
+
 func set_reclined(on: bool) -> void:
 	var body := get_node_or_null("Body")
 	if body == null:

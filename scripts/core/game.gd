@@ -3,8 +3,11 @@ extends Node3D
 ## Root of a run. Builds the world, spawns the systems in dependency order,
 ## staffs the ward, and owns the UI routing.
 
-const NURSE_COUNT := 2
-const DOCTOR_COUNT := 1
+## The whole roster, not the number on the floor. Who is actually rostered on
+## any given shift comes from DB.ROTA — the rest are at home, and their memories
+## come back with them tomorrow.
+const NURSE_COUNT := 5
+const DOCTOR_COUNT := 3
 
 var hospital: Hospital
 var player: Player

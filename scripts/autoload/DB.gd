@@ -3,6 +3,66 @@ extends Node
 ## complications, personalities, events and upgrades can be added without
 ## touching a single system. Everything medical is invented.
 
+# =============================================================== SHIFTS
+## Three shifts, and picking one is the first decision of every day.
+##
+## The trade is not "more or fewer witnesses" — it is WITNESSES against
+## ATTRIBUTION. A night shift has almost nobody on the floor to see what you do,
+## and exactly one person anybody can blame for it afterwards. A day shift is
+## crowded, and a crowd is also an alibi. That is the whole reason there are
+## three of these rather than one.
+##
+## pay        : multiplier on your salary for the shift
+## appointments: how many booked encounters land on your list
+## scrutiny   : how carefully the paperwork is read afterwards
+## admissions : morning arrivals multiplier
+const SHIFTS := {
+	"night": {
+		"name": "Night", "start_hour": 0, "hours": 8,
+		"pay": 1.45, "appointments": 3, "scrutiny": 0.4, "admissions": 0.4,
+		"blurb": "Skeleton crew. Nobody is watching.",
+		"catch": "And everybody knows exactly who was on.",
+	},
+	"day": {
+		"name": "Day", "start_hour": 8, "hours": 8,
+		"pay": 1.0, "appointments": 7, "scrutiny": 1.0, "admissions": 1.0,
+		"blurb": "Full clinic, full staffing, consultant rounds.",
+		"catch": "The money is here. So is everyone else.",
+	},
+	"evening": {
+		"name": "Evening", "start_hour": 16, "hours": 8,
+		"pay": 1.2, "appointments": 5, "scrutiny": 0.7, "admissions": 0.7,
+		"blurb": "Visiting hours, then the building empties.",
+		"catch": "Families see things staff have learned not to.",
+	},
+}
+
+## Who is actually rostered on. Indices into the spawned staff, so the same
+## Nurse Sarah works the same shifts every day and "she's on nights" becomes a
+## fact worth knowing rather than a dice roll.
+const ROTA := {
+	"night": {"nurses": [0], "doctors": []},
+	"day": {"nurses": [0, 1, 3], "doctors": [0, 1]},
+	"evening": {"nurses": [2, 4], "doctors": [2]},
+}
+
+const SHIFT_ORDER := ["night", "day", "evening"]
+
+static func shift(kind: String) -> Dictionary:
+	return SHIFTS.get(kind, SHIFTS["day"])
+
+static func shift_name(kind: String) -> String:
+	return String(shift(kind).get("name", kind))
+
+static func rota(kind: String) -> Dictionary:
+	return ROTA.get(kind, ROTA["day"])
+
+## How many people are on the floor with you. Drives attribution: an injury
+## discovered after a shift with one member of staff on it is not a mystery.
+static func staff_on(kind: String) -> int:
+	var r := rota(kind)
+	return Array(r.get("nurses", [])).size() + Array(r.get("doctors", [])).size()
+
 # =============================================================== CONDITIONS
 ## base_days   : honest expected stay
 ## rate        : recovery per day under correct care

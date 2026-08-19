@@ -45,6 +45,9 @@ func tick() -> bool:
 			stage = "nextday"
 		"nextday":
 			game.shift.next_day()
+			# next_day() offers the three shifts and waits; pick one explicitly
+			# so the smoke run also proves a shift that crosses midnight works.
+			game.shift.begin_day("night")
 			_check_next_day()
 			stage = "done"
 		"done":
@@ -272,6 +275,15 @@ func _check_report(report: Dictionary) -> void:
 func _check_next_day() -> void:
 	_ok(GameState.day == 2, "day advanced to 2 (got %d)" % GameState.day)
 	_ok(GameState.phase == GameState.Phase.PRE_SHIFT, "next day begins in pre-shift")
+	_ok(GameState.shift_kind == "night", "the chosen shift is the one that starts")
+	_ok(GameState.minute_of_day == 0, "and the clock is set to its start hour (00:00)")
+	_ok(not GameState.shift_over(), "a shift that begins at midnight is not instantly over")
+	# The rota has to actually empty the building.
+	var on := 0
+	for n in tree.get_nodes_in_group("staff"):
+		if n.on_duty:
+			on += 1
+	_ok(on == DB.staff_on("night"), "only the night roster is in the building (%d)" % on)
 
 	# Device logs are evidence; losing them on load would quietly delete a paper
 	# trail the player deliberately created.

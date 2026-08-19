@@ -6,6 +6,7 @@ const SCREEN_SCRIPTS := {
 	"dialogue": "res://scripts/ui/screen_dialogue.gd",
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"records": "res://scripts/ui/screen_records.gd",
+	"shift_select": "res://scripts/ui/screen_shift_select.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"statement": "res://scripts/ui/screen_statement.gd",
@@ -28,6 +29,7 @@ func _ready() -> void:
 
 	var shift = get_tree().get_first_node_in_group("shift_system")
 	if shift:
+		shift.shift_choice_ready.connect(func(d): open("shift_select", d))
 		shift.briefing_ready.connect(func(d): open("briefing", d))
 		shift.review_ready.connect(func(d): open("review", d))
 		shift.statement_ready.connect(func(d): open("statement", d))
@@ -35,7 +37,7 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		if current != null:
-			if current_id in ["briefing", "review", "statement", "game_over"]:
+			if current_id in ["shift_select", "briefing", "review", "statement", "game_over"]:
 				return          # these are not dismissible
 			close()
 		else:

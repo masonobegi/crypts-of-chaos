@@ -3,6 +3,7 @@ extends Node
 ## The day loop: morning briefing → shift → chart review → statement → upgrades
 ## → next day. Owns the pacing of every other system.
 
+signal shift_choice_ready(data: Dictionary)
 signal briefing_ready(data: Dictionary)
 signal review_ready(data: Dictionary)
 signal statement_ready(data: Dictionary)
@@ -33,9 +34,40 @@ func _ready() -> void:
 
 # ================================================================ morning
 ## Everything that happens before you clock in.
-func begin_day() -> Dictionary:
+## Offer the three shifts and wait. Nothing about the day is decided until one
+## is picked: staffing, arrivals, the appointment list and the pay all follow
+## from it.
+##
+## Falls straight through to begin_day() when nobody is listening, so headless
+## harnesses and saved games are not left sitting on a menu that does not exist.
+func offer_shifts() -> void:
 	GameState.set_phase(GameState.Phase.PRE_SHIFT)
-	GameState.minute_of_day = GameState.SHIFT_START_HOUR * 60
+	if GameState.flag("headless_sim", false) or shift_choice_ready.get_connections().is_empty():
+		begin_day()
+		return
+	var options: Array = []
+	for kind in DB.SHIFT_ORDER:
+		var spec: Dictionary = DB.SHIFTS[kind]
+		options.append({
+			"kind": kind,
+			"name": String(spec["name"]),
+			"hours": "%02d:00 – %02d:00" % [int(spec["start_hour"]),
+				(int(spec["start_hour"]) + int(spec["hours"])) % 24],
+			"pay": float(spec["pay"]),
+			"staff": DB.staff_on(kind),
+			"appointments": int(spec["appointments"]),
+			"blurb": String(spec["blurb"]),
+			"catch": String(spec["catch"]),
+		})
+	shift_choice_ready.emit({"day": GameState.day, "options": options,
+		"personal": GameState.personal_money, "owed": GameState.total_debt()})
+
+func begin_day(kind: String = "") -> Dictionary:
+	if kind != "":
+		GameState.shift_kind = kind
+	GameState.set_phase(GameState.Phase.PRE_SHIFT)
+	GameState.minute_of_day = GameState.shift_start_hour() * 60
+	_apply_rota()
 
 	var debt_result := economy.settle_debts()
 	var pressure := economy.debt_pressure_lines(debt_result["missed"])
@@ -57,6 +89,9 @@ func begin_day() -> Dictionary:
 
 	_pending_briefing = {
 		"day": GameState.day,
+		"shift": GameState.shift_kind,
+		"shift_name": DB.shift_name(GameState.shift_kind),
+		"staff_on": DB.staff_on(GameState.shift_kind),
 		"events": fired,
 		"arrivals": arrivals,
 		"debts_paid": debt_result["paid"],
@@ -115,6 +150,18 @@ func _run_second_opinions() -> void:
 		return
 	reviewer.review_charts(extended)
 
+## Send home whoever is not rostered on and bring in whoever is. Their MINDS
+## stay registered either way — somebody who saw you last Tuesday still saw you,
+## whether or not they are in the building tonight.
+func _apply_rota() -> void:
+	var r := DB.rota(GameState.shift_kind)
+	var on_nurses: Array = r.get("nurses", [])
+	var on_doctors: Array = r.get("doctors", [])
+	for n in get_tree().get_nodes_in_group("staff"):
+		var idx := int(String(n.npc_id).get_slice("_", 1))
+		var rostered: bool = on_nurses.has(idx) if n is NurseNPC else on_doctors.has(idx)
+		n.set_on_duty(rostered)
+
 func _admit_morning_patients() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var free := patient_system.free_wards().size()
@@ -122,7 +169,9 @@ func _admit_morning_patients() -> Array[Dictionary]:
 		return out
 	# Volume scales with reputation — a good ward is a busy ward.
 	var base := 1 + int(round(GameState.rep("hospital") * 2.0))
-	var count := clampi(RNG.randi_range_s("arrivals", base, base + 2), 1, free)
+	var scale: float = float(GameState.shift_spec().get("admissions", 1.0))
+	var count := clampi(int(round(RNG.randi_range_s("arrivals", base, base + 2) * scale)),
+		1 if scale >= 0.5 else 0, free)
 	for i in count:
 		var p := patient_system.generate()
 		if patient_system.admit(p):
@@ -160,7 +209,7 @@ func clock_in() -> void:
 func _maybe_emergency_admission(hour: int) -> void:
 	if not GameState.unlocked_departments.has("emergency"):
 		return
-	if hour < GameState.SHIFT_START_HOUR + 1 or GameState.shift_over():
+	if GameState.minutes_into_shift() < 60 or GameState.shift_over():
 		return
 	# A full ward no longer turns emergencies away: once Intake is open they
 	# land on a trolley in it, which is exactly the sort of thing a hospital
@@ -423,14 +472,15 @@ func _was_clean_shift() -> bool:
 # ================================================================ rollover
 func next_day() -> void:
 	# The 16 hours you are not on the ward still pass, for everyone.
-	patient_system.tick(float(GameState.MINUTES_PER_DAY - GameState.SHIFT_HOURS * 60) * DAY_PER_MINUTE)
-	GameState.career_minutes += GameState.MINUTES_PER_DAY - GameState.SHIFT_HOURS * 60
+	var off_shift: int = GameState.MINUTES_PER_DAY - GameState.shift_hours() * 60
+	patient_system.tick(float(off_shift) * DAY_PER_MINUTE)
+	GameState.career_minutes += off_shift
 	events.clear_day()
 	GameState.day += 1
 	EventBus.day_advanced.emit(GameState.day)
 	if _check_run_over():
 		return
-	begin_day()
+	offer_shifts()
 
 func _check_run_over() -> bool:
 	if GameState.sanction_level >= 8:

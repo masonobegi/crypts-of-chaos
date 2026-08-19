@@ -80,6 +80,10 @@ func _body(id):
 	if b == null or not is_instance_valid(b):
 		_bodies.erase(id)
 		return null
+	# Somebody who is not rostered on is not in the building. They keep every
+	# memory they already have; they simply cannot acquire new ones tonight.
+	if not b.on_duty:
+		return null
 	return b
 
 func mind_of(id: String) -> Mind:

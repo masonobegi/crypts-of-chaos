@@ -89,7 +89,10 @@ func close_shift() -> Dictionary:
 	GameState.add_hospital(-int(costs["total"]), "operating costs")
 
 	var bonus := compute_bonus(profit)
-	GameState.add_personal(BASE_SALARY, "salary")
+	# Unsocial hours pay a premium. It is the only part of the night shift that
+	# is straightforwardly good for you.
+	var salary := int(round(float(BASE_SALARY) * float(GameState.shift_spec().get("pay", 1.0))))
+	GameState.add_personal(salary, "salary (%s)" % DB.shift_name(GameState.shift_kind))
 	if bonus > 0:
 		GameState.add_personal(bonus, "profit share")
 
@@ -99,9 +102,10 @@ func close_shift() -> Dictionary:
 		"lines": billing["lines"],
 		"costs": costs,
 		"profit": profit,
-		"salary": BASE_SALARY,
+		"salary": salary,
+		"shift": DB.shift_name(GameState.shift_kind),
 		"bonus": bonus,
-		"take_home": BASE_SALARY + bonus,
+		"take_home": salary + bonus,
 	}
 	return last_statement
 

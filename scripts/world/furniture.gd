@@ -225,6 +225,18 @@ static func _corridor(h: Hospital, r: Room) -> void:
 		_chair(h, Vector3(x, 0, z + 1.5), PI)
 	_wall_sign(h, "◄  WARDS 101-105        TREATMENT  ►", Vector3(23.0, 2.6, 3.85), PI, 0.16)
 
+	# The day's list, on the corridor wall by the treatment bay. The tablet has
+	# the same information; this exists because reading somebody's name off a
+	# wall on your way past is a different thing from opening a menu, and
+	# because a slot nobody attended keeps their name on it all day in front of
+	# everybody who walks by.
+	var board := ClinicBoard.new()
+	board.room_key = r.key
+	h.add_child(board)
+	board.build()
+	board.position = Vector3(27.0, 1.5, 3.9)
+	board.rotation.y = PI
+
 	# ---- west annexe end of the corridor. Deliberately underfurnished: it is
 	# meant to look like a part of the hospital that stopped being maintained,
 	# which is exactly what the player is buying their way out of.

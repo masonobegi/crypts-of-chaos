@@ -216,11 +216,11 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1320 assertions  (test functions across 9 suites)
+1321 assertions  (test functions across 9 suites)
  65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
- 30 screenshots  (every room and every UI screen, rendered offscreen)
+ 31 screenshots  (every room and every UI screen, rendered offscreen)
 ```
 
 Balance at 30 days, seed 90210:
@@ -511,11 +511,23 @@ has quietly stopped being an independent document. And the reachability test now
 asserts every ending in the catalogue has a case proving something produces it,
 because all three of these nearly shipped unreachable.
 
+**The clinic board.** The list existed on a tablet, which meant it existed in a
+menu. It is now also a whiteboard on the corridor wall by the treatment bay —
+five names, times, and what each one is for, ticked off as you go. Reading
+somebody's name off a wall on your way past is a different thing from opening a
+tablet, and a slot nobody attended keeps their name on it all day in front of
+everybody who walks by.
+
+It shipped reading "nothing booked" first time. The board is built with the
+building, which happens before the systems that fill it in exist, so connecting
+to `roster_changed` on the same frame silently found nothing — the screenshot
+pass caught it inside a minute. Deferred connect.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
 - A nurse walking past a ward with no bed in it still has no opinion about the
   empty room itself, only about the patient who ended up in the corridor.
-- Walk-ins sit in the treatment bay with no signposting; the List tab says where
-  they are but nothing in the world does.
+- Walk-ins sit in the treatment bay with no seating of their own; the board and
+  the tablet both say they are there but they stand about like anybody else.

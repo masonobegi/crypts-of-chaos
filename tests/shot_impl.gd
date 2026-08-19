@@ -148,6 +148,7 @@ const SHOTS := [
 	["08_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.2, -8.5)],
 	["09_ward_105", Vector3(41.5, 1.7, 5.5), Vector3(41.0, 1.2, 11.0)],
 	# The west annexe, shuttered — what a career starts out looking at.
+	["09b_clinic_board", Vector3(25.2, 1.62, 1.1), Vector3(27.0, 1.5, 3.95)],
 	["10_annexe_shuttered", Vector3(2.0, 1.7, 2.0), Vector3(-16.0, 1.5, 2.0)],
 	# ...and the same three rooms with the departments bought. The "unlock" tag
 	# rolls the shutters up before the shot is framed.

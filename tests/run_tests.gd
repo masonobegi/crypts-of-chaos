@@ -8,6 +8,7 @@ extends SceneTree
 ## compilation and deadlocks the GDScript loader. Runtime load sidesteps it.
 
 const SUITES := [
+	"res://tests/test_compile.gd",
 	"res://tests/test_core.gd",
 	"res://tests/test_suspicion.gd",
 	"res://tests/test_sim.gd",

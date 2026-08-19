@@ -1,0 +1,333 @@
+class_name InvestigationSystem
+extends Node
+## Opens, runs and resolves investigations, and applies the sanction ladder.
+##
+## Getting caught is never instant. It is a ladder with nine rungs, and every
+## rung is a chance to behave impeccably for two shifts and climb back down —
+## which produces much better play than a hard fail state.
+
+const KINDS := {
+	"admin_audit": {
+		"title": "Internal Chart Review", "inst": "admin", "covert_chance": 0.35,
+		"days": 2, "threshold": 1.1,
+		"blurb": "Administration is pulling charts from your ward.",
+	},
+	"insurance": {
+		"title": "Insurance Utilisation Review", "inst": "insurer", "covert_chance": 0.5,
+		"days": 3, "threshold": 1.4,
+		"blurb": "Meridian Mutual has flagged your length-of-stay figures.",
+	},
+	"inspector": {
+		"title": "Health Inspection", "inst": "admin", "covert_chance": 0.0,
+		"days": 1, "threshold": 0.9,
+		"blurb": "An inspector is on the floor. Today.",
+	},
+	"undercover": {
+		"title": "Undercover Patient", "inst": "insurer", "covert_chance": 1.0,
+		"days": 4, "threshold": 1.0,
+		"blurb": "Someone on your ward is not who they say they are.",
+	},
+	"attorney": {
+		"title": "Malpractice Enquiry", "inst": "board", "covert_chance": 0.2,
+		"days": 3, "threshold": 1.6,
+		"blurb": "A solicitor has requested records for one of your patients.",
+	},
+	"police": {
+		"title": "Police Enquiry", "inst": "board", "covert_chance": 0.1,
+		"days": 4, "threshold": 2.2,
+		"blurb": "This is no longer a hospital matter.",
+	},
+}
+
+var open_investigations: Array[Investigation] = []
+var closed_investigations: Array[Investigation] = []
+var _next := 1
+var suspicion: SuspicionSystem = null
+var patient_system: PatientSystem = null
+
+func _ready() -> void:
+	add_to_group("investigation_system")
+	suspicion = get_tree().get_first_node_in_group("suspicion_system")
+	patient_system = get_tree().get_first_node_in_group("patient_system")
+
+# ------------------------------------------------------------------ triggers
+## Called once at the start of each day. Heat is the main driver, but a
+## sufficiently annoyed insurer can open one on its own.
+func daily_check() -> void:
+	if open_investigations.size() >= 2:
+		return
+	var heat := GameState.heat
+	var scrutiny := GameState.rep("gov_scrutiny")
+	var chance := heat * 0.55 + scrutiny * 0.35
+	# Insurers audit money, not morals: rich patients staying long is the signal.
+	var insurer_sus: float = suspicion.suspicion_of("insurer") if suspicion else 0.0
+	chance += insurer_sus * 0.3
+	if GameState.sanction_level >= 3:
+		chance += 0.15
+	if not RNG.chance("investigation_open", clampf(chance, 0.0, 0.85)):
+		return
+	open(_pick_kind(insurer_sus))
+
+func _pick_kind(insurer_sus: float) -> String:
+	var weights := {
+		"admin_audit": 1.0 + GameState.heat,
+		"insurance": 0.5 + insurer_sus * 2.0,
+		"inspector": 0.5,
+		"undercover": 0.25 + insurer_sus,
+		"attorney": maxf(0.0, GameState.sanction_level - 2) * 0.5,
+		"police": maxf(0.0, GameState.sanction_level - 5) * 0.7,
+	}
+	return String(RNG.pick_weighted("investigation_kind", weights))
+
+func open(kind: String, forced_covert := -1) -> Investigation:
+	var spec: Dictionary = KINDS.get(kind, KINDS["admin_audit"])
+	var inv := Investigation.new()
+	inv.id = "inv%d" % _next
+	_next += 1
+	inv.kind = kind
+	inv.title = String(spec["title"])
+	inv.blurb = String(spec["blurb"])
+	inv.institution = String(spec["inst"])
+	inv.days_left = int(spec["days"])
+	inv.threshold = float(spec["threshold"])
+	inv.opened_on_day = GameState.day
+	inv.covert = RNG.chance("covert", float(spec["covert_chance"])) if forced_covert < 0 \
+		else bool(forced_covert)
+
+	# Investigations focus on your worst-looking patient, because that is what
+	# an actual reviewer would pull first.
+	var worst: Patient = null
+	var worst_score := -1.0
+	for p in patient_system.active():
+		var score := maxf(0.0, p.days_admitted - p.expected_stay_days)
+		for c in p.complications:
+			score += c.paper_suspicion()
+		if score > worst_score:
+			worst_score = score
+			worst = p
+	if worst:
+		inv.focus_patient = worst.id
+
+	open_investigations.append(inv)
+	EventBus.investigation_opened.emit(inv)
+	if not inv.covert:
+		EventBus.toast.emit("%s — %s" % [inv.title, inv.blurb], "bad")
+		AudioMgr.play("alarm", -12.0)
+	else:
+		Log.i("covert investigation opened: %s" % inv.kind, "Invest")
+	if kind == "undercover":
+		_plant_undercover(inv)
+	return inv
+
+## The undercover patient is a real patient with a real condition who happens to
+## be extremely observant and reports everything they see. You will never be
+## told which one they are.
+func _plant_undercover(inv: Investigation) -> void:
+	var candidates := patient_system.active()
+	if candidates.is_empty():
+		return
+	var target: Patient = RNG.pick("undercover_target", candidates)
+	target.archetype = "observant"
+	if target.mind:
+		target.mind.archetype = "observant"
+		target.mind.observance = 0.98
+		target.mind.skepticism = 0.9
+		target.mind.trust = 0.3
+		target.mind.talkativeness = 0.1     # they don't gossip; they report
+	inv.focus_patient = target.id
+	GameState.set_flag("undercover_" + target.id, true)
+
+# ------------------------------------------------------------------ running
+## Advance every open investigation by a day.
+func daily_tick() -> void:
+	for inv in open_investigations.duplicate():
+		_advance(inv)
+
+func _advance(inv: Investigation) -> void:
+	inv.days_left -= 1
+	match inv.stage:
+		Investigation.Stage.OPENED:
+			inv.stage = Investigation.Stage.GATHERING
+			_gather_records(inv)
+		Investigation.Stage.GATHERING:
+			inv.stage = Investigation.Stage.INTERVIEWS
+			_interview_staff(inv)
+		Investigation.Stage.INTERVIEWS:
+			inv.stage = Investigation.Stage.VERDICT
+	EventBus.investigation_stage.emit(inv, int(inv.stage))
+	if inv.days_left <= 0 or inv.stage == Investigation.Stage.VERDICT:
+		_resolve(inv)
+
+## Pull the charts and diff them against what actually happened. This is where
+## phantom billing and impossible causes finally come due.
+func _gather_records(inv: Investigation) -> void:
+	for p in patient_system.active():
+		if inv.focus_patient != "" and p.id != inv.focus_patient \
+				and not RNG.chance("audit_spread", 0.4):
+			continue
+		for f in p.chart.audit(p.actual_treatments, p.complications):
+			var ev := Evidence.new()
+			ev.kind = String(f["kind"])
+			ev.about_actor = "player"
+			ev.patient_id = p.id
+			ev.source = Evidence.Source.RECORD
+			ev.time = GameState.career_minutes
+			ev.base_weight = float(f["weight"])
+			ev.certainty = 0.95
+			ev.summary = String(f["text"])
+			inv.gathered.append(ev)
+	# Machine logs are records too, and nobody ever remembers to check them.
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if f is TreatmentMachine:
+			for entry in f.suspicious_log_entries():
+				var ev := Evidence.new()
+				ev.kind = "machine_log_deviation"
+				ev.about_actor = "player"
+				ev.patient_id = String(entry.get("patient", ""))
+				ev.source = Evidence.Source.RECORD
+				ev.time = GameState.career_minutes
+				ev.base_weight = clampf(absf(float(entry["deviation"])) * 0.12, 0.1, 0.7)
+				ev.certainty = 0.98
+				ev.summary = "%s run at %d for %s (prescribed %d)" % [
+					f.fixture_name, int(entry["dial"]), entry.get("patient_name", "a patient"),
+					int(entry["prescribed"])]
+				inv.gathered.append(ev)
+			if f.log_cleared_count > 0:
+				var ev2 := Evidence.new()
+				ev2.kind = "machine_log_cleared"
+				ev2.about_actor = "player"
+				ev2.source = Evidence.Source.RECORD
+				ev2.time = GameState.career_minutes
+				ev2.base_weight = 0.5 * float(f.log_cleared_count)
+				ev2.certainty = 1.0
+				ev2.summary = "%s device log has been cleared %d time(s)" % [
+					f.fixture_name, f.log_cleared_count]
+				inv.gathered.append(ev2)
+
+## Ask the ward what they saw. Staff who like you keep their mouths shut.
+func _interview_staff(inv: Investigation) -> void:
+	if suspicion == null:
+		return
+	for m in suspicion.all_minds():
+		if m.role == "institution" or inv.interviewed.has(m.id):
+			continue
+		inv.interviewed.append(m.id)
+		var worst := m.strongest(GameState.career_minutes)
+		if worst == null:
+			continue
+		# Loyalty is a real defence — a nurse who trusts you will simply not
+		# mention it, which is what staff_trust is for.
+		var will_talk := clampf(0.85 - m.trust * 0.7 + m.escalation * 0.3, 0.05, 0.95)
+		will_talk *= 1.0 - GameState.rep("staff_trust") * 0.35
+		if not RNG.chance("interview", will_talk):
+			continue
+		var copy := worst.retold()
+		copy.source = Evidence.Source.WITNESSED   # a statement is first-hand
+		copy.certainty = worst.certainty * 0.9
+		copy.summary = "%s: %s" % [m.display_name, worst.label()]
+		inv.gathered.append(copy)
+
+# ------------------------------------------------------------------ verdict
+func _resolve(inv: Investigation) -> void:
+	var now := GameState.career_minutes
+	var institutional: float = suspicion.suspicion_of(inv.institution) if suspicion else 0.0
+	var total := inv.gathered_weight(now) + institutional * 1.2
+	# Reputation is armour. A well-regarded doctor genuinely gets the benefit of
+	# the doubt, which is the whole reason to have one.
+	total *= clampf(1.25 - GameState.rep("doctor") * 0.5, 0.6, 1.4)
+
+	inv.stage = Investigation.Stage.CLOSED
+	open_investigations.erase(inv)
+	closed_investigations.append(inv)
+
+	if total < inv.threshold * 0.55:
+		inv.outcome = "cleared"
+		GameState.add_heat(-0.12, "investigation cleared")
+		GameState.adjust_rep("doctor", 0.03)
+		GameState.stats.investigations_survived += 1
+		EventBus.toast.emit("%s closed. No findings." % inv.title, "good")
+	elif total < inv.threshold:
+		inv.outcome = "concerns"
+		GameState.add_heat(0.04, "investigation concerns")
+		GameState.stats.investigations_survived += 1
+		EventBus.toast.emit("%s closed with concerns noted." % inv.title, "info")
+		escalate(1, "%s: concerns noted" % inv.title)
+	else:
+		inv.outcome = "adverse"
+		var steps := 1
+		if total > inv.threshold * 1.8:
+			steps = 2
+		if total > inv.threshold * 3.0:
+			steps = 3
+		EventBus.toast.emit("%s: adverse findings." % inv.title, "bad")
+		AudioMgr.play("error", -6.0)
+		escalate(steps, "%s: adverse findings" % inv.title)
+	EventBus.investigation_closed.emit(inv, inv.outcome)
+
+# ------------------------------------------------------------------ sanctions
+func escalate(steps: int, reason: String) -> void:
+	if steps <= 0:
+		return
+	var before := GameState.sanction_level
+	GameState.sanction_level = clampi(before + steps, 0, GameState.SANCTIONS.size() - 1)
+	if GameState.sanction_level == before:
+		return
+	GameState.adjust_rep("gov_scrutiny", 0.07 * float(steps))
+	GameState.adjust_rep("doctor", -0.05 * float(steps))
+	EventBus.sanction_applied.emit(GameState.sanction_level, reason)
+	EventBus.toast.emit("%s — %s" % [
+		GameState.SANCTIONS[GameState.sanction_level], reason], "bad")
+	_apply_sanction_effects()
+	if GameState.sanction_level >= GameState.SANCTIONS.size() - 1:
+		EventBus.game_over.emit("prison")
+	elif GameState.sanction_level >= 8:
+		EventBus.game_over.emit("license_revoked")
+
+func _apply_sanction_effects() -> void:
+	match GameState.sanction_level:
+		2: GameState.bonus_rate = maxf(0.03, GameState.bonus_rate - 0.01)
+		4: GameState.bonus_rate = maxf(0.02, GameState.bonus_rate - 0.02)   # probation
+		5: GameState.add_hospital(-4500, "malpractice settlement")
+		6: GameState.adjust_rep("hospital", -0.12)
+
+## Behaving impeccably walks the ladder back down. Two clean shifts is the price.
+func consider_de_escalation(clean_shift: bool) -> void:
+	if not clean_shift or GameState.sanction_level <= 0:
+		return
+	var streak := int(GameState.flag("clean_streak", 0)) + 1
+	GameState.set_flag("clean_streak", streak)
+	if streak >= 2:
+		GameState.set_flag("clean_streak", 0)
+		GameState.sanction_level = maxi(0, GameState.sanction_level - 1)
+		GameState.adjust_rep("gov_scrutiny", -0.05)
+		EventBus.toast.emit("Standing improved: %s" % GameState.SANCTIONS[GameState.sanction_level], "good")
+
+func active_titles() -> Array[String]:
+	var out: Array[String] = []
+	for inv in open_investigations:
+		if not inv.covert:
+			out.append(inv.title)
+	return out
+
+## True if anything at all is currently looking at you — including covert ones.
+## Never surfaced directly to the player; used to bias ambient tension.
+func any_active() -> bool:
+	return not open_investigations.is_empty()
+
+func to_dict() -> Dictionary:
+	var op: Array = []
+	for i in open_investigations:
+		op.append(i.to_dict())
+	var cl: Array = []
+	for i in closed_investigations:
+		cl.append(i.to_dict())
+	return {"open": op, "closed": cl, "next": _next}
+
+func from_dict(d: Dictionary) -> void:
+	open_investigations.clear()
+	closed_investigations.clear()
+	for x in d.get("open", []):
+		open_investigations.append(Investigation.from_dict(x))
+	for x in d.get("closed", []):
+		closed_investigations.append(Investigation.from_dict(x))
+	_next = int(d.get("next", 1))

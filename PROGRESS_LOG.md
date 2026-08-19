@@ -1136,3 +1136,56 @@ Also added `03b_door_card` to the screenshot set, because this is precisely the
 class of thing only a picture catches.
 
 **1,553 assertions · 95 smoke · 17 live. All green.**
+
+---
+
+## Session 4 (cont.) — Phase 20: it exports, and the first thing it printed was an error
+
+Export templates were never installed and no export had ever been run. Both
+presets now build:
+
+```
+=== Windows ===
+  81M  build/windows/ChronicCare.exe      PE32+ executable (GUI) x86-64
+=== Linux ===
+  64M  build/linux/ChronicCare.x86_64
+=== running the exported build ===
+  ok: the exported build boots and exits cleanly
+EXPORT OK
+```
+
+`export.sh` does all three steps, because "an export produced a file" and "an
+export produced a game" are different claims. Templates are a separate ~1GB
+download and are deliberately not vendored; the script prints the one command
+that fetches them.
+
+The only outstanding warning is `rcedit`, the Windows-only tool that stamps the
+icon and version block onto the .exe. Absent it, the exe carries no icon. That is
+cosmetic and cannot be done from this container, so it is reported and not
+treated as a failure.
+
+### What running the real entry point immediately found
+
+```
+[INFO][Boot] Chronic Care booting
+ERROR: Parent node is busy adding/removing children, `remove_child()` can't be
+       called at this time.
+```
+
+`Boot._ready()` called `change_scene_to_file` synchronously from inside its own
+`_ready()`, while the tree was still adding that node's children. **The first
+line of output the shipped build produced was an engine error**, on every single
+launch. Deferred now.
+
+Nothing in 1,553 assertions had ever seen it, for the same reason the
+"unplayable from the main menu" bug survived: **every harness instantiates
+`Game.tscn` directly and skips Boot and the main menu entirely.**
+
+So there is now a `boot_check.sh`, wired into `run_tests.sh`: it launches the
+real main scene rendered under Xvfb for 300 frames and fails on anything printed
+that a shipped build should not print. It filters exactly three kinds of
+container noise — no sound card, no vsync under Xvfb, software GL — and nothing
+else. Verified against the bug it was written for: reverting the one-line fix
+makes it fail with the exact error above.
+
+**1,553 assertions · 95 smoke · 17 live · boot check · 20/20 balance.**

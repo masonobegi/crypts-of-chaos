@@ -34,8 +34,16 @@ SMOKE=${PIPESTATUS[0]}
 "$GODOT" --headless --fixed-fps 60 --path "$DIR" --script res://tests/live_run.gd 2>&1 | grep -vE "$NOISE"
 LIVE=${PIPESTATUS[0]}
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$LIVE" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE live=$LIVE)" >&2
+# And finally the one route no other harness takes: the real entry point.
+# Everything above instantiates Game.tscn directly, which skips Boot and the
+# main menu entirely — the gap that hid both "the game is unplayable from the
+# main menu" and an engine error printed on every launch.
+echo ""
+GODOT="$GODOT" "$DIR/boot_check.sh"
+BOOT=$?
+
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$LIVE" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE live=$LIVE boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

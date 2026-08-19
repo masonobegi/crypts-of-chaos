@@ -37,7 +37,19 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,553 assertions · 95 smoke · 17 live · 20/20 balance design checks over 3 seeds.**
+**1,553 assertions · 95 smoke · 17 live · boot check · 20/20 balance design
+checks over 3 seeds.** Windows and Linux both export, and the exported Linux
+build boots and exits cleanly.
+
+## Building
+
+```bash
+GODOT=/tmp/Godot_v4.3-stable_linux.x86_64 ./export.sh          # windows + linux, then runs the linux one
+GODOT=/tmp/Godot_v4.3-stable_linux.x86_64 ./boot_check.sh      # real entry point only
+```
+
+Export templates are a separate ~1GB download and are NOT vendored. `export.sh`
+prints the exact command to fetch them if they are missing.
 
 ## What has been done this session
 
@@ -62,13 +74,17 @@ See the Session 4 sections of `PROGRESS_LOG.md`. Headlines:
    progression + end-of-shift payoff, and first-hour comprehension. Its findings
    are adversarially verified before being believed. **Check for its result and
    work the confirmed list in severity order.**
-2. Phase 20 — export. Never once exercised. Windows is the primary target.
-3. Remaining brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy
+2. Remaining brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy
    pass), 7 (emergent chaos), 8 (events that change strategy), 9 (soften
    accidental wrong-site failure diegetically), 11 (visible progression), 12
    (content), 13 (shift results with personality), 14 (juice), 15
    (streamability), 16 (make the three shifts substantially different), 19
    (performance profiling).
+
+Phase 20 (export) is DONE: `export.sh`, both presets build, the Linux build is
+launched and checked as part of it. The only outstanding cosmetic is that the
+.exe has no icon or version block, which needs `rcedit` and cannot be done from
+this container.
 
 ## Standing constraints from the brief
 

@@ -172,6 +172,9 @@ func _spawn_body(p: Patient, ward_key: String, sus) -> void:
 	else:
 		npc.global_position = hospital.point_in(ward_key)
 	bodies[p.id] = npc
+	# Discharged patients walk out and free themselves. See get_body(): a freed
+	# node left in this dictionary breaks every later read of it.
+	npc.tree_exiting.connect(func(): bodies.erase(p.id))
 	if sus:
 		sus.register(p.mind, npc)
 	# Point the ward's vitals console at whoever is actually in the bed.
@@ -252,8 +255,8 @@ func tick(days: float) -> void:
 		var p: Patient = patients[id]
 		if p.discharged:
 			continue
-		var body: PatientNPC = bodies.get(id, null)
-		var room_key: String = body.current_room() if body and is_instance_valid(body) else p.room
+		var body = get_body(id)
+		var room_key: String = body.current_room() if body else p.room
 		var r: Room = hospital.room(room_key) if hospital else null
 		p.env_modifier = r.comfort() if r else 1.0
 		var before_ready := p.ready_for_discharge()
@@ -304,8 +307,8 @@ func add_complication(p: Patient, comp_id: String, true_cause: String) -> Compli
 		.seen(0.0).heard(0.0, 6.0).tag("clinical") \
 		.says("%s developed %s" % [p.display_name, c.display_name]).emit()
 
-	var body: PatientNPC = bodies.get(p.id, null)
-	if body and is_instance_valid(body):
+	var body = get_body(p.id)
+	if body:
 		body.say(String(RNG.pick("comp_bark", [
 			"Ohh. That's new.", "Something's happening.", "I don't feel right.",
 			"Was that meant to—", "Oh, that's not good.",
@@ -362,8 +365,8 @@ func discharge(p: Patient, reason := "recovered") -> void:
 		if p.mind:
 			p.mind.adjust_trust(0.15)
 
-	var body: PatientNPC = bodies.get(p.id, null)
-	if body and is_instance_valid(body):
+	var body = get_body(p.id)
+	if body:
 		body.discharge_and_leave()
 	var chart = charts.get(p.id, null)
 	if chart and is_instance_valid(chart):
@@ -384,8 +387,17 @@ func discharge(p: Patient, reason := "recovered") -> void:
 func get_patient(id: String) -> Patient:
 	return patients.get(id, null)
 
-func get_body(id: String) -> PatientNPC:
-	return bodies.get(id, null)
+## Every read of `bodies` goes through here. Reading a freed node into a
+## `var b: PatientNPC` local raises "Trying to assign invalid previously freed
+## instance" and ABORTS THE WHOLE FUNCTION rather than yielding null, so the
+## is_instance_valid check on the following line never gets to run — one
+## discharged patient could stop tick() from advancing anybody else.
+func get_body(id: String):
+	var b = bodies.get(id, null)
+	if b == null or not is_instance_valid(b):
+		bodies.erase(id)
+		return null
+	return b
 
 func active() -> Array[Patient]:
 	var out: Array[Patient] = []
@@ -416,10 +428,11 @@ func average_overstay() -> float:
 	return total / float(list.size())
 
 func _position_of(p: Patient) -> Vector3:
-	var b: PatientNPC = bodies.get(p.id, null)
-	if b and is_instance_valid(b):
+	var b = get_body(p.id)
+	if b:
 		return b.global_position
 	return hospital.point_in(p.room) if hospital else Vector3.ZERO
+
 
 # ================================================================ save/load
 func to_dict() -> Dictionary:

@@ -48,16 +48,45 @@ func register(mind: Mind, body: NPCBody = null) -> void:
 	if body:
 		_bodies[mind.id] = body
 		body.mind = mind
+		# Visitors go home, investigators finish their round, patients are
+		# discharged — and every one of them frees its own body. A freed body
+		# left in this dictionary poisons EVERY pass over it (see _body), so the
+		# registry has to hear about it the moment the body leaves.
+		var on_exit := _on_body_exiting.bind(mind.id)
+		if not body.tree_exiting.is_connected(on_exit):
+			body.tree_exiting.connect(on_exit)
+
+func _on_body_exiting(id: String) -> void:
+	# The MIND stays. Somebody who saw you switch the labels and then went home
+	# still saw you switch the labels, and can still file a complaint about it.
+	_bodies.erase(id)
 
 func unregister(id: String) -> void:
 	minds.erase(id)
 	_bodies.erase(id)
 
+## Read a body out of the registry. Deliberately untyped, and every read of
+## `_bodies` must go through it.
+##
+## Assigning a freed object to a `var b: NPCBody` local does not merely produce
+## null — it raises "Trying to assign invalid previously freed instance" and
+## ABORTS THE FUNCTION, so the `is_instance_valid` guard on the next line never
+## runs. One departed visitor left in the dictionary was enough to abort
+## _on_world_event before it reached the nurse standing in front of you, which
+## silently switched off witnessing for the rest of the shift: the entire
+## stealth game stopped working and nothing failed loudly enough to notice.
+func _body(id):
+	var b = _bodies.get(id, null)
+	if b == null or not is_instance_valid(b):
+		_bodies.erase(id)
+		return null
+	return b
+
 func mind_of(id: String) -> Mind:
 	return minds.get(id, null)
 
 func body_of(id: String) -> NPCBody:
-	return _bodies.get(id, null)
+	return _body(id)
 
 func all_minds() -> Array[Mind]:
 	var out: Array[Mind] = []
@@ -77,9 +106,9 @@ func _on_world_event(evt) -> void:
 
 	# Pass one: who perceived it, and how well.
 	var witnesses: Array = []
-	for id in _bodies:
-		var body: NPCBody = _bodies[id]
-		if body == null or not is_instance_valid(body) or body.perception == null:
+	for id in _bodies.keys():
+		var body = _body(id)
+		if body == null or body.perception == null:
 			continue
 		var res: Dictionary = body.perception.evaluate(e)
 		if res.is_empty():
@@ -110,7 +139,7 @@ func _on_world_event(evt) -> void:
 			if other != id:
 				ev.corroborators.append(other)
 		var stored := mind.add_evidence(ev)
-		EventBus.evidence_recorded.emit(_bodies.get(id, null), stored)
+		EventBus.evidence_recorded.emit(_body(id), stored)
 		if e.visual_weight > 0.25:
 			GameState.stats.witnessed_acts += 1
 		_react(id, mind, stored)
@@ -137,8 +166,8 @@ func _record_on_camera(e: WorldEvent) -> void:
 
 ## Immediate on-the-spot reaction: a line of dialogue and a hard stare.
 func _react(id: String, mind: Mind, ev: Evidence) -> void:
-	var body: NPCBody = _bodies.get(id, null)
-	if body == null or not is_instance_valid(body):
+	var body = _body(id)
+	if body == null:
 		return
 	var tier := mind.tier(GameState.career_minutes, GameState.active_covers)
 	if tier <= mind.reacted_tier or tier < 1:
@@ -167,8 +196,8 @@ func _gossip_pass() -> void:
 	var ids: Array = _bodies.keys()
 	for id in ids:
 		var speaker: Mind = minds.get(id, null)
-		var body: NPCBody = _bodies.get(id, null)
-		if speaker == null or body == null or not is_instance_valid(body):
+		var body = _body(id)
+		if speaker == null or body == null:
 			continue
 		if not RNG.chance("gossip", speaker.talkativeness * 0.5):
 			continue
@@ -178,8 +207,8 @@ func _gossip_pass() -> void:
 		for other_id in ids:
 			if other_id == id:
 				continue
-			var listener_body: NPCBody = _bodies.get(other_id, null)
-			if listener_body == null or not is_instance_valid(listener_body):
+			var listener_body = _body(other_id)
+			if listener_body == null:
 				continue
 			if listener_body.global_position.distance_to(body.global_position) > GOSSIP_RANGE:
 				continue
@@ -351,10 +380,9 @@ func highest_suspicion() -> float:
 ## Anyone currently able to see the player. Drives the HUD "eyes on you" tell.
 func watchers() -> Array[NPCBody]:
 	var out: Array[NPCBody] = []
-	for id in _bodies:
-		var b: NPCBody = _bodies[id]
-		if b and is_instance_valid(b) and b.is_inside_tree() \
-				and b.perception and b.perception.sees_player():
+	for id in _bodies.keys():
+		var b = _body(id)
+		if b and b.is_inside_tree() and b.perception and b.perception.sees_player():
 			out.append(b)
 	return out
 
@@ -362,9 +390,9 @@ func is_observed() -> bool:
 	return not watchers().is_empty()
 
 func refresh_tells(player_pos: Vector3) -> void:
-	for id in _bodies:
-		var b: NPCBody = _bodies[id]
-		if b and is_instance_valid(b):
+	for id in _bodies.keys():
+		var b = _body(id)
+		if b:
 			b.refresh_tell(player_pos)
 
 # ------------------------------------------------------------------ save/load

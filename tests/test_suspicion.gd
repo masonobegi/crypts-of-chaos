@@ -255,3 +255,45 @@ func test_even_a_blatant_act_is_never_certain_and_a_subtle_one_never_free() -> v
 		"nothing is guaranteed to be seen")
 	t.gt(NPCPerception.notice_chance(0.01, 0.0, 0.0), 0.0,
 		"and nothing is guaranteed to be missed")
+
+func test_a_departed_npc_does_not_switch_off_everyone_elses_senses() -> void:
+	# Visitors go home, investigators finish their round, patients are
+	# discharged — and every one of them frees its own body. A freed node left
+	# behind in the registry used to abort the entire witnessing pass before it
+	# reached anybody who was still standing there, which quietly switched off
+	# the stealth game partway through every shift and failed silently.
+	var sus := SuspicionSystem.new()
+	t.root.add_child(sus)
+
+	var leaver := NPCBody.new()
+	t.root.add_child(leaver)
+	sus.register(DB.make_mind("leaver", "Visitor", "visitor", "gossip"), leaver)
+	leaver.free()
+	t.ok(not sus._bodies.has("leaver"), "a body that leaves the tree deregisters itself")
+
+	# And an entry that went stale without the tree ever saying so. It is listed
+	# BEFORE the witness on purpose: the bug was that the pass died on it.
+	var ghost := NPCBody.new()
+	ghost.free()
+	sus._bodies["ghost"] = ghost
+
+	var witness := NPCBody.new()
+	t.root.add_child(witness)
+	witness.global_position = Vector3.ZERO
+	var mind := DB.make_mind("survivor", "Nurse Survivor", "nurse", "gossip")
+	mind.observance = 1.0
+	sus.register(mind, witness)
+
+	# Heard rather than seen, so this asserts the routing and not a dice roll.
+	WorldEvent.new("regression_act", "player").at(Vector3(0, 1.4, 0), "") \
+		.heard(0.9, 12.0).says("a noise nobody could miss").emit()
+
+	var recorded := 0
+	for ev in mind.evidence:
+		if ev.kind == "regression_act":
+			recorded += 1
+	t.eq(recorded, 1, "somebody still on the ward witnessed it anyway")
+	t.ok(not sus._bodies.has("ghost"), "the stale entry was swept out on the way past")
+
+	sus.free()
+	witness.free()

@@ -50,6 +50,16 @@ change — five real bugs have been caught only by looking at the game.
    instead (`NPCBody._open_door_ahead`).
 10. **Navigation must be baked AFTER furniture exists**, or NPCs path straight
     through desks and wedge against them.
+11. **Reading a freed object into a *typed* local raises "Trying to assign
+    invalid previously freed instance" and ABORTS THE FUNCTION** — it does not
+    yield null, so the `is_instance_valid()` check on the next line never runs.
+    Any dictionary that holds nodes with lifetimes of their own therefore needs
+    a single guarded accessor that everything reads through
+    (`SuspicionSystem._body`, `PatientSystem.get_body`), plus a `tree_exiting`
+    hook that removes the entry. This one cost the most: one visitor going home
+    aborted the witnessing pass before it reached the nurse standing in front of
+    the player, so the entire stealth game switched itself off partway through
+    every shift and nothing failed loudly.
 
 ## Design rules that are load-bearing
 

@@ -2,13 +2,6 @@ extends RefCounted
 ## Live simulation test: runs the real game with real FRAMES, so NPCs actually
 ## move, patrol, do rounds, gossip, investigate and react.
 ##
-## NOT yet covered: perception against real geometry (does a witness standing
-## there actually record a blatant act?). Instrumenting the roll by hand shows
-## it working — line of sight resolves, the chance computes correctly, and most
-## rolls pass — but every attempt to assert it from this harness reads zero, so
-## the bookkeeping here is wrong somewhere and an assertion that green-lights a
-## broken system is worse than none. See PROGRESS_LOG.md; this is the next job.
-##
 ## The smoke run drives the clock in a tight loop with no frames between steps,
 ## which means it never executes a single line of NPC behaviour. Everything in
 ## scripts/npc/ was effectively untested at runtime — a crash in a state machine
@@ -30,6 +23,10 @@ var _seen_gossip := false
 var _seen_noticed := false
 var _seen_bark := false
 var _rooms_visited: Dictionary = {}
+## -1 means the probe never ran, which is a failure in its own right.
+var _seen_in_the_open := -1
+var _seen_through_wall := -1
+var _witness_suspicion := 0.0
 var _investigator_moved := false
 var _investigator_seen := false
 ## instance id -> where we first saw it. Tracked per body because an
@@ -57,6 +54,8 @@ func tick() -> bool:
 			GameState._advance_minute()
 	if frames == 60:
 		_seed_conditions()
+	if frames == FRAMES - 300:
+		_test_perception()
 	if frames % 60 == 0:
 		_sample()
 	if frames < FRAMES:
@@ -82,6 +81,54 @@ func _seed_conditions() -> void:
 	for p in game.patient_system.active():
 		game.patient_system.add_complication(p, "ferrous_aura", "machine_deviation")
 	game.investigations.open("inspector", 0)
+
+## Does a witness standing in front of an obvious act actually end up holding
+## evidence of it — and does a wall stop them?
+##
+## Observance is forced to 1.0 and the act is made maximally blatant so that the
+## detection ROLL is not what is under test: notice_chance() has its own unit
+## tests, and a probabilistic assertion here would be flaky. What this covers is
+## the routing nothing else touches — world event, to perception, to line of
+## sight against the real geometry of the building, to that witness's memory.
+##
+## The two halves are deliberately at comparable range (4.0m and 3.5m) so that
+## the only meaningful difference between them is the ward wall. Standing the
+## blocked witness across the building would have "passed" for the wrong reason.
+func _test_perception() -> void:
+	var nurse = _find_staff()
+	if nurse == null:
+		return
+	nurse.mind.observance = 1.0
+	nurse.perception.attention = 1.0
+	nurse.stop_moving()
+	# Inside Room 101, well clear of its doorway at x = 4.5.
+	var act := Vector3(1.5, 1.4, 6.0)
+
+	# a) Nurse out in the corridor, with the ward wall in between.
+	_seen_through_wall = _witnessed(nurse, Vector3(1.5, 0.0, 2.0), act, "wall_probe_act")
+	# b) Same nurse, same act, same sort of distance, nothing in the way.
+	_seen_in_the_open = _witnessed(nurse, Vector3(1.5, 0.0, 9.5), act, "open_probe_act")
+	_witness_suspicion = nurse.mind.suspicion(GameState.career_minutes)
+
+## Stand the witness somewhere, point them at the act, fire it, and report how
+## many fresh memories of it they came away with.
+func _witnessed(nurse, stand: Vector3, act: Vector3, kind: String) -> int:
+	nurse.global_position = stand
+	# look_toward() only gives the AI something to turn towards over the next
+	# few frames. The event fires within this one, so the facing has to be true
+	# right now or the field-of-view check decides the result instead.
+	nurse.look_at(Vector3(act.x, stand.y + 1.5, act.z), Vector3.UP)
+	var before := _count_evidence(nurse.mind, kind)
+	WorldEvent.new(kind, "player").at(act, "ward_101") \
+		.seen(0.95).says("something extremely blatant").emit()
+	return _count_evidence(nurse.mind, kind) - before
+
+func _count_evidence(mind: Mind, kind: String) -> int:
+	var n := 0
+	for ev in mind.evidence:
+		if ev.kind == kind:
+			n += 1
+	return n
 
 func _find_staff():
 	for n in tree.get_nodes_in_group("staff"):
@@ -129,6 +176,13 @@ func _finish() -> void:
 	_ok(_seen_noticed, "a nurse or visitor noticed an undocumented complication")
 	_ok(_investigator_seen, "a visible investigation put somebody on the floor")
 	_ok(_investigator_moved, "the investigator walked its round")
+
+	_ok(_seen_in_the_open > 0,
+		"a witness in the room recorded a blatant act (%d)" % _seen_in_the_open)
+	_ok(_seen_through_wall == 0,
+		"a ward wall stopped that same act being seen (%d)" % _seen_through_wall)
+	_ok(_witness_suspicion > 0.0,
+		"witnessing it moved that character's suspicion (%.2f)" % _witness_suspicion)
 
 	# The player must not have fallen through the floor or got stuck in geometry.
 	_ok(game.player.global_position.y > -2.0, "player is still on the floor")

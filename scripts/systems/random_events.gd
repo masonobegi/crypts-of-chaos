@@ -194,7 +194,7 @@ func apply(id: String) -> void:
 				var list := patient_system.active()
 				if not list.is_empty():
 					var p: Patient = RNG.pick("escape_pick", list)
-					var body := patient_system.get_body(p.id)
+					var body = patient_system.get_body(p.id)
 					if body:
 						body.state = PatientNPC.State.WANDERING
 						body.goto(hospital.point_in("lobby", "escape_pt"))

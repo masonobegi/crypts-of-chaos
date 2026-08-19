@@ -200,6 +200,8 @@ multiple endings.
 - [x] Tablet Record tab (audit exposure at any moment, not just at clock-out).
 - [x] The nurse errand option, which had rolled a dice and then done nothing.
 - [x] Export presets for Linux / Windows / macOS.
+- [x] Perception asserted against the real building in `live_run.gd`, and the
+      freed-registry bug it turned out to be hiding (see CLOSED, below).
 
 ---
 
@@ -210,9 +212,9 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-807 assertions   (test functions across 5 suites)
+817 assertions   (test functions across 5 suites)
  40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
- 10 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
+ 13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
  21 screenshots  (every room and every UI screen, rendered offscreen)
 ```
@@ -230,25 +232,42 @@ Balance at 30 days, seed 90210:
 |---|---|
 | unit/integration | stay maths, chart auditing, evidence decay, floor connectivity |
 | `smoke_run.gd` | spawns silently dropped; a Vector3 passed where a Mesh was expected |
-| `live_run.gd` | **every door in the building was welded shut** — no member of staff could enter any patient room; NPCs could not push anything; navigation ignored furniture; nurses abandoned their rounds |
+| `live_run.gd` | **every door in the building was welded shut** — no member of staff could enter any patient room; **one departed visitor switched off witnessing for the rest of the shift**; NPCs could not push anything; navigation ignored furniture; nurses abandoned their rounds |
 | `balance_sim.gd` | cheating originally paid LESS than honesty; wrong-machine use was invisible; the whole upgrade catalogue bought out by day 20 |
 | `screenshots.sh` | HUD wrapping per-character; three HUD blocks never drawing; patients standing in beds; day-one economy; a confidence band on "how are you feeling?" |
 
-### OPEN — first job next session
-**Automate the perception-under-real-geometry check.** `live_run.gd` deliberately
-does NOT assert it yet. Instrumenting `NPCPerception.evaluate` by hand shows the
-system working — line of sight resolves, `notice_chance` computes correctly, and
-most rolls pass (7 of 10 observed, evidence created, `_react` firing) — but every
-attempt to assert it from the live harness reads zero recorded evidence, so the
-bookkeeping in the test is wrong somewhere. A green assertion over a system I
-cannot actually observe is worse than no assertion, so it was removed rather
-than weakened.
+### CLOSED — the perception check, and the bug it was hiding
+The open item from the previous session was real, and it was not the test.
 
-Leads: the harness advances several in-game minutes per frame, so
-`SuspicionSystem._decay_pass` runs constantly; and `Mind.add_evidence` merges
-same-kind entries, so a repeated test event collapses into one. Neither fully
-explains a zero count. Reproduce with the EVAL instrumentation described in the
-git history for "Somebody actually has to notice".
+`live_run.gd` now asserts perception against the actual geometry of the
+building, in three checks. A nurse is stood in the corridor with the Room 101
+wall between her and a blatant act 4.0m away, then moved into the ward 3.5m from
+the same act. The two halves are at deliberately comparable range so the wall is
+the only meaningful difference — standing the blocked witness across the
+building would have passed for the wrong reason. Observance is forced to 1.0 and
+the act made maximally blatant so the assertion is about routing rather than a
+dice roll; `notice_chance()` has its own unit tests.
+
+Why it read zero before: **reading a freed object into a typed local aborts the
+function.** `_on_world_event` did `var body: NPCBody = _bodies[id]`, and that
+statement raises "Trying to assign invalid previously freed instance" rather
+than yielding null — so the `is_instance_valid()` guard written on the very next
+line never ran, and the loop died. Visitors go home, investigators finish their
+round and patients are discharged; each frees its own body and left a corpse in
+the registry. From the first departure onwards, **no character in the building
+witnessed anything the player did for the rest of the shift.** The stealth game
+turned itself off partway through every session, and because the engine only
+logged a script error, nothing failed.
+
+Fixed at the source and at the point of use: `SuspicionSystem.register()` now
+hooks `tree_exiting` and drops the body (keeping the MIND — somebody who saw you
+and then went home still saw you), and every read of either registry goes
+through one guarded accessor, `SuspicionSystem._body()` / `PatientSystem
+.get_body()`, which sweeps stale entries as it passes. `PatientSystem` had the
+same latent bug: one discharged patient could abort `tick()` before it advanced
+anybody else. Regression test:
+`test_a_departed_npc_does_not_switch_off_everyone_elses_senses`, which plants a
+stale entry ahead of a live witness on purpose. Engine gotcha #11 in CLAUDE.md.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

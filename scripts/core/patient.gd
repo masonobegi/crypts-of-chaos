@@ -146,6 +146,8 @@ func vitals() -> Dictionary:
 	# The diagnostics bench upgrade is the only thing that makes these readings
 	# trustworthy — before that, you are reading a person, not an instrument.
 	var noise_scale: float = Upgrades.vitals_noise_scale()
+	if GameState.flag("perk_steady_hands", false):
+		noise_scale *= 0.6
 	var n := func(k: String, spread: float) -> float:
 		return RNG.noise("vitals_%s_%s_%d" % [id, k, int(GameState.career_minutes / 30)],
 			spread * noise_scale)

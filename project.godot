@@ -22,6 +22,7 @@ RNG="*res://scripts/autoload/RNG.gd"
 GameState="*res://scripts/autoload/GameState.gd"
 AudioMgr="*res://scripts/autoload/AudioMgr.gd"
 SaveSystem="*res://scripts/autoload/SaveSystem.gd"
+Meta="*res://scripts/autoload/Meta.gd"
 
 [display]
 

@@ -253,6 +253,8 @@ func clock_out() -> Dictionary:
 	suspicion.run_statistical_review(patient_system.average_overstay(),
 		patient_system.active_count(), rolling_complication_rate())
 
+	if GameState.flag("perk_fast_cooling", false):
+		GameState.add_heat(-0.03, "cooperating witness")
 	var clean := _was_clean_shift()
 	investigations.consider_de_escalation(clean)
 	if not clean:

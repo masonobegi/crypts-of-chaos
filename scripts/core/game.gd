@@ -169,6 +169,9 @@ func _spawn_nurse(arch: String, index: int) -> void:
 	add_child(n)
 	n.global_position = hospital.point_in("station", "nurse_spawn")
 	var mind := DB.make_mind(n.npc_id, n.display, "nurse", arch)
+	if GameState.flag("perk_loyal_ward", false):
+		mind.trust = clampf(mind.trust + 0.25, 0.0, 1.0)
+		mind.talkativeness = maxf(0.05, mind.talkativeness - 0.3)
 	suspicion.register(mind, n)
 
 func _spawn_doctor(arch: String, index: int) -> void:
@@ -245,4 +248,5 @@ func _physics_process(_delta: float) -> void:
 
 func _on_game_over(ending_id: String) -> void:
 	GameState.set_phase(GameState.Phase.GAME_OVER)
+	Meta.record_ending(ending_id)
 	EventBus.request_ui.emit("game_over", {"ending": ending_id})

@@ -124,8 +124,25 @@ already caught one design inversion that no unit test could: with only five beds
 people quickly and refilling the bed originally out-earned prolonging a stay, which
 inverted the entire premise. That's why admission is expensive and marginal days are cheap.
 
+## Careers
+
+One career runs to an ending — Saint, Tycoon, Medical Mafia, Fraud King, Whistleblower,
+Legendary, Struck Off, Custodial, Repossessed — evaluated against the whole run rather
+than picked from a menu. Each ending unlocks a starting perk for the next career, shaped
+by how that one went: going bankrupt gets your loans consolidated, going to prison means
+somebody outside owes you a favour, being struck off leaves you with thicker skin.
+
+## Screenshots
+
+```
+GODOT=/path/to/godot ./screenshots.sh
+```
+
+Renders the game offscreen through Xvfb and photographs every room and every UI screen.
+Worth running after any visual change — it has caught five layout and economy bugs that
+no amount of simulation testing could see.
+
 ## Status
 
 Milestone 1 (playable vertical slice) is complete and verified end to end. Next up:
-more conditions and departments, the remaining NPC archetype behaviours, and a tuning
-pass on the mid-game.
+departments beyond the ward, and a human playtest for feel.

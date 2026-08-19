@@ -94,3 +94,63 @@ func test_paying_rent_resets_the_counter() -> void:
 	eco.settle_debts()
 	t.eq(int(GameState.flag("missed_rent_days", 0)), 0, "paying up clears the streak")
 	eco.free()
+
+# ==================================================================== meta
+func test_perks_are_locked_until_their_ending_is_reached() -> void:
+	Meta.reset()
+	t.eq(Meta.unlocked_perks().size(), 0, "nothing unlocked on a fresh install")
+	t.ok(not Meta.is_unlocked("retainer"), "the retainer perk is locked")
+	Meta.record_ending("tycoon")
+	t.ok(Meta.is_unlocked("retainer"), "reaching Tycoon unlocks it")
+	t.ok(not Meta.is_unlocked("good_name"), "but not the others")
+	t.eq(Meta.runs_completed, 1, "the career is counted")
+
+func test_every_perk_is_reachable_from_a_real_ending() -> void:
+	# A perk whose source ending does not exist can never be unlocked.
+	for id in Meta.PERKS:
+		var source := Meta.perk_source(String(id))
+		t.ok(Endings.ENDINGS.has(source),
+			"perk '%s' comes from a real ending ('%s')" % [id, source])
+
+func test_selecting_a_locked_perk_does_nothing() -> void:
+	Meta.reset()
+	Meta.select_perk("retainer")
+	t.eq(Meta.selected_perk, "", "a locked perk cannot be selected")
+
+func test_perks_actually_change_the_starting_state() -> void:
+	Meta.reset()
+	Meta.record_ending("bankrupt")
+	Meta.select_perk("consolidated")
+	GameState.start_new_career(31)
+	var full := GameState.daily_debt_payment()
+	Meta.apply_perk()
+	t.lt(float(GameState.daily_debt_payment()), float(full) * 0.85,
+		"Consolidated Debt genuinely lowers the daily outflow")
+
+	Meta.reset()
+	Meta.record_ending("tycoon")
+	Meta.select_perk("retainer")
+	GameState.start_new_career(32)
+	Meta.apply_perk()
+	t.ok(GameState.has_upgrade("legal_retainer"), "the retainer perk grants the upgrade")
+
+	Meta.reset()
+	Meta.record_ending("prison")
+	Meta.select_perk("a_friend")
+	GameState.start_new_career(33)
+	var before := GameState.personal_money
+	Meta.apply_perk()
+	t.eq(GameState.personal_money, before + 2000, "A Friend Outside pays out")
+	Meta.reset()
+	GameState.start_new_career(1)
+
+func test_meta_survives_a_save_and_load() -> void:
+	Meta.reset()
+	Meta.record_ending("saint")
+	Meta.record_ending("saint")
+	Meta.select_perk("good_name")
+	Meta.load_meta()
+	t.eq(int(Meta.endings_seen.get("saint", 0)), 2, "repeat endings are counted")
+	t.eq(Meta.selected_perk, "good_name", "the chosen perk persists")
+	t.eq(Meta.runs_completed, 2, "career count persists")
+	Meta.reset()

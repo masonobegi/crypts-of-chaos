@@ -185,6 +185,7 @@ func _game_over_screen(ending_id: String) -> Control:
 	v.add_child(UIKit.button("New career", func():
 		get_tree().paused = false
 		GameState.start_new_career()
+		Meta.apply_perk()
 		get_tree().change_scene_to_file("res://scenes/Game.tscn")))
 	v.add_child(UIKit.button("Main menu", func():
 		get_tree().paused = false

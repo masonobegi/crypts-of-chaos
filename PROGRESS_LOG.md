@@ -146,7 +146,22 @@ The careful line is doing what the brief asked for without being scripted: it
 cures a high volume of people quickly to keep the numbers clean, and hides a
 small number of profitable outliers inside that volume.
 
+- [x] Physical sabotage verbs: decanting between containers (labels stay put),
+      and doorway obstruction that genuinely removes nav cells.
+- [x] **Screenshot harness** (`./screenshots.sh`, Xvfb + GL Compatibility).
+      Being able to look at the game found five bugs no test could:
+      HUD labels wrapping one character per line; the money readout, toasts and
+      control hints never drawing at all (zero-size root Control); patients
+      standing bolt upright inside their beds; every debt missed on day one
+      before the player had done anything; and an eviction failure path whose
+      counter was never incremented, making the bankrupt-by-rent ending
+      unreachable.
+- [x] Career meta: endings unlock starting perks, persisted in user://meta.json.
+      Nine perks, each shaped by the ending that grants it. Main menu shows
+      careers finished, endings found, and perk selection.
+- [x] 595 assertions, 37 smoke checks, 12 balance checks.
+
 ### NEXT UP
 - Departments beyond the ward (each unlocks new mechanics).
-- More physical sabotage verbs (currently machine/environment/paperwork-led).
 - Playtest with a human for feel: movement speed, shift length, prompt clarity.
+- Proximity-scope subtitles (currently global).

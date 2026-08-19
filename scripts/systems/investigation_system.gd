@@ -315,6 +315,10 @@ func escalate(steps: int, reason: String) -> void:
 	# The ladder gets much harder to climb past Probation. Losing a licence
 	# should take a sustained pattern across many shifts, not one bad week —
 	# the whole point of the ladder is that it gives you room to recover.
+	if GameState.flag("perk_thick_skin", false) and before <= 1:
+		steps = maxi(0, steps - 1)
+		if steps <= 0:
+			return
 	if before >= 4:
 		# Scaled by heat: a doctor who has cooled off gets room to recover, one
 		# running at maximum institutional heat does not.

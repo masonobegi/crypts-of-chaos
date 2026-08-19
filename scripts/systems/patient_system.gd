@@ -314,6 +314,7 @@ func tick(days: float) -> void:
 				* DB.trait_of(p.archetype, "impatience", 1.0), 0.0, 1.0)
 		elif WARD_KEYS.has(room_key):
 			p.corridor_minutes = 0.0
+		_maybe_complain(p)
 		_maybe_environmental_complication(p, r, days)
 		if p.ready_for_discharge() and not before_ready:
 			EventBus.toast.emit("%s is fit for discharge." % p.display_name, "good")
@@ -483,6 +484,21 @@ func transfer(p: Patient, ward_key: String) -> bool:
 		elif f is TreatmentMachine and f.room_key == ward_key:
 			f.set_prescribed_for(p)
 	return true
+
+## Being bad at your job is its own failure state, with nothing to do with
+## suspicion. A patient who has been kept too long in a cold room, or parked on
+## a trolley for a day, eventually complains about their CARE — and a complaint
+## is heat, and heat is what brings people to look at you. Nothing about this
+## path requires anybody to suspect a thing.
+func _maybe_complain(p: Patient) -> void:
+	if p.complained or p.mind == null or p.satisfaction > 0.18:
+		return
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	if sus == null:
+		return
+	p.complained = true
+	var severity := clampf(0.35 + (0.18 - p.satisfaction) * 2.0, 0.35, 0.8)
+	sus.file_complaint(p.mind.id, severity)
 
 ## Which room a patient is IN is a question about where their bed has ended up,
 ## not about where they were admitted. Wheeling somebody out of Room 103 and

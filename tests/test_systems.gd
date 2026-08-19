@@ -663,3 +663,35 @@ func test_a_degraded_scan_records_nothing() -> void:
 	t.eq(p.chart.imaging_findings.size(), 1, "run properly, it records what is there")
 	t.ok(p.chart.imaging_done, "and counts")
 	ts.queue_free()
+
+## Being bad at your job is its own failure state. This path needs nobody to
+## suspect anything: a patient who has been kept too long, or left on a trolley,
+## eventually complains about their care, and a complaint is heat.
+func test_an_unhappy_patient_complains_without_suspecting_anything() -> void:
+	var sus := SuspicionSystem.new()
+	t.root.add_child(sus)
+	var ps = load("res://scripts/systems/patient_system.gd").new()
+	t.root.add_child(ps)
+
+	var p := Patient.new("unhappy1")
+	p.display_name = "Mrs Fed Up"
+	p.mind = DB.make_mind("unhappy1", "Mrs Fed Up", "patient", "confrontational")
+	sus.register(p.mind)
+	p.satisfaction = 0.5
+
+	var before: int = GameState.stats.complaints
+	ps._maybe_complain(p)
+	t.eq(GameState.stats.complaints, before, "a middling stay is not a complaint")
+
+	p.satisfaction = 0.05
+	ps._maybe_complain(p)
+	t.eq(GameState.stats.complaints, before + 1, "a miserable one is")
+	t.ok(p.complained, "and it is recorded on the patient")
+
+	# One person files one complaint. Being hated twice by the same patient is
+	# not twice the problem.
+	ps._maybe_complain(p)
+	t.eq(GameState.stats.complaints, before + 1, "they do not file it twice")
+
+	ps.queue_free()
+	sus.queue_free()

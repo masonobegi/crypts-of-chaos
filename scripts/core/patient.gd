@@ -62,6 +62,9 @@ var imaged_at: int = -99999
 ## moment they get a real room, because what staff object to is somebody being
 ## LEFT there, not somebody passing through.
 var corridor_minutes: float = 0.0
+## Set once they have formally complained about their care. One patient files
+## one complaint; being hated by the same person twice is not twice the problem.
+var complained: bool = false
 var imaging_requested_by: String = ""
 var imaging_requested_day: int = -1
 
@@ -249,7 +252,7 @@ func to_dict() -> Dictionary:
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
-		"corm": corridor_minutes,
+		"corm": corridor_minutes, "cmpl": complained,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -285,6 +288,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.knows_expected_date = bool(d.get("ked", true))
 	p.imaged_at = int(d.get("img", -99999))
 	p.corridor_minutes = float(d.get("corm", 0.0))
+	p.complained = bool(d.get("cmpl", false))
 	p.imaging_requested_by = String(d.get("imgrb", ""))
 	p.imaging_requested_day = int(d.get("imgrd", -1))
 	var md: Dictionary = d.get("mind", {})

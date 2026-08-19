@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-888 assertions   (test functions across 5 suites)
+892 assertions   (test functions across 5 suites)
  54 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -365,6 +365,23 @@ room, which was fine when every room had exactly one, and Intake has three; and
 patients are now moved between rooms by rebinding the existing body rather than
 freeing it and spawning another, because the body carries its suspicion-system
 registration and its own tree hooks.
+
+### Being bad at the job is a failure state again
+`Patient.satisfaction` carried a comment saying low satisfaction produces
+complaints with zero suspicion, and it did not. Satisfaction fed one reputation
+track that fed one ending condition. Keeping somebody miserable was free.
+
+Below 0.18 a patient now files a formal complaint about their CARE, at a
+severity that scales with how unhappy they are. That is heat, and heat is what
+brings people to look at you — so a perfectly documented, entirely deniable
+career that simply treats people badly still ends up under investigation. It is
+also what stops trolley-parking being a free strategy, since corridor time
+drains satisfaction four times faster than an ordinary overstay.
+
+The balance run says it landed about right: honest play still finishes with no
+complaints and no heat, careful play now picks up one complaint and 11% heat
+where it used to run completely clean, and careless play takes seven. All
+fourteen design-intent assertions still hold.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

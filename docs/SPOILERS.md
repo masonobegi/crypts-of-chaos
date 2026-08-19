@@ -211,6 +211,20 @@ doors**. Inside 3 m the FOV check is skipped. Perception rolls against
 - active matching cover story — ×0.25
 - neutralised (talked your way out) — ×0.12, never zero
 
+## Complaints that have nothing to do with suspicion
+
+`Patient.satisfaction` starts between 0.55 and 0.85 and falls: 0.06/day ×
+impatience once they are past their expected discharge date, 0.24/day × 
+impatience while parked on a trolley in Intake, a little more each time they are
+startled or ignored. Below **0.18** they file a formal complaint about their
+CARE — `SuspicionSystem.file_complaint` at severity `0.35 + (0.18 − sat) × 2`,
+capped at 0.8. That is heat, and heat is what brings people to look at you.
+
+Nothing in this path requires anybody to suspect anything. A perfectly
+documented, entirely deniable career that simply treats people badly still ends
+up under investigation, which is the point: being bad at the job is a separate
+failure state from being caught at the crime. One patient files one complaint.
+
 ## Statistics
 
 Two independent end-of-shift signals, both landing on Administration and the insurer

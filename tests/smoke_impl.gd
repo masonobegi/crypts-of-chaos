@@ -338,9 +338,33 @@ func _check_next_day() -> void:
 	var thermo_log_before: int = thermo.log_entries.size() if thermo else 0
 	var thermo_setting_before: int = thermo.setting if thermo else 0
 
+	# Everything the shift loop added has to survive a save, and most of it is
+	# the kind of state that fails silently: a lost `admitted` flag turns every
+	# walk-in into an inpatient on load, and a lost theatre record deletes the
+	# one document in the game the player cannot write.
+	var ps = game.patient_system
+	var subject = null
+	for q in ps.active():
+		subject = q
+		break
+	var walkin = ps.book_walkin()
+	if subject != null:
+		subject.presenting_complaint = "Round-Trip Complaint"
+		subject.chart.presenting_complaint = subject.presenting_complaint
+		subject.examined_at = GameState.career_minutes
+		subject.read_bias = 0.171
+		subject.corridor_minutes = 321.0
+		subject.chart.log_surgery("knee", PackedStringArray(["expedited"]),
+			GameState.day, "torn_knee", 2, "wrist")
+		subject.chart.prescription = "placebex_takehome"
+		subject.chart.prescription_indicated = false
+		ps.add_complication(subject, "fractured_wrist", "examination")
+
 	# Save/load must survive a full round trip with live patients.
 	var before_count: int = game.patient_system.active_count()
 	var before_money: int = GameState.personal_money
+	var walkin_id: String = walkin.id
+	var subject_id: String = subject.id if subject != null else ""
 	SaveSystem.save_game("smoke")
 	GameState.personal_money = -99999
 	var loaded: bool = SaveSystem.load_game("smoke")
@@ -353,6 +377,36 @@ func _check_next_day() -> void:
 		"thermostat log survives the round trip (%d entries)" % thermo_log_before)
 	_ok(thermo == null or thermo.setting == thermo_setting_before,
 		"thermostat setting is restored (%d)" % thermo_setting_before)
+
+	var back = ps.get_patient(walkin_id)
+	_ok(back != null and not back.admitted,
+		"a walk-in is still a walk-in after a save, not an inpatient")
+	_ok(ps.walkins().size() >= 1, "and is still sitting in the treatment bay")
+	var sub = ps.get_patient(subject_id)
+	if sub == null:
+		_fail("the round-trip subject did not survive at all")
+	else:
+		_ok(sub.presenting_complaint == "Round-Trip Complaint",
+			"what they arrived with survives")
+		_ok(sub.chart.presenting_complaint == "Round-Trip Complaint",
+			"and the chart's copy of it does too")
+		_ok(absf(sub.read_bias - 0.171) < 0.001, "your read on them is the same read")
+		_ok(sub.examined_at > -99999, "having examined them is remembered")
+		_ok(absf(sub.corridor_minutes - 321.0) < 0.5, "trolley time is not forgiven by a save")
+		_ok(sub.chart.surgery_log.size() == 1, "the theatre record survives")
+		_ok(sub.chart.surgery_log.size() == 1
+			and String(sub.chart.surgery_log[0]["indicated"]) == "wrist",
+			"including which site was actually indicated")
+		_ok(sub.chart.prescription == "placebex_takehome", "the pharmacy record survives")
+		_ok(not sub.chart.prescription_indicated, "and remembers it was not indicated")
+		var inj: Array = sub.acquired_injuries()
+		_ok(inj.size() == 1, "the injury survives (%d)" % inj.size())
+		_ok(inj.size() == 1 and inj[0].true_cause == "examination",
+			"with the truth still attached")
+		_ok(inj.size() == 1 and inj[0].acquired_here,
+			"and still marked as having happened here")
+		_ok(inj.size() == 1 and inj[0].staff_present == DB.staff_on(GameState.shift_kind),
+			"and still knows how many people could have done it")
 	SaveSystem.delete_save("smoke")
 
 func _report() -> void:

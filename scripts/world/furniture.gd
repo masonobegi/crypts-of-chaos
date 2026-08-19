@@ -345,7 +345,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	# The waiting row, along the west wall, facing into the room.
 	for i in 5:
 		var seat := Vector3(r.rect.position.x + 1.1, 0, c.z - 3.2 + float(i) * 1.15)
-		_chair(h, seat, -PI / 2, Color(0.34, 0.40, 0.46))
+		_chair(h, seat, PI / 2, Color(0.34, 0.40, 0.46))
 		clinic_seats.append(seat)
 	_wall_sign(h, "PLEASE WAIT TO BE CALLED",
 		Vector3(r.rect.position.x + 0.18, 1.9, c.z - 3.6), PI / 2, 0.075)

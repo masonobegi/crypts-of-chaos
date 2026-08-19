@@ -43,6 +43,12 @@ const RECIPES := {
 	"monitor":   {"w": "sine",  "f": 1180.0,"d": 0.09, "dec": 16.0, "n": 0.0,  "sw": 0.0,   "vib": 0.0},
 	"trolley":   {"w": "noise", "f": 260.0, "d": 0.5,  "dec": 5.0,  "n": 1.0,  "sw": 0.1,   "vib": 7.0},
 	"pipe":      {"w": "sine",  "f": 95.0,  "d": 0.8,  "dec": 3.5,  "n": 0.12, "sw": -0.15, "vib": 1.5},
+	# The three that arrived with the shift loop. A snap for something giving
+	# way under your hands, a wet drag for theatre, and a rattle for a bottle of
+	# pills going into somebody's bag.
+	"snap":      {"w": "noise", "f": 1400.0,"d": 0.11, "dec": 34.0, "n": 0.85, "sw": -0.65, "vib": 0.0},
+	"theatre":   {"w": "noise", "f": 240.0, "d": 0.55, "dec": 6.0,  "n": 0.9,  "sw": -0.25, "vib": 3.0},
+	"pills":     {"w": "noise", "f": 2100.0,"d": 0.22, "dec": 15.0, "n": 1.0,  "sw": 0.15,  "vib": 26.0},
 }
 
 ## The continuous bed: a long, low, quietly unpleasant loop. Built separately

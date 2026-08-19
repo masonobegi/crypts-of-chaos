@@ -102,5 +102,7 @@ func _choose(approach: String) -> void:
 		var ts = get_tree().get_first_node_in_group("treatment_system")
 		if ts:
 			_result = ts.perform_surgery(_patient, _site, _choices)
-		AudioMgr.play("machine_on", -12.0)
+		AudioMgr.play("theatre", -11.0)
+		if String(_result.get("complication", "")) != "":
+			AudioMgr.play("snap", -14.0)
 	rebuild()

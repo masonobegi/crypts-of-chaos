@@ -129,5 +129,11 @@ func _run() -> void:
 	var p = player()
 	_result = ts.examine(_patient, _part, _pressure,
 		p.global_position if p != null else Vector3.ZERO)
-	AudioMgr.play("beep", -14.0)
+	# The sound is the tell, and it is the only one: nothing on screen says
+	# what has just happened until you read the finding.
+	if String(_result.get("injury", "")) != "":
+		AudioMgr.play("snap", -8.0)
+		AudioMgr.play("gasp", -11.0)
+	else:
+		AudioMgr.play("beep", -16.0)
 	rebuild()

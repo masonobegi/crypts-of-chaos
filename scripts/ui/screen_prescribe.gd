@@ -56,5 +56,5 @@ func _give(med_id: String) -> void:
 	var ps = patient_system()
 	if ps:
 		ps.discharge(_patient, "recovered" if _patient.recovery >= 0.85 else "discharged")
-	AudioMgr.play("ding", -14.0)
+	AudioMgr.play("pills", -13.0)
 	rebuild()

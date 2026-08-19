@@ -216,8 +216,8 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1517 assertions  (test functions across 9 suites)
- 65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+1526 assertions  (test functions across 9 suites)
+ 80 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
  31 screenshots  (every room and every UI screen, rendered offscreen)
@@ -560,6 +560,21 @@ The balance harness had to be told to operate on the indicated site. It had been
 opening every patient's knee regardless, which turned every operation in every
 career into a wrong-site procedure overnight — a good reminder that the harness
 is a player too, and a bad one measures the wrong game.
+
+**Sound for the three new verbs**, because they were all sharing a beep. A snap
+for something giving way under your hands, a wet drag for theatre, a rattle for
+a bottle of pills going into somebody's bag. The snap matters most: nothing on
+the examination screen says what has just happened until you read the finding,
+so the sound is the tell.
+
+**And the save now proves it keeps the shift loop.** Fifteen new smoke checks
+walk a full round trip over everything the last two sessions added, because most
+of it is state that fails silently — a lost `admitted` flag turns every walk-in
+into an inpatient on load, and a lost theatre record deletes the one document in
+the game the player cannot write. What they arrived with, your read on them and
+its bias, trolley time, the theatre record including which site was indicated,
+the pharmacy record, and the injury with its true cause, its acquired-here flag
+and its staffing count all survive.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

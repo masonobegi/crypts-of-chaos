@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-892 assertions   (test functions across 5 suites)
+1008 assertions  (test functions across 5 suites)
  54 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -382,6 +382,26 @@ The balance run says it landed about right: honest play still finishes with no
 complaints and no heat, careful play now picks up one complaint and 11% heat
 where it used to run completely clean, and careless play takes seven. All
 fourteen design-intent assertions still hold.
+
+### Content pass, and a test that dead content cannot hide
+Eight new conditions (four ward, two psych, one emergency, one radiology), four
+new treatments and six new complications — 34 conditions, 22 treatments, 20
+complications. Everything is still data in `DB.gd`; not one system changed to
+accept any of it, which was the point of building it that way.
+
+What did change is that the three places a complication can COME FROM were
+match statements, so a complication could sit in the catalogue forever with no
+path to it and look exactly like content. They are now
+`TreatmentMachine.COMPLICATION_POOLS`,
+`TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS` and
+`PatientSystem.ENVIRONMENTAL_COMPLICATIONS`, and a test adds all of them up
+against `DB.COMPLICATIONS` in both directions: nothing in the catalogue is
+unreachable, and nothing points at a complication that does not exist.
+
+Filling that map out properly also fixed a real dullness — every wrong
+treatment that was not one of six special cases produced Ambient Dread. A
+complication is meant to be a clue you can follow backwards to what was done,
+and two thirds of them all said the same thing.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

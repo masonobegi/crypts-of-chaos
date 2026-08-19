@@ -190,13 +190,23 @@ func run_cycle(p) -> Dictionary:
 	running = false
 	return result
 
+## What each machine goes wrong AS. Data rather than a match statement so a test
+## can read it: a complication no source can produce is dead content, and it
+## would never show up as anything except a thing that never happened.
+const COMPLICATION_POOLS := {
+	"": ["ambient_dread", "rebound_hiccups", "ferrous_aura",
+		"post_percussive_ringing", "reactive_shivers", "gravitational_relapse"],
+	"machine_humour": ["rebound_hiccups", "ambient_dread", "chart_fatigue",
+		"escalating_politeness"],
+	"machine_vibe": ["gravitational_relapse", "reactive_shivers", "secondary_beige",
+		"residual_hum"],
+	"machine_dread": ["ambient_dread", "nocturnal_confusion", "ferrous_aura",
+		"delayed_reaction"],
+	"machine_imaging": ["residual_hum", "sympathetic_draft", "spectral_itch"],
+}
+
 func _complication_for() -> String:
-	var pool: Array = ["ambient_dread", "rebound_hiccups", "ferrous_aura",
-		"post_percussive_ringing", "reactive_shivers", "gravitational_relapse"]
-	match machine_id:
-		"machine_humour": pool = ["rebound_hiccups", "ambient_dread", "chart_fatigue"]
-		"machine_vibe": pool = ["gravitational_relapse", "reactive_shivers", "secondary_beige"]
-		"machine_dread": pool = ["ambient_dread", "nocturnal_confusion", "ferrous_aura"]
+	var pool: Array = COMPLICATION_POOLS.get(machine_id, COMPLICATION_POOLS[""])
 	return String(RNG.pick("machine_comp_pick", pool))
 
 # ------------------------------------------------------------------ the log

@@ -222,6 +222,71 @@ const CONDITIONS := {
 		"dept": "ward", "tell": "Each breath appears to require sign-off.",
 		"color": Color(0.70, 0.72, 0.66),
 	},
+	# ---- second wave. Everything here is invented, and deliberately absurd.
+	"escalating_posture": {
+		"name": "Escalating Posture",
+		"desc": "Patient is becoming imperceptibly taller. Perceptibly.",
+		"base_days": 2.5, "rate": 0.5, "revenue": 1300,
+		"treats": ["reorientation_walk", "percussive_realign", "rest"],
+		"dept": "ward", "tell": "Keeps not quite fitting the bed.",
+		"color": Color(0.72, 0.84, 0.66),
+	},
+	"residual_monday": {
+		"name": "Residual Monday",
+		"desc": "It is not Monday. They are still in one.",
+		"base_days": 3.5, "rate": 0.35, "revenue": 1050,
+		"treats": ["rest", "colour_therapy", "sequential_apology"],
+		"dept": "ward", "tell": "Faint smell of a staff meeting.",
+		"color": Color(0.58, 0.60, 0.68),
+	},
+	"argumentative_reflex": {
+		"name": "Argumentative Reflex",
+		"desc": "The reflex does not respond. It replies.",
+		"base_days": 2.0, "rate": 0.6, "revenue": 1150,
+		"treats": ["opinion_realign", "sequential_apology", "rest"],
+		"dept": "ward", "tell": "Knee disagrees with the hammer.",
+		"color": Color(0.88, 0.55, 0.48),
+	},
+	"perforated_patience": {
+		"name": "Perforated Patience",
+		"desc": "Structurally sound. Emotionally draughty.",
+		"base_days": 4.0, "rate": 0.3, "revenue": 1600,
+		"treats": ["pressure_bath", "talk_therapy_lite", "steam_tent"],
+		"dept": "ward", "tell": "Sighs to a professional standard.",
+		"color": Color(0.66, 0.70, 0.78),
+	},
+	"chronic_certainty": {
+		"name": "Chronic Certainty",
+		"desc": "Has never said 'maybe' and is not about to start.",
+		"base_days": 5.0, "rate": 0.26, "revenue": 1700,
+		"treats": ["talk_therapy_lite", "opinion_realign", "sequential_apology"],
+		"dept": "psych", "tell": "Answers questions before they finish.",
+		"color": Color(0.80, 0.72, 0.42),
+	},
+	"ambient_grievance": {
+		"name": "Ambient Grievance",
+		"desc": "The grievance predates the admission by some years.",
+		"base_days": 4.5, "rate": 0.28, "revenue": 1550,
+		"treats": ["talk_therapy_lite", "colour_therapy", "weighted_blanket"],
+		"dept": "psych", "tell": "Brings it up. Whatever it is.",
+		"color": Color(0.62, 0.52, 0.62),
+	},
+	"acute_deflation": {
+		"name": "Acute Deflation",
+		"desc": "Visibly less than they were this morning.",
+		"base_days": 1.2, "rate": 0.9, "revenue": 3100,
+		"treats": ["steam_tent", "fluids", "pressure_bath"],
+		"dept": "emergency", "tell": "Slightly smaller each time you look.",
+		"color": Color(0.85, 0.66, 0.58),
+	},
+	"latent_geometry": {
+		"name": "Latent Geometry",
+		"desc": "The angles do not add up. They have been checked twice.",
+		"base_days": 3.0, "rate": 0.42, "revenue": 2100,
+		"treats": ["imaging", "static_discharge", "ultrasonic_dusting"],
+		"dept": "radiology", "tell": "Casts a shadow with one corner too many.",
+		"color": Color(0.55, 0.66, 0.80),
+	},
 }
 
 # =============================================================== TREATMENTS
@@ -321,6 +386,26 @@ const TREATMENTS := {
 		"effect": 0.26, "wrong": 0.04, "tool": "", "time": 4.0,
 		"desc": "Listen. Nod. Bill generously.",
 	},
+	"static_discharge": {
+		"name": "Static Discharge", "verb": "discharged static",
+		"effect": 0.26, "wrong": -0.02, "tool": "duster", "time": 2.0,
+		"desc": "Earth the patient. Gently. With the approved duster.",
+	},
+	"sequential_apology": {
+		"name": "Sequential Apology", "verb": "worked through a sequential apology",
+		"effect": 0.2, "wrong": 0.0, "tool": "", "time": 3.0,
+		"desc": "Apologise, in order, for everything. It is on the pathway.",
+	},
+	"pressure_bath": {
+		"name": "Pressure Bath", "verb": "gave a pressure bath",
+		"effect": 0.28, "wrong": 0.01, "tool": "compress", "time": 2.4,
+		"desc": "Warm, firm, and over faster than anybody would like.",
+	},
+	"reorientation_walk": {
+		"name": "Reorientation Walk", "verb": "walked them round the ward",
+		"effect": 0.22, "wrong": 0.02, "tool": "", "time": 3.5,
+		"desc": "Twice round the corridor. Point out the windows.",
+	},
 }
 
 # =============================================================== COMPLICATIONS
@@ -409,6 +494,42 @@ const COMPLICATIONS := {
 		"symptom": "Down has moved again.",
 		"color": Color(0.5, 0.85, 0.75),
 		"causes": ["underlying", "equipment_variance", "idiopathic"],
+	},
+	"sympathetic_draft": {
+		"name": "Sympathetic Draft", "days": 1.2, "rec": -0.06, "sev": 0.22,
+		"symptom": "Shivers in time with the window, which is shut.",
+		"color": Color(0.70, 0.84, 0.92),
+		"causes": ["facilities", "weather", "underlying", "idiopathic"],
+	},
+	"acquired_punctuality": {
+		"name": "Acquired Punctuality", "days": 1.0, "rec": -0.04, "sev": 0.18,
+		"symptom": "Announces the time. Correctly. Constantly.",
+		"color": Color(0.86, 0.86, 0.72),
+		"causes": ["idiopathic", "administrative", "underlying"],
+	},
+	"residual_hum": {
+		"name": "Residual Hum", "days": 1.6, "rec": -0.09, "sev": 0.4,
+		"symptom": "Hums at exactly the frequency of the corridor lights.",
+		"color": Color(0.62, 0.72, 0.66),
+		"causes": ["equipment_variance", "noise", "idiopathic"],
+	},
+	"misfiled_symptom": {
+		"name": "Misfiled Symptom", "days": 1.4, "rec": -0.07, "sev": 0.3,
+		"symptom": "Has somebody else's rash. Nobody else is missing one.",
+		"color": Color(0.88, 0.70, 0.66),
+		"causes": ["administrative", "physician_error", "idiopathic"],
+	},
+	"escalating_politeness": {
+		"name": "Escalating Politeness", "days": 2.0, "rec": -0.10, "sev": 0.45,
+		"symptom": "Thanks the ceiling. Twice.",
+		"color": Color(0.78, 0.66, 0.86),
+		"causes": ["medication_reaction", "underlying", "idiopathic"],
+	},
+	"delayed_reaction": {
+		"name": "Delayed Reaction", "days": 1.3, "rec": -0.06, "sev": 0.28,
+		"symptom": "Responds, accurately, to yesterday.",
+		"color": Color(0.70, 0.66, 0.58),
+		"causes": ["medication_reaction", "dietary", "idiopathic"],
 	},
 }
 

@@ -6,6 +6,15 @@ extends Node
 const MAX_BEDS := 5
 const WARD_KEYS := ["ward_101", "ward_102", "ward_103", "ward_104", "ward_105"]
 
+## What a badly kept room does to the person in it, by which way it is bad.
+## Named rather than inlined so a test can prove the catalogue has no dead
+## entries — a complication nothing produces is content that never happens.
+const ENVIRONMENTAL_COMPLICATIONS := {
+	"cold": "draft_exposure",
+	"dark": "nocturnal_confusion",
+	"filthy": "secondary_beige",
+}
+
 var patients: Dictionary = {}          ## id -> Patient
 var bodies: Dictionary = {}            ## id -> PatientNPC
 var charts: Dictionary = {}            ## id -> chart Prop
@@ -328,11 +337,11 @@ func _maybe_environmental_complication(p: Patient, r: Room, days: float) -> void
 		return
 	if not RNG.chance("env_comp", p.discomfort * days * 0.7):
 		return
-	var comp_id := "draft_exposure"
+	var comp_id: String = ENVIRONMENTAL_COMPLICATIONS["cold"]
 	if not r.lights_on:
-		comp_id = "nocturnal_confusion"
+		comp_id = ENVIRONMENTAL_COMPLICATIONS["dark"]
 	elif r.cleanliness < 0.4:
-		comp_id = "secondary_beige"
+		comp_id = ENVIRONMENTAL_COMPLICATIONS["filthy"]
 	add_complication(p, comp_id, "facilities")
 	p.discomfort = 0.0
 

@@ -397,3 +397,28 @@ func test_every_substance_effect_is_a_real_treatment() -> void:
 			continue
 		t.ok(DB.TREATMENTS.has(eff),
 			"substance '%s' maps to a real treatment ('%s')" % [id, eff])
+
+## A complication nothing can produce is not content, it is a dictionary entry.
+## Every source that can create one is data rather than a match statement
+## specifically so this test can add them up.
+func test_no_complication_is_unreachable() -> void:
+	var reachable := {}
+	for k in TreatmentMachine.COMPLICATION_POOLS:
+		for id in TreatmentMachine.COMPLICATION_POOLS[k]:
+			reachable[String(id)] = true
+	for k in TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS:
+		reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
+	for k in PatientSystem.ENVIRONMENTAL_COMPLICATIONS:
+		reachable[String(PatientSystem.ENVIRONMENTAL_COMPLICATIONS[k])] = true
+	for k in Items.SUBSTANCES:
+		var c := Items.substance_complication(String(k))
+		if c != "":
+			reachable[c] = true
+
+	for cid in DB.COMPLICATIONS:
+		t.ok(reachable.has(String(cid)),
+			"something in the game can actually cause %s" % cid)
+	# And nothing points at a complication that does not exist.
+	for cid in reachable:
+		t.ok(DB.COMPLICATIONS.has(String(cid)),
+			"%s is referenced as a complication and is one" % cid)

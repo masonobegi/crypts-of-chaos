@@ -70,14 +70,38 @@ func apply(p: Patient, treatment_id: String, item = null, from_pos := Vector3.ZE
 		AudioMgr.play_at_var("beep", from_pos, -12.0)
 	return {"effect": effect, "correct": correct, "substituted": substituted, "complication": comp_id}
 
+## What the wrong treatment produces. Thematically tied to the treatment rather
+## than random, because the whole point of a complication is that it is a clue:
+## a patient who came out of a percussive realignment ringing is a sentence
+## anybody can follow backwards. Data rather than a match statement so a test
+## can read it and prove nothing in the catalogue is unreachable.
+const WRONG_TREATMENT_COMPLICATIONS := {
+	"percussive_realign": "post_percussive_ringing",
+	"chalkinol": "rebound_hiccups",
+	"placebex": "rebound_hiccups",
+	"fluids": "rebound_hiccups",
+	"torque_wrench": "ferrous_aura",
+	"weighted_blanket": "gravitational_relapse",
+	"warm_compress": "reactive_shivers",
+	"steam_tent": "reactive_shivers",
+	"static_discharge": "residual_hum",
+	"sequential_apology": "escalating_politeness",
+	"pressure_bath": "sympathetic_draft",
+	"reorientation_walk": "delayed_reaction",
+	"opinion_realign": "borrowed_symptoms",
+	"talk_therapy_lite": "acquired_punctuality",
+	"colour_therapy": "secondary_beige",
+	"ultrasonic_dusting": "spectral_itch",
+	"counter_yawn": "misfiled_symptom",
+	"humour_rebalance": "chart_fatigue",
+	"vibe_stabilize": "reverse_appetite",
+	"dread_extraction": "clerical_nausea",
+	"rest": "chart_fatigue",
+	"imaging": "spectral_itch",
+}
+
 func _complication_for_treatment(tid: String) -> String:
-	match tid:
-		"percussive_realign": return "post_percussive_ringing"
-		"chalkinol", "placebex", "fluids": return "rebound_hiccups"
-		"torque_wrench": return "ferrous_aura"
-		"weighted_blanket": return "gravitational_relapse"
-		"warm_compress", "steam_tent": return "reactive_shivers"
-	return "ambient_dread"
+	return String(WRONG_TREATMENT_COMPLICATIONS.get(tid, "ambient_dread"))
 
 ## How visible was that? A correct treatment is invisible. An obviously wrong
 ## one (hitting the wrong thing with a mallet) is very visible. A substitution

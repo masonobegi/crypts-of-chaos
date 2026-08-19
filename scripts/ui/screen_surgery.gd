@@ -28,12 +28,18 @@ func _build() -> void:
 	_build_stage()
 
 func _build_site() -> void:
-	var v := shell(680, 560, "Theatre", "%s · %s" % [_patient.display_name,
+	var v := shell(680, 600, "Theatre", "%s · %s" % [_patient.display_name,
 		_patient.presenting_complaint])
+	# Stated flatly and then not enforced, exactly like a machine's prescribed
+	# value. Nothing stops you opening a different part of somebody.
+	var indicated := TreatmentSystem.indicated_site_for(_patient)
+	v.add_child(UIKit.row("Indicated site", indicated.capitalize(), UIKit.ACCENT))
+	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("OPERATIVE SITE", 13, UIKit.INK_DIM))
 	for site in TreatmentSystem.SURGERY_SITES:
 		var s := String(site)
-		v.add_child(UIKit.button(s.capitalize(), func(): _pick_site(s)))
+		v.add_child(UIKit.button(s.capitalize(), func(): _pick_site(s),
+			Color(0.20, 0.34, 0.32) if s == indicated else UIKit.PANEL_LIGHT))
 	v.add_child(UIKit.spacer())
 	v.add_child(UIKit.button("Not today", close))
 
@@ -60,6 +66,11 @@ func _build_stage() -> void:
 func _build_outcome() -> void:
 	var v := shell(700, 560, "Theatre", "%s · %s" % [_patient.display_name, _site.capitalize()])
 	v.add_child(UIKit.label("THEATRE RECORD", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.row("Site", _site.capitalize(),
+		UIKit.BAD if bool(_result.get("wrong_site", false)) else UIKit.INK))
+	if bool(_result.get("wrong_site", false)):
+		v.add_child(UIKit.row("Indicated",
+			String(_result.get("indicated", "")).capitalize(), UIKit.WARN))
 	for i in _choices.size():
 		v.add_child(UIKit.row("Stage %d" % (i + 1),
 			String(TreatmentSystem.SURGERY_APPROACHES[_choices[i]]["note"])))

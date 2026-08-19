@@ -270,10 +270,26 @@ const SURGERY_SITES := {
 	"general": "ambient_dread",
 }
 
+## What the operation is actually for: the injury they have, or the part their
+## condition is about. The theatre screen shows this and then lets you pick
+## anything, exactly like the machines let you run the wrong one.
+static func indicated_site_for(p: Patient) -> String:
+	if p == null:
+		return "general"
+	for c in p.complications:
+		if c.is_injury and not c.resolved and SURGERY_SITES.has(c.body_part):
+			return c.body_part
+	var part := DB.body_part(p.condition_id)
+	if SURGERY_SITES.has(part):
+		return part
+	return "general"
+
 func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
 	if p == null or p.discharged or not SURGERY_SITES.has(site):
 		return {}
 	GameState.stats.surgeries += 1
+	var indicated := indicated_site_for(p)
+	var wrong_site: bool = site != indicated
 	var quality := 0.0
 	var risk := 0.0
 	var visual := 0.0
@@ -292,8 +308,16 @@ func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
 	# A competent operation genuinely helps. That is what makes the choice a
 	# choice rather than a lever.
 	var gain := 0.34 * quality
+	if wrong_site:
+		# Operating on a part of somebody that was not the problem does not fix
+		# the problem, and it does reliably create a new one. This is the same
+		# shape as running the wrong machine: nothing stops you, the dial does
+		# not care, and it is enormously legible after the fact.
+		gain = -0.05
+		risk = maxf(risk, 0.8)
+		GameState.stats.wrong_site_procedures += 1
 	p.recovery = clampf(p.recovery + gain, -0.2, 1.0)
-	p.record_treatment("surgery", quality)
+	p.record_treatment("surgery", -1.0 if wrong_site else quality)
 
 	var comp := ""
 	if RNG.randf_s("surgery_%s" % p.id) < risk:
@@ -316,12 +340,17 @@ func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
 				added.documented_cause = "known_risk"
 				added.documented_at = GameState.career_minutes
 
-	p.chart.log_surgery(site, notes, GameState.day, comp, improvised)
+	p.chart.log_surgery(site, notes, GameState.day, comp, improvised, indicated)
 
 	var e := WorldEvent.new("surgery", "player").at(patient_system._position_of(p), p.room) \
-		.about(p.id).seen(visual).heard(0.05, 10.0).cover("known_risk") \
+		.about(p.id).seen(maxf(visual, 0.35 if wrong_site else 0.0)) \
+		.heard(0.05, 10.0).cover("known_risk") \
 		.tag("clinical").tag("surgery")
-	e.says("operated on %s" % p.display_name)
+	if wrong_site:
+		e.tag("wrong_site")
+		e.says("operated on %s's %s" % [p.display_name, site])
+	else:
+		e.says("operated on %s" % p.display_name)
 	e.emit()
 
 	var appts = get_tree().get_first_node_in_group("appointment_system")
@@ -330,7 +359,8 @@ func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
 		fee = appts.complete("surgery", p.id)
 	EventBus.treatment_applied.emit(p, "surgery", quality)
 	return {"quality": quality, "complication": comp, "fee": fee,
-		"improvised": improvised, "site": site}
+		"improvised": improvised, "site": site, "indicated": indicated,
+		"wrong_site": wrong_site}
 
 # ------------------------------------------------------------------ discharge meds
 ## What they take home. The indicated one keeps them at home; an inert one means

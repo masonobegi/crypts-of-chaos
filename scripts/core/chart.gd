@@ -47,10 +47,11 @@ var prescription: String = ""
 var prescription_indicated: bool = true
 
 func log_surgery(site: String, notes: PackedStringArray, day: int,
-		complication: String, improvised: int) -> void:
+		complication: String, improvised: int, indicated := "") -> void:
 	surgery_log.append({
 		"day": day, "site": site, "notes": Array(notes),
 		"complication": complication, "improvised": improvised,
+		"indicated": indicated if indicated != "" else site,
 	})
 
 func _day_of(career_minute: int) -> int:
@@ -190,6 +191,15 @@ func audit(actual_treatments: Array, complications: Array) -> Array[Dictionary]:
 	for op in surgery_log:
 		if int(op.get("improvised", 0)) >= 2:
 			improvised_ops += 1
+	for op in surgery_log:
+		var did := String(op.get("site", ""))
+		var meant := String(op.get("indicated", did))
+		if did != meant:
+			findings.append({
+				"kind": "wrong_site", "weight": 0.95,
+				"text": "Day %d: procedure recorded on the %s. The indicated site was the %s." % [
+					int(op.get("day", 0)), did, meant],
+			})
 	if improvised_ops > 0:
 		findings.append({
 			"kind": "improvised_procedure", "weight": 0.4 + 0.25 * float(improvised_ops),

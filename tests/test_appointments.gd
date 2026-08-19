@@ -152,3 +152,25 @@ func test_a_slot_you_never_attend_costs_you() -> void:
 	t.eq(a.remaining(), 0, "nothing is left pending")
 	a.patient_system.free()
 	a.free()
+
+## People waiting to be seen sit in the waiting row, one to a chair. A clinic
+## where you can count the queue by looking at it is a different room from one
+## where arrivals materialise wherever the navigation grid felt like.
+func test_walkins_sit_down_one_to_a_chair() -> void:
+	var h = load("res://scripts/world/hospital.gd").new()
+	t.root.add_child(h)
+	h.build()
+	t.gt(float(Furniture.clinic_seats.size()), 3.0, "the clinic has a waiting row")
+
+	var taken: Array = []
+	var used := {}
+	for i in Furniture.clinic_seats.size():
+		var seat: Vector3 = h.clinic_seat(taken)
+		t.ok(not used.has(seat), "each arrival gets a chair of their own")
+		used[seat] = true
+		taken.append(seat)
+	# And when the row is full, the overflow is a real spot in the room rather
+	# than the origin.
+	var overflow: Vector3 = h.clinic_seat(taken)
+	t.eq(h.room_at(overflow), "treatment", "an overflowing clinic still puts them in it")
+	h.queue_free()

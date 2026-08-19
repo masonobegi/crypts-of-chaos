@@ -244,8 +244,19 @@ func arrive_walkin(p: Patient) -> Patient:
 	npc.archetype = p.archetype
 	spawn_parent().add_child(npc)
 	npc.bind(p, null)
-	npc.global_position = hospital.point_in("treatment", "walkin_spot") if hospital \
-		else Vector3.ZERO
+	# Somebody waiting to be seen sits in the waiting row rather than standing
+	# wherever the navigation grid felt like putting them.
+	if hospital != null:
+		var taken: Array = []
+		for other in walkins():
+			if other.id == p.id:
+				continue
+			var body = get_body(other.id)
+			if body != null:
+				taken.append(body.global_position)
+		npc.global_position = hospital.clinic_seat(taken)
+	else:
+		npc.global_position = Vector3.ZERO
 	npc.state = PatientNPC.State.SITTING
 	bodies[p.id] = npc
 	npc.tree_exiting.connect(func():

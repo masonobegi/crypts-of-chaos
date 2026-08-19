@@ -8,7 +8,9 @@ extends Node
 ## a good doctor cannot service, and left to draw their own conclusions.
 
 const STEPS := [
+	{"id": "list", "text": "Check your list. It's on the board by the treatment bay, and on your tablet [Q]."},
 	{"id": "chart", "text": "Pick up a patient's chart and read it. [LMB] to grab, [E] to read."},
+	{"id": "examine", "text": "Go and see them. Talk to them, then examine them — firm enough to find something."},
 	{"id": "vitals", "text": "Check their vitals at the bedside monitor."},
 	{"id": "treat", "text": "Treat them. The chart lists what's indicated; the supply room has the kit."},
 	{"id": "records", "text": "Log it at a terminal. The nurses' station has one; so does your office."},
@@ -24,6 +26,13 @@ func _ready() -> void:
 	EventBus.request_ui.connect(_on_ui)
 	EventBus.treatment_applied.connect(func(_p, _t, _q): complete("treat"))
 	EventBus.shift_ended.connect(func(_d): complete("shift"))
+	# The examination step completes on the act, not on opening the screen —
+	# looking at the dial is not the same as using it, and the whole point of
+	# the step is that the player has now touched the one control the rest of
+	# the game is built on.
+	EventBus.world_event.connect(func(e):
+		if e.kind == "examination":
+			complete("examine"))
 
 func _on_shift_started(day: int) -> void:
 	if day > 1 or GameState.flag("tutorial_complete", false):
@@ -34,6 +43,7 @@ func _on_shift_started(day: int) -> void:
 
 func _on_ui(id: String, _ctx: Dictionary) -> void:
 	match id:
+		"tablet": complete("list")
 		"chart": complete("chart")
 		"vitals": complete("vitals")
 		"records": complete("records")

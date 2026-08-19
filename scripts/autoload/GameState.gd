@@ -79,6 +79,7 @@ var stats := {
 	"items_broken": 0, "complaints": 0,
 	"injuries_caused": 0, "injuries_documented": 0, "surgeries": 0,
 	"surgeries_botched": 0, "wrong_prescriptions": 0, "readmissions": 0,
+	"wrong_site_procedures": 0,
 }
 
 func _ready() -> void:

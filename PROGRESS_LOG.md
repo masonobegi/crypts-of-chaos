@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1422 assertions  (test functions across 9 suites)
+1517 assertions  (test functions across 9 suites)
  65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -539,11 +539,33 @@ rolled so it does not flicker while you stand there, and the notes say so out
 loud. That is the quiet argument for the honest examination — it is the only way
 to find out whose account of the afternoon anybody would believe.
 
+**The tutorial covers the shift loop now** — the list first, then going to see
+whoever is on it, then the examination — and a test asserts it still never
+mentions suspicion, witnesses, money or getting caught. It teaches the
+legitimate job and hands you a debt schedule that job cannot service.
+
+**Walk-ins sit down.** Five chairs along the west wall of the treatment bay,
+one arrival to a chair, so how many people are still waiting is answerable by
+looking rather than by opening a menu.
+
+**Wrong-site surgery.** Every operation now has an indicated site — the injury
+they have, or the part their condition is about — stated on the theatre screen
+and then not enforced, exactly like a machine's prescribed value. Opening
+somewhere else does not help, near-guarantees a complication, is visible
+whatever approach you took, and writes both the site you opened and the site you
+were meant to into a record that is not yours. It audits at 0.95, the heaviest
+single finding in the game, and there is no cover story for it.
+
+The balance harness had to be told to operate on the indicated site. It had been
+opening every patient's knee regardless, which turned every operation in every
+career into a wrong-site procedure overnight — a good reminder that the harness
+is a player too, and a bad one measures the wrong game.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
 - A nurse walking past a ward with no bed in it still has no opinion about the
   empty room itself, only about the patient who ended up in the corridor.
-- Walk-ins sit in the treatment bay with no seating of their own; the board and
-  the tablet both say they are there but they stand about like anybody else.
+- Nothing yet lets you argue with a wrong-site finding, which is correct, but it
+  does mean one misclick is a career. Worth watching in a playtest.

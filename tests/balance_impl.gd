@@ -192,7 +192,12 @@ func _operate(game, p, strategy: String) -> void:
 		how = "improvise"
 	elif strategy == "careful" and worth_it and p.acquired_injuries().is_empty():
 		how = "quick"
-	var res: Dictionary = game.treatment.perform_surgery(p, "knee", [how, how, how])
+	# Always the indicated site. Operating on the wrong part of somebody is a
+	# deliberate act rather than a degree of carelessness, and none of these
+	# three strategies is "picks a limb at random" — a harness that did it by
+	# accident on every operation would be measuring something nobody plays.
+	var site := TreatmentSystem.indicated_site_for(p)
+	var res: Dictionary = game.treatment.perform_surgery(p, site, [how, how, how])
 	if strategy == "careful" and String(res.get("complication", "")) != "":
 		for c in p.active_complications():
 			if c.documented_cause == "" and c.plausible_causes.size() > 0:

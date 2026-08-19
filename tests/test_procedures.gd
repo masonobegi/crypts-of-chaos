@@ -111,3 +111,47 @@ func _kinds(p: Patient) -> Array:
 	for f in p.chart.audit(p.actual_treatments, p.complications):
 		out.append(String(f["kind"]))
 	return out
+
+## An operation has a site it is FOR, stated on the screen and then not
+## enforced — the same shape as a machine's prescribed value. Opening a part of
+## somebody that was not the problem does not fix the problem, reliably creates
+## a new one, and is enormously legible afterwards.
+func test_the_indicated_site_is_whatever_is_actually_wrong_with_them() -> void:
+	var p := _patient("torn_knee")
+	t.eq(TreatmentSystem.indicated_site_for(p), "knee",
+		"a torn knee is a knee operation")
+	var q := _patient("chronic_beige")
+	t.eq(TreatmentSystem.indicated_site_for(q), "general",
+		"and something with no body part to it is a general procedure")
+	# An acquired injury outranks the admitting condition, because that is what
+	# they are on the list for now.
+	var spec: Dictionary = DB.COMPLICATIONS["dislocated_shoulder"]
+	var c := Complication.new()
+	c.id = "dislocated_shoulder"
+	c.display_name = String(spec["name"])
+	c.is_injury = true
+	c.body_part = "shoulder"
+	c.acquired_here = true
+	q.add_complication(c)
+	t.eq(TreatmentSystem.indicated_site_for(q), "shoulder",
+		"the thing that has happened to them since is what theatre is for")
+
+func test_operating_on_the_wrong_part_of_somebody_is_findable_forever() -> void:
+	var p := _patient("torn_knee")
+	p.recovery = 0.4
+	var res: Dictionary = _ts.perform_surgery(p, "shoulder", ["careful", "careful", "careful"])
+	t.ok(bool(res["wrong_site"]), "the shoulder is not the knee")
+	t.lt(p.recovery, 0.4, "and it did not help")
+	t.eq(String(res["indicated"]), "knee", "the record knows what was meant")
+
+	var entry: Dictionary = p.chart.surgery_log[0]
+	t.eq(String(entry["site"]), "shoulder", "the theatre record says what was done")
+	t.eq(String(entry["indicated"]), "knee", "and what should have been")
+	var kinds := _kinds(p)
+	t.ok(kinds.has("wrong_site"), "which is a finding, permanently")
+
+	# By-the-book on the right site leaves nothing behind.
+	var ok_patient := _patient("torn_knee")
+	_ts.perform_surgery(ok_patient, "knee", ["careful", "careful", "careful"])
+	t.ok(not _kinds(ok_patient).has("wrong_site"),
+		"operating on the part that was the problem is not a finding")

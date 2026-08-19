@@ -272,6 +272,29 @@ which is not yours: two or more improvised stages on one patient raises
 A by-the-book operation genuinely helps (+0.34 recovery at full quality), which
 is what makes the approach a choice rather than a lever.
 
+**The site.** Every operation has an indicated site — the injury they have, or
+the body part their condition is about — stated on the theatre screen and then
+not enforced, exactly like a machine's prescribed value. Operating somewhere
+else sets recovery to −0.05, forces the complication risk to at least 0.8,
+raises the act's visibility to 0.35 regardless of approach, and writes both the
+site you opened and the site you were meant to into the theatre record. The
+audit raises `wrong_site` at **0.95**, the heaviest single finding in the game.
+There is no cover story for it and there never will be.
+
+## What you make of them
+
+Every patient carries a short read in your character's words, derived from
+`mind.observance` and the archetype's `escalation`. It is never advice — there
+is a test that walks every archetype and asserts no line contains "safe",
+"risky", "witness" or "avoid" — and it is a GUESS until you have examined them.
+
+`Patient.read_bias` is a fixed per-person error in the range ±0.24, rolled at
+admission and stored, so the read does not flicker while you look at it. It is
+zeroed for four in-game hours after an examination (`read_is_fresh()`), and the
+notes say so out loud while it is not. This is the quiet argument for the honest
+examination: the dial at its indicated value is how you find out whose account
+of the afternoon anybody would believe.
+
 ## The pharmacy
 
 Three kinds of take-home. **Indicated** ends the story. **Inert** means whatever

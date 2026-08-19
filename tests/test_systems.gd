@@ -695,3 +695,28 @@ func test_an_unhappy_patient_complains_without_suspecting_anything() -> void:
 
 	ps.queue_free()
 	sus.queue_free()
+
+## The tutorial teaches the legitimate job and nothing else, which is the whole
+## trick: you are told what a good doctor does, handed a debt schedule a good
+## doctor cannot service, and left to draw your own conclusions.
+func test_the_tutorial_never_mentions_the_other_thing() -> void:
+	var banned := ["suspicion", "witness", "caught", "cover", "hurt", "injure",
+		"money", "earn", "profit", "fraud"]
+	for step in TutorialSystem.STEPS:
+		var text := String(step["text"]).to_lower()
+		for word in banned:
+			t.ok(not text.contains(word),
+				"tutorial step '%s' says nothing about %s" % [step["id"], word])
+
+## And it covers the verbs a first shift actually consists of, including the two
+## that arrived with the shift loop. A tutorial that stops at "read a chart"
+## leaves a new player with a booked list they have no idea they have.
+func test_the_tutorial_covers_the_shift_loop() -> void:
+	var ids: Array = []
+	for step in TutorialSystem.STEPS:
+		ids.append(String(step["id"]))
+	for required in ["list", "chart", "examine", "treat", "records", "shift"]:
+		t.ok(ids.has(required), "the first shift teaches '%s'" % required)
+	t.lt(float(ids.find("list")), float(ids.find("examine")),
+		"you are shown the list before you are sent to see anybody")
+	t.eq(ids[ids.size() - 1], "shift", "and clocking out is the last thing")

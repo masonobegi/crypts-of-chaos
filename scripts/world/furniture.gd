@@ -18,8 +18,15 @@ extends RefCounted
 ## went anywhere again.
 static var footprints: Array[Rect2] = []
 
+## Where walk-ins sit while they wait to be seen. A clinic with people visibly
+## waiting in it is a different room from one where they materialise wherever
+## the navigation grid felt like putting them, and "how many are still out
+## there" ought to be answerable by looking.
+static var clinic_seats: Array[Vector3] = []
+
 static func furnish(h: Hospital) -> Array[Rect2]:
 	footprints = []
+	clinic_seats = []
 	for r in h.room_list():
 		match r.kind:
 			"ward": _ward(h, r)
@@ -335,6 +342,14 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	_prop(h, "tray", Vector3(c.x + 2.6, 0.85, c.z + 2.0))
 	_prop(h, "dread_canister", Vector3(c.x + 1.6, 0.4, r.rect.position.y + 1.9))
 	_cart(h, Vector3(c.x + 3.0, 0, c.z - 1.0), 1.4)
+	# The waiting row, along the west wall, facing into the room.
+	for i in 5:
+		var seat := Vector3(r.rect.position.x + 1.1, 0, c.z - 3.2 + float(i) * 1.15)
+		_chair(h, seat, -PI / 2, Color(0.34, 0.40, 0.46))
+		clinic_seats.append(seat)
+	_wall_sign(h, "PLEASE WAIT TO BE CALLED",
+		Vector3(r.rect.position.x + 0.18, 1.9, c.z - 3.6), PI / 2, 0.075)
+
 	_wall_sign(h, "TREATMENT BAY", Vector3(c.x, 2.4, r.rect.position.y + 0.16), 0.0, 0.18)
 
 # ------------------------------------------------------------------ supply

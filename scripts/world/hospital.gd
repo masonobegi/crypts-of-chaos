@@ -273,6 +273,20 @@ func refresh_departments() -> void:
 		else:
 			sh.seal_nav(nav, _doorway_rect(key))
 
+## A free seat in the clinic waiting row, or the treatment bay's floor if every
+## chair is taken. Occupancy is checked against who is actually sitting there,
+## so somebody being admitted frees their chair for the next arrival.
+func clinic_seat(taken: Array) -> Vector3:
+	for seat in Furniture.clinic_seats:
+		var free := true
+		for pos in taken:
+			if (pos as Vector3).distance_to(seat) < 0.6:
+				free = false
+				break
+		if free:
+			return seat
+	return point_in("treatment", "walkin_spot")
+
 ## Can anyone — player or NPC — currently get into this room?
 func is_room_open(key: String) -> bool:
 	var sh = shutters.get(key, null)

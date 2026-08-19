@@ -46,9 +46,14 @@ func interact(player, held) -> void:
 
 	# Loud, visible, and impossible to explain. The noise radius is generous on
 	# purpose — shredding is meant to be a risk, not a get-out-of-jail button.
+	# With a confidential waste contract in place, feeding paper into a bin is
+	# just what everyone does all day — the act stops standing out. The chart is
+	# still missing afterwards, and that part never stops being a problem.
+	var normal := Upgrades.shredding_is_normal()
 	var e := WorldEvent.new("document_shredded", "player").at(global_position, room_key) \
-		.about(pid).seen(0.85).heard(0.35, 14.0).tag("records").tag("coverup") \
+		.about(pid).seen(0.2 if normal else 0.85).heard(0.35, 14.0) \
+		.tag("records").tag("coverup").cover("administrative" if normal else "") \
 		.says("shredded %s" % what)
 	e.emit()
-	GameState.add_heat(0.05, "document shredded")
+	GameState.add_heat(0.02 if normal else 0.05, "document shredded")
 	GameState.stats.forged_entries += 1

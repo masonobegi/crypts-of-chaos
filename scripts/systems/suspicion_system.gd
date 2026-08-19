@@ -71,6 +71,10 @@ func _on_world_event(evt) -> void:
 	if e.actor != "player":
 		return
 
+	# Private rooms genuinely reduce how much a witness can make out through a
+	# closed door and a curtain.
+	var witness_scale := Upgrades.witness_scale()
+
 	# Pass one: who perceived it, and how well.
 	var witnesses: Array = []
 	for id in _bodies:
@@ -81,6 +85,8 @@ func _on_world_event(evt) -> void:
 		if res.is_empty():
 			continue
 		witnesses.append({"id": id, "res": res})
+
+	_record_on_camera(e)
 
 	if witnesses.is_empty():
 		return
@@ -98,7 +104,8 @@ func _on_world_event(evt) -> void:
 		var mind: Mind = minds.get(id, null)
 		if mind == null:
 			continue
-		var ev := Evidence.from_world_event(e, res["source"], float(res["weight"]), float(res["certainty"]))
+		var ev := Evidence.from_world_event(e, res["source"],
+			float(res["weight"]) * witness_scale, float(res["certainty"]))
 		for other in ids:
 			if other != id:
 				ev.corroborators.append(other)
@@ -109,6 +116,24 @@ func _on_world_event(evt) -> void:
 		_react(id, mind, stored)
 
 	EventBus.suspicion_changed.emit(ids[0], suspicion_of(ids[0]))
+
+## Cameras do not have personalities, do not forget, and cannot be talked to.
+## Buying them raises hospital reputation AND creates a permanent record of
+## anything you do in a covered room — the cleanest example of an upgrade that
+## makes you richer and more visible at the same time.
+func _record_on_camera(e: WorldEvent) -> void:
+	if e.visual_weight < 0.2:
+		return
+	if not Upgrades.camera_rooms().has(e.room):
+		return
+	var inst: Mind = minds.get("admin", null)
+	if inst == null:
+		return
+	var ev := Evidence.from_world_event(e, Evidence.Source.RECORD,
+		e.visual_weight * 0.85, 1.0)
+	ev.summary = "on camera: %s" % (e.summary if e.summary != "" else e.kind.replace("_", " "))
+	ev.tags.append("camera")
+	inst.add_evidence(ev)
 
 ## Immediate on-the-spot reaction: a line of dialogue and a hard stare.
 func _react(id: String, mind: Mind, ev: Evidence) -> void:

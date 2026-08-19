@@ -219,6 +219,7 @@ func _interview_staff(inv: Investigation) -> void:
 		# mention it, which is what staff_trust is for.
 		var will_talk := clampf(0.85 - m.trust * 0.7 + m.escalation * 0.3, 0.05, 0.95)
 		will_talk *= 1.0 - GameState.rep("staff_trust") * 0.35
+		will_talk *= 1.0 - Upgrades.staff_silence_bonus()
 		if not RNG.chance("interview", will_talk):
 			continue
 		var copy := worst.retold()
@@ -232,6 +233,9 @@ func _resolve(inv: Investigation) -> void:
 	var now := GameState.career_minutes
 	var institutional: float = suspicion.suspicion_of(inv.institution) if suspicion else 0.0
 	var total := inv.gathered_weight(now) + institutional * 1.2
+	# A solicitor on retainer means findings need to be substantially stronger
+	# before anything sticks.
+	total /= Upgrades.investigation_threshold_scale()
 	# Reputation is armour. A well-regarded doctor genuinely gets the benefit of
 	# the doubt, which is the whole reason to have one.
 	total *= clampf(1.25 - GameState.rep("doctor") * 0.5, 0.6, 1.4)
@@ -269,6 +273,17 @@ func escalate(steps: int, reason: String) -> void:
 	if steps <= 0:
 		return
 	var before := GameState.sanction_level
+	# The ladder gets much harder to climb past Probation. Losing a licence
+	# should take a sustained pattern across many shifts, not one bad week —
+	# the whole point of the ladder is that it gives you room to recover.
+	if before >= 4:
+		# Scaled by heat: a doctor who has cooled off gets room to recover, one
+		# running at maximum institutional heat does not.
+		steps = 1 if RNG.chance("late_escalation", 0.28 + GameState.heat * 0.6) else 0
+	elif before >= 2:
+		steps = mini(steps, 2)
+	if steps <= 0:
+		return
 	GameState.sanction_level = clampi(before + steps, 0, GameState.SANCTIONS.size() - 1)
 	if GameState.sanction_level == before:
 		return

@@ -62,7 +62,7 @@ func test_ward_to_ward_paths_cross_the_corridor() -> void:
 
 func test_beds_exist_in_every_ward() -> void:
 	var h = _hospital()
-	var beds: Array = t.root.get_tree().get_nodes_in_group("bed")
+	var beds: Array = h.get_tree().get_nodes_in_group("bed")
 	t.gt(float(beds.size()), 4.0, "a bed per ward")
 	for w in h.wards():
 		var found := false

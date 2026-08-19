@@ -4,6 +4,13 @@ extends RefCounted
 ##
 ## Kept separate from Hospital so the floor plan and its contents can change
 ## independently — a new room kind is one match arm here.
+##
+## Everything here sets LOCAL `position`, never `global_position`. The hospital
+## node sits at the origin with an identity transform, so the two are equivalent
+## — but global_position is only valid once a node is inside the tree, and the
+## floor is assembled before that is guaranteed (headless tooling adds nodes in
+## a SceneTree's _initialize(), where the root is not yet considered in-tree).
+## Using local positions makes construction independent of tree membership.
 
 static func furnish(h: Hospital) -> void:
 	for r in h.room_list():
@@ -20,14 +27,14 @@ static func furnish(h: Hospital) -> void:
 # ------------------------------------------------------------------ helpers
 static func _add(h: Hospital, node: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	h.add_child(node)
-	node.global_position = pos
+	node.position = pos
 	node.rotation.y = rot_y
 	return node
 
 static func _prop(h: Hospital, id: String, pos: Vector3, rot_y := 0.0) -> Prop:
 	var p := Items.spawn(id)
 	h.add_child(p)
-	p.global_position = pos
+	p.position = pos
 	p.rotation.y = rot_y
 	return p
 
@@ -48,7 +55,7 @@ static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72
 static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35, 0.48, 0.55)) -> void:
 	var root := Node3D.new()
 	h.add_child(root)
-	root.global_position = pos
+	root.position = pos
 	root.rotation.y = rot_y
 	var seat := Build.wall(Vector3(0.44, 0.06, 0.44), color, Vector3(0, 0.45, 0))
 	root.add_child(seat)
@@ -77,7 +84,7 @@ static func _cart(h: Hospital, pos: Vector3, rot_y := 0.0) -> Prop:
 	cart.noise_radius = 18.0
 	cart.blurb = "Wheels. No brake. Load-bearing to the plot."
 	h.add_child(cart)
-	cart.global_position = pos + Vector3(0, 0.25, 0)
+	cart.position = pos + Vector3(0, 0.25, 0)
 	cart.rotation.y = rot_y
 	# Loose stock on the top shelf — this is what actually scatters.
 	for i in 3:
@@ -94,13 +101,13 @@ static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
 	stand.blurb = "Top-heavy by design."
 	stand.noise_radius = 14.0
 	h.add_child(stand)
-	stand.global_position = pos + Vector3(0, 0.9, 0)
+	stand.position = pos + Vector3(0, 0.9, 0)
 	return stand
 
 static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float, size := 0.1) -> void:
 	var l := Build.label3d(text, size, Color(0.92, 0.94, 0.90), false)
 	h.add_child(l)
-	l.global_position = pos
+	l.position = pos
 	l.rotation.y = rot_y
 
 # ------------------------------------------------------------------ ward
@@ -114,13 +121,13 @@ static func _ward(h: Hospital, r: Room) -> void:
 	bed.name = "Bed_" + r.key
 	h.add_child(bed)
 	bed.build()
-	bed.global_position = bed_pos + Vector3(0, 0.4, 0)
+	bed.position = bed_pos + Vector3(0, 0.4, 0)
 
 	var vc := VitalsConsole.new()
 	vc.room_key = r.key
 	h.add_child(vc)
 	vc.build()
-	vc.global_position = bed_pos + Vector3(-1.0, 1.5, -0.6)
+	vc.position = bed_pos + Vector3(-1.0, 1.5, -0.6)
 
 	# Bedside treatment device.
 	var m := TreatmentMachine.new()
@@ -130,28 +137,28 @@ static func _ward(h: Hospital, r: Room) -> void:
 	m.units = "HUMOUR GRADIENT"
 	h.add_child(m)
 	m.build("Humour Rebalancer")
-	m.global_position = bed_pos + Vector3(1.5, 0, -0.2)
+	m.position = bed_pos + Vector3(1.5, 0, -0.2)
 	m.rotation.y = PI
 
 	var rb := MachineRunButton.new()
 	rb.room_key = r.key
 	h.add_child(rb)
 	rb.build(m)
-	rb.global_position = m.global_position + Vector3(-0.3, 1.05, -0.4)
+	rb.position = m.position + Vector3(-0.3, 1.05, -0.4)
 
 	var win := WindowUnit.new()
 	win.room_key = r.key
 	h.add_child(win)
 	win.build(1.8, 1.2)
-	win.global_position = Vector3(c.x + 1.6, 1.7, far_z - 0.12)
+	win.position = Vector3(c.x + 1.6, 1.7, far_z - 0.12)
 
 	var sw := LightSwitch.new()
 	sw.room_key = r.key
 	h.add_child(sw)
 	sw.build()
-	sw.global_position = Vector3(float(h.LAYOUT[0]["rect"].position.x) + 0.0, 0, 0)
+	sw.position = Vector3(float(h.LAYOUT[0]["rect"].position.x) + 0.0, 0, 0)
 	# Beside the door, on the corridor wall.
-	sw.global_position = Vector3(_door_x(r) + 1.1, 1.25, r.rect.position.y + 0.14)
+	sw.position = Vector3(_door_x(r) + 1.1, 1.25, r.rect.position.y + 0.14)
 	sw.rotation.y = PI
 
 	_chair(h, Vector3(c.x - 2.2, 0, c.z + 1.0), 1.2)
@@ -212,7 +219,7 @@ static func _station(h: Hospital, r: Room) -> void:
 		t.mode = "ehr"
 		h.add_child(t)
 		t.build("Ward Terminal", false)
-		t.global_position = Vector3(c.x - 1.4 + float(i) * 2.8, 0.5, c.z - 0.4)
+		t.position = Vector3(c.x - 1.4 + float(i) * 2.8, 0.5, c.z - 0.4)
 		t.rotation.y = PI
 
 	_table(h, Vector3(c.x - 2.4, 0, c.z + 2.6), 1.6, 0.8, 0.75)
@@ -244,18 +251,18 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		m.units = String(s["u"])
 		h.add_child(m)
 		m.build(String(s["n"]))
-		m.global_position = Vector3(c.x + float(s["x"]), 0, r.rect.position.y + 1.0)
+		m.position = Vector3(c.x + float(s["x"]), 0, r.rect.position.y + 1.0)
 		var rb := MachineRunButton.new()
 		rb.room_key = r.key
 		h.add_child(rb)
 		rb.build(m)
-		rb.global_position = m.global_position + Vector3(0.7, 1.05, 0.4)
+		rb.position = m.position + Vector3(0.7, 1.05, 0.4)
 
 	var shelf := SupplyShelf.new()
 	shelf.room_key = r.key
 	h.add_child(shelf)
 	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench"])
-	shelf.global_position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
+	shelf.position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
 	shelf.rotation.y = -PI / 2
 
 	_table(h, Vector3(c.x + 2.6, 0, c.z + 2.0), 1.2, 0.7)
@@ -285,7 +292,7 @@ static func _supply(h: Hospital, r: Room) -> void:
 			if Items.SPECS.has(String(it)):
 				valid.append(it)
 		shelf.build(String(s[0]), valid)
-		shelf.global_position = Vector3(r.rect.position.x + 0.5, 0, c.z - 2.4 + float(i) * 2.4)
+		shelf.position = Vector3(r.rect.position.x + 0.5, 0, c.z - 2.4 + float(i) * 2.4)
 		shelf.rotation.y = -PI / 2
 
 	_prop(h, "colour_lamp", Vector3(c.x + 1.4, 0.4, c.z - 1.0))
@@ -305,13 +312,13 @@ static func _office(h: Hospital, r: Room) -> void:
 	t.mode = "admin"
 	h.add_child(t)
 	t.build("Your Terminal", true)
-	t.global_position = Vector3(c.x - 0.3, 0.55, c.z + 0.7)
+	t.position = Vector3(c.x - 0.3, 0.55, c.z + 0.7)
 
 	var sh := Shredder.new()
 	sh.room_key = r.key
 	h.add_child(sh)
 	sh.build()
-	sh.global_position = Vector3(c.x + 1.8, 0, c.z + 1.6)
+	sh.position = Vector3(c.x + 1.8, 0, c.z + 1.6)
 
 	_block(h, Vector3(1.0, 1.5, 0.5), Color(0.5, 0.52, 0.48), Vector3(r.rect.position.x + 0.8, 0.75, c.z - 2.4))
 	_wall_sign(h, "PERSONAL FILES", Vector3(r.rect.position.x + 0.8, 1.62, c.z - 2.4), 0.0, 0.07)
@@ -320,7 +327,7 @@ static func _office(h: Hospital, r: Room) -> void:
 	win.room_key = r.key
 	h.add_child(win)
 	win.build(1.4, 1.0)
-	win.global_position = Vector3(c.x, 1.7, r.rect.position.y + 0.12)
+	win.position = Vector3(c.x, 1.7, r.rect.position.y + 0.12)
 
 	_prop(h, "coffee", Vector3(c.x + 0.6, 0.9, c.z + 1.0))
 	_prop(h, "incident_report", Vector3(c.x - 0.6, 0.9, c.z + 1.3))

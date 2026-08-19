@@ -62,7 +62,13 @@ func daily_revenue() -> int:
 	var comp_bonus := 1.0
 	for c in complications:
 		if not c.resolved:
-			comp_bonus += 0.18   # complications are billable, that's the point
+			comp_bonus += 0.26   # complications are billable, that's the point
+	# Acuity escalation: a case that runs long with complications gets recoded as
+	# complex and bills more per day. Entirely above board, and the reason a
+	# six-day stay is worth far more than three two-day stays.
+	if not complications.is_empty() and days_admitted > expected_stay_days:
+		var extra_days: float = days_admitted - expected_stay_days
+		comp_bonus *= 1.0 + clampf(extra_days * 0.05, 0.0, 0.45)
 	return int(round(float(base_daily_revenue) * mult * comp_bonus))
 
 # ------------------------------------------------------------------ stay math
@@ -96,7 +102,7 @@ func tick(days: float) -> void:
 		if not c.resolved:
 			suppression *= clampf(1.0 - 0.34 * c.severity, 0.12, 1.0)
 
-	var rate := recovery_rate * suppression * env_modifier
+	var rate := (recovery_rate + Upgrades.recovery_bonus() * recovery_rate) * suppression * env_modifier
 	recovery = clampf(recovery + rate * days, -0.2, 1.0)
 
 	if is_overdue():
@@ -137,8 +143,12 @@ func record_treatment(tid: String, quality: float) -> void:
 ## numbers than they have, a stoic reports better.
 func vitals() -> Dictionary:
 	var bias: float = DB.trait_of(archetype, "vital_bias", 0.0)
+	# The diagnostics bench upgrade is the only thing that makes these readings
+	# trustworthy — before that, you are reading a person, not an instrument.
+	var noise_scale: float = Upgrades.vitals_noise_scale()
 	var n := func(k: String, spread: float) -> float:
-		return RNG.noise("vitals_%s_%s_%d" % [id, k, int(GameState.career_minutes / 30)], spread)
+		return RNG.noise("vitals_%s_%s_%d" % [id, k, int(GameState.career_minutes / 30)],
+			spread * noise_scale)
 
 	var r: float = clampf(recovery, 0.0, 1.0)
 	var comp_load := 0.0

@@ -26,6 +26,8 @@ func _build() -> void:
 	content.add_child(UIKit.row("  staff", UIKit.money_str(-int(costs.get("staff", 0))), UIKit.INK_DIM, 14))
 	content.add_child(UIKit.row("  utilities", UIKit.money_str(-int(costs.get("utilities", 0))), UIKit.INK_DIM, 14))
 	content.add_child(UIKit.row("  supplies", UIKit.money_str(-int(costs.get("supplies", 0))), UIKit.INK_DIM, 14))
+	content.add_child(UIKit.row("  admission workups",
+		UIKit.money_str(-int(costs.get("admissions", 0))), UIKit.INK_DIM, 14))
 	var profit := int(st.get("profit", 0))
 	content.add_child(UIKit.row("Hospital profit", UIKit.money_str(profit),
 		UIKit.MONEY if profit >= 0 else UIKit.BAD, 16))

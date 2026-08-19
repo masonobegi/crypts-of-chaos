@@ -44,6 +44,15 @@ const RECIPES := {
 func _ready() -> void:
 	# UI screens pause the tree; sound must keep working while they are open.
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	_ensure_voices()
+
+## Built lazily rather than only in _ready(): headless tooling drives the game
+## from a SceneTree script, whose _initialize() runs BEFORE any node's _ready(),
+## so anything that plays a sound during setup would otherwise index an empty
+## voice pool.
+func _ensure_voices() -> void:
+	if not _players.is_empty():
+		return
 	for i in MAX_VOICES:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -102,6 +111,7 @@ func _build(name: String) -> AudioStreamWAV:
 
 # ------------------------------------------------------------------ playback
 func play(name: String, volume_db: float = -6.0, pitch: float = 1.0) -> void:
+	_ensure_voices()
 	var st := _build(name)
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
@@ -111,6 +121,7 @@ func play(name: String, volume_db: float = -6.0, pitch: float = 1.0) -> void:
 	p.play()
 
 func play_at(name: String, pos: Vector3, volume_db: float = -4.0, pitch: float = 1.0) -> void:
+	_ensure_voices()
 	var tree := get_tree()
 	if tree == null or tree.current_scene == null:
 		play(name, volume_db, pitch)

@@ -65,6 +65,9 @@ func document_complication(p: Patient, comp: Complication, cause: String,
 	var clean := comp.is_clean()
 	if clean:
 		GameState.stats.complications_clean += 1
+		var cdx = get_tree().get_first_node_in_group("codex")
+		if cdx:
+			cdx.note_clean_documentation()
 
 	var visual := 0.0
 	if not plausible:

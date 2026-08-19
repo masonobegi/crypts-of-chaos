@@ -11,14 +11,29 @@ const STAFF_COST_PER_HEAD := 210
 const UTILITIES_BASE := 180
 const SUPPLY_COST_PER_PATIENT := 55
 const REPAIR_COST := 140
+## One-off cost of taking someone in: intake, workup, the whole circus.
+##
+## This number is why the game works. Without it, curing people fast and
+## refilling the bed out-earns prolonging a stay — the ward only has five beds,
+## so throughput beats duration and the entire premise inverts. Making admission
+## expensive and marginal days cheap is what makes "keep Greg here" the
+## profitable play, and it is the single most load-bearing constant in the game.
+const ADMISSION_COST := 850
 
 var patient_system: PatientSystem = null
 var last_statement: Dictionary = {}
+
+var admissions_today := 0
 
 func _ready() -> void:
 	add_to_group("economy")
 	patient_system = get_tree().get_first_node_in_group("patient_system")
 	EventBus.item_broke.connect(_on_item_broke)
+	EventBus.patient_admitted.connect(_on_admitted)
+
+func _on_admitted(_p) -> void:
+	admissions_today += 1
+	GameState.add_hospital(-ADMISSION_COST, "admission workup")
 
 func _on_item_broke(_item) -> void:
 	GameState.add_hospital(-REPAIR_COST, "repairs")
@@ -49,9 +64,11 @@ func daily_costs() -> Dictionary:
 	var staff := staff_count() * STAFF_COST_PER_HEAD
 	var utilities := UTILITIES_BASE + int(GameState.owned_upgrades.size()) * 35
 	var supplies := patient_system.active_count() * SUPPLY_COST_PER_PATIENT
+	var admissions := admissions_today * ADMISSION_COST
 	var total := staff + utilities + supplies
 	return {
-		"staff": staff, "utilities": utilities, "supplies": supplies, "total": total,
+		"staff": staff, "utilities": utilities, "supplies": supplies,
+		"admissions": admissions, "total": total,
 	}
 
 ## Your cut. Improved by upgrades and by the hospital actually being profitable —
@@ -76,6 +93,7 @@ func close_shift() -> Dictionary:
 	if bonus > 0:
 		GameState.add_personal(bonus, "profit share")
 
+	admissions_today = 0
 	last_statement = {
 		"revenue": billing["revenue"],
 		"lines": billing["lines"],
@@ -141,7 +159,8 @@ func total_owed() -> int:
 	return GameState.total_debt()
 
 func to_dict() -> Dictionary:
-	return {"last": last_statement}
+	return {"last": last_statement, "adm": admissions_today}
 
 func from_dict(d: Dictionary) -> void:
 	last_statement = d.get("last", {})
+	admissions_today = int(d.get("adm", 0))

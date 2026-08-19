@@ -16,6 +16,7 @@ var records: RecordsSystem
 var investigations: InvestigationSystem
 var events: RandomEventSystem
 var shift: ShiftSystem
+var codex: Codex
 var ui: Node
 
 func _ready() -> void:
@@ -89,6 +90,10 @@ func _spawn_systems() -> void:
 	events = RandomEventSystem.new()
 	events.name = "RandomEventSystem"
 	add_child(events)
+
+	codex = Codex.new()
+	codex.name = "Codex"
+	add_child(codex)
 
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
@@ -171,6 +176,11 @@ func _random_skin() -> Color:
 		Color(0.60, 0.44, 0.32), Color(0.44, 0.31, 0.22), Color(0.33, 0.23, 0.17)])
 
 func _spawn_ui() -> void:
+	# The balance harness drives the systems directly with no player present and
+	# no frames between actions; spawning the UI there only creates orphaned
+	# tweens and timers.
+	if GameState.flag("headless_sim", false):
+		return
 	ui = load("res://scripts/ui/ui_root.gd").new()
 	ui.name = "UI"
 	add_child(ui)
@@ -183,6 +193,7 @@ func _register_saves() -> void:
 	SaveSystem.register("investigations", investigations.to_dict, investigations.from_dict)
 	SaveSystem.register("events", events.to_dict, events.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
+	SaveSystem.register("codex", codex.to_dict, codex.from_dict)
 	SaveSystem.register("machines", _save_machines, _load_machines)
 
 func _save_machines() -> Dictionary:
@@ -204,6 +215,9 @@ func _load_machines(d: Dictionary) -> void:
 			i += 1
 
 func _start() -> void:
+	if GameState.flag("headless_sim", false):
+		shift.begin_day()
+		return
 	if GameState.flag("continue_save", false):
 		GameState.set_flag("continue_save", false)
 		SaveSystem.load_game(SaveSystem.AUTOSAVE)

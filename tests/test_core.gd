@@ -36,7 +36,33 @@ func test_patient_revenue() -> void:
 	t.eq(p.daily_revenue(), 2400, "insurance multiplier applied")
 	var c := Complication.new()
 	p.complications.append(c)
-	t.eq(p.daily_revenue(), int(round(1000 * 2.4 * 1.18)), "complication is billable")
+	t.eq(p.daily_revenue(), int(round(1000 * 2.4 * 1.26)), "complication is billable")
+
+func test_acuity_escalation() -> void:
+	# A long complicated stay gets recoded as complex and bills more per day.
+	# This, plus the admission cost, is what makes duration beat turnover.
+	var p := Patient.new("acuity")
+	p.base_daily_revenue = 1000
+	p.insurance = "standard"
+	p.expected_stay_days = 2.0
+	var flat := p.daily_revenue()
+	p.complications.append(Complication.new())
+	var with_comp := p.daily_revenue()
+	t.gt(float(with_comp), float(flat), "a complication raises the daily rate")
+	p.days_admitted = 8.0
+	t.gt(float(p.daily_revenue()), float(with_comp), "and a long complex stay raises it further")
+	p.days_admitted = 40.0
+	t.lt(float(p.daily_revenue()), float(with_comp) * 1.5, "but the escalation is capped")
+
+func test_no_acuity_escalation_without_complications() -> void:
+	# Simply sitting on a healthy patient must NOT pay more — the extra money
+	# has to come from a documented complication, not from stalling.
+	var p := Patient.new("stall")
+	p.base_daily_revenue = 1000
+	p.expected_stay_days = 2.0
+	var base := p.daily_revenue()
+	p.days_admitted = 12.0
+	t.eq(p.daily_revenue(), base, "an uncomplicated overstay bills the flat rate")
 
 func test_recovery_suppression() -> void:
 	var a := Patient.new("a")

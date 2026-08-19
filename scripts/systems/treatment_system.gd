@@ -107,11 +107,20 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 		patient_system.add_complication(p, String(res["complication"]),
 			"machine_deviation" if absi(int(res["deviation"])) >= 3 else "equipment_variance")
 
+	# Running a machine that is not indicated for this condition is obvious to
+	# anyone who knows the patient, regardless of where the dial is sitting —
+	# without this, "wrong machine, correct dial" was completely invisible.
+	var visual := float(res["visual"])
+	var tags: Array = ["treatment", "machine"]
+	if not bool(res.get("correct", true)):
+		visual = maxf(visual, 0.4)
+		tags.append("wrong_treatment")
 	var e := WorldEvent.new("machine_treatment", "player") \
 		.at(m.global_position, m.room_key).about(p.id) \
-		.seen(float(res["visual"])).heard(0.02, 9.0) \
-		.tag("treatment").tag("machine").cover("equipment_variance") \
+		.seen(visual).heard(0.02, 9.0).cover("equipment_variance") \
 		.says("ran the %s on %s at %d" % [m.fixture_name, p.display_name, m.dial])
+	for t in tags:
+		e.tag(String(t))
 	e.emit()
 	EventBus.treatment_applied.emit(p, m.treatment_id, float(res["recovery"]))
 	return res

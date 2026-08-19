@@ -78,7 +78,34 @@ Autoload singletons are NOT resolvable at compile time from a `--script` main
 loop. `tests/smoke_run.gd` is a thin runner that `load()`s `smoke_impl.gd` at
 runtime for exactly this reason.
 
+- [x] Wired every upgrade effect into the systems that consume it (cameras
+      create permanent institutional records, private rooms scale witness
+      quality, retainer raises the investigation threshold, diagnostics bench
+      de-noises vitals, coffee machine keeps nurses at the station, confidential
+      waste contract normalises shredding).
+- [x] Codex: learn-by-observation notes, unlocked after seeing an effect twice.
+- [x] **Balance harness** (`tests/balance_sim.gd`) — three 16-day careers with
+      asserted design intent. It found a design inversion nothing else could:
+      with five beds, curing fast and refilling out-earned prolonging, so
+      cheating paid LESS than honesty. Fixed with an admission cost + acuity
+      escalation, so duration beats turnover. Also exposed that running a
+      machine not indicated for a condition was completely invisible.
+- [x] Sanction ladder now scales with heat past Probation, so a cleaned-up
+      doctor gets room to recover but one at max heat does not.
+- [x] Killed 155 spurious engine errors in the harness: nodes added during a
+      SceneTree's `_initialize()` are NOT inside the tree, so every
+      `global_position` read failed. Furniture now builds with local positions
+      (order-independent), and the runner waits for a real frame.
+- [x] README.
+
+### Current numbers (seed 90210, 16 days)
+| strategy | earned | ending | standing |
+|---|---|---|---|
+| honest   | $13,099 | Saint | Clean, rep 1.00, broke |
+| careless | $12,301 | Struck off day 12 | heat 100% |
+| careful  | $38,645 | Tycoon | Clean, rep 0.89 |
+
 ### NEXT UP
-- Playtest-driven tuning pass (difficulty curve, money balance).
-- Wire remaining upgrade effects (camera rooms, witness_scale) into perception.
-- Codex unlock triggers; more conditions/complications/events.
+- More conditions, complications and random events.
+- Remaining NPC archetype behaviours (corrupt nurse bribes, investigator doctor).
+- Mid-game tuning: careful play may be slightly too safe once mastered.

@@ -217,15 +217,20 @@ func _on_toast(text: String, kind: String) -> void:
 	elif kind == "bad":
 		AudioMgr.play("error", -14.0)
 	while _toasts.get_child_count() > 6:
-		_toasts.get_child(0).queue_free()
-		await get_tree().process_frame
+		_toasts.get_child(0).free()
+	# Guard every await: the HUD can be torn down while a toast is still
+	# counting down (scene change, or a headless harness rebuilding the world),
+	# and resuming on a freed node throws.
+	if not is_inside_tree():
+		return
 	await get_tree().create_timer(7.0).timeout
+	if not is_instance_valid(p) or not is_inside_tree():
+		return
+	var tw := create_tween()
+	tw.tween_property(p, "modulate:a", 0.0, 0.5)
+	await tw.finished
 	if is_instance_valid(p):
-		var tw := create_tween()
-		tw.tween_property(p, "modulate:a", 0.0, 0.5)
-		await tw.finished
-		if is_instance_valid(p):
-			p.queue_free()
+		p.queue_free()
 
 func set_crosshair_visible(v: bool) -> void:
 	_crosshair.visible = v

@@ -116,6 +116,11 @@ func _pick_patrol_target() -> void:
 	# the far end of the ward strategically valuable.
 	if archetype == "lazy" and RNG.chance("lazy_skip", 0.6):
 		pool = [home_room, "corridor"]
+	# A decent coffee machine is, mechanically, a nurse-retention device. Staff
+	# spend more of the shift at the station and less of it in your wards.
+	elif role == "nurse" and GameState.has_upgrade("coffee_machine") \
+			and RNG.chance("coffee_pull", 0.45):
+		pool = ["station"]
 	var key := String(RNG.pick("staff_patrol_pick", pool))
 	goto(h.point_in(key, "staff_patrol_pt"), false)
 	_speed = WALK_SPEED * _patrol_speed
@@ -131,6 +136,10 @@ func on_heard_noise(evt: WorldEvent) -> void:
 	_investigate_target = evt.pos
 	_investigate_room = evt.room
 	_enter(State.INVESTIGATE)
+	if evt.tags.has("noise") or evt.tags.has("chaos"):
+		var cdx = get_tree().get_first_node_in_group("codex")
+		if cdx:
+			cdx.note_distraction()
 	if _talk_cooldown <= 0.0:
 		_talk_cooldown = 8.0
 		say(String(RNG.pick("noise_bark", [

@@ -122,8 +122,15 @@ func _build_codex(c: VBoxContainer) -> void:
 			"Nothing yet. The game will not explain its systems to you — "
 			+ "notes appear here once you have seen something happen twice.",
 			14, UIKit.INK_DIM))
-	for id in GameState.codex_unlocked:
-		c.add_child(UIKit.label("· %s" % String(id).replace("_", " ").capitalize(), 14, UIKit.INK))
+	var cdx = get_tree().get_first_node_in_group("codex")
+	if cdx:
+		for e in cdx.entries():
+			var box := UIKit.panel(Color(0.14, 0.16, 0.19, 0.93), 6)
+			var bv := UIKit.vbox(3)
+			bv.add_child(UIKit.label(String(e["title"]), 16, UIKit.ACCENT))
+			bv.add_child(UIKit.label(String(e["text"]), 13, UIKit.INK))
+			box.add_child(bv)
+			c.add_child(box)
 	c.add_child(UIKit.rule())
 	c.add_child(UIKit.label("STANDING", 13, UIKit.INK_DIM))
 	for track in GameState.reputation:

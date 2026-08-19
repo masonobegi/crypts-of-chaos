@@ -19,8 +19,25 @@ var passed := 0
 var failed := 0
 var current := ""
 var failures: Array[String] = []
+var _frames := 0
+
+## Suites run from _process, not _initialize.
+##
+## During _initialize the SceneTree's root Window is not yet considered "inside
+## the tree", so anything added there reports is_inside_tree() == false and every
+## global_position read errors. Waiting a couple of frames gives the integration
+## tests a genuinely initialised tree to build the hospital in.
+func _process(_delta: float) -> bool:
+	_frames += 1
+	if _frames < 3:
+		return false
+	_run()
+	return true
 
 func _initialize() -> void:
+	pass
+
+func _run() -> void:
 	_out("\n=== CHRONIC CARE — headless tests ===\n")
 	for path in SUITES:
 		if not ResourceLoader.exists(path):

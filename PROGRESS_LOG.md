@@ -194,6 +194,44 @@ economy · shift/day loop · procedural generation · investigations · reputati
 progression/upgrades · random events · save/load · UI · audio · tutorial ·
 multiple endings.
 
+- [x] Audited for dead mechanics (things set/serialised and never read). Wired
+      up inspection warnings, arguing families, supply shortages and the social
+      graph; deleted two exports with no readers.
+- [x] Tablet Record tab (audit exposure at any moment, not just at clock-out).
+- [x] The nurse errand option, which had rolled a dice and then done nothing.
+- [x] Export presets for Linux / Windows / macOS.
+
+---
+
+## STATE OF THE PROJECT
+
+**Everything the brief asked for is implemented and verified.** All 21 numbered
+systems, the vertical slice, the emergent-story machinery, and three departments
+beyond it.
+
+```
+778 assertions   (91 test functions across 5 suites)
+ 40 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+ 14 balance checks (three 16/30-day careers asserting the design intent holds)
+ 21 screenshots  (every room and every UI screen, rendered offscreen)
+```
+
+Balance at 30 days, seed 90210:
+
+| strategy | earned | comp/discharge | insurer | outcome |
+|---|---|---|---|---|
+| honest   | $20,716 | 0.07 | 0% | Saint. Perfect standing, still broke. |
+| careless | $14,385 | 5.00 | 97% | Prison, day 13. |
+| careful  | $178,126 | 0.43 | 21% | Tycoon. Clean, two investigations survived. |
+
+### Verification layers, and what each has actually caught
+| Layer | Found |
+|---|---|
+| unit/integration | stay maths, chart auditing, evidence decay, floor connectivity |
+| `smoke_run.gd` | spawns silently dropped; a Vector3 passed where a Mesh was expected |
+| `balance_sim.gd` | cheating originally paid LESS than honesty; wrong-machine use was invisible; the whole upgrade catalogue bought out by day 20 |
+| `screenshots.sh` | HUD wrapping per-character; three HUD blocks never drawing; patients standing in beds; day-one economy; a confidence band on "how are you feeling?" |
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - A physical second wing (departments are currently capability unlocks that

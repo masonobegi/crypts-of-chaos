@@ -175,6 +175,47 @@ func test_machine_extreme_setting_is_visible_and_harmful() -> void:
 	t.ok(String(res["complication"]) != "", "and guarantees a complication")
 	m.queue_free()
 
+## The dial turns both ways, and only reports where it STOPS.
+##
+## It used to climb only and wrap at 11, so the sole route from 9 down to 4 ran
+## 10, 11, 0, 1, 2, 3, 4 — five of those stops four or more off prescription,
+## each firing a witness roll. Turning a dial DOWN was the most incriminating
+## act in the building and nothing in the interface said so. And the event fired
+## on every click, so overshooting by one and correcting published two extreme
+## readings instead of none.
+func test_the_dial_turns_both_ways_and_only_reports_where_it_stops() -> void:
+	var m = load("res://scripts/world/machine.gd").new()
+	m.treatment_id = "humour_rebalance"
+	t.root.add_child(m)
+	m.build("Test Rebalancer")
+	m.prescribed = 5
+	m.dial = 9
+
+	# Down from 9 reaches 4 in five clicks, not seven.
+	var clicks := 0
+	while m.dial != 4 and clicks < 20:
+		m.dial = TreatmentMachine.DIAL_MAX if m.dial <= TreatmentMachine.DIAL_MIN else m.dial - 1
+		clicks += 1
+	t.eq(clicks, 5, "nine down to four is five clicks")
+
+	# And nothing is announced until the dial has been left alone. A machine
+	# that has just been built and never touched must be silent, however far
+	# from prescription it happens to be sitting.
+	m.dial = 11
+	m._dial_settle = 1.0
+	m._announced_dial = 11
+	m._process(0.1)
+	t.eq(m._announced_dial, 11, "a settled dial re-announces nothing")
+
+	# Moving it restarts the clock; a value passed through is never announced.
+	m._dial_settle = 0.0
+	m.dial = 0
+	m._process(0.2)
+	t.eq(m._announced_dial, 11, "still nothing at 0.2s — the dial is still turning")
+	m._process(0.6)
+	t.eq(m._announced_dial, 0, "and it reports 0 once it has come to rest")
+	m.queue_free()
+
 func test_machine_keeps_an_auditable_log() -> void:
 	var m = load("res://scripts/world/machine.gd").new()
 	m.treatment_id = "humour_rebalance"

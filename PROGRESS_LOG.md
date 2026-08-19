@@ -999,3 +999,82 @@ make a living here* (under 35% of the sophisticated rate) and *never gets within
 sight of the debt* (under 10% of $435,400) — both scale-free.
 
 **1,548 assertions · 95 smoke · 13 live · 20/20 balance across 3 seeds.**
+
+---
+
+## Session 4 (cont.) — #7 the dial lied to you, #8 the distractions did nothing
+
+### #7 — the most important control in the game
+
+Two faults, both in `TreatmentMachine`.
+
+**The prompt went stale.** `interact()` turned the dial and refreshed the 3D
+label, but the interactor only pushes a HUD prompt when the thing you are
+*looking at* changes. So the readout in front of you sat frozen on whatever it
+said when you walked up: you were setting a number while being shown a
+different one. It now re-emits on every click.
+
+**The dial only turned one way.** `dial = DIAL_MIN if dial >= DIAL_MAX else
+dial + 1`. The only route from 9 down to 4 ran 10, 11, 0, 1, 2, 3, 4 — seven
+stops, five of them four or more off prescription, each one firing
+`machine_extreme_dial` at everybody in the room. **Turning a dial down was the
+most incriminating act in the building** and nothing in the interface said so.
+`[Shift+E]` now turns it back, and the prompt says so.
+
+**And it fired on every click.** Nobody in a real room reacts to a dial sweeping
+past a number; they react to where it stops. Overshooting by one and correcting
+published two extreme readings instead of none. The event now waits for the dial
+to be still for 0.7s and reports the resting value once.
+
+### #8 — nobody made a sound, and the distractions were never connected
+
+**Footsteps.** The player made them. Nobody else in the building did. In a game
+whose entire tension is *is somebody about to walk in*, every member of staff
+moved in complete silence and the only way to know a nurse was behind you was to
+already be looking at her. `NPCBody._footsteps` — positional, slightly quieter
+than your own, gated to twenty metres so eight people walking a sixty-two-metre
+floor do not churn the whole twenty-four-voice 3D pool.
+
+**And then the real one.** `SuspicionSystem._on_world_event` opened with:
+
+```gdscript
+if e.actor != "player":
+    return
+```
+
+Every world event not caused by the player was dropped before it reached a
+single perception. Which means:
+
+- `Prop._emit_noise` — emitted with no actor, deliberately, under a comment
+  reading *"Noise is loud but INNOCENT... What it does is move NPCs, which is
+  far more useful"* — **moved nobody, ever.** Throwing something to pull a nurse
+  out of a ward is the single most important stealth affordance in the game and
+  it had never once worked.
+- The emergency admission that is documented as dragging every member of staff
+  to the far end of the building: nothing.
+- Every random event that clatters: nothing.
+
+Four systems — the event, the hearing radius, the INVESTIGATE state, the walk —
+and three of them working is worth exactly nothing. No test had ever run the
+chain end to end.
+
+Non-player events now go through `_broadcast_noise`: everybody in earshot is
+distracted and gets their roll to come and look. No evidence is recorded,
+because nothing about a clatter says who caused it.
+
+Measured in `live_run`, before and after the same fix:
+
+```
+before:  noise: 0 of 4 staff in earshot came, closing up to 0.0m
+after:   noise: 2 of 5 staff in earshot came, closing up to 13.3m
+```
+
+Somebody already watching you is still allowed to ignore a clatter — that is the
+design, and it is why the assertion is "somebody comes", not "this person
+comes".
+
+Two new live checks cover the other half of the same layer: a heavy prop left in
+a ward doorway genuinely cuts the room off the navigation graph, and clearing it
+puts it back. That one already worked; now it cannot quietly stop.
+
+**1,552 assertions · 95 smoke · 17 live.**

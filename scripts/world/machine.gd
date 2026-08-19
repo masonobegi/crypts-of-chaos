@@ -30,6 +30,13 @@ var _readout: Label3D = null
 var _lamp: MeshInstance3D = null
 var _panel_open := false
 var _prescribed_for := ""
+## Seconds since the dial last moved, and the last value we told the room about.
+## See interact(): a dial passing THROUGH a setting is not a dial SET to it.
+## Starts settled, so a machine nobody has touched never announces anything —
+## and a machine whose prescribed value changes under it (a new patient in the
+## bed) does not report the player for something the player did not do.
+var _dial_settle := 1.0
+var _announced_dial := -1
 
 func build(disp: String) -> void:
 	fixture_name = disp
@@ -83,9 +90,10 @@ func prompt(player) -> Array:
 		return ["Adjust calibration screw", "[E] nudge   nobody checks these"]
 	var p = _nearby_patient(player)
 	if p == null:
-		return ["%s — dial %d" % [fixture_name, dial], "[E] turn dial   [hold E] run cycle (no patient present)"]
+		return ["%s — dial %d" % [fixture_name, dial],
+			"[E] up   [Shift+E] down   (no patient present)"]
 	return ["%s on %s" % [DB.treatment_name(treatment_id), p.display_name],
-		"dial %d / prescribed %d   [E] turn dial   [hold E] run" % [dial, prescribed]]
+		"dial %d   ·   prescribed %d      [E] up   [Shift+E] down" % [dial, prescribed]]
 
 func use_seconds(_player, _held) -> float:
 	return 0.0
@@ -94,16 +102,50 @@ func interact(player, _held) -> void:
 	if _panel_open:
 		_nudge_calibration()
 		return
-	# Tap cycles the dial; the run action is on a separate fixture (the big
+	# Tap turns the dial; the run action is on a separate fixture (the big
 	# button), so you can never fat-finger a treatment you didn't mean to give.
-	dial = DIAL_MIN if dial >= DIAL_MAX else dial + 1
+	#
+	# It goes BOTH WAYS. It used to only climb and wrap at 11, which meant the
+	# only route from 9 down to 4 ran 10, 11, 0, 1, 2, 3, 4 — seven stops, five
+	# of them four or more off prescription, each one broadcasting to everybody
+	# in the room that you had just cranked the machine to an extreme. Turning
+	# a dial DOWN was the most incriminating thing in the building, and no part
+	# of the interface said so.
+	if Input.is_action_pressed("sprint"):
+		dial = DIAL_MAX if dial <= DIAL_MIN else dial - 1
+	else:
+		dial = DIAL_MIN if dial >= DIAL_MAX else dial + 1
+	_dial_settle = 0.0
 	AudioMgr.play_at_var("tick", global_position, -14.0)
 	_refresh()
-	if absi(dial - prescribed) >= 4:
-		# Cranking it to an extreme is a visible, physical act. Being seen doing
-		# it is the single most direct way to get caught.
-		emit_event("machine_extreme_dial", 0.62, ["machine", "treatment"], "equipment_variance",
-			"set the %s to %d" % [fixture_name, dial])
+	# And the prompt has to follow the dial. The interactor only pushes a prompt
+	# when the thing you are looking at CHANGES, so the readout for the single
+	# most important control in the game sat frozen on whatever it said when you
+	# walked up — you were setting a number while being shown a different one.
+	var pr := prompt(player)
+	EventBus.interact_prompt.emit(String(pr[0]), String(pr[1]))
+
+## A setting is what the dial is left on, not everything it passed over.
+##
+## The event used to fire on every single click. Nobody in a real room reacts to
+## a dial sweeping past a number; they react to where it stops. Announcing every
+## intermediate value meant a player who overshot by one and corrected had
+## published two extreme readings instead of none.
+func _process(delta: float) -> void:
+	if _dial_settle >= 0.7:
+		return
+	_dial_settle += delta
+	if _dial_settle < 0.7:
+		return
+	if dial == _announced_dial:
+		return
+	_announced_dial = dial
+	if absi(dial - prescribed) < 4:
+		return
+	# Leaving it on an extreme is a visible, physical act. Being seen doing it is
+	# the single most direct way to get caught.
+	emit_event("machine_extreme_dial", 0.62, ["machine", "treatment"], "equipment_variance",
+		"set the %s to %d" % [fixture_name, dial])
 
 func set_prescribed_for(p) -> void:
 	if p == null:

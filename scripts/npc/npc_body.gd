@@ -236,6 +236,7 @@ func _physics_process(delta: float) -> void:
 	_push_obstacles()
 	_check_stuck(delta)
 	_animate(delta)
+	_footsteps(delta)
 	_tick_speech(delta)
 
 func _follow_path(delta: float) -> void:
@@ -268,6 +269,41 @@ func _face(delta: float) -> void:
 		return
 	var want := atan2(-face_dir.x, -face_dir.z)
 	rotation.y = lerp_angle(rotation.y, want, 1.0 - exp(-TURN_SPEED * delta))
+
+## Footsteps.
+##
+## The player made them; nobody else in the building did. In a game whose entire
+## tension is "is somebody about to walk in", every member of staff on the floor
+## moved in complete silence — the only way to know a nurse was behind you was
+## to already be looking at her. This is the cheapest tension in the whole
+## project and it was missing.
+##
+## Positional, so distance and direction do the work: a step you can barely hear
+## is somebody at the far end of the corridor, and a step you can hear clearly is
+## somebody in the doorway. Slightly quieter and slower than the player's own,
+## because the player's are also feedback for their own movement and these are
+## information about somebody else.
+const STEP_STRIDE := 2.3
+
+var _step_accum := 0.0
+
+func _footsteps(delta: float) -> void:
+	var planar := Vector2(velocity.x, velocity.z).length()
+	if not is_on_floor() or planar < 0.35:
+		_step_accum = 0.0
+		return
+	_step_accum += delta * planar
+	if _step_accum < STEP_STRIDE:
+		return
+	_step_accum = 0.0
+	# Only if there is anybody to hear it. Eight members of staff walking a
+	# sixty-two-metre floor would otherwise churn the whole twenty-four-voice
+	# 3D pool with steps nobody is in earshot of, and steal the voices from the
+	# things that matter — a door, a gasp, a machine.
+	var listener = get_tree().get_first_node_in_group("player")
+	if listener == null or global_position.distance_squared_to(listener.global_position) > 400.0:
+		return
+	AudioMgr.play_at_var("step", global_position, -24.0, 0.22)
 
 func _animate(delta: float) -> void:
 	var planar := Vector2(velocity.x, velocity.z).length()

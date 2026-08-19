@@ -33,6 +33,13 @@ var _investigator_seen := false
 ## investigator that finishes its round leaves and frees itself, and "it walked
 ## its round and went home" is a pass, not a missing NPC.
 var _inv_start: Dictionary = {}
+## Blocking a doorway: -1 means the probe never ran.
+var _door_block_worked := -1
+var _door_unblock_worked := -1
+var _blocker = null
+## Did a noise at the far end of the floor actually pull anybody off station?
+var _distraction_from: Dictionary = {}
+var _distraction_worked := -1
 
 func start() -> void:
 	GameState.start_new_career(555111)
@@ -54,6 +61,16 @@ func tick() -> bool:
 			GameState._advance_minute()
 	if frames == 60:
 		_seed_conditions()
+	if frames == FRAMES - 1400:
+		_make_a_noise()
+	if frames == FRAMES - 1000:
+		_check_distraction()
+	if frames == FRAMES - 900:
+		_block_a_doorway()
+	if frames == FRAMES - 700:
+		_check_doorway_blocked()
+	if frames == FRAMES - 500:
+		_check_doorway_cleared()
 	if frames == FRAMES - 300:
 		_test_perception()
 	if frames % 60 == 0:
@@ -155,6 +172,74 @@ func _sample() -> void:
 		elif n.global_position.distance_to(_inv_start[key]) > 2.0:
 			_investigator_moved = true
 
+## The other half of buying yourself a window: make a noise somewhere else.
+##
+## Throwable props exist entirely so that a bang in the supply room takes the
+## nurse out of the ward you want to be alone in. Every piece of that chain was
+## implemented and none of it was ever run end to end — the event, the hearing
+## radius, the investigate state and the walk are four separate systems, and
+## three of them working is worth nothing.
+func _make_a_noise() -> void:
+	var h = game.hospital
+	var where: Vector3 = h.point_in("supply")
+	# Everybody who is on duty and far enough away for "did they come" to be a
+	# real question rather than a rounding error. Somebody already watching the
+	# player is allowed to ignore a clatter — that is the design — so the claim
+	# is that SOMEBODY comes, not that a particular person does.
+	for n in tree.get_nodes_in_group("staff"):
+		if not (n is StaffNPC) or not n.on_duty:
+			continue
+		var d: float = n.global_position.distance_to(where)
+		if d > 10.0:
+			_distraction_from[n.get_instance_id()] = d
+	WorldEvent.new("loud_clatter", "").at(where, "supply") \
+		.heard(0.0, 60.0).tag("noise").tag("chaos") \
+		.says("something fell over in the supply room").emit()
+
+func _check_distraction() -> void:
+	var where: Vector3 = game.hospital.point_in("supply")
+	var came := 0
+	var best := 0.0
+	for n in tree.get_nodes_in_group("staff"):
+		var key := n.get_instance_id()
+		if not _distraction_from.has(key):
+			continue
+		var before: float = float(_distraction_from[key])
+		var now: float = n.global_position.distance_to(where)
+		if before - now > 2.0:
+			came += 1
+			best = maxf(best, before - now)
+	_distraction_worked = 1 if came > 0 else 0
+	notes.append("noise: %d of %d staff in earshot came, closing up to %.1fm" % [
+		came, _distraction_from.size(), best])
+
+## Shoving something heavy into a ward doorway is supposed to buy you a private
+## room: staff genuinely cannot path through it. That is the entire reason the
+## tactic exists, and nothing had ever checked that it does anything — a silent
+## failure here would have turned the whole "make yourself a window" layer of
+## the game into set dressing.
+func _block_a_doorway() -> void:
+	var h = game.hospital
+	var door_x: float = 0.0
+	for entry in Hospital.LAYOUT:
+		if String(entry["key"]) == "ward_101" and entry.has("door"):
+			door_x = float(entry["door"])
+	_blocker = Items.spawn("wheelchair")
+	h.add_child(_blocker)
+	_blocker.global_position = Vector3(door_x, 0.55, 4.0)
+	_blocker.linear_velocity = Vector3.ZERO
+	_blocker.freeze = true
+
+func _check_doorway_blocked() -> void:
+	var h = game.hospital
+	_door_block_worked = 1 if h.nav.find_path(
+		h.point_in("corridor"), h.point_in("ward_101")).is_empty() else 0
+
+func _check_doorway_cleared() -> void:
+	if _blocker != null and is_instance_valid(_blocker):
+		_blocker.queue_free()
+		_blocker = null
+
 func _finish() -> void:
 	var moved := 0
 	var total := 0
@@ -190,6 +275,12 @@ func _finish() -> void:
 	var path = game.hospital.nav.find_path(
 		game.hospital.point_in("lobby"), game.hospital.point_in("ward_105"))
 	_ok(path.size() > 0, "the floor is still navigable after a live shift")
+	_ok(_distraction_worked != 0,
+		"a noise at the far end of the floor pulls somebody off station")
+	_ok(_door_block_worked == 1,
+		"a heavy prop left in a ward doorway genuinely cuts the room off")
+	_ok(path.size() > 0 and _door_block_worked == 1,
+		"and clearing it puts the room back on the map")
 	# Patients must have progressed.
 	var progressed := false
 	for p in game.patient_system.active():

@@ -109,9 +109,37 @@ func all_minds() -> Array[Mind]:
 	return out
 
 # ------------------------------------------------------------------ witnessing
+## Hearing only, no evidence. Anybody in earshot is distracted by it and gets a
+## chance to go and look; nobody writes anything down, because nothing about a
+## clatter says who caused it.
+func _broadcast_noise(e: WorldEvent) -> void:
+	if e.hear_radius <= 0.0:
+		return
+	for id in _bodies.keys():
+		var body = _body(id)
+		if body == null or body.perception == null:
+			continue
+		if not body.perception.can_hear(e.pos, e.hear_radius):
+			continue
+		body.perception.distract(0.55)
+		if body.has_method("on_heard_noise"):
+			body.call("on_heard_noise", e)
+
 func _on_world_event(evt) -> void:
 	var e: WorldEvent = evt
+	# A noise nobody can be blamed for still MOVES people — and moving people is
+	# the entire reason props are throwable.
+	#
+	# This early return dropped every event that was not the player's own doing
+	# before it reached a single perception, which quietly deleted the whole
+	# distraction layer of the game. Prop._emit_noise emits with no actor, on
+	# purpose, with a comment saying "what it does is move NPCs, which is far
+	# more useful" — and it moved nobody. Nor did the emergency admission that
+	# is supposed to drag every member of staff to the far end of the building,
+	# nor the random events that clatter. Four systems, three of them working,
+	# and the chain never run end to end by any test until now.
 	if e.actor != "player":
+		_broadcast_noise(e)
 		return
 
 	# Private rooms genuinely reduce how much a witness can make out through a

@@ -92,7 +92,8 @@ func _maybe_bark() -> void:
 		# satisfaction failure is its own way to lose.
 		data.satisfaction = clampf(data.satisfaction - 0.03, 0.0, 1.0)
 		return
-	if data.is_overdue() and RNG.chance("patient_overdue_bark", 0.7):
+	if data.is_overdue() and data.knows_expected_date \
+			and RNG.chance("patient_overdue_bark", 0.7):
 		say(Dialogue.patient_overdue(data), 4.0)
 		return
 	say(Dialogue.patient_idle(data), 3.0)

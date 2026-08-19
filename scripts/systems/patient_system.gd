@@ -60,6 +60,16 @@ func generate(force_condition := "") -> Patient:
 	p.chart.recorded_condition = p.condition_id
 	p.chart.promised_discharge_day = p.admitted_on_day + int(ceil(p.expected_stay_days))
 
+	# A confused patient loses track of the date; an observant one absolutely
+	# does not. This is a large part of what makes a given patient worth holding.
+	p.knows_expected_date = true
+	if p.archetype == "confused":
+		p.knows_expected_date = RNG.chance("knows_date", 0.2)
+	elif p.archetype == "trusting":
+		p.knows_expected_date = RNG.chance("knows_date", 0.7)
+	elif p.archetype in ["observant", "paranoid", "litigious"]:
+		p.knows_expected_date = true
+
 	p.mind = DB.make_mind(p.id, p.display_name, "patient", p.archetype)
 	# Psychiatric admissions are, by the nature of why they are here, paying
 	# very close attention to how they are being treated.

@@ -28,7 +28,13 @@ func _process(delta: float) -> void:
 	attention = clampf(1.0 - _distraction, 0.15, 1.0)
 
 ## Called when something loud happens elsewhere — they look away from you.
+##
+## Somebody who is deliberately WATCHING you does not look away as readily.
+## That is the cost of letting suspicion get that far: the thrown-bedpan
+## distraction, which works on everyone else, mostly stops working on them.
 func distract(strength: float) -> void:
+	if body != null and body.mind != null and body.mind.watching:
+		strength *= 0.35
 	_distraction = clampf(_distraction + strength, 0.0, 0.9)
 
 func eye_position() -> Vector3:
@@ -76,6 +82,8 @@ func evaluate(evt: WorldEvent) -> Dictionary:
 		return {}
 	var mind := body.mind
 	var observance: float = mind.observance * attention
+	if mind.watching:
+		observance = clampf(observance * 1.5, 0.0, 1.0)
 
 	# --- sight
 	if evt.visual_weight > 0.0 and can_see(evt.pos):

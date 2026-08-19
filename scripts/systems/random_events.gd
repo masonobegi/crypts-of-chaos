@@ -180,6 +180,12 @@ func apply(id: String) -> void:
 				for r in hospital.wards():
 					if RNG.chance("flicker", 0.5):
 						r.set_lights(false, false)
+				# Every door on the floor swings. Purely atmospheric, and the
+				# reason the hospital keeps a list of them.
+				for d in hospital.doors:
+					if is_instance_valid(d) and d.leaf:
+						d.leaf.apply_torque_impulse(Vector3(0,
+							RNG.randf_range_s("flicker_swing", -1.4, 1.4), 0))
 			# The crucial part: a genuine facilities fault is a free alibi for
 			# anything cold or dark that happens today.
 			GameState.add_cover("facilities", GameState.MINUTES_PER_DAY)

@@ -172,3 +172,60 @@ func test_gossip_prefers_people_who_get_on() -> void:
 
 	var back := Mind.from_dict(a.to_dict())
 	t.near(float(back.affinity.get("b", 0.0)), 1.0, 0.001, "and it survives a save")
+
+func test_repeated_explanations_leave_growing_residue() -> void:
+	# explained_attempts was recorded, serialised, and never affected anything.
+	# A story you have had to defend three times is one nobody quite believes.
+	var once := Evidence.new()
+	once.base_weight = 0.6
+	once.certainty = 1.0
+	once.neutralized = true
+	once.explained_attempts = 1
+
+	var thrice := Evidence.new()
+	thrice.base_weight = 0.6
+	thrice.certainty = 1.0
+	thrice.neutralized = true
+	thrice.explained_attempts = 3
+
+	t.gt(thrice.current_weight(0), once.current_weight(0),
+		"explaining the same thing repeatedly leaves more behind")
+	t.lt(thrice.current_weight(0), 0.6 * 0.6, "but still far less than never explaining it")
+
+func test_a_watching_npc_is_harder_to_distract() -> void:
+	# Letting suspicion reach the watching tier costs you the thrown-bedpan
+	# distraction, which is the whole point of the tell.
+	var calm := NPCBody.new()
+	var alert := NPCBody.new()
+	t.root.add_child(calm)
+	t.root.add_child(alert)
+	calm.mind = DB.make_mind("c", "C", "nurse", "gossip")
+	alert.mind = DB.make_mind("a", "A", "nurse", "gossip")
+	alert.mind.watching = true
+
+	calm.perception.distract(0.8)
+	alert.perception.distract(0.8)
+	t.lt(alert.perception._distraction, calm.perception._distraction,
+		"somebody watching you does not look away as readily")
+	calm.queue_free()
+	alert.queue_free()
+
+func test_a_patient_who_is_not_counting_does_not_mind_waiting() -> void:
+	var counting := Patient.new("c")
+	counting.expected_stay_days = 2.0
+	counting.days_admitted = 5.0
+	counting.satisfaction = 0.8
+	counting.knows_expected_date = true
+	counting.tick(1.0)
+
+	var oblivious := Patient.new("o")
+	oblivious.expected_stay_days = 2.0
+	oblivious.days_admitted = 5.0
+	oblivious.satisfaction = 0.8
+	oblivious.knows_expected_date = false
+	oblivious.tick(1.0)
+
+	t.lt(counting.satisfaction, oblivious.satisfaction,
+		"somebody counting the days minds the overrun")
+	t.near(oblivious.satisfaction, 0.8, 0.0001,
+		"somebody who has lost the thread does not")

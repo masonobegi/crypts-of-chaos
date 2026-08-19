@@ -46,7 +46,9 @@ var discomfort: float = 0.0
 ## Their own beliefs about you.
 var mind: Mind = null
 
-## Set true once they have been told (or have worked out) a discharge date.
+## Whether this patient is actually tracking their own discharge date. Somebody
+## who has lost the thread does not notice an overrun, which is exactly why a
+## confused patient is worth more than a lucid one.
 var knows_expected_date: bool = true
 ## Ticks up while they sit past their promised date. Drives escalating dialogue.
 var overdue_days: float = 0.0
@@ -115,6 +117,10 @@ func tick(days: float) -> void:
 
 	if is_overdue():
 		overdue_days += days
+		if not knows_expected_date:
+			# They are not counting, so the overrun costs no goodwill. Their
+			# family may still be counting, which is the other half of it.
+			return
 		# Sitting in a bed past your date is annoying, and annoyance is a
 		# perfectly ordinary route to a complaint.
 		satisfaction = clampf(satisfaction - 0.06 * days * DB.trait_of(archetype, "impatience", 1.0), 0.0, 1.0)
@@ -220,7 +226,7 @@ func to_dict() -> Dictionary:
 		"ltt": last_treatment_time, "room": room, "disc": discharged,
 		"dr": discharge_reason, "sat": satisfaction, "env": env_modifier,
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
-		"ovd": overdue_days,
+		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -253,6 +259,8 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.env_modifier = float(d.get("env", 1.0))
 	p.discomfort = float(d.get("dis", 0.0))
 	p.overdue_days = float(d.get("ovd", 0.0))
+	p.knows_expected_date = bool(d.get("ked", true))
+	p.imaged_at = int(d.get("img", -99999))
 	var md: Dictionary = d.get("mind", {})
 	if not md.is_empty():
 		p.mind = Mind.from_dict(md)

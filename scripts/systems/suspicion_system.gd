@@ -360,16 +360,6 @@ func watchers() -> Array[NPCBody]:
 func is_observed() -> bool:
 	return not watchers().is_empty()
 
-## Everyone who could see a given world position right now — the check the
-## player is implicitly making every time they reach for a dial.
-func observers_of(pos: Vector3) -> Array[NPCBody]:
-	var out: Array[NPCBody] = []
-	for id in _bodies:
-		var b: NPCBody = _bodies[id]
-		if b and is_instance_valid(b) and b.perception and b.perception.can_see(pos):
-			out.append(b)
-	return out
-
 func refresh_tells(player_pos: Vector3) -> void:
 	for id in _bodies:
 		var b: NPCBody = _bodies[id]

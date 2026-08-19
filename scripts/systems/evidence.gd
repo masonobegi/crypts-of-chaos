@@ -59,7 +59,11 @@ func source_multiplier() -> float:
 ## Live weight right now, for a given observer personality.
 func current_weight(now_minutes: int, cover_active: bool = false) -> float:
 	if neutralized:
-		return base_weight * certainty * 0.12   # residue: never fully gone
+		# Residue: never fully gone, and it grows each time you have had to
+		# explain the SAME thing again. A story that needed defending three
+		# times is a story nobody quite believes any more.
+		var residue := 0.12 + 0.07 * float(maxi(0, explained_attempts - 1))
+		return base_weight * certainty * clampf(residue, 0.12, 0.55)
 	var days := float(now_minutes - time) / float(GameState.MINUTES_PER_DAY)
 	var fade := maxf(0.0, 1.0 - decay_per_day() * maxf(0.0, days))
 	var w := base_weight * certainty * source_multiplier() * fade

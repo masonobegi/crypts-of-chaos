@@ -215,7 +215,12 @@ func test_department_conditions_are_gated_until_unlocked() -> void:
 			continue
 		t.ok(not GameState.unlocked_departments.has(dept),
 			"%s condition '%s' is locked at career start" % [dept, cid])
-	Upgrades.purchase("dept_emergency")
+	# Departments are late-game purchases; fund the hospital rather than
+	# assuming they are affordable on day one.
+	t.ok(not Upgrades.can_afford("dept_emergency"),
+		"a department is well out of reach at career start")
+	GameState.add_hospital(Upgrades.cost("dept_emergency"), "test")
+	t.ok(Upgrades.purchase("dept_emergency"), "and affordable once the ward is profitable")
 	t.ok(GameState.unlocked_departments.has("emergency"),
 		"buying the department unlocks its condition pool")
 

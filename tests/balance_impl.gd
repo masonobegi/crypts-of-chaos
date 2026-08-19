@@ -41,6 +41,7 @@ func _run(strategy: String) -> Dictionary:
 		_act(game, strategy)
 		game.shift.end_shift()
 		var report: Dictionary = game.shift.clock_out()
+		_spend(game, strategy)
 		day_log.append({
 			"day": GameState.day,
 			"personal": GameState.personal_money,
@@ -82,6 +83,8 @@ func _run(strategy: String) -> Dictionary:
 		"comp_rate": game.shift.rolling_complication_rate(),
 		"investigations": game.investigations.closed_investigations.size(),
 		"adverse": _count_adverse(game),
+		"upgrades": GameState.owned_upgrades.duplicate(),
+		"depts": GameState.unlocked_departments.duplicate(),
 		"ending": Endings.evaluate(GameState.stats),
 		"log": day_log,
 	}
@@ -90,6 +93,28 @@ func _run(strategy: String) -> Dictionary:
 	tree.root.remove_child(game)
 	game.free()
 	return out
+
+## Buying priority for the strategies that invest. Deliberately front-loads the
+## things that reduce witnesses and raise throughput, which is what a player
+## working this line would actually do.
+const BUY_ORDER := [
+	"union_rep_lunch", "coffee_machine", "better_beds", "shred_bin",
+	"private_rooms", "maintenance_contract", "admin_assistant",
+	"dept_psych", "legal_retainer", "dept_emergency", "diagnostics",
+	"dept_radiology", "second_opinion_policy", "vip_suite", "security_cameras",
+	"records_consultant", "board_appointment",
+]
+
+func _spend(game, strategy: String) -> void:
+	if strategy == "honest":
+		return      # the saint reinvests nothing; that is part of being broke
+	for id in BUY_ORDER:
+		if GameState.has_upgrade(String(id)):
+			continue
+		if not Upgrades.can_afford(String(id)):
+			continue
+		Upgrades.purchase(String(id))
+		return      # one purchase per shift, like the shop allows
 
 func _count_adverse(game) -> int:
 	var n := 0
@@ -196,6 +221,8 @@ func report() -> void:
 		print("  complication/dc : %.2f   (ward baseline 0.34)" % float(r["comp_rate"]))
 		print("  investigations  : %d closed, %d adverse" % [
 			int(r["investigations"]), int(r["adverse"])])
+		print("  bought          : %s" % ", ".join(PackedStringArray(r["upgrades"])))
+		print("  departments     : %s" % ", ".join(PackedStringArray(r["depts"])))
 		print("  patients cured  : %d" % int(r["cured"]))
 		print("  complications   : %d caused, %d filed cleanly" % [
 			int(r["complications"]), int(r["clean"])])
@@ -253,6 +280,10 @@ func _assert_design_intent() -> void:
 		"careful cheating still accumulates insurer attention — safe, not invisible")
 	_check(int(careful.get("adverse", 99)) == 0 and int(careless.get("adverse", 0)) > 0,
 		"careful play survives its investigations and careless play does not")
+	_check(Array(careful.get("upgrades", [])).size() >= 4,
+		"a profitable career can actually afford to reinvest")
+	_check(Array(careful.get("depts", [])).size() > 1,
+		"and reaches at least one new department")
 	print("")
 
 func _check(cond: bool, msg: String) -> void:

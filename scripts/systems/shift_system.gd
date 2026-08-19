@@ -228,6 +228,9 @@ func end_shift() -> void:
 ## record gaps. She files them as "idiopathic", which is plausible for most
 ## things — but she also notices how often she has to do it, and mentions it.
 func _run_ward_clerk() -> void:
+	if GameState.has_upgrade("records_consultant"):
+		_run_records_consultant()
+		return
 	if not GameState.has_upgrade("admin_assistant"):
 		return
 	var filed := 0
@@ -246,6 +249,27 @@ func _run_ward_clerk() -> void:
 	if filed >= 3:
 		suspicion.report_to_institution("admin", "clerk_pattern", 0.18 * float(filed),
 			"ward clerk filed %d complications with no stated cause this shift" % filed,
+			"", ["records", "statistics"])
+
+## The consultant does the job properly: each complication gets a cause the
+## chart actually accepts, not a blanket "idiopathic". She is worth the money —
+## and she keeps her own notes, so a heavy shift still shows up somewhere.
+func _run_records_consultant() -> void:
+	var filed := 0
+	for p in patient_system.active():
+		for c in p.active_complications():
+			if c.documented_cause != "" or c.plausible_causes.is_empty():
+				continue
+			c.documented_cause = String(RNG.pick("consultant_cause",
+				Array(c.plausible_causes)))
+			c.documented_at = GameState.career_minutes
+			filed += 1
+	if filed == 0:
+		return
+	EventBus.toast.emit("The records consultant closed %d gap(s)." % filed, "good")
+	if filed >= 4:
+		suspicion.report_to_institution("insurer", "consultant_volume", 0.12 * float(filed),
+			"records consultant closed %d complication gaps in a single shift" % filed,
 			"", ["records", "statistics"])
 
 func _undocumented_complications() -> Array[Dictionary]:

@@ -217,7 +217,7 @@ beyond it.
 
 ```
 883 assertions   (test functions across 5 suites)
- 52 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+ 54 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
  25 screenshots  (every room and every UI screen, rendered offscreen)
@@ -352,7 +352,10 @@ goodwill four times as fast, and their room frees up for somebody better
 insured. It takes two trips, because a ward with no bed in it does not count as
 a vacancy either — which is about the right amount of effort for what it buys.
 Their chart stays where it was, and a chart in the wrong room is already its own
-finding.
+finding. And the act is witnessed like any other: `patient_moved_to_corridor`
+carries the player as its actor at visual weight 0.45, and whether it is
+defensible is decided by the floor rather than by the player — a genuinely full
+ward grants the `bed_shortage` cover, a half-empty one grants nothing.
 
 Two smaller fixes fell out of it: `_bed_in()` returned the first bed matching a
 room, which was fine when every room had exactly one, and Intake has three; and
@@ -364,6 +367,5 @@ registration and its own tree hooks.
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- Nobody reacts to a bed being somewhere it should not be. Wheeling a patient
-  into Intake is now mechanically real but socially free; a nurse walking past a
-  ward with no bed in it ought to have an opinion.
+- A nurse walking past a ward with no bed in it still has no opinion about it.
+  The act of ramping is witnessed; the resulting empty room is not.

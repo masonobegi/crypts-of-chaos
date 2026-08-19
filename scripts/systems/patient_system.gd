@@ -502,8 +502,43 @@ func _reconcile_room(p: Patient, body) -> void:
 	# the corridor for ten seconds while you get a door open is not a transfer.
 	if not (WARD_KEYS.has(where) or where == "intake"):
 		return
+	var was_ward: bool = WARD_KEYS.has(p.room)
 	p.room = where
 	EventBus.patient_state_changed.emit(p)
+	if was_ward and where == "intake":
+		_announce_ramp(p, body, bed)
+
+## Somebody has just wheeled an admitted patient out of a ward and left them in
+## the middle of Emergency Intake. This is a legitimate thing a hospital does
+## when it has run out of beds, and an indefensible thing to do when it has not
+## — so the difference is exactly what decides whether there is a cover story
+## for it.
+func _announce_ramp(p: Patient, body, bed) -> void:
+	var somewhere_else := false
+	for key in WARD_KEYS:
+		if key == p.room:
+			continue
+		var taken := false
+		for id in patients:
+			var q: Patient = patients[id]
+			if not q.discharged and q.room == key:
+				taken = true
+		if not taken and _bed_in(key) != null:
+			somewhere_else = true
+	if not somewhere_else:
+		# The ward genuinely was full. Nobody can argue with that today.
+		GameState.add_cover("bed_shortage", 420)
+
+	if body != null and is_instance_valid(body):
+		body.say(String(RNG.pick("ramp_bark", [
+			"Am I staying out here?", "There's a lot of people out here.",
+			"Is this my room now?", "I can hear everything from here.",
+		])), 3.6)
+	WorldEvent.new("patient_moved_to_corridor", "player") \
+		.at(bed.global_position, "intake").about(p.id) \
+		.seen(0.45).heard(0.05, 16.0).tag("patient").tag("ramping") \
+		.cover("bed_shortage") \
+		.says("%s has been moved out to Intake" % p.display_name).emit()
 
 # ================================================================ queries
 func get_patient(id: String) -> Patient:

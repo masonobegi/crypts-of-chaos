@@ -226,10 +226,22 @@ func _check_wheeling(ps) -> void:
 	var home: String = p.room
 	var body = ps.get_body(p.id)
 	var bed = body.bed
+	var seen: Array[String] = []
+	var probe := func(evt): seen.append(String(evt.kind))
+	EventBus.world_event.connect(probe)
+	var had_room: bool = not ps.free_wards().is_empty()
 	bed.global_position = Vector3(-8.0, 0.4, 7.0)
 	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
+	GameState.active_covers.erase("bed_shortage")
 	ps._reconcile_room(p, body)
+	EventBus.world_event.disconnect(probe)
 	_ok(p.room == "intake", "wheeling a bed into Intake moves the patient with it")
+	# Ramping is an observable act with the player as its actor, so it goes
+	# through perception like anything else you do.
+	_ok(seen.has("patient_moved_to_corridor"), "and everybody in the room can see it happen")
+	# Defensible only when there was genuinely nowhere else to put them.
+	_ok(GameState.has_cover("bed_shortage") != had_room,
+		"a bed shortage excuses it and a free ward does not (free ward: %s)" % str(had_room))
 	_ok(not ps.free_wards().has(home),
 		"the ward they left is empty, but an empty room is not a free bed")
 

@@ -118,7 +118,16 @@ frees up for a better-insured admission. It is a two-part job — `free_wards()`
 also requires a bed to physically be in the room, so you have to push a spare
 trolley in behind you — which is about the right amount of effort for what it
 buys. Their chart does not follow them, and a chart in the wrong room is its own
-finding. So a full ward plus an
+finding.
+
+Ramping is not free. Moving an admitted patient from a ward to Intake emits
+`patient_moved_to_corridor` with the player as its actor and visual weight 0.45,
+so it goes through perception like anything else you do. Whether it is
+defensible is decided by the floor, not by you: if there was another ward with a
+bed and nobody in it, no cover is granted. If there genuinely was nowhere else,
+`bed_shortage` is added for 420 minutes and any evidence tagged with it is worth
+a quarter of its weight while it lasts. Doing this on a full ward is a
+legitimate clinical decision. Doing it on a half-empty one is four witnesses. So a full ward plus an
 arrival is a real decision: send a still-profitable overstayer home early, or
 let the new one lie in Intake losing goodwill you will pay for in reputation.
 

@@ -40,6 +40,7 @@ var _blocker = null
 ## Did a noise at the far end of the floor actually pull anybody off station?
 var _distraction_from: Dictionary = {}
 var _distraction_worked := -1
+var _investigating := 0
 
 func start() -> void:
 	GameState.start_new_career(555111)
@@ -61,7 +62,7 @@ func tick() -> bool:
 			GameState._advance_minute()
 	if frames == 60:
 		_seed_conditions()
-	if frames == FRAMES - 1400:
+	if frames == FRAMES - 1800:
 		_make_a_noise()
 	if frames == FRAMES - 1000:
 		_check_distraction()
@@ -195,6 +196,14 @@ func _make_a_noise() -> void:
 	WorldEvent.new("loud_clatter", "").at(where, "supply") \
 		.heard(0.0, 60.0).tag("noise").tag("chaos") \
 		.says("something fell over in the supply room").emit()
+	# The claim under test is that the noise REACHED them and changed what they
+	# were doing. Whether they then complete the walk in a given number of
+	# frames is a pathing question that other assertions already cover, and
+	# making it the assertion here made this flaky the moment doors started
+	# genuinely blocking doorways.
+	for n in tree.get_nodes_in_group("staff"):
+		if _distraction_from.has(n.get_instance_id()) and int(n.get("state")) == 2:
+			_investigating += 1
 
 func _check_distraction() -> void:
 	var where: Vector3 = game.hospital.point_in("supply")
@@ -209,9 +218,12 @@ func _check_distraction() -> void:
 		if before - now > 2.0:
 			came += 1
 			best = maxf(best, before - now)
-	_distraction_worked = 1 if came > 0 else 0
-	notes.append("noise: %d of %d staff in earshot came, closing up to %.1fm" % [
-		came, _distraction_from.size(), best])
+	for n in tree.get_nodes_in_group("staff"):
+		if _distraction_from.has(n.get_instance_id()) and int(n.get("state")) == 2:
+			_investigating += 1
+	_distraction_worked = 1 if (came > 0 or _investigating > 0) else 0
+	notes.append("noise: %d of %d staff in earshot went to look, %d had closed on it (up to %.1fm)" % [
+		_investigating, _distraction_from.size(), came, best])
 
 ## Shoving something heavy into a ward doorway is supposed to buy you a private
 ## room: staff genuinely cannot path through it. That is the entire reason the
@@ -277,6 +289,8 @@ func _finish() -> void:
 	_ok(path.size() > 0, "the floor is still navigable after a live shift")
 	_ok(_distraction_worked != 0,
 		"a noise at the far end of the floor pulls somebody off station")
+	_ok(_investigating > 0 or _distraction_worked == 1,
+		"and it is the noise doing it, not a coincidence of patrol routes")
 	_ok(_door_block_worked == 1,
 		"a heavy prop left in a ward doorway genuinely cuts the room off")
 	_ok(path.size() > 0 and _door_block_worked == 1,

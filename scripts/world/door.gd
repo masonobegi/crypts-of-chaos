@@ -34,14 +34,48 @@ var angular_velocity := 0.0
 
 var _was_open := false
 var _mesh_root: Node3D = null
+## Which way it is currently swinging, and whether somebody is leaning on it
+## right now. See open_for(): both exist because a door being pushed open is a
+## continuous act and this class integrates by hand.
+var _open_dir := 0.0
+var _held := 0
+var _latch := 0.0
+
+## How long a swing keeps its direction before the door will listen to where the
+## person leaning on it is standing again.
+##
+## It has to be long enough to cover walking through — the moment you are past
+## the leaf, "which side are you on" flips, and without a latch the door
+## immediately sweeps back into the doorway you are still in. And it has to be
+## short enough that somebody PINNED behind an open leaf can push it off them,
+## which is the same geometry a second later and is a soft-lock if it never
+## resolves. Nine tenths of a second is comfortably both.
+const LATCH_TIME := 0.9
 
 func build(a: Vector3, b: Vector3, _flip: bool) -> void:
 	width = a.distance_to(b)
 	position = a
 	var along := (b - a).normalized()
-	# Face the door so its local -Z runs along the wall; the leaf then swings
-	# about this node's Y, which is what a door does.
-	rotation.y = atan2(-along.x, -along.z) + PI * 0.5
+	# Face the door so its local +Z runs along the wall FROM the hinge, because
+	# the leaf is built extending along local +Z. Get this wrong by ninety
+	# degrees and the leaf stands perpendicular to its own doorway.
+	#
+	# It was wrong by ninety degrees. `atan2(-along.x, -along.z) + PI * 0.5`
+	# evaluates to exactly 0 for every door in this building (all of them run
+	# along +X), so every leaf was a seven-centimetre slab jutting into the room
+	# beside its opening, and every opening stood permanently, completely clear.
+	#
+	# Nothing caught it. The doors swung, made their noise, reported angles,
+	# blocked the slab's own footprint, and passed every test — because what was
+	# tested was "can staff path through a doorway", and the answer was yes,
+	# trivially, since there was nothing in it. What nobody had ever asked was
+	# whether a SHUT door shuts anything.
+	#
+	# It does now, and that is not a small change: closing the door is the
+	# stealth game's most basic move. Privacy, line of sight into a ward, being
+	# seen from the corridor, and every upgrade that reduces witnesses were all
+	# resting on a leaf that was not in the way of anything.
+	rotation.y = atan2(along.x, along.z)
 
 	leaf = AnimatableBody3D.new()
 	leaf.name = "Leaf"
@@ -85,16 +119,31 @@ func build(a: Vector3, b: Vector3, _flip: bool) -> void:
 func _physics_process(delta: float) -> void:
 	if leaf == null:
 		return
+	var held := _held > 0
+	_held = maxi(0, _held - 1)
+	_latch = maxf(0.0, _latch - delta)
 	if absf(angular_velocity) > 0.001 or absf(angle) > 0.001:
 		angle += angular_velocity * delta
 		angular_velocity = lerpf(angular_velocity, 0.0, 1.0 - exp(-DAMPING * delta))
 		if absf(angle) >= MAX_ANGLE:
-			# Bounce off the stop rather than sticking to it.
 			angle = clampf(angle, -MAX_ANGLE, MAX_ANGLE)
-			angular_velocity = -angular_velocity * 0.25
-		# Ease shut once it has lost its momentum, like a real closer.
-		if absf(angular_velocity) < 0.35:
+			# A door somebody is leaning on rests against its stop. One that was
+			# shoved and let go bounces off it. Without the distinction, a door
+			# being held open by a body in the gap slams into the stop, bounces,
+			# is re-driven at full speed on the next frame, and spends the whole
+			# time sweeping back and forth THROUGH the person holding it — who
+			# is then batted around by a kinematic body they cannot push. That
+			# is what "stood in the supply room doorway for forty-five seconds"
+			# actually was: not a door that would not open, a door that would
+			# not stop opening.
+			angular_velocity = 0.0 if held else -angular_velocity * 0.25
+		# Ease shut once it has lost its momentum, like a real closer — unless
+		# somebody is still in it.
+		if absf(angular_velocity) < 0.35 and not held:
 			angle = lerpf(angle, 0.0, 1.0 - exp(-1.1 * delta))
+		if absf(angle) < 0.02 and not held:
+			_open_dir = 0.0
+			_latch = 0.0
 		leaf.rotation.y = angle
 
 	var open := is_open()
@@ -109,16 +158,46 @@ func is_open() -> bool:
 	return absf(angle) > 0.35
 
 ## Swing away from whoever is standing there. Used by NPCs and by the player.
+## The middle of the opening, in world space. This node sits on the HINGE — the
+## leaf extends from it along local +Z — so the hinge is the one point in the
+## doorway from which "which side is this person on" cannot be answered.
+func opening_centre() -> Vector3:
+	return global_position + global_transform.basis.z * (width * 0.5)
+
 func open_for(pos: Vector3, speed := OPEN_SPEED) -> void:
 	if leaf == null:
 		return
 	# Which side of the door plane they are on. The door's local X is the plane
 	# normal, since the leaf extends along local Z.
+	#
+	# Measured from the middle of the OPENING, not from this node. This node is
+	# the hinge, at one edge of the doorway: somebody walking in near that edge
+	# has an offset almost parallel to the closed leaf, the dot product lands on
+	# either side of zero by rounding, and the fallback then swung the door
+	# whichever way the code happened to prefer — frequently straight into the
+	# person pushing it, who is then pinned by a kinematic body they cannot
+	# move. Two scripted playthroughs stood against the supply room door and the
+	# office door for forty-five and sixty seconds each, while the prompt in
+	# front of them said "or just walk into it".
+	_held = 3
 	var normal := global_transform.basis.x
-	var side := signf((pos - global_position).dot(normal))
-	if side == 0.0:
-		side = 1.0
-	angular_velocity = -side * speed
+	var d := (pos - opening_centre()).dot(normal)
+	# Ignore anybody standing IN the plane of the door: their side is a rounding
+	# error, and acting on it makes the leaf chatter.
+	if absf(d) > 0.25 and _latch <= 0.0:
+		var want := -signf(d)
+		if want != _open_dir:
+			_latch = LATCH_TIME
+		_open_dir = want
+	if _open_dir == 0.0:
+		_open_dir = -signf(d) if absf(d) > 0.001 else 1.0
+		_latch = LATCH_TIME
+	# Already as far open as it goes: hold it there rather than driving it into
+	# the stop again.
+	if absf(angle) >= MAX_ANGLE * 0.85 and signf(angle) == _open_dir:
+		angular_velocity = 0.0
+		return
+	angular_velocity = _open_dir * speed
 
 func push(from: Vector3) -> void:
 	open_for(from, PUSH_SPEED)

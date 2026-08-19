@@ -376,6 +376,8 @@ func _bake_nav(blocked: Array[Rect2] = []) -> void:
 		var centre := float(entry["door"])
 		var z := 4.0 if rect.position.y > 0.0 else 0.0
 		nav.add_area(Rect2(centre - w * 0.35, z - 0.9, w * 0.7, 1.8))
+		# ...and mark it as a place a route must be steered THROUGH.
+		nav.add_pinch(Vector3(centre, 0.0, z))
 	for f in blocked:
 		nav.carve(f)
 	nav.bake()

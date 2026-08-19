@@ -108,8 +108,53 @@ func _handle_movement(delta: float) -> void:
 	# How hard you are TRYING to move, captured before move_and_slide gets to
 	# have an opinion about it. See _push_obstacles.
 	_intended_speed = Vector2(target.x, target.z).length()
+	_open_door_ahead()
 	move_and_slide()
 	_push_obstacles()
+
+## Look a metre and a half ahead and open any door in the way, BEFORE walking
+## into it. NPCs have done this since doors were script-driven; the player never
+## did, and waited for body contact instead.
+##
+## Body contact is much too late. A door opening toward you is a kinematic body
+## sweeping through the space you are standing in, and it shoves you sideways —
+## a scripted walk from Room 102 to the office was knocked off its line into the
+## wall recess beside the office door and spent sixty seconds there. Probing
+## ahead means the leaf is already out of the way by the time you reach it,
+## which is both what a person experiences and the only version that does not
+## involve being hit by furniture.
+##
+## Further than the NPCs' 1.15m, because the player walks faster than they do.
+const DOOR_REACH := 1.6
+
+func _open_door_ahead() -> void:
+	if _intended_speed < 0.15 or not is_inside_tree():
+		return
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3(0, 1.0, 0)
+	# Along the way you are TRYING to go, not the way you are facing: strafing
+	# through a doorway is an ordinary thing to do and used to walk you into
+	# the leaf side-on.
+	var dir := Vector3(velocity.x, 0.0, velocity.z)
+	if dir.length_squared() < 0.04:
+		dir = -global_transform.basis.z
+	var q := PhysicsRayQueryParameters3D.create(from, from + dir.normalized() * DOOR_REACH)
+	q.collision_mask = 1
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	if hit.is_empty():
+		return
+	var door := _door_of(hit.get("collider"))
+	if door == null:
+		return
+	# Note the absence of "and not door.is_open()". Stopping as soon as it is
+	# nominally open hands it straight back to its own closer: the leaf reaches
+	# about twenty degrees, nobody is driving it any more, it eases shut, the
+	# probe fires again, and it oscillates in the gap forever. A play run stood
+	# outside the supply room for forty-five seconds watching a door open and
+	# shut on him. open_for() already declines to re-slam a door that is
+	# against its stop, so driving it every frame is free.
+	door.open_for(global_position)
 
 ## Shoving things with your body: walking into an IV stand should topple it, and
 ## walking into a door should open it.

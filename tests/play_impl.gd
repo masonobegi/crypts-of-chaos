@@ -135,7 +135,127 @@ func _run_beat(b: Dictionary) -> bool:
 		"prompt":
 			_say("  prompt: %s" % _current_prompt())
 			return true
+		"face_fixture":
+			var f = _fixture_in(String(b["room"]), String(b.get("type", "machine")))
+			if f == null:
+				_say("  ! no %s in %s" % [String(b.get("type", "machine")), String(b["room"])])
+				return true
+			_face(f.global_position + Vector3(0, float(b.get("aim", 0.0)), 0))
+			return true
+		"taps":
+			# One press-and-release per 8 frames. Real key repeats, through the
+			# real interactor, because the point is to exercise what the player
+			# does — a dial is turned by pressing E over and over.
+			var period := 8
+			var n := int(b.get("n", 1))
+			var i := int((_beat_frames - 1) / period)
+			if i >= n:
+				return true
+			if (_beat_frames - 1) % period == 0:
+				_press(String(b["action"]))
+			elif (_beat_frames - 1) % period == 3:
+				_release(String(b["action"]))
+			return false
+		"dial_to":
+			# Turn the machine to a setting the way a player does: press E over
+			# and over, or hold shift and press E to come back down. Setting
+			# m.dial directly would skip interact() entirely — and interact() is
+			# where the witness roll lives, so a harness that assigns the value
+			# is testing the machine and quietly not testing the crime.
+			var m = _fixture_in(String(b["room"]), "machine")
+			if m == null:
+				_say("  ! no machine in %s" % String(b["room"]))
+				return true
+			var want := int(b["to"])
+			if _beat_frames == 1:
+				_dial_from = int(m.dial)
+				_dial_seen = int(m.dial)
+				_dial_stall = 0
+			if int(m.dial) == want:
+				_release("sprint")
+				_say("  dial in %s: %d -> %d (prescribed %d), %d presses" % [
+					String(b["room"]), _dial_from, int(m.dial), int(m.prescribed),
+					int((_beat_frames - 1) / 8)])
+				return true
+			# Direction is stated by the beat rather than worked out, because
+			# "which way round is shorter" is a decision the PLAYER makes and a
+			# harness that quietly optimises it is not reproducing anybody.
+			if bool(b.get("down", false)):
+				_press("sprint")
+			else:
+				_release("sprint")
+			if int(m.dial) != _dial_seen:
+				_dial_seen = int(m.dial)
+				_dial_stall = 0
+			else:
+				_dial_stall += 1
+				if _dial_stall == 240:
+					_say("    ! dial stuck at %d after %d presses — looking at %s" % [
+						int(m.dial), int((_beat_frames - 1) / 8), _current_prompt()])
+			if (_beat_frames - 1) % 8 == 0:
+				_press("interact")
+			elif (_beat_frames - 1) % 8 == 3:
+				_release("interact")
+			return false
+		"note":
+			_note(String(b.get("text", "")))
+			return true
+		"teleport":
+			game.player.global_position = b["at"]
+			game.player.velocity = Vector3.ZERO
+			return true
+		"push_forward":
+			# No pathfinding, no waypoints: point at a spot and walk. This is
+			# what a person does at a door, and it is the only way to test a
+			# door without the answer being about the navigation grid.
+			if _beat_frames == 1:
+				_walk_from = game.player.global_position
+			_face(Vector3(b["at"].x, game.player.global_position.y, b["at"].z))
+			_press("move_forward")
+			return game.player.global_position.distance_to(b["at"]) < float(b.get("within", 1.2))
 	return true
+
+func _fixture_in(room_key: String, kind: String):
+	for f in tree.get_nodes_in_group("fixture"):
+		if String(f.get("room_key")) != room_key:
+			continue
+		match kind:
+			"machine":
+				if f is TreatmentMachine:
+					return f
+			"run_button":
+				if f.get_script() != null and \
+						f.get_script().resource_path.ends_with("run_button.gd"):
+					return f
+			"console":
+				if f is VitalsConsole:
+					return f
+			_:
+				return f
+	return null
+
+## A labelled snapshot of everything a person would be judging the game by.
+func _note(label: String) -> void:
+	var sus = game.suspicion
+	var worst := 0.0
+	var worst_who := "nobody"
+	for row in sus.ranked_suspicions():
+		if float(row.get("value", 0.0)) > worst:
+			worst = float(row["value"])
+			worst_who = String(row.get("name", "?"))
+	_say("  ** %s" % label)
+	_say("     money   you $%d   hospital $%d   heat %.0f%%" % [
+		GameState.personal_money, GameState.hospital_money, GameState.heat * 100.0])
+	_say("     watched by %d   most suspicious: %s at %.0f%%" % [
+		game.suspicion.watchers().size(), worst_who, worst * 100.0])
+	var ps = game.patient_system
+	for q in ps.active():
+		var comps: Array[String] = []
+		for c in q.active_complications():
+			comps.append("%s%s" % [c.id, "" if c.documented_cause == "" else "*"])
+		_say("     %-20s rec %.2f  day %.1f/%.1f  %s" % [
+			q.display_name, q.recovery, q.days_admitted, q.expected_stay_days,
+			"clean" if comps.is_empty() else ", ".join(comps)])
 
 func _describe(b: Dictionary) -> String:
 	return "%s %s" % [String(b["do"]), str(b.get("at", b.get("name", b.get("action", ""))))]
@@ -153,6 +273,9 @@ var _route: PackedVector3Array = PackedVector3Array()
 var _leg := 0
 var _walk_from := Vector3.ZERO
 var _stuck := 0
+var _dial_from := 0
+var _dial_seen := -1
+var _dial_stall := 0
 
 func _walk(b: Dictionary) -> bool:
 	var p = game.player
@@ -217,6 +340,14 @@ func _walk(b: Dictionary) -> bool:
 		_stuck = 0
 	return false
 
+## Doors are not in a group, so walk the hospital for them.
+func _all_doors() -> Array:
+	var out: Array = []
+	for n in game.hospital.get_children():
+		if n is SwingDoor:
+			out.append(n)
+	return out
+
 ## What the controller is actually pressed up against. "Wedged" on its own is
 ## a symptom; the game only gets fixed once the harness names the object.
 func _blockers(p) -> String:
@@ -233,7 +364,25 @@ func _blockers(p) -> String:
 			label = "%s [%s]" % [label, String(o.get("display"))]
 		if not names.has(label):
 			names.append(label)
-	return "nothing (not touching anything)" if names.is_empty() else ", ".join(names)
+	if names.is_empty():
+		return "nothing (not touching anything)"
+	# When a door is what is in the way, say what the door is actually doing.
+	# "blocked by a leaf" and "blocked by a leaf that is not moving because
+	# nobody asked it to" are different bugs.
+	var extra := ""
+	var nearest: SwingDoor = null
+	var best := 3.0
+	for d in _all_doors():
+		var dist: float = d.opening_centre().distance_to(p.global_position)
+		if dist < best:
+			best = dist
+			nearest = d
+	if nearest != null:
+		extra = "   [door %.1fm away: angle %.0f deg, av %.2f, open=%s; player v=%.2f intended=%.2f can_move=%s]" % [
+			best, nearest.angle_deg(), nearest.angular_velocity, str(nearest.is_open()),
+			Vector2(p.velocity.x, p.velocity.z).length(), float(p.get("_intended_speed")),
+			str(p.can_move)]
+	return ", ".join(names) + extra
 
 ## Look at something, the way a person does: turn AND tilt.
 ##
@@ -364,7 +513,193 @@ func _plan(name: String) -> Array:
 	match name:
 		"walk_test": return _plan_walk()
 		"honest": return _plan_honest()
+		"reckless": return _plan_reckless()
+		"careful_criminal": return _plan_careful_criminal()
+		"opportunist": return _plan_opportunist()
+		"idiot_chaos": return _plan_idiot_chaos()
+		"doors": return _plan_doors()
 	return _plan_first_shift()
+
+## Walk into the nearest room, crank the machine to its stop, and run it. No
+## paperwork, no cover, no looking round first. The question is whether the game
+## reacts LOUDLY enough — whether a player doing the most obvious bad thing
+## available gets told what they did.
+func _plan_reckless() -> Array:
+	var h = game.hospital
+	var beats: Array = [
+		{"do": "close_ui"},
+		{"do": "clock_in"},
+		{"do": "note", "text": "before"},
+	]
+	for key in ["ward_101", "ward_102", "ward_103"]:
+		beats.append({"do": "say", "text": "\n-- %s: crank it and run it --" % key})
+		beats.append({"do": "walk", "at": h.bed_position(key) + Vector3(1.6, 0, -1.4),
+			"timeout": 45.0})
+		beats.append({"do": "face_fixture", "room": key, "type": "machine", "aim": 1.05})
+		beats.append({"do": "wait", "s": 0.3})
+		beats.append({"do": "prompt"})
+		beats.append({"do": "dial_to", "room": key, "to": 11, "timeout": 30.0})
+		beats.append({"do": "wait", "s": 1.2})
+		beats.append({"do": "prompt"})
+		beats.append({"do": "face_fixture", "room": key, "type": "run_button"})
+		beats.append({"do": "wait", "s": 0.3})
+		beats.append({"do": "prompt"})
+		beats.append({"do": "hold", "action": "interact", "s": 4.5})
+		beats.append({"do": "wait", "s": 1.5})
+		beats.append({"do": "close_ui"})
+		beats.append({"do": "shot", "name": "reckless_%s" % key})
+		beats.append({"do": "note", "text": "after cranking %s" % key})
+	beats.append({"do": "wait", "s": 6.0})
+	beats.append({"do": "note", "text": "six seconds later"})
+	return beats
+
+## The line the game is designed around: one notch off, on somebody worth it,
+## with the paperwork filed before anybody has a chance to ask.
+func _plan_careful_criminal() -> Array:
+	var h = game.hospital
+	var beats: Array = [
+		{"do": "close_ui"},
+		{"do": "clock_in"},
+		{"do": "note", "text": "before"},
+		{"do": "say", "text": "\n-- read the ward from the corridor first --"},
+	]
+	for key in ["ward_101", "ward_102", "ward_103", "ward_104", "ward_105"]:
+		beats.append({"do": "walk", "at": _outside_door(key), "timeout": 45.0})
+		beats.append({"do": "face", "at": _card_pos(key)})
+		beats.append({"do": "wait", "s": 0.4})
+		beats.append({"do": "prompt"})
+	beats.append({"do": "shot", "name": "careful_read_the_ward"})
+	beats.append({"do": "say", "text": "\n-- one notch off, on the best-insured one --"})
+	beats.append({"do": "walk", "at": h.bed_position("ward_102") + Vector3(1.6, 0, -1.4),
+		"timeout": 45.0})
+	beats.append({"do": "face_fixture", "room": "ward_102", "type": "machine", "aim": 1.05})
+	beats.append({"do": "wait", "s": 0.3})
+	beats.append({"do": "prompt"})
+	beats.append({"do": "taps", "action": "interact", "n": 1})
+	beats.append({"do": "wait", "s": 1.2})
+	beats.append({"do": "prompt"})
+	beats.append({"do": "face_fixture", "room": "ward_102", "type": "run_button"})
+	beats.append({"do": "wait", "s": 0.3})
+	beats.append({"do": "prompt"})
+	beats.append({"do": "hold", "action": "interact", "s": 4.5})
+	beats.append({"do": "wait", "s": 2.0})
+	beats.append({"do": "close_ui"})
+	beats.append({"do": "note", "text": "after one notch"})
+	beats.append({"do": "say", "text": "\n-- and straight to the records terminal --"})
+	beats.append({"do": "walk", "at": Vector3(43.0, 0, -5.0), "timeout": 60.0})
+	beats.append({"do": "mark", "text": "ward 102 -> office (to file it)"})
+	beats.append({"do": "shot", "name": "careful_office"})
+	beats.append({"do": "prompt"})
+	beats.append({"do": "note", "text": "at the terminal"})
+	return beats
+
+## Never plans anything, but takes whatever the building hands them. Walk the
+## floor, see what is lying about, and find out whether the game ever offers an
+## opportunity you did not have to construct.
+func _plan_opportunist() -> Array:
+	var h = game.hospital
+	return [
+		{"do": "close_ui"},
+		{"do": "clock_in"},
+		{"do": "note", "text": "before"},
+		{"do": "walk", "at": Vector3(15.0, 0, -2.0), "timeout": 45.0},
+		{"do": "face", "at": Vector3(15.0, 1.2, -6.0)},
+		{"do": "wait", "s": 0.4},
+		{"do": "prompt"},
+		{"do": "shot", "name": "opportunist_station"},
+		{"do": "walk", "at": Vector3(32.0, 0, -4.0), "timeout": 45.0},
+		{"do": "face", "at": Vector3(32.0, 1.4, -8.0)},
+		{"do": "wait", "s": 0.4},
+		{"do": "prompt"},
+		{"do": "shot", "name": "opportunist_supply"},
+		{"do": "tap", "action": "interact"},
+		{"do": "wait", "s": 0.6},
+		{"do": "close_ui"},
+		{"do": "prompt"},
+		{"do": "walk", "at": h.bed_position("ward_104") + Vector3(1.6, 0, -1.4), "timeout": 45.0},
+		{"do": "face_patient", "room": "ward_104"},
+		{"do": "wait", "s": 0.4},
+		{"do": "prompt"},
+		{"do": "shot", "name": "opportunist_bedside_holding"},
+		{"do": "note", "text": "carrying something, at a bedside"},
+	]
+
+## Pick everything up and throw it. The most common thing a new player does with
+## a physics sandbox, and the fastest way to find out whether the world reacts.
+func _plan_idiot_chaos() -> Array:
+	return [
+		{"do": "close_ui"},
+		{"do": "clock_in"},
+		{"do": "note", "text": "before"},
+		{"do": "walk", "at": Vector3(15.0, 0, -1.5), "timeout": 45.0},
+		{"do": "face", "at": Vector3(15.0, 1.1, -6.0)},
+		{"do": "wait", "s": 0.4},
+		{"do": "tap", "action": "grab"},
+		{"do": "wait", "s": 0.5},
+		{"do": "prompt"},
+		{"do": "face", "at": Vector3(40.0, 2.4, 2.0)},
+		{"do": "tap", "action": "throw"},
+		{"do": "wait", "s": 3.0},
+		{"do": "shot", "name": "chaos_thrown"},
+		{"do": "note", "text": "after throwing something down the corridor"},
+		{"do": "wait", "s": 6.0},
+		{"do": "note", "text": "six seconds after the clatter"},
+		{"do": "shot", "name": "chaos_aftermath"},
+	]
+
+## Can a person get through every door in the building?
+##
+## One at a time, from a standing start two metres away, walking straight at it.
+## No pathfinding involved, so the answer is about the DOOR and not about the
+## navigation grid — which matters, because those two failure modes look
+## identical from inside a play run and had already been confused once.
+func _plan_doors() -> Array:
+	var beats: Array = [
+		{"do": "close_ui"},
+		{"do": "clock_in"},
+	]
+	for entry in Hospital.LAYOUT:
+		if not entry.has("door"):
+			continue
+		var key := String(entry["key"])
+		var rect: Rect2 = entry["rect"]
+		var north: bool = rect.position.y > 0.0
+		var z: float = 4.0 if north else 0.0
+		var cx := float(entry["door"])
+		var outside := Vector3(cx, 0.0, z + (-2.0 if north else 2.0))
+		var inside := Vector3(cx, 0.0, z + (2.4 if north else -2.4))
+		beats.append({"do": "say", "text": "\n-- %s --" % key})
+		beats.append({"do": "teleport", "at": outside + Vector3(0, 0.1, 0)})
+		beats.append({"do": "wait", "s": 0.4})
+		beats.append({"do": "push_forward", "at": inside, "timeout": 8.0})
+		beats.append({"do": "mark", "text": "%s: corridor -> inside" % key})
+		# ...and straight back out again, because a door you can only go one way
+		# through is a room you can get trapped in.
+		beats.append({"do": "push_forward", "at": outside, "timeout": 8.0})
+		beats.append({"do": "mark", "text": "%s: inside -> corridor" % key})
+		# ...and from two metres off to the side, pressed against the wall,
+		# which is where a route that grazes the corner leaves you and where
+		# every failure in the play runs actually happened.
+		beats.append({"do": "teleport",
+			"at": Vector3(cx - 2.0, 0.1, z + (-0.5 if north else 0.5))})
+		beats.append({"do": "wait", "s": 0.4})
+		beats.append({"do": "push_forward", "at": inside, "timeout": 8.0})
+		beats.append({"do": "mark", "text": "%s: from the wall beside it" % key})
+	beats.append({"do": "report"})
+	return beats
+
+## A point in the corridor just outside a ward door, and the door card beside it.
+func _outside_door(key: String) -> Vector3:
+	for entry in Hospital.LAYOUT:
+		if String(entry["key"]) == key and entry.has("door"):
+			return Vector3(float(entry["door"]) - 0.6, 0.0, 2.6)
+	return Vector3.ZERO
+
+func _card_pos(key: String) -> Vector3:
+	for entry in Hospital.LAYOUT:
+		if String(entry["key"]) == key and entry.has("door"):
+			return Vector3(float(entry["door"]) - 1.4, 1.52, 3.9)
+	return Vector3.ZERO
 
 ## What a new player sees and does in their first two minutes.
 func _plan_first_shift() -> Array:

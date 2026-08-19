@@ -368,8 +368,12 @@ func _open_door_ahead() -> void:
 	if hit.is_empty():
 		return
 	var door := _door_of(hit.get("collider"))
-	if door != null and not door.is_open():
-		door.open_for(global_position)
+	if door == null:
+		return
+	# Driven every frame while you are still walking at it — see the same call
+	# in Player._open_door_ahead for why stopping at "is_open" leaves the leaf
+	# oscillating in the gap.
+	door.open_for(global_position)
 
 ## Shove rigid bodies out of the way — doors especially.
 ##

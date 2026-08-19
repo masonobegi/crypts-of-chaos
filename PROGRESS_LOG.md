@@ -1189,3 +1189,134 @@ else. Verified against the bug it was written for: reverting the one-line fix
 makes it fail with the exact error above.
 
 **1,553 assertions · 95 smoke · 17 live · boot check · 20/20 balance.**
+
+---
+
+## Session 4 (cont.) — no door in this game had ever closed anything
+
+Phase 1 of the brief is "play the actual game" as five playstyles. I taught the
+play harness to commit crimes — turn a dial by pressing E over and over, hold
+the run button, pick things up, throw them — and played Reckless, Careful
+Criminal, Opportunist and Idiot Chaos. Two of the four spent forty-five and
+sixty seconds standing at a door.
+
+Pulling that thread found five separate defects, ending in one that had been
+sitting under the whole stealth game since the doors were written.
+
+### 1. Nav routes cut corners at doorways
+
+`NavGrid._smooth` dropped every waypoint on a straight run — including long
+diagonals. A grid diagonal is walkable cell to cell, but a body has a radius,
+so twelve collapsed diagonal cells become one straight line that shaves a
+doorframe. NPCs survived it because `_check_stuck` re-plans; the player does
+not re-plan.
+
+Diagonals are no longer collapsed, and every doorway is registered as a **pinch
+point** whose waypoints are never dropped, so a route is steered *through* a
+1.4m gap rather than past it.
+
+### 2. A door being held open slammed against its own stop, forever
+
+`open_for` was called every physics frame while a body was in contact, and each
+call re-set `angular_velocity` to full speed. The leaf hit its stop, bounced,
+was re-driven at full speed on the next frame, and spent the whole time sweeping
+back and forth **through the person holding it** — who is then batted around by
+a kinematic body they cannot push. A door that would not stop opening, not a
+door that would not open.
+
+Doors now know they are being leaned on (`_held`) and rest against the stop.
+
+### 3. The swing direction was measured from the hinge
+
+`open_for` asked which side of the door plane you were on, measuring from
+`global_position` — which is the **hinge**, at one edge of the doorway. Somebody
+entering near that edge has an offset almost parallel to the closed leaf, the
+dot product lands either side of zero by rounding, and the fallback swung the
+door whichever way the code preferred: frequently straight into them. Now
+measured from the middle of the opening, with a 0.9s latch so the leaf does not
+reverse into you the instant you cross the threshold — and *only* 0.9s, so
+somebody pinned behind an open leaf can still push it off themselves.
+
+### 4. The player waited for body contact; NPCs have probed ahead for years
+
+`NPCBody._open_door_ahead` has existed since doors became script-driven. The
+player had nothing equivalent and opened doors by walking into them, which means
+the leaf is always sweeping through you as it opens. `Player._open_door_ahead`
+now probes 1.6m along the direction you are *trying* to move (not the way you
+are facing, so strafing through a doorway works).
+
+And both versions had `and not door.is_open()`, which hands the door back to its
+own closer at about twenty degrees: it eases shut, the probe fires again, and it
+oscillates in the gap forever. Removed from both.
+
+### 5. And then: every door leaf was rotated ninety degrees
+
+```
+ward_101   hinge=(3.8,4.0) rot=0.0deg   leaf spans x 3.76..3.84  z 4.00..5.40
+```
+
+Room 101's doorway spans **x 3.8 → 5.2 at z = 4.0**. Its door leaf was a
+seven-centimetre slab standing **perpendicular** to that, jutting 1.4m into the
+room beside the opening. Every door in the building, the same.
+
+`rotation.y = atan2(-along.x, -along.z) + PI * 0.5` evaluates to exactly 0 for
+every door here (all of them run along +X). The leaf is built extending along
+local +Z, so it needs `atan2(along.x, along.z)`.
+
+**No door in this game had ever closed anything.** Every ward stood permanently,
+completely open to the corridor.
+
+Nothing caught it, and the reason is instructive: doors swung, made their noise,
+reported angles, and passed every test — because what was tested was *can staff
+path through a doorway*, and the answer was yes, trivially, since there was
+nothing in it. Nobody had ever asked whether a **shut** door shuts anything.
+
+That is not a small change. Closing the door is the stealth game's most basic
+move. Privacy, line of sight into a ward, being seen from the corridor, and
+every upgrade that reduces witnesses were all resting on a leaf that was not in
+the way of anything.
+
+After the fix:
+
+```
+ward_101   hinge=(3.8,4.0) rot=90.0deg  leaf spans x 3.80..5.20  z 3.96..4.03
+```
+
+### A permanent test for it
+
+`play.sh doors` walks every doored room in the building three ways: in from the
+corridor, back out again (*a door you can only go one way through is a room you
+can get trapped in*), and — the case every play-run failure actually was — from
+two metres off to the side, pressed against the wall.
+
+| | in | out | from beside it |
+|---|---|---|---|
+| all five wards, lobby, station, treatment, supply, bathroom, office | 1.0–1.8s | 0.8s | 1.2–2.5s |
+
+One outstanding: **ward_102 approached laterally from the hinge side still
+fails**, alone among the eleven. Everything else on the floor passes.
+The three shuttered annexe departments correctly refuse entry.
+
+### And what the playstyles found
+
+**Reckless** now runs end to end: three machines cranked to 11, three
+complications, one patient driven from 0.42 recovery to −0.02, and Yusuf
+Ratchet's suspicion at 66% with three people watching. Fifty real seconds.
+
+**Careful Criminal** is the line the game is designed around, and it reads
+correctly: one notch off prescription, recovery 1.00 → 0.98, no complication,
+29% suspicion, then straight to the office to file it.
+
+But across all four styles, **`money you $125 hospital $7,750` never changed
+once**. The crime pays only at clock-out, invisibly. The HUD money ticker added
+earlier has nothing to show during a shift. That is the next thing worth
+looking at.
+
+Also this session: the live run's noise-distraction check went flaky the moment
+doors started genuinely blocking, because it asserted *distance closed in 6.7
+seconds*. It now asserts what the original bug actually was — that the noise
+reached them and changed what they were doing — and reports distance as
+supporting evidence.
+
+**1,553 assertions · 95 smoke · 18 live · boot check · every door in the
+building, three ways.**

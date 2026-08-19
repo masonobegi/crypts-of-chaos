@@ -108,8 +108,20 @@ func find_path(from: Vector3, to: Vector3) -> PackedVector3Array:
 	var raw := astar.get_point_path(_ids[a], _ids[b])
 	return _smooth(raw)
 
-## Drop waypoints that lie on a straight run — NPCs should walk corridors in a
-## line rather than shuffling cell to cell.
+## Drop waypoints that lie on a straight AXIS-ALIGNED run — NPCs should walk
+## corridors in a line rather than shuffling cell to cell.
+##
+## Diagonal runs are deliberately left alone. A grid diagonal is walkable cell to
+## cell, but a body has a radius, and collapsing twelve diagonal cells into one
+## waypoint turns a staircase that clears the geometry into a single straight
+## line that cuts the corner off a doorway or shaves a wall. NPCs survived it
+## because _check_stuck re-plans; the player does not re-plan, and a scripted
+## walk from the corridor into Room 102 spent forty-five seconds pressed against
+## the wall between two ward doors while the route it had been given ran through
+## that wall.
+##
+## The cost is a few more waypoints on diagonal stretches, which is invisible:
+## nothing follows a path faster for having fewer points in it.
 func _smooth(path: PackedVector3Array) -> PackedVector3Array:
 	if path.size() <= 2:
 		return path
@@ -119,12 +131,41 @@ func _smooth(path: PackedVector3Array) -> PackedVector3Array:
 		var prev: Vector3 = out[out.size() - 1]
 		var cur: Vector3 = path[i]
 		var next: Vector3 = path[i + 1]
+		# A waypoint in a doorway is never dropped, whatever the geometry says.
+		# The grid is walkable cell to cell and a body has a radius; a route
+		# that approaches a 1.4m gap on the diagonal aims at the frame rather
+		# than at the hole. Two scripted playthroughs lost forty-five and sixty
+		# seconds standing against the wall beside the supply room and the
+		# office, following routes that were perfectly legal on the grid.
+		if _near_pinch(cur):
+			out.append(cur)
+			continue
 		var d1 := (cur - prev).normalized()
 		var d2 := (next - cur).normalized()
 		if d1.dot(d2) < 0.999:
 			out.append(cur)
+			continue
+		# Same direction, but is it a direction that is safe to run in a
+		# straight line? Only if it is along an axis.
+		if absf(d1.x) > 0.001 and absf(d1.z) > 0.001:
+			out.append(cur)
 	out.append(path[path.size() - 1])
 	return out
+
+## Places where the floor narrows to less than a couple of body-widths, and a
+## route therefore has to be steered through rather than past. Registered by the
+## hospital as it bakes each doorway.
+var pinch_points: PackedVector3Array = PackedVector3Array()
+const PINCH_RADIUS := 1.3
+
+func add_pinch(pos: Vector3) -> void:
+	pinch_points.append(Vector3(pos.x, 0.0, pos.z))
+
+func _near_pinch(p: Vector3) -> bool:
+	for q in pinch_points:
+		if absf(p.x - q.x) < PINCH_RADIUS and absf(p.z - q.z) < PINCH_RADIUS:
+			return true
+	return false
 
 ## Temporarily block cells — a toppled cart genuinely reroutes staff, which is
 ## the whole reason toppling a cart is a strategy.

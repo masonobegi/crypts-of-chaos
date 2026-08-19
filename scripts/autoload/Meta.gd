@@ -52,6 +52,10 @@ const PERKS := {
 var endings_seen: Dictionary = {}       ## ending id -> times reached
 var runs_completed: int = 0
 var best_earnings: int = 0
+## The best run, as the game actually scores it: how much you took out of the
+## place before somebody stopped you. Kept whole rather than as a number so the
+## next career can be told what it is beating and by what margin.
+var best_haul: Dictionary = {}
 var longest_career: int = 0
 var selected_perk: String = ""
 
@@ -87,7 +91,17 @@ func select_perk(perk_id: String) -> void:
 func record_ending(ending_id: String) -> void:
 	endings_seen[ending_id] = int(endings_seen.get(ending_id, 0)) + 1
 	runs_completed += 1
-	best_earnings = maxi(best_earnings, int(GameState.stats.get("personal_earned", 0)))
+	var earned := int(GameState.stats.get("personal_earned", 0))
+	if earned > int(best_haul.get("earned", -1)):
+		best_haul = {
+			"earned": earned,
+			"days": GameState.day,
+			"ending": ending_id,
+			"injuries": int(GameState.stats.get("injuries_caused", 0)),
+			"admitted": int(GameState.stats.get("patients_admitted", 0)),
+			"sanction": GameState.SANCTIONS[GameState.sanction_level],
+		}
+	best_earnings = maxi(best_earnings, earned)
 	longest_career = maxi(longest_career, GameState.day)
 	save_meta()
 
@@ -130,7 +144,7 @@ func save_meta() -> void:
 		return
 	f.store_string(JSON.stringify({
 		"endings": endings_seen, "runs": runs_completed,
-		"best": best_earnings, "longest": longest_career,
+		"best": best_earnings, "longest": longest_career, "haul": best_haul,
 		"perk": selected_perk,
 	}, "  "))
 	f.close()
@@ -149,6 +163,7 @@ func load_meta() -> void:
 	endings_seen = d.get("endings", {})
 	runs_completed = int(d.get("runs", 0))
 	best_earnings = int(d.get("best", 0))
+	best_haul = d.get("haul", {})
 	longest_career = int(d.get("longest", 0))
 	selected_perk = String(d.get("perk", ""))
 
@@ -156,6 +171,7 @@ func reset() -> void:
 	endings_seen.clear()
 	runs_completed = 0
 	best_earnings = 0
+	best_haul = {}
 	longest_career = 0
 	selected_perk = ""
 	save_meta()

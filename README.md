@@ -85,6 +85,35 @@ GODOT=/path/to/godot ./run_tests.sh
 **Controls** — `WASD` move · `E` use (hold for procedures) · `LMB` grab · `RMB` throw ·
 `Shift` sprint · `Ctrl` crouch (also rotates held objects) · `Q` tablet · `Esc` pause.
 
+## The loop
+
+Pick a shift. Work the list. See how much you can take out of the place before
+somebody stops you.
+
+Every day starts with three shifts on offer — night, day, evening — and the
+choice is not safe against risky. It is **witnesses against attribution**. A
+night shift has one other member of staff in the building and almost nobody to
+see what you do; it also has exactly one person anybody can ask about it in the
+morning. A day shift is crowded, and a crowd is an alibi.
+
+Each shift comes with a booked list: routine physicals on people who have walked
+in off the street, reviews of patients already on the ward, scheduled procedures,
+and discharges. A walk-in costs the hospital nothing and earns it a consultation
+fee — unless you find something, at which point they become an admission with a
+daily rate. *Did I find anything?* is the most profitable question in the
+building, and you are the one who answers it.
+
+There is an examination screen with a site and a dial marked APPLIED PRESSURE.
+There is a theatre where each of three stages is done properly, quickly, or
+badly. There is a pharmacy where the drug that treats what they had is one entry
+among eight, and the ones that do not will bring them back in a week at a fresh
+daily rate.
+
+None of it is labelled. The game never tells you which choice is the bad one,
+and the record never asks what you meant — only what happened, and when. Somebody
+who arrives with a fractured ankle and goes home with an ankle, a wrist and a
+concussion is a paragraph any nurse can write without having seen a thing.
+
 ## What's in the box
 
 One complete hospital floor, generated procedurally from a single layout table: corridor,
@@ -116,10 +145,10 @@ changed because of it, is in [`docs/DESIGN.md`](docs/DESIGN.md).
 ## Tests
 
 ```
-1008 assertions   — units, integration, save round-trips, floor connectivity
-  54 smoke checks — boots the real scene and plays a whole shift headless
+1283 assertions   — units, integration, save round-trips, floor connectivity
+  65 smoke checks — boots the real scene and plays a whole shift headless
   13 live checks   — 7000 fixed-timestep frames of real NPC AI, pathing and doors
-  14 balance checks — three full careers, asserting the design intent holds
+  15 balance checks — three full careers, asserting the design intent holds
 ```
 
 The balance harness (`tests/balance_sim.gd`) plays sixteen-day careers with three

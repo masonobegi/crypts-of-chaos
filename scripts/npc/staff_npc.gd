@@ -172,6 +172,44 @@ func _begin_round() -> void:
 	_round_target = p.id
 	goto(h.point_in(p.room, "round_pt"), false)
 
+## What a nurse checking on somebody eventually notices is not any one injury —
+## it is the SHAPE of them. This person came in with an ankle and has since
+## acquired a wrist and a head. That is not a clinical observation, it is an
+## arithmetic one, and it does not require anybody to have seen anything.
+##
+## Attribution is the other half. How sure they are runs off how many people
+## were in the building when it happened: a wrist that went during a night shift
+## with one nurse on it is not a mystery anybody has to solve, and there is no
+## cover story for arithmetic.
+func _note_injury_pattern(p) -> void:
+	if mind == null:
+		return
+	var acquired: Array = p.acquired_injuries()
+	if acquired.size() < 2:
+		return
+	if not RNG.chance("injury_pattern_note", 0.5 + mind.observance * 0.5):
+		return
+	var fewest := 99
+	for c in acquired:
+		fewest = mini(fewest, c.staff_present)
+	say(String(RNG.pick("injury_pattern_bark", [
+		"How many things is that now, for %s?" % p.display_name,
+		"They came in with one problem. They have three.",
+		"That's the second one this week on this bed.",
+		"Nobody's written down how any of this happened.",
+	])), 4.0)
+	var ev := Evidence.new()
+	ev.kind = "ward_acquired_injuries"
+	ev.about_actor = "player"
+	ev.patient_id = p.id
+	ev.source = Evidence.Source.INFERRED
+	ev.time = GameState.career_minutes
+	ev.base_weight = clampf(0.25 + 0.22 * float(acquired.size()), 0.25, 0.9)
+	ev.certainty = clampf(1.15 - 0.13 * float(fewest), 0.4, 1.0)
+	ev.summary = "%s has picked up %d separate injuries on this ward" % [
+		p.display_name, acquired.size()]
+	mind.add_evidence(ev)
+
 ## Somebody still on a trolley in Intake most of a shift later is not an
 ## emergency any more, it is a decision somebody made. The act of ramping them
 ## is witnessed at the time; this is the half that keeps mattering afterwards,
@@ -210,6 +248,7 @@ func _do_round() -> void:
 	if p == null or p.discharged:
 		return
 	_note_if_left_in_the_corridor(p)
+	_note_injury_pattern(p)
 	var unnoticed: Array = ps.unnoticed_complications(p)
 	if unnoticed.is_empty():
 		if RNG.chance("round_quiet", 0.3):

@@ -216,11 +216,11 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1008 assertions  (test functions across 5 suites)
- 54 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+1283 assertions  (test functions across 9 suites)
+ 65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
- 14 balance checks (three 16/30-day careers asserting the design intent holds)
- 25 screenshots  (every room and every UI screen, rendered offscreen)
+ 15 balance checks (three 16/30-day careers asserting the design intent holds)
+ 29 screenshots  (every room and every UI screen, rendered offscreen)
 ```
 
 Balance at 30 days, seed 90210:
@@ -402,6 +402,61 @@ Filling that map out properly also fixed a real dullness — every wrong
 treatment that was not one of six special cases produced Ambient Dread. A
 complication is meant to be a clue you can follow backwards to what was done,
 and two thirds of them all said the same thing.
+
+---
+
+## Session 2 — the shift loop
+
+The brief changed shape: pick a shift, work a list of booked patients, make
+money being a bad doctor, and see how far you get before somebody stops you.
+Six stages, each tested and committed separately.
+
+**Shifts.** Three of them, and the choice is witnesses against attribution
+rather than safe against risky. Two of the three touch midnight, which broke the
+clock — anything comparing `minute_of_day` against an end hour is wrong for one
+of them, so `minutes_into_shift()` counts forward from the start the long way
+round. Staffing is a fixed rota so "she's on nights" is worth knowing; the
+roster went from three to eight and off-duty staff leave the building without
+losing a single memory.
+
+**Injuries.** Six of them, each existing twice — in CONDITIONS as what somebody
+arrives with, in COMPLICATIONS as what they leave with, reading identically on
+purpose. Patients carry a presenting complaint frozen at admission, and every
+complication records whether it happened here, on which shift, and how many
+people were in the building. The chart audit reads the gap: one unexplained
+injury is a finding, two is a paragraph that names what they came in with.
+
+**The examination.** Reuses the machine grammar exactly: a site, APPLIED
+PRESSURE, an indicated value, silence about everything above it. The honest
+setting had to be genuinely worth using or the dial would read as a crime
+button, so it sharpens your read on the patient and clears a booked slot.
+
+**The list.** A shift used to be eight open-ended hours. It is now four kinds of
+booked work, and a walk-in who costs nothing until you find a reason to admit
+them. Missing a slot costs you with the person who was sitting there.
+
+**Theatre and pharmacy.** Surgery is three stages of properly/quickly/badly,
+recorded in the words a theatre record actually uses, and it is the most
+deniable way in the game to hurt somebody because operations genuinely go wrong.
+The pharmacy is the quietest verb: the wrong take-home brings them back in a
+week at a fresh daily rate with an honest explanation, and they come back
+noticing more and trusting less.
+
+**Attribution and the score.** A nurse on rounds does arithmetic from two
+injuries upward, with certainty scaled by how many people could have done it and
+no cover tag, because there is no cover story for arithmetic. The game-over
+screen leads with what you took out of the place and what stopped you, and the
+best haul persists between careers.
+
+Two economic corrections fell out of balancing it. Consultations and operations
+now carry their own overhead — beds have to stay the business model, and a
+clinic that paid for itself would have inverted the premise a second time. And
+the insurer now watches ward-acquired injuries per patient-SHIFT, because the
+complication rate divides by discharges and goes blind on a ward that never lets
+anybody leave.
+
+Balance at 16 days, seed 90210: honest £1,196 and clean; careless £11,828 and
+struck off with 44 ward injuries; careful £19,968 and clean with 5.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

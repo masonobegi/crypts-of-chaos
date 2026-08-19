@@ -128,3 +128,49 @@ func _kinds(p: Patient) -> Array:
 	for f in p.chart.audit(p.actual_treatments, p.complications):
 		out.append(String(f["kind"]))
 	return out
+
+## Attribution: how sure a witness is depends on how many other people could
+## have done it. This is the entire reason the night shift is a trade rather
+## than a free win.
+func test_a_quiet_shift_is_a_short_list_of_suspects() -> void:
+	var nurse := NurseNPC.new()
+	t.root.add_child(nurse)
+	nurse.mind = DB.make_mind("attr_nurse", "Nurse Attribution", "nurse", "gossip")
+	nurse.mind.observance = 1.0
+
+	var busy := _patient("fractured_ankle")
+	for id in ["fractured_wrist", "concussion"]:
+		var c := _acquire(busy, id)
+		c.staff_present = DB.staff_on("day")
+	nurse._note_injury_pattern(busy)
+	var day_certainty := nurse.mind.evidence[0].certainty
+	nurse.mind.evidence.clear()
+
+	var quiet := _patient("fractured_ankle")
+	quiet.display_name = "Mr Night"
+	for id in ["fractured_wrist", "concussion"]:
+		var c := _acquire(quiet, id)
+		c.staff_present = DB.staff_on("night")
+	nurse._note_injury_pattern(quiet)
+	var night_certainty := nurse.mind.evidence[0].certainty
+
+	t.gt(night_certainty, day_certainty,
+		"an injury acquired on a shift with one nurse on it points somewhere specific")
+	t.eq(nurse.mind.evidence[0].cover_tag, "",
+		"and there is no cover story for arithmetic")
+	nurse.queue_free()
+
+## One is bad luck. The nurse only starts doing sums at two.
+func test_a_single_injury_is_not_yet_arithmetic() -> void:
+	var nurse := NurseNPC.new()
+	t.root.add_child(nurse)
+	nurse.mind = DB.make_mind("attr_nurse2", "Nurse Two", "nurse", "gossip")
+	nurse.mind.observance = 1.0
+	var p := _patient("chronic_beige")
+	_acquire(p, "fractured_wrist")
+	nurse._note_injury_pattern(p)
+	t.eq(nurse.mind.evidence.size(), 0, "one injury is a thing that happened")
+	_acquire(p, "cracked_ribs")
+	nurse._note_injury_pattern(p)
+	t.eq(nurse.mind.evidence.size(), 1, "two is a thing somebody is doing")
+	nurse.queue_free()

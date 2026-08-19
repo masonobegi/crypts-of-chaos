@@ -15,7 +15,11 @@ var phase := "world"
 ## Modal screens, photographed after the world pass. UI layout bugs are invisible
 ## to every other kind of test — all three found so far were only visible here.
 const UI_SHOTS := [
+	["19_shift_select", "shift_select"],
 	["20_briefing", "briefing"],
+	["20b_exam", "exam"],
+	["20c_surgery", "surgery"],
+	["20d_prescribe", "prescribe"],
 	["21_tablet_ward", "tablet"],
 	["21b_tablet_record", "tablet_record"],
 	["22_chart", "chart"],
@@ -66,6 +70,25 @@ func _ui_context(id: String) -> Dictionary:
 	match id:
 		"briefing":
 			return game.shift.briefing()
+		"shift_select":
+			var options: Array = []
+			for kind in DB.SHIFT_ORDER:
+				var spec: Dictionary = DB.SHIFTS[kind]
+				options.append({
+					"kind": kind, "name": String(spec["name"]),
+					"hours": "%02d:00 – %02d:00" % [int(spec["start_hour"]),
+						(int(spec["start_hour"]) + int(spec["hours"])) % 24],
+					"pay": float(spec["pay"]), "staff": DB.staff_on(kind),
+					"appointments": int(spec["appointments"]),
+					"blurb": String(spec["blurb"]), "catch": String(spec["catch"]),
+				})
+			return {"day": GameState.day, "options": options,
+				"personal": GameState.personal_money, "owed": GameState.total_debt()}
+		"exam", "surgery", "prescribe":
+			var pool: Array = game.patient_system.active()
+			if pool.is_empty():
+				return {}
+			return {"patient_id": pool[0].id}
 		"chart", "dialogue":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():

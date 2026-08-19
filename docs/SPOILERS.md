@@ -190,6 +190,132 @@ Shutters block movement, block vision (layer 32) and remove their doorway from
 the nav graph, so a sealed department is genuinely sealed — staff will not path
 into it and `Hospital.open_room_keys()` will not offer it.
 
+## Shifts
+
+Three, and picking one is the first decision of every day. The trade is not more
+or fewer witnesses — it is **witnesses against attribution**.
+
+| | hours | pay | staff on | appointments | scrutiny |
+|---|---|---|---|---|---|
+| Night | 00:00–08:00 | ×1.45 | 1 | 3 | 0.4 |
+| Day | 08:00–16:00 | ×1.00 | 5 | 7 | 1.0 |
+| Evening | 16:00–24:00 | ×1.20 | 3 | 5 | 0.7 |
+
+Staffing is a fixed rota (`DB.ROTA`), so which individuals are on is a fact
+worth learning rather than a nightly dice roll. Off-duty staff leave the
+building and cannot witness anything — but they keep every memory they already
+had, and they come back tomorrow.
+
+Every acquired injury records `caused_on_shift` and `staff_present`. When a
+nurse later works out the pattern, their certainty is `1.15 − 0.13 ×
+staff_present`, clamped to [0.4, 1.0]. A wrist that went during a night shift
+with one other person in the building is near-certain; the same wrist on a day
+shift is one of six possibilities. **The quiet shift is not the safe shift.**
+
+## Examination
+
+Same grammar as every machine: a site, a dial marked APPLIED PRESSURE, an
+indicated value of 2, and nothing said about what is above it.
+
+- `injury_chance(p) = clamp((p − 3) × 0.115, 0, 0.92)` — zero at 2 and 3, still
+  climbing at 11.
+- `exam_visibility(p) = clamp(0.04 + (p − 2) × 0.095, 0.04, 0.92)`.
+
+At the indicated pressure it is genuinely worth doing: it sharpens your read on
+where the patient actually is for a while, adds satisfaction, and satisfies a
+booked physical or review. If the honest setting were useless the dial would be
+a button that only exists for crime and would read that way immediately.
+
+Above it, the part you are examining is the part that gives, with `true_cause`
+of `examination` — a mechanism no chart will accept. The patient is always a
+witness to their own examination, at certainty `0.35 + observance × 0.6`.
+
+## Injuries, and the arrival-versus-discharge gap
+
+Six injuries exist **twice**: in `CONDITIONS` as what somebody walks in with, and
+in `COMPLICATIONS` as what they leave with. They read identically on purpose —
+if they did not, "which kind is this" would be answerable from the name.
+
+`PatientChart.audit()` reads the gap:
+
+| finding | weight | when |
+|---|---|---|
+| `unexplained_injury` | 0.35 + sev × 0.45 | acquired here, no mechanism filed |
+| `injury_predated` | 0.75 | filed as "present on admission", dates disagree |
+| `injury_pattern` | 0.55 + 0.3 × (n − 1) | **two or more** acquired in one admission |
+
+Filing a mechanism closes the individual gaps and does nothing about the
+pattern. That asymmetry is the design: being a careful liar beats being a
+careless one, and neither beats not doing it three times to the same person.
+
+Nurses do the arithmetic on rounds from two injuries upward
+(`StaffNPC._note_injury_pattern`) and there is no cover tag on it, because there
+is no cover story for arithmetic.
+
+## Surgery
+
+Three stages, each done `careful` / `quick` / `improvise`, recorded in theatre
+language: "as per protocol", "expedited", "approach modified intra-operatively".
+
+| approach | risk | quality | visible |
+|---|---|---|---|
+| careful | 0.02 | 1.0 | 0.0 |
+| quick | 0.14 | 0.75 | 0.12 |
+| improvise | 0.60 | 0.30 | 0.45 |
+
+What goes wrong goes wrong at the operative site, and every site's injury lists
+`known_risk` among its plausible causes — so a botched operation is the most
+deniable way in the game to hurt somebody. The catch is the theatre record,
+which is not yours: two or more improvised stages on one patient raises
+`improvised_procedure` at 0.4 + 0.25 per operation.
+
+A by-the-book operation genuinely helps (+0.34 recovery at full quality), which
+is what makes the approach a choice rather than a lever.
+
+## The pharmacy
+
+Three kinds of take-home. **Indicated** ends the story. **Inert** means whatever
+was wrong with them is still wrong with them, 50% to book a readmission.
+**Reactive** is 85% to book one, and they come back with a complication whose
+true cause is `prescription`.
+
+A readmission is a fresh admission at a fresh daily rate with a completely
+honest explanation — the closest thing in the game to a renewable resource. They
+are booked 2–5 days out so the patient genuinely goes home in between, and
+somebody who has been round the loop once comes back with +0.2 observance and
+−0.3 trust.
+
+The chart raises `prescription_mismatch` at 0.45 for anything not indicated. The
+pharmacy is the one device log in the building the player cannot reach.
+
+## Money, and where it is not
+
+Deliberately thin margins on everything except beds:
+
+| | fee | cost | net |
+|---|---|---|---|
+| Physical (walk-in) | 300 | 265 clinic overhead | 35 |
+| Review | 120 | — | 120 |
+| Procedure | 4600 | 3850 theatre time | 750 |
+| Discharge | 150 | — | 150 |
+
+A clinic that paid for itself would invert the premise a second time. The reason
+to want theatre on your list is not the fee — it is that an operation is the
+most deniable place in the building for something to go wrong, and a
+complication is a fortnight of bed days.
+
+## Ward-acquired injury rate
+
+The insurer watches **injuries per patient-shift**, measured against how many
+people are ON the ward rather than how many left it (`ShiftSystem
+.rolling_injury_rate`). Baseline 0.06, tuned against a five-bed ward; files
+`injury_rate_outlier` above 2× at weight `(over − 1.9) × 0.11`, capped at 0.85.
+
+The denominator is the point. The complication rate divides by discharges and
+goes blind on a ward that never lets anybody leave, so "fill every bed with
+people you hurt and discharge nobody" would otherwise have switched the
+statistics off entirely.
+
 ## Charts in the wrong room
 
 Charts are physical props you can carry. An investigator that reaches a bed and

@@ -169,12 +169,39 @@ func _game_over_screen(ending_id: String) -> Control:
 	v.add_child(UIKit.label(String(spec["epitaph"]), 14, UIKit.INK_DIM))
 	v.add_child(UIKit.rule())
 	var s := GameState.stats
+
+	# The score. Everything below it is detail; this is the number the run was
+	# for, and it is stated as what it is rather than as "final earnings".
+	var haul := UIKit.panel(Color(0.13, 0.17, 0.14, 0.95), 8, 1, UIKit.MONEY)
+	var hv := UIKit.vbox(2)
+	hv.add_child(UIKit.label("YOU TOOK OUT OF THAT HOSPITAL", 13, UIKit.INK_DIM))
+	hv.add_child(UIKit.title(UIKit.money_str(int(s.personal_earned)), 40, UIKit.MONEY))
+	hv.add_child(UIKit.label("over %d %s, before %s" % [GameState.day,
+		"day" if GameState.day == 1 else "days",
+		_what_stopped_you(ending_id)], 14, UIKit.INK_DIM))
+	var prev: Dictionary = Meta.best_haul
+	if not prev.is_empty() and int(prev.get("earned", 0)) > 0:
+		var diff := int(s.personal_earned) - int(prev["earned"])
+		hv.add_child(UIKit.row("Your best so far",
+			"%s over %d days" % [UIKit.money_str(int(prev["earned"])), int(prev.get("days", 0))],
+			UIKit.MONEY if diff <= 0 else UIKit.INK_DIM))
+		if diff > 0:
+			hv.add_child(UIKit.label("Beaten by %s." % UIKit.money_str(diff), 15, UIKit.GOOD))
+	haul.add_child(hv)
+	v.add_child(haul)
 	var stats_box := UIKit.vbox(3)
 	stats_box.add_child(UIKit.row("Shifts worked", str(s.shifts_worked)))
 	stats_box.add_child(UIKit.row("Patients admitted", str(s.patients_admitted)))
 	stats_box.add_child(UIKit.row("Patients actually cured", str(s.patients_cured), UIKit.GOOD))
 	stats_box.add_child(UIKit.row("Bed-days billed", str(s.days_billed), UIKit.MONEY))
 	stats_box.add_child(UIKit.row("Complications caused", str(s.complications_caused), UIKit.SUS))
+	stats_box.add_child(UIKit.row("Injuries sustained on your ward",
+		str(s.get("injuries_caused", 0)), UIKit.BAD))
+	stats_box.add_child(UIKit.row("Operations", "%d, of which %d improvised" % [
+		int(s.get("surgeries", 0)), int(s.get("surgeries_botched", 0))], UIKit.SUS))
+	stats_box.add_child(UIKit.row("Sent home on the wrong thing",
+		str(s.get("wrong_prescriptions", 0)), UIKit.SUS))
+	stats_box.add_child(UIKit.row("...and came back", str(s.get("readmissions", 0)), UIKit.MONEY))
 	stats_box.add_child(UIKit.row("...documented cleanly", str(s.complications_clean), UIKit.GOOD))
 	stats_box.add_child(UIKit.row("Falsified entries", str(s.forged_entries), UIKit.BAD))
 	stats_box.add_child(UIKit.row("Times witnessed", str(s.witnessed_acts), UIKit.WARN))
@@ -196,6 +223,15 @@ func _game_over_screen(ending_id: String) -> Control:
 		get_tree().paused = false
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
 	return parts[0]
+
+## What actually ended it, in the words somebody would use.
+func _what_stopped_you(ending_id: String) -> String:
+	match ending_id:
+		"prison", "custodial": return "they arrested you"
+		"license_revoked", "struck_off": return "they took your licence"
+		"bankrupt", "repossessed": return "the money ran out"
+		"whistleblower": return "you told them yourself"
+	return "you stopped"
 
 # ---- vitals
 func _vitals_screen(patient_id: String) -> Control:

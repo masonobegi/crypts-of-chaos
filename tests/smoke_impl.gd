@@ -171,6 +171,23 @@ func _check_next_day() -> void:
 	_ok(GameState.day == 2, "day advanced to 2 (got %d)" % GameState.day)
 	_ok(GameState.phase == GameState.Phase.PRE_SHIFT, "next day begins in pre-shift")
 
+	# Device logs are evidence; losing them on load would quietly delete a paper
+	# trail the player deliberately created.
+	var machine: TreatmentMachine = null
+	var thermo: Thermostat = null
+	for f in tree.get_nodes_in_group("fixture"):
+		if machine == null and f is TreatmentMachine:
+			machine = f
+		elif thermo == null and f is Thermostat:
+			thermo = f
+	if thermo != null:
+		thermo.setting = 21
+		while thermo.setting > 12:
+			thermo.interact(null, null)
+	var machine_log_before: int = machine.log_entries.size() if machine else 0
+	var thermo_log_before: int = thermo.log_entries.size() if thermo else 0
+	var thermo_setting_before: int = thermo.setting if thermo else 0
+
 	# Save/load must survive a full round trip with live patients.
 	var before_count: int = game.patient_system.active_count()
 	var before_money: int = GameState.personal_money
@@ -180,6 +197,12 @@ func _check_next_day() -> void:
 	_ok(loaded, "save round-tripped")
 	_ok(GameState.personal_money == before_money, "money restored")
 	_ok(game.patient_system.active_count() == before_count, "patients restored (%d)" % before_count)
+	_ok(machine == null or machine.log_entries.size() == machine_log_before,
+		"machine log survives the round trip (%d entries)" % machine_log_before)
+	_ok(thermo == null or thermo.log_entries.size() == thermo_log_before,
+		"thermostat log survives the round trip (%d entries)" % thermo_log_before)
+	_ok(thermo == null or thermo.setting == thermo_setting_before,
+		"thermostat setting is restored (%d)" % thermo_setting_before)
 	SaveSystem.delete_save("smoke")
 
 func _report() -> void:

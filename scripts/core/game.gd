@@ -209,25 +209,36 @@ func _register_saves() -> void:
 	SaveSystem.register("events", events.to_dict, events.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
 	SaveSystem.register("codex", codex.to_dict, codex.from_dict)
-	SaveSystem.register("machines", _save_machines, _load_machines)
+	SaveSystem.register("devices", _save_devices, _load_devices)
 
-func _save_machines() -> Dictionary:
+## Every device that keeps a log has to be saved, because those logs ARE
+## evidence — losing a thermostat's history on load would quietly delete a paper
+## trail the player deliberately created.
+func _save_devices() -> Dictionary:
 	var out := {}
-	var i := 0
+	var m := 0
+	var t := 0
 	for f in get_tree().get_nodes_in_group("fixture"):
 		if f is TreatmentMachine:
-			out["m%d" % i] = f.to_dict()
-			i += 1
+			out["m%d" % m] = f.to_dict()
+			m += 1
+		elif f is Thermostat:
+			out["t%d" % t] = f.to_dict()
+			t += 1
 	return out
 
-func _load_machines(d: Dictionary) -> void:
-	var i := 0
+func _load_devices(d: Dictionary) -> void:
+	var m := 0
+	var t := 0
 	for f in get_tree().get_nodes_in_group("fixture"):
 		if f is TreatmentMachine:
-			var key := "m%d" % i
-			if d.has(key):
-				f.from_dict(d[key])
-			i += 1
+			if d.has("m%d" % m):
+				f.from_dict(d["m%d" % m])
+			m += 1
+		elif f is Thermostat:
+			if d.has("t%d" % t):
+				f.from_dict(d["t%d" % t])
+			t += 1
 
 func _start() -> void:
 	if GameState.flag("headless_sim", false):

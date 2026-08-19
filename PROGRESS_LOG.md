@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1321 assertions  (test functions across 9 suites)
+1422 assertions  (test functions across 9 suites)
  65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -522,6 +522,22 @@ It shipped reading "nothing booked" first time. The board is built with the
 building, which happens before the systems that fill it in exist, so connecting
 to `roster_changed` on the same frame silently found nothing — the screenshot
 pass caught it inside a minute. Deferred connect.
+
+**What you make of them.** The brief asked for ratings attributed to each
+person, and the game had them — observance, escalation, whether they are still
+counting the days — entirely invisible behind an archetype name. Every patient
+now carries a short read in your character's words: *"Watches everything. Asked
+what the dial was for."*, *"The sort who asks for it in writing."*, *"Has not
+looked up once."*
+
+Two rules make it work. It is never advice — there is a test that walks every
+archetype and asserts no line contains "safe", "risky", "witness" or "avoid",
+because the moment one does the game is labelling people as safe to hurt, which
+is the one thing it does not do. And it is a GUESS until you have examined them:
+each patient carries a fixed per-person error in your read, stored rather than
+rolled so it does not flicker while you stand there, and the notes say so out
+loud. That is the quiet argument for the honest examination — it is the only way
+to find out whose account of the afternoon anybody would believe.
 
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.

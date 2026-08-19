@@ -67,6 +67,12 @@ var imaged_at: int = -99999
 ## Career minute of the last hands-on examination. Briefly sharpens your read on
 ## where they actually are — the cheap, free, legitimate version of imaging.
 var examined_at: int = -99999
+## A fixed, per-person error in your character's read of them. Your assessment
+## of somebody you have not had your hands on recently is not neutral — it is
+## wrong in a particular direction, consistently, until you actually examine
+## them. Stored rather than rolled so the read does not flicker while you stand
+## there looking at it.
+var read_bias: float = 0.0
 ## A colleague can ASK for imaging. Ignoring the request is free on the day and
 ## expensive at the end of it, which is the point: the department you bought to
 ## make money is also the one thing in the building that can be pointed at you.
@@ -234,6 +240,49 @@ func apparent_state() -> String:
 func condition_name() -> String:
 	return DB.condition_name(condition_id)
 
+## Whether you have had hands on them recently enough to trust your own read.
+func read_is_fresh() -> bool:
+	return GameState.career_minutes - examined_at < 240
+
+## Your character's assessment of what this person is like to be alone with.
+##
+## Deliberately in words rather than numbers, and deliberately never advice: the
+## game does not tell you who is safe to hurt, it tells you what you noticed
+## about somebody. Every line is a thing a doctor could plausibly say about a
+## patient out loud.
+##
+## Blurred until you have examined them. That is the quiet argument for doing
+## the honest version of the examination — it is the only way to find out whose
+## account of the afternoon anybody would believe.
+func read_notes() -> Array[String]:
+	var fresh := read_is_fresh()
+	var bias := 0.0 if fresh else read_bias
+	var out: Array[String] = []
+
+	var watching: float = clampf((mind.observance if mind else 0.5) + bias, 0.0, 1.0)
+	if watching > 0.75:
+		out.append("Watches everything. Asked what the dial was for.")
+	elif watching > 0.5:
+		out.append("Pays attention. Follows you round the room with their eyes.")
+	elif watching > 0.28:
+		out.append("Half here. Mostly looking at the ceiling.")
+	else:
+		out.append("Has not looked up once.")
+
+	var escalation: float = clampf(DB.trait_of(archetype, "escalation", 0.4) + bias, 0.0, 1.0)
+	if escalation > 0.7:
+		out.append("The sort who asks for it in writing.")
+	elif escalation > 0.4:
+		out.append("Would mention it to somebody. Probably a nurse.")
+	else:
+		out.append("Not one for making a fuss.")
+
+	if not knows_expected_date:
+		out.append("Has lost track of what day they came in.")
+	if not fresh:
+		out.append("You have not properly examined them. This is a guess.")
+	return out
+
 ## Injuries that happened under this hospital's care. Not what they arrived
 ## with — what you gave them.
 func acquired_injuries() -> Array[Complication]:
@@ -284,7 +333,7 @@ func to_dict() -> Dictionary:
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
 		"corm": corridor_minutes, "cmpl": complained, "pres": presenting_complaint,
 		"adm": admitted,
-		"exam": examined_at,
+		"exam": examined_at, "bias": read_bias,
 	}
 
 static func from_dict(d: Dictionary) -> Patient:
@@ -323,6 +372,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.presenting_complaint = String(d.get("pres", ""))
 	p.admitted = bool(d.get("adm", true))
 	p.examined_at = int(d.get("exam", -99999))
+	p.read_bias = float(d.get("bias", 0.0))
 	p.complained = bool(d.get("cmpl", false))
 	p.imaging_requested_by = String(d.get("imgrb", ""))
 	p.imaging_requested_day = int(d.get("imgrd", -1))

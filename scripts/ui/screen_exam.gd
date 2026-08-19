@@ -29,6 +29,12 @@ func _build() -> void:
 		v.add_child(UIKit.row("Day of stay", "%d of %d projected" % [
 			int(ceil(_patient.days_admitted)), int(ceil(_patient.expected_stay_days))]))
 		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label("WHAT YOU MAKE OF THEM", 13, UIKit.INK_DIM))
+		for note in _patient.read_notes():
+			v.add_child(UIKit.label("· " + note, 14,
+				UIKit.INK_DIM if note.begins_with("You have not") else UIKit.INK,
+				HORIZONTAL_ALIGNMENT_LEFT, true))
+		v.add_child(UIKit.rule())
 
 		v.add_child(UIKit.label("SITE", 13, UIKit.INK_DIM))
 		var parts := UIKit.hbox(6)

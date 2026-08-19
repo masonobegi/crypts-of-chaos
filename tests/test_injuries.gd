@@ -224,3 +224,51 @@ func test_an_incident_review_pulls_the_patient_things_happened_to() -> void:
 	inv.free()
 	sus.free()
 	ps.free()
+
+## Your read on somebody is your character's, not the simulation's — and it is
+## wrong in a fixed direction until you have actually had hands on them. That is
+## the quiet argument for doing the honest examination: it is the only way to
+## find out whose account of the afternoon anybody would believe.
+func test_your_read_on_a_patient_is_a_guess_until_you_examine_them() -> void:
+	var p := _patient()
+	p.archetype = "observant"
+	p.mind = DB.make_mind(p.id, p.display_name, "patient", "observant")
+	p.read_bias = -0.5                      # your read of them is badly off
+	p.examined_at = -99999
+
+	var cold := p.read_notes()
+	t.ok(_has(cold, "This is a guess"), "an unexamined read says so out loud")
+
+	p.examined_at = GameState.career_minutes
+	var warm := p.read_notes()
+	t.ok(not _has(warm, "This is a guess"), "and a fresh one does not")
+	t.ok(_has(warm, "Watches everything"),
+		"an extremely observant patient reads as one once you have examined them")
+	t.ok(not _has(cold, "Watches everything"),
+		"and did not, while you were guessing")
+
+	# The error is fixed rather than rolled, so it does not flicker while the
+	# player stands there reading it.
+	p.examined_at = -99999
+	t.eq(p.read_notes(), cold, "the same guess, every time you look")
+
+func test_the_read_never_tells_you_what_to_do() -> void:
+	# Every line has to be something a doctor could say out loud about a
+	# patient. The moment one of them reads as advice, the game is labelling
+	# people as safe to hurt, which is the one thing it does not do.
+	var banned := ["safe", "risky", "witness", "suspicion", "get away", "avoid"]
+	for arch in DB.PATIENT_ARCHETYPES:
+		var p := _patient()
+		p.archetype = String(arch)
+		p.mind = DB.make_mind(p.id, p.display_name, "patient", String(arch))
+		p.examined_at = GameState.career_minutes
+		for note in p.read_notes():
+			for word in banned:
+				t.ok(not note.to_lower().contains(word),
+					"'%s' says nothing about '%s'" % [note, word])
+
+func _has(notes: Array, fragment: String) -> bool:
+	for n in notes:
+		if String(n).contains(fragment):
+			return true
+	return false

@@ -115,6 +115,9 @@ func _build_ward(c: VBoxContainer) -> void:
 		bv.add_child(UIKit.row("Billing", "%s/day" % UIKit.money_str(p.daily_revenue()), UIKit.MONEY))
 		bv.add_child(UIKit.row("Insurance", DB.insurance_name(p.insurance)))
 		bv.add_child(UIKit.row("Personality", DB.archetype_name(p.archetype)))
+		for note in p.read_notes():
+			bv.add_child(UIKit.label("  · " + note, 12, UIKit.INK_DIM,
+				HORIZONTAL_ALIGNMENT_LEFT, true))
 		# A colleague's outstanding request. Deliberately stated as a request and
 		# not as a warning: what happens if you ignore it is for the player to
 		# find out at clock-out.

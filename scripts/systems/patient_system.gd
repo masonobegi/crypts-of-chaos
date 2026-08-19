@@ -57,6 +57,7 @@ func generate(force_condition := "") -> Patient:
 
 	p.condition_id = force_condition if force_condition != "" else _roll_condition()
 	p.presenting_complaint = DB.condition_name(p.condition_id)
+	p.read_bias = RNG.randf_range_s("read_bias", -0.24, 0.24)
 	p.chart.presenting_complaint = p.presenting_complaint
 	var cond: Dictionary = DB.condition(p.condition_id)
 	p.expected_stay_days = float(cond.get("base_days", 2.0)) * RNG.randf_range_s("patient_stay", 0.85, 1.2)

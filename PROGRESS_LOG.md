@@ -170,6 +170,14 @@ small number of profitable outliers inside that volume.
       by satisfaction/comfort, patients far more observant).
 - [x] 663 assertions, 37 smoke checks, 12 balance checks.
 
+- [x] Upgrade economy rescaled after the harness showed the whole catalogue
+      being bought out inside 20 days; two late-game sinks added.
+- [x] Thermostats (quiet environmental sabotage with a device log) and chart
+      misfiling detection (carrying a chart away is now a real, recoverable
+      middle ground between leaving it and shredding it).
+- [x] CLAUDE.md with the eight engine gotchas and the load-bearing design rules.
+- [x] 671 assertions, 37 smoke checks, 14 balance checks.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - A physical second wing (departments are currently capability unlocks that

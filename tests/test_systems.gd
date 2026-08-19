@@ -382,3 +382,44 @@ func test_earshot_uses_distance_and_room() -> void:
 	t.gt(float(NPCBody.SUBTITLE_RANGE), 5.0, "earshot is generous enough to be useful")
 	t.lt(float(NPCBody.SUBTITLE_RANGE), 30.0, "but well short of the whole floor")
 	npc.queue_free()
+
+# ==================================================================== thermostat
+func test_thermostat_drives_the_room_and_leaves_a_record() -> void:
+	# Quieter than an open window — no physical tell in the room — but it is a
+	# device with a setting, and the setting is the cost.
+	var h = _hospital()
+	var r = h.room("ward_104")
+	r.window_open = false
+	r.temperature = 21.0
+	r.target_override = -1.0
+
+	var thermo: Thermostat = null
+	for f in h.get_tree().get_nodes_in_group("fixture"):
+		if f is Thermostat and f.room_key == "ward_104":
+			thermo = f
+	t.ok(thermo != null, "every ward has a thermostat")
+	if thermo == null:
+		return
+
+	t.eq(thermo.suspicious_log_entries().size(), 0, "an untouched thermostat has nothing on file")
+	while thermo.setting > 12:
+		thermo.interact(null, null)
+	for i in 300:
+		r._drift_temperature(1.0)
+	t.lt(r.temperature, 15.0, "the ward genuinely gets cold")
+	t.gt(float(thermo.suspicious_log_entries().size()), 0.0,
+		"and a setting that far off is on the record")
+
+func test_moderate_thermostat_settings_leave_nothing_behind() -> void:
+	var h = _hospital()
+	var thermo: Thermostat = null
+	for f in h.get_tree().get_nodes_in_group("fixture"):
+		if f is Thermostat and f.room_key == "ward_102":
+			thermo = f
+	if thermo == null:
+		return
+	thermo.log_entries.clear()
+	thermo.setting = 21
+	thermo.interact(null, null)     # 19 — comfortable enough
+	t.eq(thermo.suspicious_log_entries().size(), 0,
+		"a small adjustment is not worth an inspector's time")

@@ -145,6 +145,21 @@ func _read_chart(patient_id: String) -> void:
 			patient_id)
 		say("Where is this patient's chart?", 4.0)
 		return
+	# Charts live on the ward they belong to. One that has wandered is either
+	# carelessness or an attempt to keep it away from somebody — and an inspector
+	# cannot tell which, which is rather the point.
+	var chart_room := ""
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h and h.has_method("room_at"):
+		chart_room = h.room_at(chart_prop.global_position)
+	if chart_room != p.room:
+		_add("chart_misfiled", 0.4,
+			"%s's chart was found in %s rather than on their ward" % [
+				p.display_name,
+				h.room(chart_room).display if (h and h.room(chart_room)) else "another room"],
+			patient_id)
+		say("Why is this chart in here?", 3.5)
+
 	var findings: Array = p.chart.audit(p.actual_treatments, p.complications)
 	if findings.is_empty():
 		say(String(RNG.pick("inv_clean", ["Fine.", "That's in order.", "Mm."])), 2.5)
@@ -197,8 +212,17 @@ func _interview(npc_id: String) -> void:
 		])), 3.5)
 	say("Go on.", 2.5)
 
-## Opens the machine. Reads the log. Notices the calibration screw.
+## Opens the machine. Reads the log. Notices the calibration screw. Then reads
+## the thermostat, because a ward that keeps being set to twelve degrees is a
+## record too.
 func _inspect_machine(room_key: String) -> void:
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if f is Thermostat and f.room_key == room_key:
+			for entry in f.suspicious_log_entries():
+				_add("thermostat_log", 0.3, "%s set to %d on day %d" % [
+					f.fixture_name, int(entry["setting"]), int(entry["day"])])
+			if not f.suspicious_log_entries().is_empty():
+				say("Who has been playing with the heating?", 3.5)
 	for f in get_tree().get_nodes_in_group("fixture"):
 		if not (f is TreatmentMachine) or f.room_key != room_key:
 			continue

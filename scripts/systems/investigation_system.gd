@@ -212,7 +212,7 @@ func _gather_records(inv: Investigation) -> void:
 			ev.certainty = 0.95
 			ev.summary = String(f["text"])
 			inv.gathered.append(ev)
-	# Machine logs are records too, and nobody ever remembers to check them.
+	# Device logs are records too, and nobody ever remembers to check them.
 	for f in get_tree().get_nodes_in_group("fixture"):
 		if f is TreatmentMachine:
 			for entry in f.suspicious_log_entries():
@@ -239,6 +239,18 @@ func _gather_records(inv: Investigation) -> void:
 				ev2.summary = "%s device log has been cleared %d time(s)" % [
 					f.fixture_name, f.log_cleared_count]
 				inv.gathered.append(ev2)
+		elif f is Thermostat:
+			for entry in f.suspicious_log_entries():
+				var tev := Evidence.new()
+				tev.kind = "thermostat_log"
+				tev.about_actor = "player"
+				tev.source = Evidence.Source.RECORD
+				tev.time = GameState.career_minutes
+				tev.base_weight = 0.3
+				tev.certainty = 0.95
+				tev.summary = "%s set to %d on day %d" % [
+					f.fixture_name, int(entry["setting"]), int(entry["day"])]
+				inv.gathered.append(tev)
 
 ## Ask the ward what they saw. Staff who like you keep their mouths shut.
 func _interview_staff(inv: Investigation) -> void:

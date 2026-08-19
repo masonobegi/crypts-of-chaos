@@ -161,6 +161,13 @@ static func _ward(h: Hospital, r: Room) -> void:
 	sw.position = Vector3(_door_x(r) + 1.1, 1.25, r.rect.position.y + 0.14)
 	sw.rotation.y = PI
 
+	var thermo := Thermostat.new()
+	thermo.room_key = r.key
+	h.add_child(thermo)
+	thermo.build()
+	thermo.position = Vector3(_door_x(r) + 1.6, 1.25, r.rect.position.y + 0.14)
+	thermo.rotation.y = PI
+
 	_chair(h, Vector3(c.x - 2.2, 0, c.z + 1.0), 1.2)
 	_table(h, Vector3(c.x - 2.6, 0, c.z - 0.6), 0.5, 0.5)
 	_iv_stand(h, bed_pos + Vector3(0.9, 0, -0.9))

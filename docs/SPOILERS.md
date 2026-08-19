@@ -74,6 +74,23 @@ environmental complication whose *true* cause is `facilities` — genuinely the
 building's fault, provided a ticket was filed first (`RecordsSystem.file_facilities_ticket`,
 which also grants a `facilities` cover story for 600 minutes).
 
+## Thermostats
+
+Quieter than a window — there is no physical tell in the room, so a nurse walking
+in sees nothing out of place. The trade is that a thermostat has a *setting*, and
+settings are records: anything 6° or more off 21 lands in the device log and an
+inspector reads it back to you. Same bargain as the machine dial.
+
+Rooms honour `Room.target_override` from the thermostat; an open window overrides
+both and drags toward 8 °C, which is faster and far more obvious.
+
+## Charts in the wrong room
+
+Charts are physical props you can carry. An investigator that reaches a bed and
+finds the chart somewhere else records a `chart_misfiled` finding (0.4) — a
+smaller penalty than a shredded chart (0.85), and unlike shredding it is
+recoverable by putting it back before anyone gets there.
+
 ## Being seen
 
 `NPCPerception.evaluate`: 112° FOV, 13 m range, LOS blocked by walls and **closed

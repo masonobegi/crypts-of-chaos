@@ -22,6 +22,8 @@ var occupant_ids: Array[String] = []
 ## facilities ticket BEFORE the complication lands is the clean version of
 ## freezing someone for an extra day.
 var facilities_ticket_filed := false
+## Thermostat setting, if the ward has one. -1 means "leave it to the HVAC".
+var target_override := -1.0
 
 var _drift_accum := 0.0
 
@@ -36,6 +38,8 @@ func _drift_temperature(seconds: float) -> void:
 	# An open window pulls hard toward outside; otherwise the HVAC creeps back
 	# toward comfortable, slowly enough that you have time to leave the ward.
 	var target := IDEAL_TEMP
+	if target_override > 0.0:
+		target = target_override
 	if window_open:
 		target = 8.0
 	if not lights_on:
@@ -123,6 +127,7 @@ func to_dict() -> Dictionary:
 	return {
 		"temp": temperature, "lights": lights_on, "win": window_open,
 		"clean": cleanliness, "ticket": facilities_ticket_filed,
+		"target": target_override,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -131,3 +136,4 @@ func from_dict(d: Dictionary) -> void:
 	window_open = bool(d.get("win", false))
 	cleanliness = float(d.get("clean", 1.0))
 	facilities_ticket_filed = bool(d.get("ticket", false))
+	target_override = float(d.get("target", -1.0))

@@ -43,6 +43,18 @@ const PERKS := {
 		"name": "A Friend Outside", "from": "prison",
 		"desc": "Somebody owed you. Start with an extra $2,000 and no questions.",
 	},
+	"steady_pressure": {
+		"name": "Calibrated Hands", "from": "butcher",
+		"desc": "You have done this enough times to know exactly how far is far enough. The same result, from a good deal less of it.",
+	},
+	"known_complication": {
+		"name": "The Phrase", "from": "recognised_risk",
+		"desc": "You have written 'a recognised risk of the procedure' so many times it writes itself. Theatre complications file their own cause.",
+	},
+	"pharmacy_contact": {
+		"name": "Somebody In Dispensing", "from": "revolving_door",
+		"desc": "The pharmacy record agrees with whatever you wrote on the chart. It has stopped being an independent document.",
+	},
 	"thick_skin": {
 		"name": "Thick Skin", "from": "license_revoked",
 		"desc": "You have been through it. The sanction ladder starts one rung more forgiving.",
@@ -135,6 +147,12 @@ func apply_perk() -> void:
 			GameState.add_personal(2000, "a friend outside")
 		"thick_skin":
 			GameState.set_flag("perk_thick_skin", true)
+		"steady_pressure":
+			GameState.set_flag("perk_steady_pressure", true)
+		"known_complication":
+			GameState.set_flag("perk_known_complication", true)
+		"pharmacy_contact":
+			GameState.set_flag("perk_pharmacy_contact", true)
 	Log.i("perk applied: %s" % selected_perk, "Meta")
 
 # ------------------------------------------------------------------ persistence

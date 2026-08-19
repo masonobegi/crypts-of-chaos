@@ -192,11 +192,19 @@ func test_every_ending_is_reachable() -> void:
 			GameState.stats.patients_cured = 20
 			GameState.stats.complications_caused = 0
 			GameState.adjust_rep("patient_sat", 0.3),
+		"butcher": func(): GameState.stats.injuries_caused = 18,
+		"recognised_risk": func(): GameState.stats.surgeries_botched = 7,
+		"revolving_door": func(): GameState.stats.readmissions = 10,
 	}
 	for id in cases:
 		GameState.start_new_career(1)
 		(cases[id] as Callable).call()
 		t.eq(Endings.evaluate(GameState.stats), id, "ending '%s' is reachable" % id)
+	# And nothing can be added to the catalogue without one, which is how the
+	# three endings written for the injury loop nearly shipped unreachable.
+	for id in Endings.ENDINGS:
+		t.ok(cases.has(String(id)),
+			"ending '%s' has a case proving something produces it" % id)
 	GameState.start_new_career(1)
 
 func test_headline_generator_never_returns_empty() -> void:

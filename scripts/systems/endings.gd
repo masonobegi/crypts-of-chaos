@@ -45,6 +45,21 @@ const ENDINGS := {
 		"line": "Impeccable reputation. Immaculate figures. An absolutely enormous amount of fraud.",
 		"epitaph": "Nobody suspected a thing, and they were all wrong.",
 	},
+	"butcher": {
+		"title": "The Butcher of Ward C",
+		"line": "Everyone who came through here left with something they did not arrive with. Nobody can explain a single one of them, including you.",
+		"epitaph": "An unusual number of unwitnessed falls.",
+	},
+	"recognised_risk": {
+		"title": "A Recognised Risk",
+		"line": "Every one of them went wrong in theatre, and every one of them is a known complication of the procedure. The theatre record agrees with you throughout. Nobody else does.",
+		"epitaph": "Consented, documented, and absolutely appalling.",
+	},
+	"revolving_door": {
+		"title": "Revolving Door",
+		"line": "You never hurt a soul. You just kept sending them home on the wrong thing, and they kept coming back through the front doors like the tide.",
+		"epitaph": "Same faces. New admissions. Full rate.",
+	},
 	"bankrupt": {
 		"title": "Repossessed",
 		"line": "Vinnie got the car. The bank got the flat. The hospital got a two-week notice period.",
@@ -70,6 +85,9 @@ static func evaluate(stats: Dictionary) -> String:
 	var clean := int(stats.get("complications_clean", 0))
 	var earned := int(stats.get("personal_earned", 0))
 	var corrupt_staff := int(GameState.flag("corrupt_staff_count", 0))
+	var injuries := int(stats.get("injuries_caused", 0))
+	var botched := int(stats.get("surgeries_botched", 0))
+	var readmits := int(stats.get("readmissions", 0))
 
 	# Legendary: enormous fraud, immaculate standing. The hardest one to get.
 	if forged >= 12 and GameState.rep("doctor") >= 0.75 and GameState.sanction_level == 0 \
@@ -77,6 +95,17 @@ static func evaluate(stats: Dictionary) -> String:
 		return "legendary"
 	if corrupt_staff >= 3:
 		return "medical_mafia"
+
+	# When one thing dominates the record, that thing IS the career, whatever
+	# the money says. These sit below Legendary on purpose: managing fifteen
+	# ward injuries and still finishing with an immaculate reputation deserves
+	# the better joke.
+	if injuries >= 15:
+		return "butcher"
+	if botched >= 6 and GameState.sanction_level <= 2:
+		return "recognised_risk"
+	if readmits >= 8 and injuries <= 3 and GameState.sanction_level <= 1:
+		return "revolving_door"
 	if forged >= 20 and earned >= 30000:
 		return "fraud_king"
 	if earned >= 25000 and GameState.sanction_level <= 1:
@@ -105,6 +134,13 @@ static func headline(stats: Dictionary) -> String:
 	if name != "" and days > 3.0:
 		pool.append("LOCAL DOCTOR SETS RECORD TREATING %s FOR %d DAYS" % [name.to_upper(), int(days)])
 		pool.append("'I FEEL FINE', INSISTS %s, DAY %d" % [name.to_upper(), int(days)])
+	if int(stats.get("injuries_caused", 0)) > 5:
+		pool.append("WARD C 'LOOKING INTO' RISE IN UNWITNESSED FALLS")
+		pool.append("TRUST DENIES WARD IS 'PARTICULARLY DANGEROUS'")
+	if int(stats.get("readmissions", 0)) > 3:
+		pool.append("LOCAL PATIENTS 'KEEP COMING BACK', SAYS DELIGHTED HOSPITAL")
+	if int(stats.get("surgeries_botched", 0)) > 2:
+		pool.append("SURGEON DEFENDS 'ENTIRELY STANDARD' COMPLICATION RATE")
 	if int(stats.get("items_broken", 0)) > 4:
 		pool.append("HOSPITAL ORDERS RECORD NUMBER OF REPLACEMENT TRAYS")
 	if int(stats.get("complaints", 0)) > 3:

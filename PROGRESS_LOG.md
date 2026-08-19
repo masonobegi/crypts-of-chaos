@@ -216,7 +216,7 @@ systems, the vertical slice, the emergent-story machinery, and three departments
 beyond it.
 
 ```
-1297 assertions  (test functions across 9 suites)
+1320 assertions  (test functions across 9 suites)
  65 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  15 balance checks (three 16/30-day careers asserting the design intent holds)
@@ -493,13 +493,29 @@ return: it is pressure on top of whatever heat was already bringing, because
 crowding out a malpractice enquiry by breaking more legs is exactly the wrong
 incentive, and that is what happened the first time it was wired up.
 
+**Endings that know what the career was about.** The evaluator read forged
+entries, cures, complications and money, and nothing else — so a run defined
+entirely by ward injuries came out as Fraud King. Three endings read the new
+shape: **The Butcher of Ward C** (everyone left with something they did not
+arrive with), **A Recognised Risk** (every one of them went wrong in theatre and
+every one is a known complication, and the theatre record agrees with you
+throughout), and **Revolving Door** (never hurt a soul, just kept sending them
+home on the wrong thing). All three sit below Legendary on purpose: managing
+fifteen ward injuries AND an immaculate reputation deserves the better joke.
+
+Each unlocks a perk that changes the RECORD rather than the world, which is the
+right shape for this game — Calibrated Hands gets the outcome of leaning hard
+from somebody who did not look like they were, The Phrase files its own cause
+for theatre complications, and Somebody In Dispensing means the pharmacy record
+has quietly stopped being an independent document. And the reachability test now
+asserts every ending in the catalogue has a case proving something produces it,
+because all three of these nearly shipped unreachable.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
 - A nurse walking past a ward with no bed in it still has no opinion about the
   empty room itself, only about the patient who ended up in the corridor.
-- Endings still read the old career shape: nothing in them knows about ward
-  injuries, improvised theatre or the readmission loop.
 - Walk-ins sit in the treatment bay with no signposting; the List tab says where
   they are but nothing in the world does.

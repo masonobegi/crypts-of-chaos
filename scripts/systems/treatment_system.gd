@@ -182,7 +182,13 @@ func examine(p: Patient, part: String, pressure: int, from_pos := Vector3.ZERO) 
 	p.examined_at = GameState.career_minutes
 	p.satisfaction = clampf(p.satisfaction + 0.03, 0.0, 1.0)
 
-	if RNG.randf_s("exam_%s" % p.id) < injury_chance(pressure):
+	# Calibrated Hands: the same result from a good deal less of it. Applied to
+	# the roll and NOT to the visibility, which is the whole perk — you get the
+	# outcome of leaning hard while looking like somebody who did not.
+	var effective := pressure
+	if GameState.flag("perk_steady_pressure", false):
+		effective += 1
+	if RNG.randf_s("exam_%s" % p.id) < injury_chance(effective):
 		var comp_id := String(EXAM_PARTS[part])
 		var existing := false
 		for c in p.complications:
@@ -299,11 +305,16 @@ func perform_surgery(p: Patient, site: String, approaches: Array) -> Dictionary:
 		if already:
 			comp = ""
 		else:
-			patient_system.add_complication(p, comp, "surgical")
+			var added := patient_system.add_complication(p, comp, "surgical")
 			if DB.is_injury(comp):
 				GameState.stats.injuries_caused += 1
 			if improvised > 0:
 				GameState.stats.surgeries_botched += 1
+			# The Phrase: it writes itself now.
+			if added != null and GameState.flag("perk_known_complication", false) \
+					and added.plausible_causes.has("known_risk"):
+				added.documented_cause = "known_risk"
+				added.documented_at = GameState.career_minutes
 
 	p.chart.log_surgery(site, notes, GameState.day, comp, improvised)
 
@@ -333,7 +344,10 @@ func prescribe(p: Patient, med_id: String) -> Dictionary:
 	var kind := String(spec.get("kind", "inert"))
 	var indicated := DB.prescription_indicated(med_id, p.condition_id)
 	p.chart.prescription = med_id
-	p.chart.prescription_indicated = indicated
+	# Somebody In Dispensing: the pharmacy record has stopped being an
+	# independent document. They still come back — this only silences the paper.
+	p.chart.prescription_indicated = indicated \
+		or GameState.flag("perk_pharmacy_contact", false)
 	p.chart.add_note("Discharged on %s." % DB.prescription_name(med_id),
 		GameState.career_minutes, "You", true)
 

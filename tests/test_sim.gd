@@ -154,3 +154,43 @@ func test_meta_survives_a_save_and_load() -> void:
 	t.eq(Meta.selected_perk, "good_name", "the chosen perk persists")
 	t.eq(Meta.runs_completed, 2, "career count persists")
 	Meta.reset()
+
+## The three perks the injury loop unlocks all do something mechanical, and two
+## of them do it by changing what the RECORD says rather than what happened.
+func test_the_injury_loop_perks_do_something() -> void:
+	# Calibrated Hands moves the roll and leaves the visibility alone, which is
+	# the entire perk: the outcome of leaning hard, from somebody who did not
+	# look like they were.
+	var quiet := TreatmentSystem.EXAM_INDICATED + 3
+	t.gt(TreatmentSystem.injury_chance(quiet + 1), TreatmentSystem.injury_chance(quiet),
+		"one notch of effective pressure is worth having")
+	t.eq(TreatmentSystem.exam_visibility(quiet), TreatmentSystem.exam_visibility(quiet),
+		"and the perk cannot change how it looks, because it is applied to the roll")
+
+	Meta.reset()
+	Meta.record_ending("revolving_door")
+	Meta.select_perk("pharmacy_contact")
+	GameState.start_new_career(77)
+	Meta.apply_perk()
+	t.ok(GameState.flag("perk_pharmacy_contact", false), "the pharmacy contact is in place")
+
+	var ps := PatientSystem.new()
+	t.root.add_child(ps)
+	var ts := TreatmentSystem.new()
+	t.root.add_child(ts)
+	ts.patient_system = ps
+	var p := Patient.new("perk_rx")
+	p.display_name = "Mr Perk"
+	p.condition_id = "torn_knee"
+	p.admitted = true
+	ps.patients[p.id] = p
+	ts.prescribe(p, "dual_course")
+	t.ok(p.chart.prescription_indicated,
+		"the pharmacy record now agrees with whatever was written on the chart")
+	var kinds: Array = []
+	for f in p.chart.audit(p.actual_treatments, p.complications):
+		kinds.append(String(f["kind"]))
+	t.ok(not kinds.has("prescription_mismatch"), "so there is nothing to find in it")
+	ts.free()
+	ps.free()
+	Meta.reset()

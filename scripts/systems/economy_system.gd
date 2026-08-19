@@ -44,6 +44,7 @@ func _ready() -> void:
 	patient_system = get_tree().get_first_node_in_group("patient_system")
 	EventBus.item_broke.connect(_on_item_broke)
 	EventBus.patient_admitted.connect(_on_admitted)
+	EventBus.clock_tick.connect(_on_clock_tick)
 
 func _on_admitted(_p) -> void:
 	admissions_today += 1
@@ -54,12 +55,65 @@ func _on_item_broke(_item) -> void:
 	GameState.adjust_rep("hospital", -0.004)
 
 # ------------------------------------------------------------------ daily
-## Bill every occupied bed. This is where a longer stay becomes money.
+## What each bed has already been billed for today, patient id -> amount.
+##
+## Bed days used to arrive as one lump at clock-out. Four scripted playthroughs
+## — honest, reckless, careful and opportunist — all reported the same thing:
+## `money  you $125   hospital $7,750` at the start, and the identical figure at
+## the end. Nothing the player did to anybody moved a number they could see
+## while they were doing it. The one mechanic the entire game is about paid out
+## after the player had stopped playing.
+##
+## Procedure fees have always been billed the moment the work is done, under a
+## comment reading "the whole point of a booked list is that you can watch it
+## add up". Beds are the business model; they get the same treatment.
+var billed_today := {}
+
+## Every quarter of an in-game hour, which at the current time scale is about
+## thirty-four real seconds. Hourly was the obvious choice and it is far too
+## coarse to feel: eight movements across a whole shift, two and a bit minutes
+## apart. A number that only changes twice in the time it takes to walk the
+## corridor is not feedback.
+const BILL_EVERY_MINUTES := 15
+
+func _on_clock_tick(minute: int) -> void:
+	if minute % BILL_EVERY_MINUTES == 0:
+		bill_interval()
+
+## A slice of every occupied bed. Called while the shift runs.
+func bill_interval() -> void:
+	if GameState.phase != GameState.Phase.SHIFT:
+		return
+	var total := 0
+	var beds := 0
+	for p in patient_system.active():
+		var so_far: int = int(billed_today.get(p.id, 0))
+		var day_rate := p.daily_revenue()
+		# A day is 1440 minutes, so a quarter hour is a ninety-sixth of it — and
+		# it can never take a patient past their own daily rate, which is what
+		# keeps the day's total identical to the lump this replaced.
+		var slice := mini(int(round(float(day_rate) * float(BILL_EVERY_MINUTES) / 1440.0)),
+			day_rate - so_far)
+		if slice <= 0:
+			continue
+		billed_today[p.id] = so_far + slice
+		total += slice
+		beds += 1
+	if total <= 0:
+		return
+	# One movement, not five. The ledger is per patient and the statement
+	# itemises it; the thing on screen every half minute is the ward, because
+	# five separate lines every thirty seconds is not a readout, it is weather.
+	GameState.add_hospital(total, "%d bed%s occupied" % [beds, "" if beds == 1 else "s"])
+
+## Bill every occupied bed for whatever the hours have not already covered.
+## This is where a longer stay becomes money.
 func bill_day() -> Dictionary:
 	var lines: Array[Dictionary] = []
 	var revenue := 0
 	for p in patient_system.active():
 		var amount := p.daily_revenue()
+		var already: int = int(billed_today.get(p.id, 0))
 		revenue += amount
 		GameState.stats.days_billed += 1
 		lines.append({
@@ -68,7 +122,10 @@ func bill_day() -> Dictionary:
 			"amount": amount,
 			"overdue": p.is_overdue(),
 		})
-	GameState.add_hospital(revenue, "patient billing")
+		var owed := amount - already
+		if owed > 0:
+			GameState.add_hospital(owed, "%s — rest of the day" % p.display_name)
+	billed_today.clear()
 	return {"revenue": revenue, "lines": lines}
 
 ## A one-off procedure fee: consultations, reviews, operations, discharges.

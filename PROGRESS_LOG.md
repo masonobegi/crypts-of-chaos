@@ -1608,3 +1608,49 @@ changing; all four readers already existed.
   opens the list now.
 
 **1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**
+
+---
+
+## Session 4 (cont.) — the one mechanic the game is about paid out after you stopped playing
+
+Four scripted playthroughs — honest, reckless, careful criminal, opportunist —
+all reported the same thing:
+
+```
+** before
+   money  you $125   hospital $7,750
+** after cranking three machines to 11
+   money  you $125   hospital $7,750
+```
+
+Bed days arrived as **one lump at clock-out**. Nothing the player did to anybody
+moved a number they could see while they were doing it. The HUD money ticker
+added earlier this session had nothing to show for an entire shift.
+
+Procedure fees have always been billed the moment the work is done, under a
+comment reading *"the whole point of a booked list is that you can watch it add
+up"*. Beds are the business model. They now get the same treatment: every
+occupied bed accrues a slice every fifteen in-game minutes — about thirty-four
+real seconds at the current time scale — and `bill_day()` bills only whatever
+the day's slices have not already covered, so **the day's total is identical to
+the lump it replaced.**
+
+Hourly was the obvious first choice and it is far too coarse to feel: eight
+movements across a whole shift, two and a bit real minutes apart. A number that
+changes twice in the time it takes to walk the corridor is not feedback.
+
+The ledger is per patient; the movement on screen is one line for the ward —
+`4 beds occupied  +$412` — because five separate lines every thirty seconds is
+not a readout, it is weather. The statement still itemises every bed.
+
+Verified: 21/21 balance design checks still pass across three seeds, and the
+tiers barely move.
+
+| | per day | survives |
+|---|---|---|
+| honest | $1,061 | 20d |
+| careless | $2,906 | 13.7d |
+| mild | $3,565 | 20d |
+| careful | $3,899 | 20d |
+
+**1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance.**

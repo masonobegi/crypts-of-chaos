@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Drive the real game through the real input actions and photograph it.
 #   GODOT=/path/to/godot ./play.sh [plan]
-# plans: first_shift (default) | walk_test | honest
+# plans: first_shift (default) | walk_test | honest | reckless | careful_criminal
+#        | opportunist | idiot_chaos | doors
 set -uo pipefail
 GODOT="${GODOT:-godot}"
 DIR="$(cd "$(dirname "$0")" && pwd)"

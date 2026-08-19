@@ -100,12 +100,34 @@ func _init(p_id: String = "") -> void:
 func your_cut_per_day() -> int:
 	return int(round(float(daily_revenue()) * GameState.bonus_rate))
 
+## What an insurer will pay for the Nth thing to go wrong with the same person
+## in the same admission. The first one is worth having. The fourth is worth
+## almost nothing and the eighth is worth nothing at all.
+##
+## This used to be a flat +0.26 each with no ceiling, which meant a patient with
+## fifteen complications billed nearly five times base — and a balance run
+## measured the consequence exactly: reckless butchery earned $8,379 a day
+## against careful practice's $2,778, so the game's answer to "how should I do
+## this?" was "badly, and quickly". Nobody pays five times the daily rate for
+## one person who keeps falling over. They ask why they keep falling over.
+##
+## The shape is the design in one line: the first complication is where the
+## money is, the fifteenth is where the prison is.
+const COMPLICATION_STEPS := [0.26, 0.19, 0.12, 0.07, 0.04]
+const COMPLICATION_TAIL := 0.015
+const COMPLICATION_CEILING := 0.78
+
 func daily_revenue() -> int:
 	var mult: float = DB.insurance_multiplier(insurance)
 	var comp_bonus := 1.0
+	var billed := 0
 	for c in complications:
-		if not c.resolved:
-			comp_bonus += 0.26   # complications are billable, that's the point
+		if c.resolved:
+			continue
+		comp_bonus += (COMPLICATION_STEPS[billed] if billed < COMPLICATION_STEPS.size()
+			else COMPLICATION_TAIL)
+		billed += 1
+	comp_bonus = minf(comp_bonus, 1.0 + COMPLICATION_CEILING)
 	# Acuity escalation: a case that runs long with complications gets recoded as
 	# complex and bills more per day. Entirely above board, and the reason a
 	# six-day stay is worth far more than three two-day stays.
@@ -124,6 +146,28 @@ func total_stay_days() -> float:
 
 func projected_discharge_day() -> int:
 	return admitted_on_day + int(ceil(total_stay_days()))
+
+## Days in this bed that the RECORD does not account for.
+##
+## An insurer reading your figures does not know what is true, only what is
+## written. A complication that is documented justifies the days it added; one
+## that is not documented does not, and those days show up as a patient who
+## simply would not leave.
+##
+## The statistical review used to measure every extra day against the original
+## projection, which meant causing a complication and filing it correctly made
+## your length-of-stay figures WORSE — the game punished the exact behaviour it
+## was built to reward, and a balance run showed the consequence: the most
+## profitable strategy in the game was to touch nobody and never file anything,
+## because doing the interesting thing cost more than it paid.
+func unexplained_overstay() -> float:
+	var justified := expected_stay_days
+	for c in complications:
+		if c.resolved:
+			continue
+		if c.documented_cause != "":
+			justified += c.days_added
+	return maxf(0.0, days_admitted - justified)
 
 func is_overdue() -> bool:
 	return days_admitted > expected_stay_days + 0.25

@@ -58,8 +58,18 @@ func _ready() -> void:
 # ------------------------------------------------------------------ triggers
 ## Called once at the start of each day. Heat is the main driver, but a
 ## sufficiently annoyed insurer can open one on its own.
+## How many people can be looking into you at once.
+##
+## A flat cap of two was the single biggest reason a butcher survived eighteen
+## days at 93% heat with 528 witnessed acts: the queue was full, so nothing else
+## could start, and each one had to finish before the next began. Being under a
+## police investigation does not stop an insurer auditing you. It makes it more
+## likely.
+func concurrent_cap() -> int:
+	return clampi(2 + int(GameState.sanction_level / 3), 2, 4)
+
 func daily_check() -> void:
-	if open_investigations.size() >= 2:
+	if open_investigations.size() >= concurrent_cap():
 		return
 	var heat := GameState.heat
 	var scrutiny := GameState.rep("gov_scrutiny")
@@ -80,11 +90,18 @@ func daily_check() -> void:
 	# wrong incentive, and it is what happened the first time this was wired up.
 	if _injury_review_due():
 		open("serious_incident")
-	if open_investigations.size() >= 2:
+	if open_investigations.size() >= concurrent_cap():
 		return
 	if not RNG.chance("investigation_open", clampf(chance, 0.0, 0.85)):
 		return
 	open(_pick_kind(insurer_sus))
+	# Trouble arrives in more than one envelope. One opening per day meant that
+	# however loud a ward got, the rate at which the institution noticed it was
+	# constant — a butcher and a careful operator drew the same volume of post,
+	# just with different contents. Above two-thirds heat, a second one lands.
+	if GameState.heat > 0.66 and open_investigations.size() < concurrent_cap() \
+			and RNG.chance("investigation_second", (GameState.heat - 0.66) * 1.6):
+		open(_pick_kind(insurer_sus))
 
 ## Ward-acquired injuries running well over the expected rate, with nobody
 ## already looking into it.
@@ -383,6 +400,14 @@ func escalate(steps: int, reason: String) -> void:
 		# Scaled by heat: a doctor who has cooled off gets room to recover, one
 		# running at maximum institutional heat does not.
 		steps = 1 if RNG.chance("late_escalation", 0.28 + GameState.heat * 0.6) else 0
+		# The room to recover is for somebody who is recovering. Sitting at the
+		# top of the heat scale for a fortnight is not a bad week, it is a
+		# pattern, and the throttle that exists to be merciful was the main
+		# reason a doctor with four hundred witnessed acts kept his licence for
+		# eighteen days.
+		if steps > 0 and GameState.heat > 0.85 \
+				and RNG.chance("runaway_escalation", GameState.heat - 0.5):
+			steps = 2
 	elif before >= 2:
 		steps = mini(steps, 2)
 	if steps <= 0:

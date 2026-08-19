@@ -777,7 +777,7 @@ func average_overstay() -> float:
 		return 0.0
 	var total := 0.0
 	for p in list:
-		total += maxf(0.0, p.days_admitted - p.expected_stay_days)
+		total += p.unexplained_overstay()
 	return total / float(list.size())
 
 func _position_of(p: Patient) -> Vector3:

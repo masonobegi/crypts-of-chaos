@@ -913,3 +913,89 @@ next thing to fix.
   where a bed is and the hospital does not exist until the game has had a frame.
 
 **1,534 assertions · 95 smoke · 13 live · balance across 3 seeds. All green.**
+
+---
+
+## Session 4 (cont.) — Phase 10: the economy had the wrong answer in it
+
+The multi-seed balance sim asked the game "how should I do this?" and the game
+said **"badly, and quickly."**
+
+| | per day | survives | sanction | injuries/shift |
+|---|---|---|---|---|
+| honest | $952 | 20d | 0.0 | 0.000 |
+| **careless** | **$8,379** | 18.3d | 7.3 | 0.450 |
+| careful | $2,778 | 20d | 0.0 | 0.109 |
+
+Three separate faults, each one a rule that was pointing the wrong way.
+
+### 1. Complications were an uncapped linear bonus
+
+`+0.26` per complication, forever. A patient with fifteen of them billed nearly
+five times base. Nobody pays five times the daily rate for one man who keeps
+falling over — they ask why he keeps falling over.
+
+`Patient.COMPLICATION_STEPS` = `[0.26, 0.19, 0.12, 0.07, 0.04]`, then 0.015 each,
+ceiling +0.78. The first complication is unchanged, so the careful player feels
+nothing; the fifteenth is worth almost nothing, so the butcher's income
+collapses. **The first complication is where the money is; the fifteenth is
+where the prison is.**
+
+### 2. Length of stay was measured against the projection, not the record
+
+This was the important one, and it was backwards in a way that broke the whole
+premise.
+
+`average_overstay()` counted every day past `expected_stay_days`. So causing a
+complication and *filing it correctly* made your length-of-stay figures worse.
+The game punished the exact behaviour it is built to reward — and the balance
+sim proved it: a **mild** strategy that hurts nobody, forges nothing and simply
+takes its time with the discharge summary out-earned the sophisticated one.
+
+Now `Patient.unexplained_overstay()`: days beyond what the *chart* justifies. A
+documented complication accounts for the days it added. An undocumented one
+accounts for nothing — which is precisely the risk of not filing, and precisely
+why the sophisticated player files immediately.
+
+### 3. Consequences arrived at a constant rate however loud you got
+
+Two concurrent investigations, one opening per day, and a mercy throttle above
+Probation that let a doctor with 448 witnessed acts keep his licence for
+eighteen days.
+
+- `concurrent_cap()` scales 2 → 4 with the ladder. Being under police
+  investigation does not stop an insurer auditing you; it makes it likelier.
+- Above two-thirds heat, a second envelope lands the same day.
+- The mercy throttle is for somebody who is *recovering*. Sitting at the top of
+  the heat scale for a fortnight is a pattern, not a bad week: above 85% heat
+  it can take two rungs at once.
+
+### And a fourth rung, because the brief asked for four and the sim had three
+
+`MILD` — every treatment indicated, every setting correct, every chart true,
+nobody hurt. The only thing this doctor does is fail to be in a hurry about the
+paperwork on people whose insurance is good. "Comfortable" was an aspiration
+nobody had measured.
+
+### Where it landed (3 seeds × 30 days)
+
+| | per day | survives | sanction | insurer | injuries/shift |
+|---|---|---|---|---|---|
+| honest | $1,029 | 30d | 0.0 | 0% | 0.000 |
+| mild | $5,683 | 30d | 0.3 | 95% | 0.000 |
+| careless | $2,656 | **13.7d** | 8.0 | 100% | 0.609 |
+| careful | **$6,349** | 30d | 0.3 | 76% | 0.084 |
+
+Honest is hard survival — $9,391 banked in thirty days against a $435,400 debt.
+Mild is comfortable, and by day thirty the insurer is at 95% and adverse
+findings have started, so it is not free forever. Reckless is genuinely rich per
+day and is struck off in a fortnight on **every seed**. Sophisticated is the
+best-paid thing in the game and carries real heat while doing it.
+
+All twenty design-intent assertions pass across three seeds. The honest check
+was also rewritten: "personal money under $N" needed retuning every time the
+career length changed and stated nothing. It is now *an honest doctor cannot
+make a living here* (under 35% of the sophisticated rate) and *never gets within
+sight of the debt* (under 10% of $435,400) — both scale-free.
+
+**1,548 assertions · 95 smoke · 13 live · 20/20 balance across 3 seeds.**

@@ -64,6 +64,64 @@ func test_no_acuity_escalation_without_complications() -> void:
 	p.days_admitted = 12.0
 	t.eq(p.daily_revenue(), base, "an uncomplicated overstay bills the flat rate")
 
+## The curve that keeps reckless play from being the best-paid play.
+##
+## A flat, uncapped bonus per complication meant fifteen of them on one person
+## billed nearly five times base, and a balance run measured the result: careless
+## butchery earned $8,379 a day against careful practice's $2,778. Nobody pays
+## five times the daily rate for one man who keeps falling over — they ask why
+## he keeps falling over.
+func test_stacked_complications_pay_less_and_less() -> void:
+	var p := Patient.new("stack")
+	p.base_daily_revenue = 1000
+	p.insurance = "standard"
+	p.expected_stay_days = 99.0      # keep acuity escalation out of it
+	var last := p.daily_revenue()
+	var first_step := 0
+	var steps: Array[int] = []
+	for i in 8:
+		p.complications.append(Complication.new())
+		var now := p.daily_revenue()
+		steps.append(now - last)
+		last = now
+	first_step = steps[0]
+	t.gt(float(first_step), 200.0, "the first complication is worth real money")
+	for i in range(1, steps.size()):
+		t.ok(steps[i] <= steps[i - 1],
+			"complication %d pays no more than the one before it" % (i + 1))
+	t.lt(float(steps[steps.size() - 1]), float(first_step) * 0.25,
+		"and by the eighth it is nearly nothing")
+	t.lt(float(p.daily_revenue()), 1000.0 * (1.0 + Patient.COMPLICATION_CEILING) + 1.0,
+		"the whole stack is capped")
+
+## What an insurer can see is the CHART, not the truth. Days a documented
+## complication accounts for are days nobody has a question about; days nothing
+## accounts for are the entire signal the statistical review reads.
+##
+## Measuring every extra day against the original projection punished the exact
+## behaviour the game is built to reward — causing a complication and filing it
+## correctly made your length-of-stay figures worse — and made "touch nobody,
+## file nothing, just wait" the most profitable strategy in the game.
+func test_overstay_is_measured_against_the_record() -> void:
+	var p := Patient.new("los")
+	p.expected_stay_days = 3.0
+	p.days_admitted = 7.0
+	t.near(p.unexplained_overstay(), 4.0, 0.001, "four days nothing explains")
+
+	var c := Complication.new()
+	c.days_added = 3.0
+	p.complications.append(c)
+	t.near(p.unexplained_overstay(), 4.0, 0.001,
+		"an UNDOCUMENTED complication explains nothing — that is the risk of not filing")
+
+	c.documented_cause = "examination"
+	t.near(p.unexplained_overstay(), 1.0, 0.001,
+		"filed, it accounts for the days it added")
+
+	c.resolved = true
+	t.near(p.unexplained_overstay(), 4.0, 0.001,
+		"and stops accounting for them once it is resolved")
+
 func test_recovery_suppression() -> void:
 	var a := Patient.new("a")
 	a.recovery_rate = 0.5

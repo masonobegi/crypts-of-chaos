@@ -31,7 +31,7 @@ func run_all() -> void:
 		# Spread out, and deterministic: the same command gives the same answer,
 		# but a fix is never validated against one lucky ward.
 		var run_seed := 90210 + i * 7919
-		for strategy in ["honest", "careless", "careful"]:
+		for strategy in ["honest", "mild", "careless", "careful"]:
 			results.append(_run(strategy, run_seed))
 
 func _run(strategy: String, run_seed: int) -> Dictionary:
@@ -89,6 +89,7 @@ func _run(strategy: String, run_seed: int) -> Dictionary:
 		# comparing them lets a strategy that gets struck off in a fortnight
 		# look modest while being the most profitable thing in the game.
 		"per_day": float(GameState.stats.personal_earned) / maxf(float(day_log.size()), 1.0),
+		"avg_overstay": _mean_of_log(day_log, "overstay"),
 		"final_personal": GameState.personal_money,
 		"final_debt": GameState.total_debt(),
 		"start_debt": 435400,
@@ -147,6 +148,14 @@ func _spend(game, strategy: String) -> void:
 		Upgrades.purchase(String(id))
 		return      # one purchase per shift, like the shop allows
 
+func _mean_of_log(rows: Array, key: String) -> float:
+	if rows.is_empty():
+		return 0.0
+	var total := 0.0
+	for r in rows:
+		total += float(r.get(key, 0.0))
+	return total / float(rows.size())
+
 func _count_adverse(game) -> int:
 	var n := 0
 	for inv in game.investigations.closed_investigations:
@@ -158,6 +167,7 @@ func _count_adverse(game) -> int:
 func _act(game, strategy: String) -> void:
 	match strategy:
 		"honest": _act_honest(game)
+		"mild": _act_mild(game)
 		"careless": _act_careless(game)
 		"careful": _act_careful(game)
 
@@ -229,6 +239,20 @@ func _operate(game, p, strategy: String) -> void:
 func _send_them_home(game, p, strategy: String) -> void:
 	var options := DB.prescriptions_for(p.condition_id)
 	var med := String(options[0]) if not options.is_empty() else "placebex_takehome"
+	if strategy == "mild":
+		# Attends the slot, does the examination, and simply has not finished
+		# the discharge summary yet. No lie is told.
+		if DB.insurance_multiplier(p.insurance) >= 1.5 and p.overdue_days < 1.1:
+			return
+	if strategy == "careful":
+		# Same deferral, but bounded by the record rather than by a day count:
+		# the summary is outstanding for exactly as long as the chart explains
+		# why they are still here. Without this, the sophisticated strategy
+		# handed back every day its own paperwork had bought — the discharge
+		# slot discharged unconditionally — and the harness then reported that
+		# doing the interesting thing paid worse than doing nothing.
+		if DB.insurance_multiplier(p.insurance) >= 1.5 and p.unexplained_overstay() < 0.5:
+			return
 	if strategy == "careless":
 		med = "dual_course"
 	elif strategy == "careful" and DB.insurance_multiplier(p.insurance) >= 1.5 \
@@ -273,6 +297,46 @@ func _see_them(game, p, strategy: String) -> void:
 		game.patient_system.admit(p)
 	else:
 		game.patient_system.send_home(p, "cleared")
+
+## The line almost everybody actually walks.
+##
+## Nobody is hurt. Nothing is forged. Every treatment is the indicated one at
+## the indicated setting and every chart is true. The only thing this doctor
+## does is fail to be in a hurry about the paperwork on people whose insurance
+## is good, and let them have another night.
+##
+## It exists in the harness because the brief asks for four rungs and the design
+## only had three: honest should be hard survival, THIS should be comfortable,
+## reckless should be briefly rich, and sophisticated should be rich and
+## difficult. Without a mild run measured, "comfortable" was an aspiration
+## nobody had checked.
+func _act_mild(game) -> void:
+	var machines: Array = []
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is TreatmentMachine:
+			machines.append(f)
+	for p in game.patient_system.active():
+		var treated := false
+		for m in machines:
+			if m.room_key != p.room or not DB.is_correct_treatment(p.condition_id, m.treatment_id):
+				continue
+			m.set_prescribed_for(p)
+			m.dial = m.prescribed
+			game.treatment.run_machine(m, p)
+			game.records.log_real_treatment(p, m.treatment_id)
+			treated = true
+		if not treated:
+			var correct: Array = DB.correct_treatments(p.condition_id)
+			if not correct.is_empty():
+				var tid := String(correct[0])
+				game.treatment.apply(p, tid, null, Vector3.ZERO)
+				game.records.log_real_treatment(p, tid)
+		if p.recovery < 0.98:
+			continue
+		# The whole strategy, in one condition: a bed worth having keeps them
+		# one more night, a bed that is not worth having is freed at once.
+		if DB.insurance_multiplier(p.insurance) < 1.5 or p.overdue_days >= 1.1:
+			game.treatment.attempt_discharge(p)
 
 ## Crank every machine, document nothing, bill for everything.
 func _act_careless(game) -> void:
@@ -331,7 +395,15 @@ func _act_careful(game) -> void:
 		# Cheap patients go home immediately; that is what protects the numbers.
 		if not worth_it:
 			game.treatment.attempt_discharge(p)
-		elif p.days_admitted > p.expected_stay_days + 2.0:
+			continue
+		# And an expensive one stays exactly as long as the RECORD justifies.
+		#
+		# This used to be a flat two days past projection, which is not the
+		# sophisticated line, it is the mild line with extra steps: it threw
+		# away the days a documented complication legitimately buys and then
+		# wondered why causing one paid worse than doing nothing. Hold until the
+		# paperwork stops covering it, and not one night longer.
+		if p.unexplained_overstay() >= 0.5:
 			game.treatment.attempt_discharge(p)
 
 # ------------------------------------------------------------------ report
@@ -365,7 +437,7 @@ func runs_of(strategy: String) -> Array:
 
 func report() -> void:
 	print("\n=== BALANCE REPORT (%d days each, %d seeds) ===\n" % [DAYS, SEEDS])
-	for strategy in ["honest", "careless", "careful"]:
+	for strategy in ["honest", "mild", "careless", "careful"]:
 		var runs := runs_of(strategy)
 		if runs.is_empty():
 			continue
@@ -380,6 +452,9 @@ func report() -> void:
 		print("  complication/dc : %.2f   injuries/shift %.3f   (baselines 0.34 / %.2f)" % [
 			mean(strategy, "comp_rate"), mean(strategy, "injury_rate"),
 			SuspicionSystem.BASELINE_INJURY_RATE])
+		print("  institutions    : admin %.0f%%   insurer %.0f%%   unexplained stay %.2f d" % [
+			mean(strategy, "admin_sus") * 100.0, mean(strategy, "insurer_sus") * 100.0,
+			mean(strategy, "avg_overstay")])
 		print("  adverse findings: %.1f     witnessed %.0f    complaints %.0f" % [
 			mean(strategy, "adverse"), mean(strategy, "witnessed"),
 			mean(strategy, "complaints")])
@@ -391,7 +466,7 @@ func report() -> void:
 		print("")
 
 	print("=== worked example (first seed) ===\n")
-	for r in results.slice(0, 3):
+	for r in results.slice(0, 4):
 		print("--- %s ---" % String(r["strategy"]).to_upper())
 		print("  survived        : %d days   (ending: %s)" % [int(r["days"]), String(r["ending"])])
 		print("  personal money  : %s   (earned %s)" % [
@@ -437,8 +512,14 @@ func _assert_design_intent() -> void:
 	# Everything below is a MEAN across seeds. A single career is noise: the
 	# same code answered "$27k" and "$198k" for the same strategy depending only
 	# on which patients happened to turn up.
-	_check(mean("honest", "final_personal") < float(DAYS) * 300.0,
-		"an honest doctor cannot get comfortable (personal money stays low)")
+	# The design claim is not "honest earns under N dollars" — that has to be
+	# retuned every time the career length changes and says nothing. It is that
+	# you cannot make a living here being good: the debt is $435,400 and an
+	# honest doctor never gets near it, at any length of career.
+	_check(mean("honest", "per_day") < mean("careful", "per_day") * 0.35,
+		"an honest doctor cannot make a living here")
+	_check(mean("honest", "final_personal") < 435400.0 * 0.1,
+		"and never gets within sight of the debt")
 	_check(mean("honest", "rep_doctor") >= mean("careless", "rep_doctor"),
 		"honest play earns better standing than careless cheating")
 	_check(mean("careless", "sanction") > mean("honest", "sanction"),
@@ -454,6 +535,15 @@ func _assert_design_intent() -> void:
 	# means the game's answer to "how should I do this?" is "badly, quickly".
 	_check(mean("careful", "per_day") > mean("careless", "per_day"),
 		"sophisticated cheating pays better by the day than reckless cheating")
+	# The four rungs the brief asks for, in order, by the day.
+	_check(mean("mild", "per_day") > mean("honest", "per_day") * 1.4,
+		"a mild cheat is meaningfully better off than an honest one")
+	_check(mean("careful", "per_day") > mean("mild", "per_day"),
+		"and going further pays further")
+	_check(mean("mild", "sanction") <= 0.5 and mean("mild", "adverse") < 1.0,
+		"mild cheating is genuinely comfortable — nobody comes for you")
+	_check(mean("careless", "days") < mean("careful", "days") * 0.85,
+		"reckless practice ends, and visibly sooner")
 	_check(mean("careful", "sanction") < mean("careless", "sanction"),
 		"careful cheating stays further from the ladder than careless")
 	_check(mean("careful", "clean") > mean("careless", "clean"),

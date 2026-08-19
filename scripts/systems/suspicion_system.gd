@@ -353,7 +353,8 @@ func watchers() -> Array[NPCBody]:
 	var out: Array[NPCBody] = []
 	for id in _bodies:
 		var b: NPCBody = _bodies[id]
-		if b and is_instance_valid(b) and b.perception and b.perception.sees_player():
+		if b and is_instance_valid(b) and b.is_inside_tree() \
+				and b.perception and b.perception.sees_player():
 			out.append(b)
 	return out
 

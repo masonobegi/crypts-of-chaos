@@ -37,6 +37,20 @@ func distract(strength: float) -> void:
 		strength *= 0.35
 	_distraction = clampf(_distraction + strength, 0.0, 0.9)
 
+## Probability of noticing an act, given how blatant it is, how attentive the
+## observer is, and how close they are.
+##
+## HOW BLATANT THE ACT IS IS THE DOMINANT TERM, and it was originally missing
+## entirely: the chance depended only on observance and distance, so cranking a
+## machine to eleven in somebody's face was exactly as likely to be spotted as
+## nudging a thermostat. The whole risk curve the game is built on — subtle
+## deviations are survivable, dramatic ones are not — did not exist.
+static func notice_chance(visual_weight: float, observance: float, proximity: float) -> float:
+	var blatancy: float = 0.08 + 0.72 * clampf(visual_weight, 0.0, 1.0)
+	var attentiveness: float = 0.7 + 0.9 * clampf(observance, 0.0, 1.0)
+	var closeness: float = 0.5 + 0.5 * clampf(proximity, 0.0, 1.0)
+	return clampf(blatancy * attentiveness * closeness, 0.02, 0.97)
+
 func eye_position() -> Vector3:
 	return body.head_position() if body else Vector3.ZERO
 
@@ -89,14 +103,15 @@ func evaluate(evt: WorldEvent) -> Dictionary:
 	if evt.visual_weight > 0.0 and can_see(evt.pos):
 		var dist := body.global_position.distance_to(evt.pos)
 		var proximity := clampf(1.0 - dist / SIGHT_RANGE, 0.1, 1.0)
-		var quality := clampf(observance * (0.45 + 0.55 * proximity), 0.0, 1.0)
-		# An unobservant person standing right next to you still notices; an
-		# observant one across the ward might not. Roll, don't threshold.
-		if RNG.randf_s("perceive_%s" % mind.id) < quality + 0.15:
+		var chance := notice_chance(evt.visual_weight, observance, proximity)
+		# An unobservant person standing right next to you still usually
+		# notices; an observant one across the ward might not. Roll, don't
+		# threshold.
+		if RNG.randf_s("perceive_%s" % mind.id) < chance:
 			return {
 				"source": Evidence.Source.WITNESSED,
 				"weight": evt.visual_weight,
-				"certainty": clampf(quality + 0.2, 0.15, 1.0),
+				"certainty": clampf(0.35 + chance * 0.6, 0.15, 1.0),
 			}
 
 	# --- hearing (rarely incriminating on its own, but it moves people)
@@ -123,7 +138,9 @@ func evaluate(evt: WorldEvent) -> Dictionary:
 ## Is this character currently able to see the player? Used for the "can I do
 ## this right now" read that the HUD surfaces as a watched-by indicator.
 func sees_player() -> bool:
-	var p = body.get_tree().get_first_node_in_group("player") if body else null
+	if body == null or not body.is_inside_tree():
+		return false
+	var p = body.get_tree().get_first_node_in_group("player")
 	if p == null:
 		return false
 	return can_see(p.global_position + Vector3(0, 1.5, 0))

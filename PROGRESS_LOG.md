@@ -234,6 +234,22 @@ Balance at 30 days, seed 90210:
 | `balance_sim.gd` | cheating originally paid LESS than honesty; wrong-machine use was invisible; the whole upgrade catalogue bought out by day 20 |
 | `screenshots.sh` | HUD wrapping per-character; three HUD blocks never drawing; patients standing in beds; day-one economy; a confidence band on "how are you feeling?" |
 
+### OPEN — first job next session
+**Automate the perception-under-real-geometry check.** `live_run.gd` deliberately
+does NOT assert it yet. Instrumenting `NPCPerception.evaluate` by hand shows the
+system working — line of sight resolves, `notice_chance` computes correctly, and
+most rolls pass (7 of 10 observed, evidence created, `_react` firing) — but every
+attempt to assert it from the live harness reads zero recorded evidence, so the
+bookkeeping in the test is wrong somewhere. A green assertion over a system I
+cannot actually observe is worse than no assertion, so it was removed rather
+than weakened.
+
+Leads: the harness advances several in-game minutes per frame, so
+`SuspicionSystem._decay_pass` runs constantly; and `Mind.add_evidence` merges
+same-kind entries, so a repeated test event collapses into one. Neither fully
+explains a zero count. Reproduce with the EVAL instrumentation described in the
+git history for "Somebody actually has to notice".
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on

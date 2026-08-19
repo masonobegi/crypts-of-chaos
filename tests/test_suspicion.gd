@@ -229,3 +229,29 @@ func test_a_patient_who_is_not_counting_does_not_mind_waiting() -> void:
 		"somebody counting the days minds the overrun")
 	t.near(oblivious.satisfaction, 0.8, 0.0001,
 		"somebody who has lost the thread does not")
+
+func test_how_blatant_an_act_is_dominates_whether_it_is_noticed() -> void:
+	# This was missing entirely: the chance depended only on observance and
+	# distance, so cranking a machine to eleven in somebody's face was exactly
+	# as likely to be spotted as nudging a thermostat. The whole risk curve the
+	# game is built on did not exist.
+	var blatant := NPCPerception.notice_chance(0.9, 0.5, 0.9)
+	var subtle := NPCPerception.notice_chance(0.05, 0.5, 0.9)
+	t.gt(blatant, subtle * 3.0, "a blatant act is far more likely to be seen than a subtle one")
+	t.gt(blatant, 0.6, "and a blatant act at close range is usually caught")
+	t.lt(subtle, 0.35, "while a subtle one usually is not")
+
+func test_observance_and_distance_still_matter() -> void:
+	var attentive := NPCPerception.notice_chance(0.5, 0.9, 0.9)
+	var oblivious := NPCPerception.notice_chance(0.5, 0.1, 0.9)
+	t.gt(attentive, oblivious, "an attentive witness notices more")
+
+	var near := NPCPerception.notice_chance(0.5, 0.5, 1.0)
+	var far := NPCPerception.notice_chance(0.5, 0.5, 0.1)
+	t.gt(near, far, "and proximity matters")
+
+func test_even_a_blatant_act_is_never_certain_and_a_subtle_one_never_free() -> void:
+	t.lt(NPCPerception.notice_chance(1.0, 1.0, 1.0), 1.0,
+		"nothing is guaranteed to be seen")
+	t.gt(NPCPerception.notice_chance(0.01, 0.0, 0.0), 0.0,
+		"and nothing is guaranteed to be missed")

@@ -2,6 +2,13 @@ extends RefCounted
 ## Live simulation test: runs the real game with real FRAMES, so NPCs actually
 ## move, patrol, do rounds, gossip, investigate and react.
 ##
+## NOT yet covered: perception against real geometry (does a witness standing
+## there actually record a blatant act?). Instrumenting the roll by hand shows
+## it working — line of sight resolves, the chance computes correctly, and most
+## rolls pass — but every attempt to assert it from this harness reads zero, so
+## the bookkeeping here is wrong somewhere and an assertion that green-lights a
+## broken system is worse than none. See PROGRESS_LOG.md; this is the next job.
+##
 ## The smoke run drives the clock in a tight loop with no frames between steps,
 ## which means it never executes a single line of NPC behaviour. Everything in
 ## scripts/npc/ was effectively untested at runtime — a crash in a state machine
@@ -76,6 +83,12 @@ func _seed_conditions() -> void:
 		game.patient_system.add_complication(p, "ferrous_aura", "machine_deviation")
 	game.investigations.open("inspector", 0)
 
+func _find_staff():
+	for n in tree.get_nodes_in_group("staff"):
+		if n.mind != null:
+			return n
+	return null
+
 func _sample() -> void:
 	# Staff reaching wards at all is the thing that was silently broken: closed
 	# doors made every ward unreachable and nothing noticed for weeks.
@@ -129,6 +142,7 @@ func _finish() -> void:
 		if p.recovery > 0.01 or p.days_admitted > 0.01:
 			progressed = true
 	_ok(progressed, "the simulation advanced patient state")
+
 	_report()
 
 func _ok(cond: bool, msg: String) -> void:

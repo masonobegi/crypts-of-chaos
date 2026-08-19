@@ -584,6 +584,38 @@ list: filing a cause closes the individual gap and does nothing at all about the
 fact that this is the third thing to happen to the same person, and the screen
 should not imply otherwise by folding them together.
 
+---
+
+## Session 4 — "stop building it like a systems demo"
+
+New brief: the systems are done and green; the job now is FUN, CLARITY, FEEL,
+TENSION, COMEDY, EMERGENCE — then content, polish and shipping. Ordering is the
+brief's, and it is the right one.
+
+**Branch renamed** `claude/github-repo-deletion-3hf0gq` -> `claude/chronic-care`.
+The old remote branch could not be deleted from this container (the git proxy
+refuses the delete refspec); it is stale and safe to remove from the GitHub UI.
+
+### The play harness — because "green" and "good" are different claims
+`tests/play_run.gd` + `tests/play_impl.gd` + `./play.sh <plan>`.
+
+Everything before this session verified that the systems WORK. Nothing verified
+that the game is nice to be inside. This harness drives the real player
+controller through the real input actions — `Input.action_press("move_forward")`,
+real acceleration, real collision, real doors — over real frames at a fixed
+60fps, and writes down how long everything took in seconds a human would
+actually sit through. It screenshots as it goes and dumps, at each beat, what
+the SCREEN says rather than what the simulation knows. The gap between those two
+is the thing this session is about.
+
+Plans: `walk_test` (movement feel and how far everything is), `first_shift`
+(what a stranger sees in their first two minutes), `honest` (is there enough to
+do if you behave).
+
+Note for future sessions: under Xvfb + llvmpipe the harness runs far slower than
+real time, but `--fixed-fps 60` means the SIMULATION still advances 1/60s per
+frame, so every duration it reports is the duration a player would experience.
+
 ### NEXT UP
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on

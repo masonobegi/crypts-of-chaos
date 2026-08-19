@@ -37,7 +37,7 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,553 assertions · 95 smoke · 17 live · boot check · 20/20 balance design
+**1,562 assertions · 106 smoke · 21 live · boot check · 21/21 balance design
 checks over 3 seeds.** Windows and Linux both export, and the exported Linux
 build boots and exits cleanly.
 
@@ -68,23 +68,41 @@ See the Session 4 sections of `PROGRESS_LOG.md`. Headlines:
 
 ## Immediately next
 
-1. A background audit workflow (`chronic-care-audit`) is/was running over seven
-   areas: shared-material mutation, dead content, whether the institution ever
-   mentions beds, unreachable affordances, whether the three shifts differ,
-   progression + end-of-shift payoff, and first-hour comprehension. Its findings
-   are adversarially verified before being believed. **Check for its result and
-   work the confirmed list in severity order.**
-2. Remaining brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy
-   pass), 7 (emergent chaos), 8 (events that change strategy), 9 (soften
-   accidental wrong-site failure diegetically), 11 (visible progression), 12
-   (content), 13 (shift results with personality), 14 (juice), 15
-   (streamability), 16 (make the three shifts substantially different), 19
-   (performance profiling).
+The parallel audit (`chronic-care-audit` workflow) produced **28 verified
+findings, 26 refuted**. All four criticals and eight of twelve majors are fixed
+— full detail in `PROGRESS_LOG.md`. Still outstanding, all verified, none
+blocking:
 
-Phase 20 (export) is DONE: `export.sh`, both presets build, the Linux build is
-launched and checked as part of it. The only outstanding cosmetic is that the
-.exe has no icon or version block, which needs `rcedit` and cannot be done from
-this container.
+- `Prop.relabel()` is never called and `is_mislabelled()` never read, so half
+  the substitution mechanic does not exist.
+- `SwingDoor.slam()` has no caller.
+- The `keycard` item is fully specified, never spawned, and read by nothing.
+- `cold_coffee` has no source, because the coffee item has no contents.
+- The tablet shows the three OLDEST things a mind holds, not the three worst.
+- Returning from the upgrade shop rewrites the shift report's verdict to the
+  flattering one.
+- "Nobody has anything on you." can never print — three institutional minds are
+  always in the list.
+- The booked list is billed into Revenue but never itemised, so the BILLING
+  block does not sum to the Revenue printed under it.
+
+Brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy pass), 7
+(emergent chaos), 8 (events that change strategy), 9 (soften accidental
+wrong-site failure diegetically), 11 (visible progression), 12 (content), 13
+(shift results with personality), 14 (juice), 15 (streamability), 16 (make the
+three shifts substantially different), 19 (performance profiling).
+
+Phase 20 (export) is DONE — `export.sh` builds both presets and launches the
+Linux one. The only cosmetic outstanding is that the .exe carries no icon or
+version block, which needs `rcedit` and cannot be done from this container.
+
+Two things worth knowing before picking anything up:
+
+- **ward_102 approached laterally from the hinge side** is the only door of
+  eleven that still fails `play.sh doors`.
+- Across all four playstyle runs, **the player's money never moves during a
+  shift**. The crime pays only at clock-out, so the HUD money ticker has
+  nothing to show while you are actually playing.
 
 ## Standing constraints from the brief
 

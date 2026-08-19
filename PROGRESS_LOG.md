@@ -745,3 +745,171 @@ Stated flatly, never labelled, and the player can do what they like with it.
   empty room itself, only about the patient who ended up in the corridor.
 - Nothing yet lets you argue with a wrong-site finding, which is correct, but it
   does mean one misclick is a career. Worth watching in a playtest.
+
+---
+
+## Session 4 (cont.) — the first ten minutes, and being able to walk
+
+Audit items #5 and #6 from the top-10 list, plus three things the play harness
+found on the way. Everything below was verified by driving the real controller
+through the real input actions, not by reading code.
+
+### #5 — nobody was ever ready to go home
+
+Day one opened on five people admitted forty seconds ago. Nobody was finished,
+nobody was waiting on anything, and the question the entire game turns on —
+*does this person go home today?* — could not be asked for another three in-game
+days. The realisation the game is built around arrived somewhere in the middle
+of day four, by which point the player had already decided what kind of game
+this was.
+
+Now the night doctor hands over a ward (`ShiftSystem.OPENING_WARD`,
+`_seed_opening_ward`):
+
+| | condition | state | knows their date | worth |
+|---|---|---|---|---|
+| Room 101 | Mild Gravitational Confusion | **medically fit to go home** | no | $1,840/night, your cut $147 |
+| Room 102 | Chronic Beige | **fit, and four days over** | yes, and counting | $969/night, your cut $78 |
+| Room 103 | Excessive Spleen Torque | halfway | yes | $1,490/night |
+
+Two more arrive that morning to fill the ward. The 9am slot on day one is now
+*always* a discharge (the only appointment in the game that is chosen rather
+than rolled), the 10am slot is the other one. So the first two hours of a career
+are the game's question asked twice, with the two different answers built in:
+one person who will notice, one who will not.
+
+Nothing anywhere says "keep her". What it says, on the person, when you look at
+her, is:
+
+> **Talk to Ines Bracket**
+> Mild Gravitational Confusion · fit to go home · $1,840 a night
+
+Supporting changes:
+- `Dialogue.READY_LINES` + a bark that fires *before* the overdue one and
+  regardless of whether they are counting. "I packed. Probably shouldn't have
+  packed."
+- The briefing leads with a HANDOVER block: who is in which room, how many
+  nights, what the bed earns, what your share is, and flatly whether they are
+  fit for discharge.
+- `Patient.your_cut_per_day()` surfaced on the bedside prompt, the briefing and
+  the tablet.
+- `PatientSystem.generate()` no longer produces two Kowalczyks in adjacent
+  rooms — in a game whose whole risk model is *whose chart says what*, a
+  duplicated surname reads as a bug in the tablet.
+- Random events no longer fire on day one. A mass-casualty event was taking all
+  three handover beds before the handover ran, so on exactly the seeds where the
+  first shift most needed authoring, it silently had none.
+
+### #6 — no deadline, and a first appointment that could not arrive
+
+Three separate faults in one system:
+
+1. `build_for_shift` put the first slot at the hour the shift starts. Hour ticks
+   only fire on the hour *after* that, so `_on_hour` never marked it arrived, no
+   walk-in ever materialised for it — and three hours later `_expire_past`
+   marked it a no-show and docked reputation and patient satisfaction. Every
+   shift, every seed, for a slot the player was given no opportunity to attend.
+2. Arrival matched the slot hour *exactly*, so anything missed for any other
+   reason could never arrive either. Now `arrive_due()` brings in everybody
+   whose slot has come round, and it is called at clock-in as well as on the
+   hour.
+3. The list booked the same patient repeatedly — four discharges for one man in
+   one day. `_booked` keeps it to distinct people.
+
+The list now runs from an hour in to an hour before the end. The first hour is
+the handover; the last is the one you need free for paperwork you would rather
+nobody read closely.
+
+And the deadline is now on screen, because everything the player is deciding is
+a question about it:
+
+```
+Day 1
+8:22 AM
+7h 38m left · ends 4:00 PM        <- amber under an hour, red under thirty
+Clean
+```
+```
+   Discharge and take-home — Ines Bracket in 38m      <- live, its own line, so
+                                                         the tutorial and the
+                                                         objective line do not
+                                                         fight over it
+```
+
+### Found by playing: you could not get past your own colleagues
+
+Two `CharacterBody3D`s cannot displace each other — neither is affected by the
+other's velocity and `move_and_slide` zeroes the blocked axis on both. A nurse
+standing anywhere in a two-metre corridor was a wall. There are eight staff on a
+sixty-two-metre floor and they walk the length of it all shift.
+
+Measured: **11 seconds** lost to Nurse Nell in one corridor traverse, **21
+seconds** to a wheelchair on the way into Room 101.
+
+- `NPCBody.step_aside()` — sidesteps (not backs off; retreating along your line
+  of travel keeps them in front of you the whole way), picks the side that is
+  actually floor, and says something. "Yep. Yep. Going."
+- `Player.shove_impulse()` rewritten. The old rule divided a constant by mass,
+  producing 1.9 N·s against a twenty-kilo wheelchair — a tenth of a metre per
+  second, i.e. nothing. Now it is momentum-shaped: you impart `PUSH_POWER`, but
+  never more than the object would have if it were already moving as fast as you
+  are. Light things scatter, heavy things grudgingly slide, nothing outruns you.
+
+Corridor end to end: **28.4s → 11.9s**. Board to Room 101 bedside: **40s
+(timeout) → 8.9s**.
+
+### Found by playing: the bedside offered you a pole
+
+Every bed has an IV stand beside it, standing squarely between the doorway-side
+approach and the patient's head. Walking up to a patient and looking straight at
+them reliably offered **"Pick up IV Stand"**. The most important interaction in
+the game lost, every time, to a pole.
+
+`Interactor._prefer_person` now splits the USE target from the GRAB target: [E]
+reaches the person behind a loose prop, [LMB] still picks the prop up. Only
+plain grabbables are overruled — a machine, chart, console or door keeps the
+prompt, because reaching past a patient for the dial is the entire game.
+
+I reverted this once, thinking the harness's aim was to blame, and the play run
+put the pole straight back. Kept.
+
+### Pacing
+
+`TIME_SCALE` 0.666 → 0.444, so an eight-hour shift is **18 real minutes** rather
+than 12. Twelve was not long enough to have a shape: by the time you had walked
+the floor, read the ward and decided what today was, you were clocking out.
+
+### The balance sim was a coin flip
+
+One seed per strategy. A change that only reshuffled *which patients turned up
+in which order* moved the careless career from $27k to $198k and flipped a
+design check, without touching a single number in the economy.
+
+`BALANCE_SEEDS` (default 3) now runs every strategy across several careers and
+every design assertion reads a **mean**. It also reports **earnings per day**,
+because totals quietly reward surviving — a strategy that makes a fortune and is
+struck off in a fortnight reads as modest, which is exactly backwards.
+
+Which immediately exposed the real problem, stable across all three seeds:
+
+| | per day | survives | sanction | injuries/shift |
+|---|---|---|---|---|
+| honest | $952 | 20d | 0.0 | 0.000 |
+| **careless** | **$8,379** | **18.3d** | 7.3 | 0.450 |
+| careful | $2,778 | 20d | 0.0 | 0.109 |
+
+Reckless butchery pays **three times more per day than careful play** and still
+survives 18 days out of 20 at 93% heat with 528 witnessed acts. The game's
+answer to "how should I do this?" is currently "badly, and quickly". That is the
+next thing to fix.
+
+### Harness
+
+- `play_impl` now names what is physically blocking the player when it wedges,
+  re-plans when stuck (as NPCs already did), pitches the camera as well as
+  yawing it — bedside beats were aiming a metre over the patient's head — and
+  reports the ward: who is ready, who is overdue, what each bed earns.
+- Plans are built after the first frame, because several beats ask the hospital
+  where a bed is and the hospital does not exist until the game has had a frame.
+
+**1,534 assertions · 95 smoke · 13 live · balance across 3 seeds. All green.**

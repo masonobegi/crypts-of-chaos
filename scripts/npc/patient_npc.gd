@@ -60,6 +60,12 @@ func _hold_bed_pose(_delta: float) -> void:
 	rotation.y = bed.rotation.y
 	velocity = Vector3.ZERO
 
+## A patient lying in a bed does not budge for a doctor squeezing past — the bed
+## pose is re-asserted every frame anyway, so a sidestep would only make them
+## twitch and snap back.
+func can_step_aside() -> bool:
+	return state == State.WANDERING
+
 func _tick_state(_delta: float) -> void:
 	if data == null or data.discharged:
 		return
@@ -91,6 +97,14 @@ func _maybe_bark() -> void:
 		# Complaining is not evidence, but it IS a satisfaction hit, and
 		# satisfaction failure is its own way to lose.
 		data.satisfaction = clampf(data.satisfaction - 0.03, 0.0, 1.0)
+		return
+	# Said before the overdue line, and said whether or not they are counting.
+	# A patient who is well and has not been discharged is the single most
+	# important thing in the building for the player to notice, and a number on
+	# a tablet they have not opened yet cannot tell them.
+	if data.ready_for_discharge() and not data.is_overdue() \
+			and RNG.chance("patient_ready_bark", 0.75):
+		say(Dialogue.patient_ready(data), 4.0)
 		return
 	if data.is_overdue() and data.knows_expected_date \
 			and RNG.chance("patient_overdue_bark", 0.7):
@@ -237,8 +251,17 @@ func prompt(_player) -> Array:
 	if data == null:
 		return ["", ""]
 	var sub := data.condition_name()
+	# The three facts that decide what you do next, on the thing you are already
+	# looking at. What a bed earns per night was previously only readable by
+	# opening the tablet and scrolling to the right row, which is a menu the
+	# player has to already suspect matters before they will ever open it.
+	if data.ready_for_discharge():
+		sub += "  ·  fit to go home"
+	elif data.recovery >= 0.6:
+		sub += "  ·  nearly there"
 	if data.is_overdue():
 		sub += "  ·  %d days over" % int(data.days_admitted - data.expected_stay_days)
+	sub += "  ·  %s a night" % UIKit.money_str(data.daily_revenue())
 	return ["Talk to %s" % data.display_name, sub]
 
 ## Holding a treatment tool turns the prompt into the treatment itself.

@@ -98,6 +98,12 @@ func roll_daily() -> Array[Dictionary]:
 	fired_today.clear()
 	active_flags.clear()
 	var out: Array[Dictionary] = []
+	# Day one is authored. A player who has never seen the building should meet
+	# it as it normally is — five beds, a handover, a list — and not spend their
+	# only first impression on a mass casualty, a broken boiler and a visit from
+	# Vinnie. Everything here is much funnier once you know what normal is.
+	if GameState.day <= 1:
+		return out
 	var count := 1
 	if RNG.chance("event_extra", 0.35):
 		count = 2

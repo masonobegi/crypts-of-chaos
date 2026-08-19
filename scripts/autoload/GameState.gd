@@ -8,8 +8,16 @@ const MINUTES_PER_DAY := 1440
 ## and shift_hours(), which follow whichever shift was picked this morning.
 const SHIFT_START_HOUR := 8
 const SHIFT_HOURS := 8
-## In-game minutes per real second while on shift. 8h shift ≈ 12 real minutes.
-const TIME_SCALE := 0.666
+## In-game minutes per real second while on shift. 8h shift ≈ 18 real minutes.
+##
+## It used to be 0.666, which made a shift twelve real minutes. Twelve minutes
+## is not long enough to have a shape: by the time you had walked the floor,
+## read the ward and decided what today was, you were being asked to clock out,
+## and there was never a middle in which a plan could go wrong. Eighteen leaves
+## room for a first hour of reading the place, a long middle where the thing you
+## decided plays out, and a last hour of getting the paperwork straight before
+## anybody reads it.
+const TIME_SCALE := 0.444
 
 enum Phase { TITLE, PRE_SHIFT, SHIFT, CHART_REVIEW, POST_SHIFT, GAME_OVER }
 
@@ -114,6 +122,15 @@ func time_string() -> String:
 	if hh == 0:
 		hh = 12
 	return "%d:%02d %s" % [hh, m, suffix]
+
+## An hour of the day on its own, in the same twelve-hour form as the clock.
+func hour_string(hour: int) -> String:
+	var h := ((hour % 24) + 24) % 24
+	var suffix := "AM" if h < 12 else "PM"
+	var hh := h % 12
+	if hh == 0:
+		hh = 12
+	return "%d:00 %s" % [hh, suffix]
 
 func shift_spec() -> Dictionary:
 	return DB.shift(shift_kind)

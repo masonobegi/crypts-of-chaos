@@ -62,17 +62,39 @@ func _ready() -> void:
 	EventBus.hour_tick.connect(_on_hour)
 
 # ------------------------------------------------------------------ building
+## Who is already on today's list. A shift that books the same man for discharge
+## four times reads as a broken list rather than a busy one, and there is no
+## version of the day where seeing him twice is the interesting choice.
+var _booked := {}
+
 func build_for_shift() -> void:
 	list.clear()
+	_booked.clear()
 	var spec := GameState.shift_spec()
 	var count := int(spec.get("appointments", 5))
 	var start := GameState.shift_start_hour()
 	var hours := GameState.shift_hours()
+	# The list starts an hour in and finishes an hour before the end. The first
+	# hour of a shift is the handover — you are meant to read the ward, walk it
+	# and decide what today is — and the last hour is the one you need free to
+	# finish paperwork you would rather nobody read closely.
+	var first := 1
+	var last := maxi(hours - 1, first)
 	for i in count:
-		var hour := (start + int(float(i) * float(hours) / float(count))) % 24
-		var entry := _make(hour)
+		var offset := first
+		if count > 1:
+			offset = first + int(round(float(i) * float(last - first) / float(count - 1)))
+		var hour := (start + offset) % 24
+		# The very first slot of a career is a discharge if there is anybody to
+		# discharge. It is the only appointment in the game that is chosen
+		# rather than rolled, and it is chosen because it is the question the
+		# whole game asks: this person is well, the paperwork is yours, and the
+		# ward earns nothing the moment they walk out. Rolling for it meant most
+		# new players spent their first shift on a routine physical instead.
+		var entry := _make(hour, "discharge" if (i == 0 and GameState.day == 1) else "")
 		if not entry.is_empty():
 			list.append(entry)
+			_booked[String(entry["patient_id"])] = true
 	roster_changed.emit()
 	_announce_next()
 
@@ -80,10 +102,15 @@ func build_for_shift() -> void:
 ## needs a patient already on the ward, and on a quiet night there may not be
 ## one — so the clinic is the fallback, which is also the correct fallback:
 ## somebody can always walk in.
-func _make(hour: int) -> Dictionary:
-	var admitted := patient_system.active()
+func _make(hour: int, force_kind := "") -> Dictionary:
+	var admitted: Array = []
+	for q in patient_system.active():
+		if not _booked.has(q.id):
+			admitted.append(q)
 	var kind := "physical"
-	if not admitted.is_empty():
+	if force_kind != "" and not admitted.is_empty():
+		kind = force_kind
+	elif not admitted.is_empty():
 		var weights := {"physical": 1.6, "followup": 1.2}
 		var ready_to_go: Array = []
 		var operable: Array = []
@@ -104,6 +131,10 @@ func _make(hour: int) -> Dictionary:
 			p = patient_system.book_walkin()
 		"discharge":
 			p = _pick(admitted, func(q): return q.ready_for_discharge())
+			# Forced on day one, so it has to fall back rather than book nobody.
+			if p == null:
+				kind = "physical"
+				p = patient_system.book_walkin()
 		"surgery":
 			p = _pick(admitted, func(q): return not q.acquired_injuries().is_empty() or q.recovery < 0.5)
 		_:
@@ -131,16 +162,28 @@ func _pick(pool: Array, filter: Callable) -> Patient:
 func _on_hour(hour: int) -> void:
 	if GameState.phase != GameState.Phase.SHIFT:
 		return
+	arrive_due()
+	_expire_past(hour)
+	roster_changed.emit()
+	_announce_next()
+
+## Everybody whose slot has come round is now in the building.
+##
+## Matching the slot hour EXACTLY meant a walk-in only ever materialised on the
+## single tick of the single hour they were booked for — so a slot booked for
+## the hour the shift begins (there is no hour tick at minute zero) never
+## produced a person, and one missed for any other reason never produced one
+## either. It still counted against you three hours later.
+func arrive_due() -> void:
 	for e in list:
-		if e["done"] or e["missed"] or e["arrived"] or int(e["hour"]) != hour:
+		if e["done"] or e["missed"] or e["arrived"]:
+			continue
+		if hours_late(int(e["hour"])) < 0:
 			continue
 		e["arrived"] = true
 		var p = patient_system.get_patient(String(e["patient_id"]))
 		if p != null:
 			patient_system.arrive_walkin(p)
-	_expire_past(hour)
-	roster_changed.emit()
-	_announce_next()
 
 ## How far past a slot we are, in hours, counted INSIDE the shift.
 ##
@@ -158,6 +201,14 @@ func hours_late(slot_hour: int) -> int:
 	if slot < 0:
 		slot += 24
 	return int(GameState.minutes_into_shift() / 60) - slot
+
+## Minutes until a slot comes round. Negative means you are already late.
+func minutes_until(slot_hour: int) -> int:
+	var start := GameState.shift_start_hour()
+	var slot := slot_hour - start
+	if slot < 0:
+		slot += 24
+	return slot * 60 - GameState.minutes_into_shift()
 
 ## A slot you are three hours past is a slot you did not turn up for. Being late
 ## is survivable; not coming at all is a thing the person sitting there tells

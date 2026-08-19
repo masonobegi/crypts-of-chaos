@@ -49,6 +49,31 @@ func shift_brief() -> VBoxContainer:
 			box.add_child(bv)
 			content.add_child(box)
 
+	# ---- the handover. Who was already here when you arrived, and — stated
+	# plainly, once, in the only place a new player is definitely reading —
+	# which of them is finished. Nothing here suggests what to do about it.
+	var handover: Array = ctx.get("handover", [])
+	if not handover.is_empty():
+		content.add_child(UIKit.rule())
+		content.add_child(UIKit.label("HANDOVER FROM THE NIGHT DOCTOR", 13, UIKit.INK_DIM))
+		for h in handover:
+			var hb := UIKit.panel(Color(0.13, 0.16, 0.19, 0.92), 6)
+			var hv := UIKit.vbox(2)
+			hv.add_child(UIKit.row("%s — %s" % [String(h["name"]), String(h["room"]).capitalize()],
+				String(h["condition"]), UIKit.INK, 16))
+			var night_word := "night" if int(h["nights"]) == 1 else "nights"
+			hv.add_child(UIKit.row("  %d %s so far" % [int(h["nights"]), night_word],
+				"%s/night · your share %s" % [UIKit.money_str(int(h["revenue"])),
+					UIKit.money_str(int(h["cut"]))], UIKit.MONEY, 13))
+			if bool(h["ready"]):
+				hv.add_child(UIKit.label("  Medically fit for discharge.", 14,
+					UIKit.WARN if bool(h["overdue"]) else UIKit.ACCENT))
+			if bool(h["overdue"]):
+				hv.add_child(UIKit.label("  Past their expected date%s." %
+					(" — and counting" if bool(h["knows"]) else ""), 13, UIKit.BAD))
+			hb.add_child(hv)
+			content.add_child(hb)
+
 	# ---- the list. What the shift actually is.
 	var appts: Array = ctx.get("appointments", [])
 	if not appts.is_empty():

@@ -46,9 +46,19 @@ func generate(force_condition := "") -> Patient:
 	var p := Patient.new("p%d" % _next_id)
 	_next_id += 1
 
-	p.display_name = "%s %s" % [
-		RNG.pick("patient_name", DB.FIRST_NAMES),
-		RNG.pick("patient_name", DB.LAST_NAMES)]
+	# Two people called Kowalczyk in adjacent rooms is not the joke it looks
+	# like: this is a game where the whole risk model is built on whose chart
+	# says what, and a duplicated surname reads as a bug in the tablet rather
+	# than as a coincidence in the ward.
+	var taken := {}
+	for q in active():
+		taken[String(q.display_name).split(" ")[-1]] = true
+	var surname := String(RNG.pick("patient_name", DB.LAST_NAMES))
+	for _try in 5:
+		if not taken.has(surname):
+			break
+		surname = String(RNG.pick("patient_name", DB.LAST_NAMES))
+	p.display_name = "%s %s" % [RNG.pick("patient_name", DB.FIRST_NAMES), surname]
 	p.age = RNG.randi_range_s("patient_age", 19, 88)
 	p.skin_tone = _skin_tone()
 	p.shirt_color = Color(RNG.randf_range_s("patient_col", 0.3, 0.9),
@@ -188,8 +198,17 @@ func admit(p: Patient, ward_key := "") -> bool:
 
 	GameState.stats.patients_admitted += 1
 	EventBus.patient_admitted.emit(p)
-	EventBus.toast.emit("%s admitted to %s — %s" % [
-		p.display_name, hospital.room(ward_key).display, p.condition_name()], "info")
+	# Somebody handed over from the night doctor already has a stay behind them.
+	# Announcing them as an admission read as five people arriving at once on
+	# the first morning, which is exactly the wrong first impression: the ward
+	# is supposed to feel inherited, not delivered.
+	if p.days_admitted > 0.5:
+		EventBus.toast.emit("%s — %s, %s, night %d" % [
+			p.display_name, hospital.room(ward_key).display, p.condition_name(),
+			int(round(p.days_admitted))], "info")
+	else:
+		EventBus.toast.emit("%s admitted to %s — %s" % [
+			p.display_name, hospital.room(ward_key).display, p.condition_name()], "info")
 	_maybe_schedule_visitor(p)
 	return true
 

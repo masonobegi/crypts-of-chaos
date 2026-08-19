@@ -7,6 +7,8 @@ extends Control
 var _clock: Label
 var _day: Label
 var _sanction: Label
+var _left: Label
+var _next_appt: Label
 var _personal: Label
 var _hospital: Label
 var _census: Label
@@ -41,6 +43,10 @@ func _ready() -> void:
 	EventBus.objective_changed.connect(_on_objective)
 	EventBus.sanction_applied.connect(func(_l, _r): _refresh_static())
 	EventBus.day_advanced.connect(func(_d): _refresh_static())
+	# The deadline block otherwise stays blank until the first minute ticks over
+	# — a second and a half of the shift having no visible end, at exactly the
+	# moment the player is looking for one.
+	EventBus.shift_started.connect(func(_d): _refresh_deadline())
 	_refresh_static()
 	_on_money(GameState.personal_money, GameState.hospital_money)
 
@@ -50,15 +56,21 @@ func _build() -> void:
 	# behind it happening to have contrast.
 	# ---- top left: when you are
 	var tl_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
-	UIKit.place(tl_bg, Control.PRESET_TOP_LEFT, 12, 10, 210, 104)
+	UIKit.place(tl_bg, Control.PRESET_TOP_LEFT, 12, 10, 210, 126)
 	add_child(tl_bg)
 	var tl := UIKit.vbox(2)
-	UIKit.place(tl, Control.PRESET_TOP_LEFT, 26, 18, 300, 100)
+	UIKit.place(tl, Control.PRESET_TOP_LEFT, 26, 18, 300, 120)
 	_day = UIKit.label("Day 1", 20, UIKit.INK)
 	_clock = UIKit.label("8:00 AM", 30, UIKit.ACCENT)
+	# A shift that ends at an hour you were never told is not a deadline, it is
+	# a surprise. Everything the player is deciding — whether there is time to
+	# do this now, whether the paperwork can wait — is a question about this
+	# number, and it was not on screen anywhere.
+	_left = UIKit.label("", 13, Color(0.78, 0.82, 0.84))
 	_sanction = UIKit.label("Clean", 13, Color(0.78, 0.82, 0.84))
 	tl.add_child(_day)
 	tl.add_child(_clock)
+	tl.add_child(_left)
 	tl.add_child(_sanction)
 	add_child(tl)
 
@@ -88,6 +100,13 @@ func _build() -> void:
 	_objective = UIKit.label("", 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc.add_child(_objective)
+	# The objective line belongs to whoever last spoke — the tutorial, the
+	# appointment system, an investigation. The countdown to the next booked
+	# slot is live and ticks every minute, so it gets its own line rather than
+	# fighting for that one.
+	_next_appt = UIKit.label("", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	_next_appt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tc.add_child(_next_appt)
 
 	# Neutral by default and restyled per tier in _refresh_watchers. It used to
 	# be hardcoded alarm-red, and it shows for anybody with line of sight
@@ -204,6 +223,45 @@ func _on_clock(_m: int) -> void:
 	if ps:
 		_census.text = "%d admitted · %s/day" % [ps.active_count(),
 			UIKit.money_str(ps.total_daily_revenue())]
+	_refresh_deadline()
+
+## The two clocks that actually govern a decision: how long is left of the
+## shift, and how long until somebody is expecting you somewhere.
+func _refresh_deadline() -> void:
+	if GameState.phase != GameState.Phase.SHIFT:
+		_left.text = ""
+		_next_appt.text = ""
+		return
+	var mins := GameState.shift_minutes_remaining()
+	var end_hour := (GameState.shift_start_hour() + GameState.shift_hours()) % 24
+	_left.text = "%s left · ends %s" % [UIKit.span_str(mins),
+		GameState.hour_string(end_hour)]
+	_left.add_theme_color_override("font_color",
+		UIKit.BAD if mins <= 30 else (UIKit.WARN if mins <= 60 else UIKit.INK_DIM))
+
+	var appts = get_tree().get_first_node_in_group("appointment_system")
+	if appts == null:
+		_next_appt.text = ""
+		return
+	var e: Dictionary = appts.next_due()
+	if e.is_empty():
+		_next_appt.text = "Nothing else booked."
+		_next_appt.add_theme_color_override("font_color", UIKit.INK_DIM)
+		return
+	var until: int = appts.minutes_until(int(e["hour"]))
+	var label := String(AppointmentSystem.LABELS.get(String(e["kind"]), "Appointment"))
+	if until > 0:
+		_next_appt.text = "%s — %s in %s" % [label, String(e["name"]), UIKit.span_str(until)]
+		_next_appt.add_theme_color_override("font_color",
+			UIKit.WARN if until <= 30 else UIKit.INK_DIM)
+	else:
+		# Three hours late is a no-show. Say how much of that is left rather
+		# than only saying "late", which tells you nothing about whether to run.
+		var grace := 180 + until
+		_next_appt.text = "%s — %s is waiting (%s)" % [label, String(e["name"]),
+			UIKit.span_str(grace)]
+		_next_appt.add_theme_color_override("font_color",
+			UIKit.BAD if grace <= 60 else UIKit.WARN)
 
 func _on_money(personal: int, hospital: int) -> void:
 	_personal.text = UIKit.money_str(personal)

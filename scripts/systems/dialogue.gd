@@ -71,6 +71,21 @@ const OVERDUE_LINES := [
 	"Is there a reason I'm still here?",
 ]
 
+## Said by somebody who is well, whose paperwork is not finished, and who has
+## worked that out. The whole game is downstream of this line landing: it is the
+## first time the player is told, by a person rather than by a number, that
+## there is a decision here and that they are the one making it.
+##
+## Nothing in it names the alternative. It does not have to.
+const READY_LINES := [
+	"I feel completely fine, actually. Am I going home today?",
+	"So that's it, is it? I'm done? Someone said today.",
+	"My daughter's outside in the car park. Should I tell her to wait?",
+	"I packed. Probably shouldn't have packed.",
+	"Nobody's said anything, but I feel ready. I feel ready.",
+	"I'm allowed to just... ask, aren't I? When I can go?",
+]
+
 const FAMILY_LINES := {
 	"absent": ["I can't stay long.", "Just popping in."],
 	"constant": ["I've been here since six.", "I brought a chair. My own chair."],
@@ -95,6 +110,9 @@ static func gossip_line(_mind: Mind, _ev: Evidence) -> String:
 static func patient_idle(p) -> String:
 	var pool: Array = PATIENT_IDLE.get(p.archetype, PATIENT_IDLE["trusting"])
 	return String(RNG.pick("patient_idle", pool))
+
+static func patient_ready(_p) -> String:
+	return String(RNG.pick("patient_ready", READY_LINES))
 
 static func patient_overdue(p) -> String:
 	var line := String(RNG.pick("overdue", OVERDUE_LINES))

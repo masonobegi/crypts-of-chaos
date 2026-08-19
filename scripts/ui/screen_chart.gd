@@ -12,7 +12,11 @@ func _build() -> void:
 
 	v.add_child(UIKit.row("Recorded condition", DB.condition_name(p.chart.recorded_condition), UIKit.ACCENT))
 	v.add_child(UIKit.row("Presenting sign", String(DB.condition(p.condition_id).get("tell", "—"))))
-	v.add_child(UIKit.row("Admitted", "day %d" % p.admitted_on_day))
+	# Somebody inherited from a previous shift was admitted before day one, so
+	# "day -2" is both true and useless. Days-ago is what a chart is read for.
+	var ago: int = GameState.day - p.admitted_on_day
+	v.add_child(UIKit.row("Admitted", "today" if ago <= 0 else
+		("yesterday" if ago == 1 else "%d days ago" % ago)))
 	v.add_child(UIKit.row("Promised discharge", "day %d" % p.chart.promised_discharge_day,
 		UIKit.WARN if p.chart.promised_discharge_day > p.admitted_on_day + int(ceil(p.expected_stay_days)) else UIKit.INK))
 	v.add_child(UIKit.row("Day of stay", "%d of %d projected" % [

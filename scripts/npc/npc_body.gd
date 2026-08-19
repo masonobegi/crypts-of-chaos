@@ -59,6 +59,9 @@ var _startle := 0.0
 var on_duty := true
 var _duty_layer := 8
 var _off_duty_at := Vector3.ZERO
+## Set while getting out of somebody's way. See step_aside().
+var _yield_time := 0.0
+var _yield_dir := Vector3.ZERO
 
 func _ready() -> void:
 	add_to_group("npc")
@@ -158,6 +161,54 @@ func is_moving() -> bool:
 func distance_to(p: Vector3) -> float:
 	return global_position.distance_to(p)
 
+## Somebody has walked into you. Get out of their way.
+##
+## This is a traversal fix wearing a personality. Two CharacterBody3Ds cannot
+## displace each other, so before this a member of staff standing anywhere in
+## the corridor was a wall the player could only wait out; the play harness lost
+## eleven seconds to one nurse and twenty-one to another. Sidestepping — rather
+## than backing off — is what actually clears a corridor: a character retreating
+## along the axis you are travelling stays in front of you the whole way.
+const YIELD_TIME := 1.0
+const YIELD_SPEED := 2.1
+
+const YIELD_LINES := [
+	"Sorry — sorry.", "Oop.", "Excuse me, doctor.", "Mind your—",
+	"After you.", "Yep. Yep. Going.", "Sorry, doctor.",
+]
+
+func step_aside(from: Vector3) -> void:
+	if _yield_time > 0.0 or not can_step_aside():
+		return
+	var away := global_position - from
+	away.y = 0.0
+	if away.length_squared() < 0.0025:
+		away = -global_transform.basis.z
+	away = away.normalized()
+	var side := Vector3(-away.z, 0.0, away.x).normalized()
+	# Step toward whichever side is actually floor. A ward door is 1.4m wide and
+	# picking the wall half the time turns a sidestep into a second wedge.
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h != null and h.nav != null:
+		var right_ok: bool = h.nav.is_walkable(global_position + side * 1.0)
+		var left_ok: bool = h.nav.is_walkable(global_position - side * 1.0)
+		if left_ok and not right_ok:
+			side = -side
+		elif not left_ok and not right_ok:
+			# Boxed in sideways: give ground along their line instead, which at
+			# least stops being a wall even if it is not elegant.
+			side = -away
+	_yield_dir = side
+	_yield_time = YIELD_TIME
+	if _react_cooldown <= 0.0:
+		_react_cooldown = 5.0
+		say(String(RNG.pick("step_aside", YIELD_LINES)), 1.6)
+
+## Overridden by anybody who should stay exactly where they are — a patient in
+## bed does not politely roll out of it because you brushed past.
+func can_step_aside() -> bool:
+	return true
+
 func look_toward(pos: Vector3) -> void:
 	_look_at = pos
 	_has_look = true
@@ -172,7 +223,13 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 14.0 * delta
 	else:
 		velocity.y = 0.0
-	_follow_path(delta)
+	if _yield_time > 0.0:
+		_yield_time -= delta
+		velocity.x = _yield_dir.x * YIELD_SPEED
+		velocity.z = _yield_dir.z * YIELD_SPEED
+		_intended_speed = YIELD_SPEED
+	else:
+		_follow_path(delta)
 	_face(delta)
 	_open_door_ahead()
 	move_and_slide()

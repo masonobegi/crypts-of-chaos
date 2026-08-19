@@ -147,6 +147,18 @@ static func bar(value: float, color := ACCENT, width := 180.0, height := 8.0) ->
 	root.add_child(fill)
 	return root
 
+## "3h 20m", "45m", "now". Used everywhere a deadline is shown, so that the
+## shift clock, the appointment list and the tablet all count down in the same
+## words.
+static func span_str(minutes: int) -> String:
+	if minutes <= 0:
+		return "now"
+	if minutes < 60:
+		return "%dm" % minutes
+	if minutes % 60 == 0:
+		return "%dh" % int(minutes / 60)
+	return "%dh %02dm" % [int(minutes / 60), minutes % 60]
+
 static func money_str(amount: int) -> String:
 	var neg := amount < 0
 	var s := str(absi(amount))

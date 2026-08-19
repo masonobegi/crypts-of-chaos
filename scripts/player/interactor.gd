@@ -17,6 +17,10 @@ var held: RigidBody3D = null
 var _held_gravity := 1.0
 var _held_damp := 0.0
 var _hover: Node = null
+## What [E] acts on. Usually the same node as _hover, but a person standing
+## behind a loose prop takes priority for USE while the prop keeps priority for
+## GRAB — see _prefer_person.
+var _use_hover: Node = null
 var _hold_yaw := 0.0
 var _hold_pitch := 0.0
 var _use_progress := 0.0
@@ -41,9 +45,12 @@ func _physics_process(delta: float) -> void:
 func _update_hover() -> void:
 	var hit := get_collider() if is_colliding() else null
 	var target := _resolve_interactable(hit)
-	if target == _hover:
+	var use_target := _prefer_person(target)
+	if target == _hover and use_target == _use_hover:
 		return
 	_hover = target
+	_use_hover = use_target
+	target = use_target
 	if held != null:
 		# While carrying, the prompt describes what you'd do WITH the thing.
 		_show_carry_prompt()
@@ -69,12 +76,40 @@ func _show_prompt_for(target: Node) -> void:
 
 func _show_carry_prompt() -> void:
 	var carried := _display_name(held)
-	if _hover and _hover != held and _hover.has_method("prompt_with_item"):
-		var p: Array = _hover.call("prompt_with_item", player, held)
+	if _use_hover and _use_hover != held and _use_hover.has_method("prompt_with_item"):
+		var p: Array = _use_hover.call("prompt_with_item", player, held)
 		if p.size() > 0 and String(p[0]) != "":
 			EventBus.interact_prompt.emit(String(p[0]), String(p[1]) if p.size() > 1 else "")
 			return
 	EventBus.interact_prompt.emit("Holding %s" % carried, "[RMB] throw   [LMB] drop")
+
+## Loose objects do not get to stand in front of people.
+##
+## Every bed in the building has an IV stand beside it, and it stands squarely
+## between the doorway-side approach and the patient's head — so walking up to
+## a patient and looking straight at them reliably offered "Pick up IV Stand".
+## The single most important interaction in the game lost, every time, to a
+## pole. A play run confirmed it twice: with this off, the bedside prompt in
+## Room 101 is the stand; with it on, it is Ines Bracket and what her bed earns.
+##
+## Scoped two ways so it cannot take anything away. Only a plain grabbable prop
+## is overruled — a machine, a chart, a console or a door is a deliberate thing
+## to be aiming at and keeps the prompt, because reaching past a patient for the
+## dial is the entire game. And only the USE target changes: _hover still points
+## at the prop, so [LMB] picks the stand up exactly as before.
+func _prefer_person(target: Node) -> Node:
+	if target != null and (target is NPCBody or not (target is RigidBody3D)):
+		return target
+	var space := get_world_3d().direct_space_state
+	var from := global_position
+	var to := global_position + global_transform.basis * target_position
+	var q := PhysicsRayQueryParameters3D.create(from, to, 8)   # npc layer only
+	q.exclude = [player.get_rid()]
+	var res := space.intersect_ray(q)
+	if res.is_empty():
+		return target
+	var person := _resolve_interactable(res.get("collider"))
+	return person if person != null and person.has_method("interact") else target
 
 ## Walk up from the collider to whatever node actually implements interaction.
 func _resolve_interactable(hit: Object) -> Node:
@@ -115,7 +150,7 @@ func _handle_input(delta: float) -> void:
 	_handle_use(delta)
 
 func _handle_use(delta: float) -> void:
-	var target := _hover
+	var target := _use_hover
 	if target == null or not target.has_method("interact"):
 		_cancel_use()
 		return
@@ -188,6 +223,7 @@ func drop() -> void:
 	if b.has_method("on_dropped"):
 		b.call("on_dropped", player)
 	_hover = null
+	_use_hover = null
 
 func throw() -> void:
 	if held == null:

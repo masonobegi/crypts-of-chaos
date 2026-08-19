@@ -30,7 +30,6 @@ func start() -> void:
 	GameState.start_new_career(20260820)
 	game = load("res://scenes/Game.tscn").instantiate()
 	tree.root.add_child(game)
-	_beats = _plan(plan_name)
 	_say("=== PLAY: %s ===" % plan_name)
 
 func tick() -> bool:
@@ -40,6 +39,11 @@ func tick() -> bool:
 		return false                      # let the scene settle
 	if game == null or game.player == null:
 		return frames > 300
+	# The plan is built here rather than in start(): several beats ask the
+	# hospital where a bed or a corridor point is, and the hospital does not
+	# exist until the game has had a frame to build it.
+	if _beats.is_empty():
+		_beats = _plan(plan_name)
 
 	if _beat >= _beats.size():
 		_finish()
@@ -50,6 +54,11 @@ func tick() -> bool:
 	if done or _beat_frames > int(float(b.get("timeout", 20.0)) * FPS):
 		if not done:
 			_say("  ! TIMED OUT after %.1fs: %s" % [_beat_frames / FPS, _describe(b)])
+			if String(b["do"]) == "walk":
+				_say("      stopped at %s, leg %d of %d%s, against %s" % [
+					str(game.player.global_position.round()), _leg, _route.size(),
+					("" if _leg >= _route.size() else " (heading for %s)" %
+						str(_route[_leg].round())), _blockers(game.player)])
 		_last_beat_frames = _beat_frames
 		_release_all()
 		_beat += 1
@@ -89,6 +98,16 @@ func _run_beat(b: Dictionary) -> bool:
 			return _walk(b)
 		"face":
 			_face(b["at"])
+			return true
+		"face_patient":
+			# Look at the person, not at the middle of the bed. Where their head
+			# actually is depends on the bed mesh and the reclined pose, and a
+			# player can see it; the harness has to ask.
+			var body = _patient_body_in(String(b["room"]))
+			if body == null:
+				_say("  ! nobody in %s to look at" % String(b["room"]))
+				return true
+			_face(body.global_position + Vector3(0, 0.65, 0))
 			return true
 		"press":
 			_press(String(b["action"]))
@@ -173,27 +192,67 @@ func _walk(b: Dictionary) -> bool:
 	if Vector2(p.velocity.x, p.velocity.z).length() < 0.35:
 		_stuck += 1
 		if _stuck == 90:
-			_say("    ! wedged for 1.5s at %s heading for %s" % [
-				str(p.global_position.round()), str(flat.round())])
+			_say("    ! wedged for 1.5s at %s heading for %s — against %s" % [
+				str(p.global_position.round()), str(flat.round()), _blockers(p)])
 		# What a person does when they clip a door frame: step off the line and
 		# come at it again. Without this the harness reports a wedge for
 		# something a player would not even notice themselves doing.
 		if _stuck > 40:
 			_release("move_forward")
 			_press("move_right" if (_stuck / 40) % 2 == 0 else "move_left")
+		# Re-plan, exactly as NPCBody._check_stuck does. The grid is walkable
+		# cell to cell but a capsule has a radius, so a route that hugs a wall
+		# or takes a doorway on the diagonal can put the body into the frame. A
+		# person sees the gap and adjusts; a scripted walker has to be told to.
 		if _stuck > 130:
 			_stuck = 0
 			_release_all()
+			_route = game.hospital.nav.find_path(p.global_position, b["at"])
+			_leg = 0
+			if _route.is_empty():
+				_say("    ! no route from %s to %s" % [
+					str(p.global_position.round()), str(b["at"])])
+				return true
 	else:
 		_stuck = 0
 	return false
 
+## What the controller is actually pressed up against. "Wedged" on its own is
+## a symptom; the game only gets fixed once the harness names the object.
+func _blockers(p) -> String:
+	var names: Array[String] = []
+	for i in p.get_slide_collision_count():
+		var c: KinematicCollision3D = p.get_slide_collision(i)
+		var o = c.get_collider()
+		if o == null:
+			continue
+		var label := String(o.name)
+		if o.has_method("get_class"):
+			label += " (%s)" % o.get_class()
+		if o.get("display") != null and String(o.get("display")) != "":
+			label = "%s [%s]" % [label, String(o.get("display"))]
+		if not names.has(label):
+			names.append(label)
+	return "nothing (not touching anything)" if names.is_empty() else ", ".join(names)
+
+## Look at something, the way a person does: turn AND tilt.
+##
+## Yaw alone kept the crosshair level with the doctor's own eyes, which is a
+## metre above a patient lying in a bed — so every bedside beat in every play
+## run was actually aimed over the patient's head at whatever tall object stood
+## behind them, and reported "Pick up IV Stand" as though that were the game's
+## idea rather than the harness's.
 func _face(at) -> void:
 	var target: Vector3 = at
 	var p = game.player
+	var eye: Vector3 = p.camera.global_position
 	var to: Vector3 = target - p.global_position
 	p.rotation.y = atan2(-to.x, -to.z)
 	p.set("_yaw", p.rotation.y)
+	var flat: float = Vector2(target.x - eye.x, target.z - eye.z).length()
+	var pitch: float = clampf(atan2(target.y - eye.y, maxf(flat, 0.001)), -1.45, 1.45)
+	p.set("_pitch", pitch)
+	p.head.rotation.x = pitch
 
 func _press(action: String) -> void:
 	if not _held.has(action):
@@ -259,11 +318,25 @@ func _report() -> void:
 	if hud and hud.get("_objective"):
 		_say("    objective: %s" % String(hud.get("_objective").text))
 	_say("    prompt: %s" % _current_prompt())
+	if hud and hud.get("_next_appt"):
+		_say("    next up:   %s" % String(hud.get("_next_appt").text))
+	if hud and hud.get("_left"):
+		_say("    deadline:  %s" % String(hud.get("_left").text))
 	var appts = tree.get_first_node_in_group("appointment_system")
 	if appts:
 		var nxt: Dictionary = appts.next_due()
 		_say("    next appt: %s" % ("none" if nxt.is_empty() else
 			"%02d:00 %s - %s" % [int(nxt["hour"]), String(nxt["kind"]), String(nxt["name"])]))
+	# Who is actually in the beds, and which of them the game is hoping you
+	# notice. The first ten minutes live or die on this line.
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps:
+		for q in ps.active():
+			_say("    ward: %-22s %-26s %s%s%s/night, yours %s" % [
+				q.display_name, q.condition_name(),
+				"READY TO GO HOME · " if q.ready_for_discharge() else "",
+				"OVERDUE · " if q.is_overdue() else "",
+				"$%d" % q.daily_revenue(), "$%d" % q.your_cut_per_day()])
 	var watching := 0
 	for b in game.suspicion.watchers():
 		watching += 1
@@ -276,6 +349,15 @@ func _say(s: String) -> void:
 	print(s)
 	printerr(s)
 	_log.append(s)
+
+func _patient_body_in(room_key: String):
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		return null
+	for q in ps.active():
+		if q.room == room_key:
+			return ps.get_body(q.id)
+	return null
 
 # ------------------------------------------------------------------ plans
 func _plan(name: String) -> Array:
@@ -325,7 +407,7 @@ func _plan_first_shift() -> Array:
 		{"do": "say", "text": "\n-- Going to see a patient --"},
 		{"do": "walk", "at": h.bed_position("ward_101") + Vector3(1.6, 0, -1.6), "timeout": 40.0},
 		{"do": "mark", "text": "board -> Room 101 bedside"},
-		{"do": "face", "at": h.bed_position("ward_101") + Vector3(0, 1.2, 0)},
+		{"do": "face_patient", "room": "ward_101"},
 		{"do": "wait", "s": 0.5},
 		{"do": "shot", "name": "bedside"},
 		{"do": "prompt"},

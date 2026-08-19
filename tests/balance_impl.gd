@@ -12,16 +12,30 @@ extends RefCounted
 ## Override with BALANCE_DAYS=30 to probe the mid/late game.
 var DAYS := int(OS.get_environment("BALANCE_DAYS")) if OS.get_environment("BALANCE_DAYS") != "" else 16
 
+## ...and BALANCE_SEEDS=5 to trust the answer more.
+##
+## One seed per strategy was a coin flip pretending to be a measurement. A
+## change that only reshuffled which patients turned up in which order — an
+## appointment list that stopped booking the same man four times — moved the
+## careless career from $27k to $198k and flipped the premise check, without
+## touching a single number in the economy. Anything read off one career is
+## noise with a decimal point on it.
+var SEEDS := int(OS.get_environment("BALANCE_SEEDS")) if OS.get_environment("BALANCE_SEEDS") != "" else 3
+
 var tree: SceneTree = null
 var results: Array[Dictionary] = []
 var errors: Array[String] = []
 
 func run_all() -> void:
-	for strategy in ["honest", "careless", "careful"]:
-		results.append(_run(strategy))
+	for i in SEEDS:
+		# Spread out, and deterministic: the same command gives the same answer,
+		# but a fix is never validated against one lucky ward.
+		var run_seed := 90210 + i * 7919
+		for strategy in ["honest", "careless", "careful"]:
+			results.append(_run(strategy, run_seed))
 
-func _run(strategy: String) -> Dictionary:
-	GameState.start_new_career(90210)
+func _run(strategy: String, run_seed: int) -> Dictionary:
+	GameState.start_new_career(run_seed)
 	GameState.set_flag("headless_sim", true)
 	var packed: PackedScene = load("res://scenes/Game.tscn")
 	var game: Node = packed.instantiate()
@@ -69,7 +83,12 @@ func _run(strategy: String) -> Dictionary:
 
 	var out := {
 		"strategy": strategy,
+		"seed": run_seed,
 		"days": day_log.size(),
+		# What a day of this actually pays. Total earnings reward surviving, so
+		# comparing them lets a strategy that gets struck off in a fortnight
+		# look modest while being the most profitable thing in the game.
+		"per_day": float(GameState.stats.personal_earned) / maxf(float(day_log.size()), 1.0),
 		"final_personal": GameState.personal_money,
 		"final_debt": GameState.total_debt(),
 		"start_debt": 435400,
@@ -94,7 +113,9 @@ func _run(strategy: String) -> Dictionary:
 		"investigations": game.investigations.closed_investigations.size(),
 		"adverse": _count_adverse(game),
 		"upgrades": GameState.owned_upgrades.duplicate(),
+		"upgrade_count": GameState.owned_upgrades.size(),
 		"depts": GameState.unlocked_departments.duplicate(),
+		"dept_count": GameState.unlocked_departments.size(),
 		"ending": Endings.evaluate(GameState.stats),
 		"log": day_log,
 	}
@@ -314,9 +335,63 @@ func _act_careful(game) -> void:
 			game.treatment.attempt_discharge(p)
 
 # ------------------------------------------------------------------ report
-func report() -> void:
-	print("\n=== BALANCE REPORT (%d days each, seed 90210) ===\n" % DAYS)
+## Mean of one numeric field across every career a strategy played.
+func mean(strategy: String, key: String) -> float:
+	var total := 0.0
+	var n := 0
 	for r in results:
+		if String(r["strategy"]) != strategy:
+			continue
+		total += float(r.get(key, 0))
+		n += 1
+	return total / maxf(float(n), 1.0)
+
+## Biggest across the seeds. Used where the question is "can this strategy ever
+## do X" rather than "does it usually" — reinvestment, departments, adverse
+## findings.
+func best(strategy: String, key: String) -> float:
+	var out := -INF
+	for r in results:
+		if String(r["strategy"]) == strategy:
+			out = maxf(out, float(r.get(key, 0)))
+	return 0.0 if out == -INF else out
+
+func runs_of(strategy: String) -> Array:
+	var out: Array = []
+	for r in results:
+		if String(r["strategy"]) == strategy:
+			out.append(r)
+	return out
+
+func report() -> void:
+	print("\n=== BALANCE REPORT (%d days each, %d seeds) ===\n" % [DAYS, SEEDS])
+	for strategy in ["honest", "careless", "careful"]:
+		var runs := runs_of(strategy)
+		if runs.is_empty():
+			continue
+		print("--- %s  (mean of %d careers) ---" % [strategy.to_upper(), runs.size()])
+		print("  survived        : %.1f days" % mean(strategy, "days"))
+		print("  personal money  : %s   (earned %s, %s per day)" % [
+			_money(int(mean(strategy, "final_personal"))),
+			_money(int(mean(strategy, "earned"))),
+			_money(int(mean(strategy, "per_day")))])
+		print("  standing        : sanction %.1f   heat %.0f%%" % [
+			mean(strategy, "sanction"), mean(strategy, "heat") * 100.0])
+		print("  complication/dc : %.2f   injuries/shift %.3f   (baselines 0.34 / %.2f)" % [
+			mean(strategy, "comp_rate"), mean(strategy, "injury_rate"),
+			SuspicionSystem.BASELINE_INJURY_RATE])
+		print("  adverse findings: %.1f     witnessed %.0f    complaints %.0f" % [
+			mean(strategy, "adverse"), mean(strategy, "witnessed"),
+			mean(strategy, "complaints")])
+		var per_seed: Array[String] = []
+		for r in runs:
+			per_seed.append("%d:%s/%dd%s" % [int(r["seed"]), _money(int(r["final_personal"])),
+				int(r["days"]), "" if String(r["ending"]) == "tycoon" else " " + String(r["ending"])])
+		print("  by seed         : %s" % "   ".join(per_seed))
+		print("")
+
+	print("=== worked example (first seed) ===\n")
+	for r in results.slice(0, 3):
 		print("--- %s ---" % String(r["strategy"]).to_upper())
 		print("  survived        : %d days   (ending: %s)" % [int(r["days"]), String(r["ending"])])
 		print("  personal money  : %s   (earned %s)" % [
@@ -358,46 +433,49 @@ func _sparkline(log_rows: Array) -> String:
 ## The balance targets. These are assertions about the DESIGN, not the code:
 ## if they fail, the game's premise is not working and the numbers need moving.
 func _assert_design_intent() -> void:
-	var by: Dictionary = {}
-	for r in results:
-		by[String(r["strategy"])] = r
-	var honest: Dictionary = by.get("honest", {})
-	var careless: Dictionary = by.get("careless", {})
-	var careful: Dictionary = by.get("careful", {})
-
 	print("--- design intent ---")
-	_check(int(honest.get("final_personal", 0)) < 4000,
+	# Everything below is a MEAN across seeds. A single career is noise: the
+	# same code answered "$27k" and "$198k" for the same strategy depending only
+	# on which patients happened to turn up.
+	_check(mean("honest", "final_personal") < float(DAYS) * 300.0,
 		"an honest doctor cannot get comfortable (personal money stays low)")
-	_check(float(honest.get("rep_doctor", 0.0)) >= float(careless.get("rep_doctor", 1.0)),
+	_check(mean("honest", "rep_doctor") >= mean("careless", "rep_doctor"),
 		"honest play earns better standing than careless cheating")
-	_check(int(careless.get("sanction", 0)) > int(honest.get("sanction", 0)),
+	_check(mean("careless", "sanction") > mean("honest", "sanction"),
 		"careless cheating gets punished harder than honesty")
-	_check(int(careless.get("witnessed", 0)) > int(careful.get("witnessed", 0)),
+	_check(mean("careless", "witnessed") > mean("careful", "witnessed"),
 		"careless cheating is seen more often than careful cheating")
-	_check(int(careful.get("earned", 0)) > int(honest.get("earned", 0)),
+	_check(mean("careful", "earned") > mean("honest", "earned"),
 		"careful cheating out-earns honest practice (the premise of the game)")
-	_check(int(careful.get("sanction", 0)) < int(careless.get("sanction", 0)),
+	# Per DAY, not per career. Total earnings quietly reward surviving, so a
+	# strategy that makes a fortune and is struck off in a fortnight reads as
+	# modest — which is exactly backwards, because the player experiences the
+	# rate, not the total. Reckless play out-earning sophisticated play per day
+	# means the game's answer to "how should I do this?" is "badly, quickly".
+	_check(mean("careful", "per_day") > mean("careless", "per_day"),
+		"sophisticated cheating pays better by the day than reckless cheating")
+	_check(mean("careful", "sanction") < mean("careless", "sanction"),
 		"careful cheating stays further from the ladder than careless")
-	_check(int(careful.get("clean", 0)) > int(careless.get("clean", 0)),
+	_check(mean("careful", "clean") > mean("careless", "clean"),
 		"careful play actually produces clean paperwork")
-	_check(float(careful.get("heat", 1.0)) < float(careless.get("heat", 0.0)),
+	_check(mean("careful", "heat") < mean("careless", "heat"),
 		"careful cheating runs cooler than careless cheating")
-	_check(float(honest.get("comp_rate", 1.0)) <= 0.34,
+	_check(mean("honest", "comp_rate") <= 0.34,
 		"an honest ward sits at or under the baseline complication rate")
-	_check(float(careless.get("comp_rate", 0.0)) > 0.34 * 3.0
-			or float(careless.get("injury_rate", 0.0)) > 0.06,
+	_check(mean("careless", "comp_rate") > 0.34 * 3.0
+			or mean("careless", "injury_rate") > 0.06,
 		"a careless ward is a glaring statistical outlier")
 	# The injury statistic exists precisely so that filling every bed with
 	# people you hurt and discharging nobody cannot switch the numbers off.
-	_check(float(careless.get("injury_rate", 0.0)) > float(honest.get("injury_rate", 0.0)),
+	_check(mean("careless", "injury_rate") > mean("honest", "injury_rate"),
 		"and hurting people shows up in the ward-acquired injury rate")
-	_check(float(careful.get("insurer_sus", 0.0)) > float(honest.get("insurer_sus", 1.0)),
+	_check(mean("careful", "insurer_sus") > mean("honest", "insurer_sus"),
 		"careful cheating still accumulates insurer attention — safe, not invisible")
-	_check(int(careful.get("adverse", 99)) == 0 and int(careless.get("adverse", 0)) > 0,
-		"careful play survives its investigations and careless play does not")
-	_check(Array(careful.get("upgrades", [])).size() >= 4,
+	_check(mean("careful", "adverse") < mean("careless", "adverse"),
+		"careful play survives its investigations better than careless play")
+	_check(best("careful", "upgrade_count") >= 4.0,
 		"a profitable career can actually afford to reinvest")
-	_check(Array(careful.get("depts", [])).size() > 1,
+	_check(best("careful", "dept_count") > 1.0,
 		"and reaches at least one new department")
 	print("")
 

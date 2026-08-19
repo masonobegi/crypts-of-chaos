@@ -738,12 +738,18 @@ func test_a_blocked_walker_can_still_shove_what_is_blocking_them() -> void:
 	t.gt(Player.shove_impulse(light, Player.CROUCH_SPEED), 0.2,
 		"and even creeping shifts it eventually")
 	# Heavier things give way more slowly, so a cart in a doorway still costs
-	# you something.
+	# you something. The comparison has to be on the SPEED CHANGE, not on the
+	# impulse: an impulse that did not grow with mass was the original bug —
+	# it put 1.9 N·s into a twenty-kilo wheelchair, a tenth of a metre per
+	# second, and a play run lost twenty-one seconds to a chair in a doorway.
 	var cart := 26.0
-	t.lt(Player.shove_impulse(cart, Player.WALK_SPEED),
-		Player.shove_impulse(light, Player.WALK_SPEED),
-		"a loaded cart is harder work than a plastic sign")
-	t.gt(Player.shove_impulse(cart, Player.WALK_SPEED), 0.3,
-		"but it does move")
+	var v_light := Player.shove_impulse(light, Player.WALK_SPEED) / light
+	var v_cart := Player.shove_impulse(cart, Player.WALK_SPEED) / cart
+	t.lt(v_cart, v_light, "a loaded cart gives way slower than a plastic sign")
+	t.gt(v_cart, 0.2, "but it does move, and visibly")
+	# ...and nothing you shove ever ends up going faster than you are.
+	t.lt(Player.shove_impulse(light, Player.WALK_SPEED) / light,
+		Player.WALK_SPEED + 0.001,
+		"and nothing you nudge outruns you")
 	t.eq(Player.shove_impulse(light, 0.0), 0.0,
 		"and standing still shoves nothing")

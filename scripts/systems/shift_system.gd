@@ -76,6 +76,15 @@ func begin_day(kind: String = "") -> Dictionary:
 	if int(GameState.flag("missed_rent_days", 0)) >= 4:
 		GameState.set_flag("evicted", true)
 
+	# The ward you inherit predates everything else about today, so it is filled
+	# before the morning's events and before the morning's admissions. It was
+	# below roll_daily() to begin with, and a mass-casualty event on day one
+	# took all three beds first — so the authored opening ward silently did not
+	# exist on exactly the seeds where the first shift most needed authoring.
+	var handover: Array[Dictionary] = []
+	if GameState.day == 1 and patient_system.active_count() == 0:
+		handover = _seed_opening_ward()
+
 	var fired := events.roll_daily()
 	# Yesterday's warning has to actually mean something, or the notice is just
 	# a scary-sounding no-op.
@@ -114,6 +123,7 @@ func begin_day(kind: String = "") -> Dictionary:
 		"census": patient_system.active_count(),
 		"projected_revenue": patient_system.total_daily_revenue(),
 		"appointments": appointments.list.duplicate(true) if appointments else [],
+		"handover": handover,
 	}
 	briefing_ready.emit(_pending_briefing)
 	return _pending_briefing
@@ -173,6 +183,66 @@ func _apply_rota() -> void:
 		var rostered: bool = on_nurses.has(idx) if n is NurseNPC else on_doctors.has(idx)
 		n.set_on_duty(rostered)
 
+## The ward you inherit on your first morning.
+##
+## Day one used to open on five people admitted forty seconds ago. Nobody was
+## finished, nobody was waiting on anything, and the single question this whole
+## game turns on — "does this person go home today?" — could not be asked for
+## another three in-game days. The first shift was therefore a tutorial about
+## doors, and the realisation the game is built around arrived somewhere in the
+## middle of day four, by which point the player had already decided what kind
+## of game this was.
+##
+## So the night doctor leaves you a ward. One man is medically finished and has
+## not been told. One woman is medically finished and has been counting since
+## Tuesday. One is halfway through and delighted to be here. Every one of them
+## is legible from the doorway, all three are on the 8am handover, and the
+## decision is the first thing that happens rather than the last.
+##
+## `through` is how far into their expected stay they are, so a value over 1.0
+## is somebody already running late.
+const OPENING_WARD := [
+	{"cond": "gravitational_confusion", "arch": "trusting", "rec": 1.0,
+		"through": 0.95, "knows": false, "sat": 0.84, "ins": "premium"},
+	{"cond": "chronic_beige", "arch": "observant", "rec": 1.0,
+		"through": 1.35, "knows": true, "sat": 0.40, "ins": "standard"},
+	{"cond": "spleen_torque", "arch": "hypochondriac", "rec": 0.42,
+		"through": 0.55, "knows": true, "sat": 0.74, "ins": "standard"},
+]
+
+## Back-date a generated patient so they have a history. Everything downstream
+## — the chart, the overdue barks, the daily rate, the discharge appointment —
+## reads these fields and nothing else, so a patient built this way is
+## indistinguishable from one who really has been here since Tuesday.
+func _seed_opening_ward() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for spec in OPENING_WARD:
+		var p := patient_system.generate(String(spec["cond"]))
+		p.archetype = String(spec["arch"])
+		p.mind = DB.make_mind(p.id, p.display_name, "patient", p.archetype)
+		p.insurance = String(spec["ins"])
+		p.recovery = float(spec["rec"])
+		p.days_admitted = p.expected_stay_days * float(spec["through"])
+		p.admitted_on_day = GameState.day - int(ceil(p.days_admitted))
+		p.knows_expected_date = bool(spec["knows"])
+		p.satisfaction = float(spec["sat"])
+		p.chart.promised_discharge_day = p.admitted_on_day + int(ceil(p.expected_stay_days))
+		p.overdue_days = maxf(0.0, p.days_admitted - p.expected_stay_days)
+		if not patient_system.admit(p):
+			continue
+		out.append({
+			"name": p.display_name,
+			"condition": p.condition_name(),
+			"room": p.room,
+			"nights": int(round(p.days_admitted)),
+			"revenue": p.daily_revenue(),
+			"cut": p.your_cut_per_day(),
+			"ready": p.ready_for_discharge(),
+			"overdue": p.is_overdue(),
+			"knows": p.knows_expected_date,
+		})
+	return out
+
 func _admit_morning_patients() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var free := patient_system.free_wards().size()
@@ -220,6 +290,12 @@ func clock_in() -> void:
 	if tut == null or not tut.is_active():
 		EventBus.objective_changed.emit("Get through the shift.")
 	AudioMgr.play("ding", -10.0)
+	# The first slot on the list sits at the hour the shift starts, and hour
+	# ticks only fire on the hour AFTER that — so nobody was ever marked as
+	# having turned up for it, and three hours later it expired as a no-show
+	# the player had been given no opportunity to attend.
+	if appointments:
+		appointments.arrive_due()
 
 ## Emergency admissions arrive mid-shift with no warning. That is the entire
 ## mechanic: a bed you were using fills up, a patient appears in a corridor you

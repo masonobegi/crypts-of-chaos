@@ -133,18 +133,49 @@ func _push_obstacles() -> void:
 		if door != null:
 			door.open_for(global_position)
 			continue
+		# Two CharacterBody3Ds cannot move each other at all: neither one is
+		# affected by the other's velocity, and move_and_slide zeroes the
+		# blocked axis on both. A nurse standing in a two-metre corridor was
+		# therefore a wall. There are eight staff on a sixty-two-metre floor and
+		# they walk the length of it all shift, so the commonest thing in the
+		# game was being unable to get past a colleague — a play run lost eleven
+		# seconds to Nurse Nell without either party doing anything wrong.
+		var npc := c.get_collider() as NPCBody
+		if npc != null:
+			npc.step_aside(global_position)
+			continue
 		var rb := c.get_collider() as RigidBody3D
-		if rb == null or rb.mass >= 60.0:
+		if rb == null or rb.mass >= HEAVY_MASS:
 			continue
 		rb.apply_central_impulse(-c.get_normal() * shove_impulse(rb.mass, speed))
+
+## Nothing above this shifts for a person walking into it. A vending machine
+## stays where it is; a bed does not.
+const HEAVY_MASS := 150.0
+
+## How much momentum, in kg·m/s, a walking person can put into something per
+## contact. Everything else follows from it.
+const PUSH_POWER := 45.0
 
 ## Light things scatter, heavy things grudgingly give way. A cart left in a
 ## doorway should genuinely cost you a second, not a shift.
 ##
+## The old rule divided a constant by mass and then multiplied by a tenth of
+## walking speed, which produced 1.9 N·s against a twenty-kilo wheelchair — a
+## tenth of a metre per second, i.e. nothing. A play run spent twenty-one
+## seconds getting into Room 101 past a wheelchair that a person would have
+## kicked out of the way without breaking stride.
+##
+## Now it is momentum-shaped: you can impart PUSH_POWER, but never more than the
+## thing would have if it were already moving as fast as you are. Light objects
+## are limited by their own mass and shoot off; heavy ones are limited by you
+## and grudgingly slide.
+##
 ## Pure, so the rule that matters — that a blocked walker still generates a real
-## impulse — can be asserted without waiting on a physics frame.
+## impulse, and that a heavier thing moves less for the same shove — can be
+## asserted without waiting on a physics frame.
 static func shove_impulse(mass: float, speed: float) -> float:
-	return clampf(30.0 / maxf(mass, 1.0), 0.3, 3.2) * speed * 0.4
+	return minf(PUSH_POWER, maxf(mass, 0.2) * speed) * 0.35
 
 func _door_of(body: Object) -> SwingDoor:
 	var n := body as Node

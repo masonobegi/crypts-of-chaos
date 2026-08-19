@@ -161,7 +161,18 @@ small number of profitable outliers inside that volume.
       careers finished, endings found, and perk selection.
 - [x] 595 assertions, 37 smoke checks, 12 balance checks.
 
+- [x] Proximity-scoped subtitles.
+- [x] Small talk is no longer rolled (a confidence band on "how are you feeling?"
+      was teaching players to distrust the band everywhere it matters).
+- [x] **Three departments**, each adding a mechanic rather than a room:
+      Emergency (mid-shift arrivals), Radiology (imaging = exact vitals, and a
+      permanent record everything must agree with), Psychiatry (recovery driven
+      by satisfaction/comfort, patients far more observant).
+- [x] 663 assertions, 37 smoke checks, 12 balance checks.
+
 ### NEXT UP
-- Departments beyond the ward (each unlocks new mechanics).
-- Playtest with a human for feel: movement speed, shift length, prompt clarity.
-- Proximity-scope subtitles (currently global).
+- Human playtest for feel: movement speed, shift length, prompt clarity.
+- A physical second wing (departments are currently capability unlocks that
+  reuse the existing floor; new rooms would need Hospital.LAYOUT to become
+  data-driven per-run rather than a const).
+- More sabotage verbs around the new departments.

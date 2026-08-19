@@ -258,6 +258,21 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		rb.build(m)
 		rb.position = m.position + Vector3(0.7, 1.05, 0.4)
 
+	if GameState.has_upgrade("dept_radiology"):
+		var img := TreatmentMachine.new()
+		img.room_key = r.key
+		img.machine_id = "machine_imaging"
+		img.treatment_id = "imaging"
+		img.units = "APERTURE DEPTH"
+		h.add_child(img)
+		img.build("Imaging Bench")
+		img.position = Vector3(c.x + 4.0, 0, r.rect.position.y + 1.0)
+		var irb := MachineRunButton.new()
+		irb.room_key = r.key
+		h.add_child(irb)
+		irb.build(img)
+		irb.position = img.position + Vector3(0.7, 1.05, 0.4)
+
 	var shelf := SupplyShelf.new()
 	shelf.room_key = r.key
 	h.add_child(shelf)

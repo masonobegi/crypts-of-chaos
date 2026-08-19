@@ -61,6 +61,11 @@ func generate(force_condition := "") -> Patient:
 	p.chart.promised_discharge_day = p.admitted_on_day + int(ceil(p.expected_stay_days))
 
 	p.mind = DB.make_mind(p.id, p.display_name, "patient", p.archetype)
+	# Psychiatric admissions are, by the nature of why they are here, paying
+	# very close attention to how they are being treated.
+	if String(cond.get("dept", "ward")) == "psych":
+		p.mind.observance = clampf(p.mind.observance + 0.35, 0.0, 1.0)
+		p.mind.skepticism = clampf(p.mind.skepticism + 0.2, 0.0, 1.0)
 	return p
 
 func _skin_tone() -> Color:

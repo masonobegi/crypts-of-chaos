@@ -63,6 +63,22 @@ const CATALOGUE := {
 		"desc": "A proper locked bin for confidential waste.",
 		"note": "Destroying paperwork stops looking like destroying paperwork.",
 	},
+	# ---------------------------------------------------------- departments
+	"dept_emergency": {
+		"name": "Open Emergency Intake", "cost": 11000, "tier": 2,
+		"desc": "The ward starts taking emergency admissions.",
+		"note": "Short stays, enormous day rates, and patients who arrive MID-SHIFT with no warning. Chaos is profitable and chaos is witnessed.",
+	},
+	"dept_radiology": {
+		"name": "Radiology Bench", "cost": 12500, "tier": 3,
+		"desc": "An imaging bench in the treatment bay.",
+		"note": "Imaging shows a patient's true condition instead of noisy vitals — and writes what it saw into the record, permanently.",
+	},
+	"dept_psych": {
+		"name": "Psychiatric Liaison", "cost": 9800, "tier": 2,
+		"desc": "Long, lucrative admissions that respond to comfort rather than kit.",
+		"note": "These patients recover on environment and satisfaction, not treatment. They are also the most observant people in the building.",
+	},
 	"second_opinion_policy": {
 		"name": "Second Opinion Policy", "cost": 5000, "tier": 2,
 		"desc": "Every extended stay gets a colleague's sign-off.",
@@ -123,6 +139,16 @@ static func _apply(id: String) -> void:
 			GameState.adjust_rep("insurer_trust", 0.05)
 		"maintenance_contract":
 			GameState.adjust_rep("hospital", 0.04)
+		"dept_emergency":
+			GameState.unlocked_departments.append("emergency")
+			GameState.adjust_rep("hospital", 0.07)
+		"dept_radiology":
+			GameState.unlocked_departments.append("radiology")
+			GameState.adjust_rep("doctor", 0.06)
+			GameState.adjust_rep("insurer_trust", 0.05)
+		"dept_psych":
+			GameState.unlocked_departments.append("psych")
+			GameState.adjust_rep("hospital", 0.05)
 
 # ---------------------------------------------------------------- live effects
 ## Multiplier on how noisy vitals readouts are.

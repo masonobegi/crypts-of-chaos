@@ -155,6 +155,65 @@ const CONDITIONS := {
 		"dept": "ward", "tell": "Regretful about something that has not occurred.",
 		"color": Color(0.78, 0.70, 0.45),
 	},
+	# ---------------------------------------------------------- emergency dept
+	"acute_shatter": {
+		"name": "Acute Vibe Shatter",
+		"desc": "Something broke. Loudly. Internally.",
+		"base_days": 1.0, "rate": 0.95, "revenue": 3200,
+		"treats": ["vibe_stabilize", "fluids", "chalkinol"],
+		"dept": "emergency", "tell": "Making a noise like a dropped tray.",
+		"color": Color(0.90, 0.45, 0.35),
+	},
+	"percussive_collapse": {
+		"name": "Percussive Collapse",
+		"desc": "The rhythm section has given out entirely.",
+		"base_days": 1.5, "rate": 0.8, "revenue": 2800,
+		"treats": ["percussive_realign", "fluids", "humour_rebalance"],
+		"dept": "emergency", "tell": "Arrhythmic. Aggressively so.",
+		"color": Color(0.88, 0.55, 0.30),
+	},
+	"catastrophic_yawn": {
+		"name": "Catastrophic Yawn",
+		"desc": "It got away from them.",
+		"base_days": 1.0, "rate": 0.9, "revenue": 2600,
+		"treats": ["counter_yawn", "dread_extraction", "fluids"],
+		"dept": "emergency", "tell": "Cannot currently close.",
+		"color": Color(0.75, 0.60, 0.85),
+	},
+	# ---------------------------------------------------------- radiology
+	"opaque_torso": {
+		"name": "Radiologically Opaque Torso",
+		"desc": "Nothing gets through. Nobody knows what is in there.",
+		"base_days": 4.0, "rate": 0.3, "revenue": 2100,
+		"treats": ["imaging", "ultrasonic_dusting", "vibe_stabilize"],
+		"dept": "radiology", "tell": "Casts a shadow indoors.",
+		"color": Color(0.45, 0.50, 0.58),
+	},
+	"ghost_fracture": {
+		"name": "Ghost Fracture",
+		"desc": "A break that is not there yet.",
+		"base_days": 3.0, "rate": 0.38, "revenue": 1900,
+		"treats": ["imaging", "weighted_blanket", "warm_compress"],
+		"dept": "radiology", "tell": "Winces pre-emptively.",
+		"color": Color(0.68, 0.72, 0.80),
+	},
+	# ---------------------------------------------------------- psychiatry
+	"recursive_worry": {
+		"name": "Recursive Worry",
+		"desc": "Worried about the worrying. And about that.",
+		"base_days": 4.0, "rate": 0.28, "revenue": 1700,
+		"treats": ["talk_therapy_lite", "dread_extraction", "colour_therapy"],
+		"dept": "psych", "tell": "Has started worrying about your expression.",
+		"color": Color(0.60, 0.55, 0.75),
+	},
+	"borrowed_conviction": {
+		"name": "Borrowed Conviction",
+		"desc": "Absolutely certain about something that belongs to somebody else.",
+		"base_days": 5.0, "rate": 0.24, "revenue": 2000,
+		"treats": ["talk_therapy_lite", "vibe_stabilize", "rest"],
+		"dept": "psych", "tell": "Will explain it to you. At length.",
+		"color": Color(0.72, 0.62, 0.55),
+	},
 	"clerical_lung": {
 		"name": "Clerical Lung",
 		"desc": "Breathing has become administrative.",
@@ -251,6 +310,11 @@ const TREATMENTS := {
 		"name": "Counter-Yawn", "verb": "administered a counter-yawn",
 		"effect": 0.4, "wrong": 0.0, "tool": "", "time": 3.5,
 		"desc": "Yawn back at the patient. Firmly. Maintain eye contact.",
+	},
+	"imaging": {
+		"name": "Diagnostic Imaging", "verb": "imaged the patient",
+		"effect": 0.28, "wrong": 0.04, "tool": "machine_imaging", "time": 4.0,
+		"desc": "Look inside. Properly. For once.",
 	},
 	"talk_therapy_lite": {
 		"name": "Brief Supportive Chat", "verb": "had a brief supportive chat",

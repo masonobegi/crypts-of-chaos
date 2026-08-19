@@ -22,6 +22,12 @@ var times_forged: int = 0
 ## Set if the physical chart object was destroyed. Missing charts are their own
 ## kind of suspicious.
 var shredded: bool = false
+## Imaging writes an authoritative, timestamped observation into the record.
+## It is the most useful diagnostic in the game AND the most dangerous thing to
+## have on file, because everything you claim afterwards has to agree with it.
+var imaging_done: bool = false
+var imaging_clear: bool = false      ## imaging found no underlying cause
+var imaging_day: int = -1
 
 func log_treatment(id: String, time: int, real: bool) -> void:
 	logged_treatments.append({"id": id, "time": time, "real": real})
@@ -84,6 +90,17 @@ func audit(actual_treatments: Array, complications: Array) -> Array[Dictionary]:
 			"kind": "missing_chart", "weight": 0.85,
 			"text": "The physical chart for this patient is missing entirely.",
 		})
+	# Anything blamed on an underlying condition AFTER imaging found none is the
+	# single most specific contradiction available in the whole record.
+	if imaging_done and imaging_clear:
+		for c in complications:
+			var comp := c as Complication
+			if comp.documented_cause == "underlying" and comp.documented_at >= 0:
+				findings.append({
+					"kind": "contradicts_imaging", "weight": 0.9,
+					"text": "\"%s\" attributed to an underlying condition, which imaging on day %d explicitly ruled out."
+						% [comp.display_name, imaging_day],
+				})
 	if times_forged >= 3:
 		findings.append({
 			"kind": "handwriting", "weight": 0.3 * float(times_forged - 2),
@@ -110,4 +127,7 @@ static func from_dict(d: Dictionary) -> PatientChart:
 	c.times_edited = int(d.get("te", 0))
 	c.times_forged = int(d.get("tf", 0))
 	c.shredded = bool(d.get("shred", false))
+	c.imaging_done = bool(d.get("img", false))
+	c.imaging_clear = bool(d.get("imgc", false))
+	c.imaging_day = int(d.get("imgd", -1))
 	return c

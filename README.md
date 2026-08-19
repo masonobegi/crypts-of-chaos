@@ -124,6 +124,23 @@ already caught one design inversion that no unit test could: with only five beds
 people quickly and refilling the bed originally out-earned prolonging a stay, which
 inverted the entire premise. That's why admission is expensive and marginal days are cheap.
 
+## Departments
+
+Three departments unlock by purchase, and each one adds a mechanic rather than a room:
+
+- **Emergency Intake** — short stays with enormous day rates, and patients who arrive
+  *mid-shift* with no warning. A bed you were using fills up and everyone on the floor
+  turns to look at whatever you were in the middle of.
+- **Radiology Bench** — imaging is the only thing in the game that tells you the truth:
+  it makes one patient's vitals exact for a day. It also writes what it saw into the
+  record permanently, so everything you claim afterwards has to agree with it. Blaming
+  a complication on an underlying condition that imaging explicitly ruled out is the
+  most specific contradiction available anywhere in the game.
+- **Psychiatric Liaison** — long, lucrative admissions that recover on comfort and
+  satisfaction rather than on equipment, which makes a cold dark ward a far more
+  effective way to hold one than any machine. They are also the most observant people
+  in the building, for reasons that are entirely their own business.
+
 ## Careers
 
 One career runs to an ending — Saint, Tycoon, Medical Mafia, Fraud King, Whistleblower,

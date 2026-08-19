@@ -50,6 +50,9 @@ var mind: Mind = null
 var knows_expected_date: bool = true
 ## Ticks up while they sit past their promised date. Drives escalating dialogue.
 var overdue_days: float = 0.0
+## Career minute of the last imaging run. While recent, vitals stop being noisy —
+## the one way to actually see the truth layer.
+var imaged_at: int = -99999
 
 func _init(p_id: String = "") -> void:
 	id = p_id
@@ -103,6 +106,11 @@ func tick(days: float) -> void:
 			suppression *= clampf(1.0 - 0.34 * c.severity, 0.12, 1.0)
 
 	var rate := (recovery_rate + Upgrades.recovery_bonus() * recovery_rate) * suppression * env_modifier
+	# Psychiatric admissions respond to how they are treated as people rather
+	# than to equipment: comfort and satisfaction ARE the treatment, which makes
+	# a cold dark ward a far more effective way to hold one than any machine.
+	if String(DB.condition(condition_id).get("dept", "ward")) == "psych":
+		rate *= clampf(0.35 + satisfaction, 0.2, 1.35)
 	recovery = clampf(recovery + rate * days, -0.2, 1.0)
 
 	if is_overdue():
@@ -148,6 +156,10 @@ func vitals() -> Dictionary:
 	var noise_scale: float = Upgrades.vitals_noise_scale()
 	if GameState.flag("perk_steady_hands", false):
 		noise_scale *= 0.6
+	# Recent imaging replaces guesswork with fact. It is also on the record.
+	if GameState.career_minutes - imaged_at < GameState.MINUTES_PER_DAY:
+		noise_scale = 0.0
+		bias = 0.0
 	var n := func(k: String, spread: float) -> float:
 		return RNG.noise("vitals_%s_%s_%d" % [id, k, int(GameState.career_minutes / 30)],
 			spread * noise_scale)

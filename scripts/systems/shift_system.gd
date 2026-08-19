@@ -29,6 +29,7 @@ func _ready() -> void:
 	suspicion = get_tree().get_first_node_in_group("suspicion_system")
 	records = get_tree().get_first_node_in_group("records_system")
 	EventBus.clock_tick.connect(_on_clock_tick)
+	EventBus.hour_tick.connect(_maybe_emergency_admission)
 
 # ================================================================ morning
 ## Everything that happens before you clock in.
@@ -147,6 +148,36 @@ func clock_in() -> void:
 	EventBus.toast.emit("Shift started — %s" % GameState.time_string(), "info")
 	EventBus.objective_changed.emit("Get through the shift.")
 	AudioMgr.play("ding", -10.0)
+
+## Emergency admissions arrive mid-shift with no warning. That is the entire
+## mechanic: a bed you were using fills up, a patient appears in a corridor you
+## were about to do something in, and everyone on the floor turns to look.
+func _maybe_emergency_admission(hour: int) -> void:
+	if not GameState.unlocked_departments.has("emergency"):
+		return
+	if hour < GameState.SHIFT_START_HOUR + 1 or GameState.shift_over():
+		return
+	if patient_system.free_wards().is_empty():
+		return
+	if not RNG.chance("emergency_arrival", 0.22):
+		return
+	var p := patient_system.generate(_random_emergency_condition())
+	if not patient_system.admit(p):
+		return
+	AudioMgr.play("alarm", -8.0)
+	EventBus.toast.emit("EMERGENCY: %s — %s" % [p.display_name, p.condition_name()], "bad")
+	# Everybody looks. Whatever you were in the middle of, you were in the middle
+	# of it in front of an audience.
+	WorldEvent.new("emergency_admission", "").at(Vector3.ZERO, "lobby") \
+		.heard(0.0, 60.0).tag("noise").tag("chaos") \
+		.says("emergency admission").emit()
+
+func _random_emergency_condition() -> String:
+	var pool: Array = []
+	for id in DB.CONDITIONS:
+		if String(DB.CONDITIONS[id].get("dept", "ward")) == "emergency":
+			pool.append(String(id))
+	return String(RNG.pick("emergency_cond", pool)) if not pool.is_empty() else ""
 
 func _on_clock_tick(_minute: int) -> void:
 	if GameState.phase != GameState.Phase.SHIFT:

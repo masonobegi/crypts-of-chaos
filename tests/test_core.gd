@@ -204,3 +204,96 @@ func test_headline_generator_never_returns_empty() -> void:
 		GameState.stats.longest_stay_name = "Greg Pumbleton" if i % 2 == 0 else ""
 		GameState.stats.longest_stay = float(i)
 		t.ok(Endings.headline(GameState.stats).length() > 8, "headline %d is real text" % i)
+
+# ==================================================================== departments
+func test_department_conditions_are_gated_until_unlocked() -> void:
+	GameState.start_new_career(41)
+	t.eq(GameState.unlocked_departments, ["ward"] as Array, "only the ward to begin with")
+	for cid in DB.CONDITIONS:
+		var dept := String(DB.CONDITIONS[cid].get("dept", "ward"))
+		if dept == "ward":
+			continue
+		t.ok(not GameState.unlocked_departments.has(dept),
+			"%s condition '%s' is locked at career start" % [dept, cid])
+	Upgrades.purchase("dept_emergency")
+	t.ok(GameState.unlocked_departments.has("emergency"),
+		"buying the department unlocks its condition pool")
+
+func test_imaging_makes_vitals_exact() -> void:
+	# The one thing in the game that tells you the truth, and the one thing that
+	# writes that truth into the record.
+	GameState.start_new_career(42)
+	var p := Patient.new("img")
+	p.condition_id = "opaque_torso"
+	p.recovery = 0.5
+	var noisy_spread := 0.0
+	for i in 6:
+		GameState.career_minutes = i * 40
+		var v: Dictionary = p.vitals()
+		noisy_spread += absf(float(v["humour_balance"]) - (28.0 + 0.5 * 62.0))
+	p.imaged_at = GameState.career_minutes
+	var exact: Dictionary = p.vitals()
+	t.near(float(exact["humour_balance"]), 28.0 + 0.5 * 62.0, 0.001,
+		"imaged vitals report the truth exactly")
+	t.gt(noisy_spread, 0.5, "and un-imaged vitals genuinely are noisy")
+
+func test_imaging_makes_later_lies_contradictory() -> void:
+	var chart := PatientChart.new()
+	chart.imaging_done = true
+	chart.imaging_clear = true
+	chart.imaging_day = 3
+	var comp := Complication.new()
+	comp.display_name = "Ambient Dread"
+	comp.plausible_causes = PackedStringArray(["underlying", "idiopathic"])
+	comp.documented_cause = "underlying"
+	comp.documented_at = 500
+	var kinds: Array = []
+	for f in chart.audit([], [comp]):
+		kinds.append(String(f["kind"]))
+	t.ok(kinds.has("contradicts_imaging"),
+		"blaming an underlying cause after imaging ruled one out is a finding")
+
+	# The same claim without imaging on file is perfectly plausible.
+	var clean := PatientChart.new()
+	var kinds2: Array = []
+	for f in clean.audit([], [comp]):
+		kinds2.append(String(f["kind"]))
+	t.ok(not kinds2.has("contradicts_imaging"), "and is unremarkable without it")
+
+func test_psychiatric_recovery_tracks_satisfaction() -> void:
+	# These patients recover on how they are treated, not on equipment — which
+	# makes a cold, dark, miserable ward the most effective way to hold one.
+	var happy := Patient.new("h")
+	happy.condition_id = "recursive_worry"
+	happy.recovery_rate = 0.5
+	happy.satisfaction = 0.95
+	happy.tick(1.0)
+
+	var miserable := Patient.new("m")
+	miserable.condition_id = "recursive_worry"
+	miserable.recovery_rate = 0.5
+	miserable.satisfaction = 0.1
+	miserable.tick(1.0)
+	t.gt(happy.recovery, miserable.recovery * 1.5,
+		"a contented psychiatric patient recovers far faster than a miserable one")
+
+	# A ward patient is unaffected by satisfaction.
+	var a := Patient.new("a")
+	a.condition_id = "funny_bone"
+	a.recovery_rate = 0.5
+	a.satisfaction = 0.95
+	a.tick(1.0)
+	var b := Patient.new("b")
+	b.condition_id = "funny_bone"
+	b.recovery_rate = 0.5
+	b.satisfaction = 0.1
+	b.tick(1.0)
+	t.near(a.recovery, b.recovery, 0.0001, "ward conditions do not care how you feel")
+
+func test_emergency_conditions_are_short_and_lucrative() -> void:
+	for cid in DB.CONDITIONS:
+		var c: Dictionary = DB.CONDITIONS[cid]
+		if String(c.get("dept", "ward")) != "emergency":
+			continue
+		t.lt(float(c["base_days"]), 2.0, "%s is a short stay" % cid)
+		t.gt(float(c["revenue"]), 2000.0, "%s bills heavily per day" % cid)

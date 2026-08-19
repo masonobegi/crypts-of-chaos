@@ -115,6 +115,9 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 	if not bool(res.get("correct", true)):
 		visual = maxf(visual, 0.4)
 		tags.append("wrong_treatment")
+	if m.machine_id == "machine_imaging":
+		_record_imaging(p)
+
 	var e := WorldEvent.new("machine_treatment", "player") \
 		.at(m.global_position, m.room_key).about(p.id) \
 		.seen(visual).heard(0.02, 9.0).cover("equipment_variance") \
@@ -124,6 +127,22 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 	e.emit()
 	EventBus.treatment_applied.emit(p, m.treatment_id, float(res["recovery"]))
 	return res
+
+## Imaging is the only thing in the game that tells you the truth. It also puts
+## that truth in the record permanently, so every claim you make afterwards has
+## to agree with it.
+func _record_imaging(p: Patient) -> void:
+	p.imaged_at = GameState.career_minutes
+	p.chart.imaging_done = true
+	p.chart.imaging_day = GameState.day
+	# "Clear" means nothing underlying was found — which is true whenever the
+	# patient has no active complications at the time of the scan.
+	p.chart.imaging_clear = p.active_complications().is_empty()
+	p.chart.add_note("Imaging performed. %s" % (
+		"No underlying cause identified." if p.chart.imaging_clear
+		else "Findings consistent with recorded complications."),
+		GameState.career_minutes, "Radiology", true)
+	EventBus.toast.emit("%s imaged — vitals are exact for a day." % p.display_name, "good")
 
 # ------------------------------------------------------------------ discharge
 ## Discharging someone who is not actually better is its own kind of gamble:

@@ -209,6 +209,44 @@ func _check_intake_overflow(ps) -> void:
 	_ok(overflow.room == freed, "a ward coming free gets them off the trolley")
 	_ok(ps.free_trolleys() == trolleys_before, "and the trolley is free again")
 
+	_check_wheeling(ps)
+
+## Beds are on wheels, so which room a patient is in is a question about where
+## their bed ended up. Doing it on purpose is the ramping strategy; the game has
+## to actually notice.
+func _check_wheeling(ps) -> void:
+	var p = null
+	for q in ps.active():
+		if q.room != "intake" and ps.get_body(q.id) != null and ps.get_body(q.id).bed != null:
+			p = q
+			break
+	if p == null:
+		_fail("no ward patient with a bed to wheel")
+		return
+	var home: String = p.room
+	var body = ps.get_body(p.id)
+	var bed = body.bed
+	bed.global_position = Vector3(-8.0, 0.4, 7.0)
+	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
+	ps._reconcile_room(p, body)
+	_ok(p.room == "intake", "wheeling a bed into Intake moves the patient with it")
+	_ok(not ps.free_wards().has(home),
+		"the ward they left is empty, but an empty room is not a free bed")
+
+	# Push a spare trolley into the vacated ward and it counts again. Ramping a
+	# patient out to free their room is a two-part physical job, which is the
+	# right amount of effort for what it buys.
+	var spare = null
+	for b in tree.get_nodes_in_group("bed"):
+		if b != bed and (b.occupant == null or not is_instance_valid(b.occupant)):
+			spare = b
+			break
+	if spare == null:
+		_fail("no spare trolley to swap in")
+		return
+	spare.global_position = ps.hospital.bed_position(home) + Vector3(0, 0.4, 0)
+	_ok(ps.free_wards().has(home), "wheeling a trolley in makes it a bed again")
+
 func comp_owner(p: Patient) -> Patient:
 	return p
 

@@ -108,7 +108,17 @@ is admitted and billing — and losing satisfaction about four times as fast as
 one merely kept too long (`0.24 × days × impatience`), in the busiest room in
 the building, where every member of staff and every visitor walks past them.
 Discharging a ward patient calls `_relieve_intake`, which moves the
-longest-parked trolley patient into the freed bed. So a full ward plus an
+longest-parked trolley patient into the freed bed.
+
+Beds are rigid bodies on wheels and `_reconcile_room` reads a patient's room
+from **where their bed currently stands**, so you can do this to somebody on
+purpose. Wheel a ward patient out to Intake and they keep billing, recover
+slower in a worse room, lose satisfaction four times as fast, and their ward
+frees up for a better-insured admission. It is a two-part job — `free_wards()`
+also requires a bed to physically be in the room, so you have to push a spare
+trolley in behind you — which is about the right amount of effort for what it
+buys. Their chart does not follow them, and a chart in the wrong room is its own
+finding. So a full ward plus an
 arrival is a real decision: send a still-profitable overstayer home early, or
 let the new one lie in Intake losing goodwill you will pay for in reputation.
 

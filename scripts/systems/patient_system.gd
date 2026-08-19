@@ -132,8 +132,14 @@ func free_wards() -> Array[String]:
 			var p: Patient = patients[id]
 			if not p.discharged and p.room == key:
 				taken = true
-		if not taken:
-			out.append(key)
+		if taken:
+			continue
+		# A ward somebody has wheeled the bed out of is not a free bed, it is an
+		# empty room. Without this, stripping the floor of beds would read as
+		# five vacancies.
+		if _bed_in(key) == null:
+			continue
+		out.append(key)
 	return out
 
 func admit(p: Patient, ward_key := "") -> bool:
@@ -205,13 +211,17 @@ func _spawn_chart(p: Patient, ward_key: String) -> void:
 	chart.global_position = pos + Vector3(0.0, 1.05, 1.15)
 	charts[p.id] = chart
 
-## An unoccupied bed in this room, or failing that any bed in it. Intake has
-## three trolleys rather than one bed, so "the first one that matches" is not
-## good enough any more.
+## An unoccupied bed standing in this room, or failing that any bed in it.
+##
+## Matched on where the bed ACTUALLY IS rather than on the room it was built in.
+## Beds are rigid bodies on wheels; anyone can push one anywhere, and a bed that
+## has been wheeled out of Room 103 is not a bed in Room 103 however it was
+## labelled at build time. Intake also has three of them, so "the first one that
+## matches" stopped being good enough.
 func _bed_in(ward_key: String) -> PatientBed:
 	var fallback: PatientBed = null
 	for b in get_tree().get_nodes_in_group("bed"):
-		if b.room_key != ward_key:
+		if _bed_room(b) != ward_key:
 			continue
 		if b.occupant == null or not is_instance_valid(b.occupant):
 			return b
@@ -219,11 +229,17 @@ func _bed_in(ward_key: String) -> PatientBed:
 			fallback = b
 	return fallback
 
-## How many trolleys in Intake are standing empty right now.
+func _bed_room(b) -> String:
+	if hospital == null or not b.is_inside_tree():
+		return String(b.room_key)
+	var where := hospital.room_at(b.global_position)
+	return where if where != "" else String(b.room_key)
+
+## How many trolleys are standing empty in Intake right now.
 func free_trolleys() -> int:
 	var n := 0
 	for b in get_tree().get_nodes_in_group("bed"):
-		if b.room_key == "intake" and (b.occupant == null or not is_instance_valid(b.occupant)):
+		if _bed_room(b) == "intake" and (b.occupant == null or not is_instance_valid(b.occupant)):
 			n += 1
 	return n
 
@@ -284,6 +300,7 @@ func tick(days: float) -> void:
 		var room_key: String = body.current_room() if body else p.room
 		var r: Room = hospital.room(room_key) if hospital else null
 		p.env_modifier = r.comfort() if r else 1.0
+		_reconcile_room(p, body)
 		var before_ready := p.ready_for_discharge()
 		p.tick(days)
 		# A trolley in the middle of Emergency Intake is not a room. Nobody
@@ -463,6 +480,30 @@ func transfer(p: Patient, ward_key: String) -> bool:
 		elif f is TreatmentMachine and f.room_key == ward_key:
 			f.set_prescribed_for(p)
 	return true
+
+## Which room a patient is IN is a question about where their bed has ended up,
+## not about where they were admitted. Wheeling somebody out of Room 103 and
+## leaving them on the floor of Intake genuinely frees Room 103 for a
+## better-insured admission, and genuinely costs the patient who was moved.
+##
+## Their chart does NOT follow them. A chart in the wrong room is already one of
+## the more findable things in the record, and there is no reason wheeling the
+## bed should tidy that up for you.
+func _reconcile_room(p: Patient, body) -> void:
+	if body == null or hospital == null:
+		return
+	var bed = body.bed
+	if bed == null or not is_instance_valid(bed) or not bed.is_inside_tree():
+		return
+	var where := hospital.room_at(bed.global_position)
+	if where == "" or where == p.room:
+		return
+	# Only somewhere a patient can legitimately be kept counts. A bed parked in
+	# the corridor for ten seconds while you get a door open is not a transfer.
+	if not (WARD_KEYS.has(where) or where == "intake"):
+		return
+	p.room = where
+	EventBus.patient_state_changed.emit(p)
 
 # ================================================================ queries
 func get_patient(id: String) -> Patient:

@@ -217,7 +217,7 @@ beyond it.
 
 ```
 883 assertions   (test functions across 5 suites)
- 49 smoke checks (boots the real scene, plays a full shift, save/load round trip)
+ 52 smoke checks (boots the real scene, plays a full shift, save/load round trip)
  13 live checks  (7000 fixed-timestep frames of real NPC AI, pathing and doors)
  14 balance checks (three 16/30-day careers asserting the design intent holds)
  25 screenshots  (every room and every UI screen, rendered offscreen)
@@ -344,6 +344,16 @@ and somebody just arrived" is a decision with two bad halves — send a
 still-profitable overstayer home early, or let the new arrival lie there losing
 you the reputation that brings better-insured patients in.
 
+And because beds are rigid bodies on wheels, `_reconcile_room` now reads a
+patient's room from where their bed actually stands rather than from where they
+were admitted. Ramping is therefore a thing the player can do on purpose: wheel
+a ward patient out to Intake and they keep billing, recover slower, lose
+goodwill four times as fast, and their room frees up for somebody better
+insured. It takes two trips, because a ward with no bed in it does not count as
+a vacancy either — which is about the right amount of effort for what it buys.
+Their chart stays where it was, and a chart in the wrong room is already its own
+finding.
+
 Two smaller fixes fell out of it: `_bed_in()` returned the first bed matching a
 room, which was fine when every room had exactly one, and Intake has three; and
 patients are now moved between rooms by rebinding the existing body rather than
@@ -354,6 +364,6 @@ registration and its own tree hooks.
 - Human playtest for feel: movement speed, shift length, prompt clarity.
 - Open door leaves are not in the nav graph, so staff bump them and rely on
   stuck-recovery. Works, but could be modelled properly.
-- `Patient.room` does not follow the body when a bed is wheeled, so deliberately
-  parking a ward patient in Intake to free their bed does not yet register.
-  That is the natural next mechanic and the last piece of the trolley system.
+- Nobody reacts to a bed being somewhere it should not be. Wheeling a patient
+  into Intake is now mechanically real but socially free; a nurse walking past a
+  ward with no bed in it ought to have an opinion.

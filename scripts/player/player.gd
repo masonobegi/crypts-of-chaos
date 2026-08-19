@@ -104,12 +104,25 @@ func _handle_movement(delta: float) -> void:
 	velocity.z = lerpf(velocity.z, target.z, 1.0 - exp(-a * delta))
 	move_and_slide()
 
-	# Shoving props with your body — walking into an IV stand should topple it.
+	# Shoving props with your body — walking into an IV stand should topple it,
+	# and walking into a door should open it.
 	for i in get_slide_collision_count():
 		var c := get_slide_collision(i)
+		var door := _door_of(c.get_collider())
+		if door != null:
+			door.open_for(global_position)
+			continue
 		var rb := c.get_collider() as RigidBody3D
 		if rb and rb.mass < 60.0:
 			rb.apply_central_impulse(-c.get_normal() * clampf(velocity.length() * 0.25, 0.0, 3.0))
+
+func _door_of(body: Object) -> SwingDoor:
+	var n := body as Node
+	while n != null:
+		if n is SwingDoor:
+			return n
+		n = n.get_parent()
+	return null
 
 func _handle_bob(delta: float) -> void:
 	var planar := Vector2(velocity.x, velocity.z).length()

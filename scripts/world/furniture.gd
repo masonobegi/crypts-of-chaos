@@ -12,7 +12,14 @@ extends RefCounted
 ## a SceneTree's _initialize(), where the root is not yet considered in-tree).
 ## Using local positions makes construction independent of tree membership.
 
-static func furnish(h: Hospital) -> void:
+## XZ footprints of everything solid that was placed, so navigation can be baked
+## around it. Without this, NPCs path straight through desks and shelves and get
+## wedged against them — a nurse spawned behind the station counter simply never
+## went anywhere again.
+static var footprints: Array[Rect2] = []
+
+static func furnish(h: Hospital) -> Array[Rect2]:
+	footprints = []
 	for r in h.room_list():
 		match r.kind:
 			"ward": _ward(h, r)
@@ -23,6 +30,12 @@ static func furnish(h: Hospital) -> void:
 			"supply": _supply(h, r)
 			"office": _office(h, r)
 			"bathroom": _bathroom(h, r)
+	return footprints
+
+## Record a solid footprint, grown slightly so NPCs keep their shoulders clear.
+static func _occupy(centre_x: float, centre_z: float, w: float, d: float) -> void:
+	footprints.append(Rect2(centre_x - w * 0.5 - 0.25, centre_z - d * 0.5 - 0.25,
+		w + 0.5, d + 0.5))
 
 # ------------------------------------------------------------------ helpers
 static func _add(h: Hospital, node: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
@@ -42,11 +55,19 @@ static func _prop(h: Hospital, id: String, pos: Vector3, rot_y := 0.0) -> Prop:
 static func _block(h: Hospital, size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
 	var b := Build.wall(size, color, pos, rot_y)
 	h.add_child(b)
+	# Only things tall enough to stop a person count as obstacles; a low plinth
+	# at ankle height does not need to be routed around.
+	if size.y > 0.35:
+		if absf(rot_y) > 0.01:
+			_occupy(pos.x, pos.z, size.z, size.x)   # rotated 90 degrees
+		else:
+			_occupy(pos.x, pos.z, size.x, size.z)
 	return b
 
 static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72,
 		color := Color(0.72, 0.66, 0.55)) -> void:
 	_block(h, Vector3(w, 0.06, d), color, pos + Vector3(0, height, 0))
+	_occupy(pos.x, pos.z, w, d)
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			_block(h, Vector3(0.05, height, 0.05), color.darkened(0.3),
@@ -59,6 +80,7 @@ static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35,
 	root.rotation.y = rot_y
 	var seat := Build.wall(Vector3(0.44, 0.06, 0.44), color, Vector3(0, 0.45, 0))
 	root.add_child(seat)
+	_occupy(pos.x, pos.z, 0.5, 0.5)
 	var back := Build.wall(Vector3(0.44, 0.5, 0.06), color, Vector3(0, 0.7, -0.19))
 	root.add_child(back)
 	for sx in [-1.0, 1.0]:
@@ -139,6 +161,7 @@ static func _ward(h: Hospital, r: Room) -> void:
 	m.build("Humour Rebalancer")
 	m.position = bed_pos + Vector3(1.5, 0, -0.2)
 	m.rotation.y = PI
+	_occupy(bed_pos.x + 1.5, bed_pos.z - 0.2, 1.1, 0.7)
 
 	var rb := MachineRunButton.new()
 	rb.room_key = r.key
@@ -232,6 +255,7 @@ static func _station(h: Hospital, r: Room) -> void:
 		t.build("Ward Terminal", false)
 		t.position = Vector3(c.x - 1.4 + float(i) * 2.8, 0.5, c.z - 0.4)
 		t.rotation.y = PI
+		_occupy(c.x - 1.4 + float(i) * 2.8, c.z - 0.4, 0.7, 0.5)
 
 	_table(h, Vector3(c.x - 2.4, 0, c.z + 2.6), 1.6, 0.8, 0.75)
 	_chair(h, Vector3(c.x - 2.4, 0, c.z + 1.8), 0.0)
@@ -263,6 +287,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		h.add_child(m)
 		m.build(String(s["n"]))
 		m.position = Vector3(c.x + float(s["x"]), 0, r.rect.position.y + 1.0)
+		_occupy(c.x + float(s["x"]), r.rect.position.y + 1.0, 1.1, 0.7)
 		var rb := MachineRunButton.new()
 		rb.room_key = r.key
 		h.add_child(rb)
@@ -278,6 +303,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		h.add_child(img)
 		img.build("Imaging Bench")
 		img.position = Vector3(c.x + 4.0, 0, r.rect.position.y + 1.0)
+		_occupy(c.x + 4.0, r.rect.position.y + 1.0, 1.1, 0.7)
 		var irb := MachineRunButton.new()
 		irb.room_key = r.key
 		h.add_child(irb)
@@ -290,6 +316,7 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	shelf.build("Treatment Stock", ["syringe", "iv_bag", "compress", "mallet", "wrench", "duster"])
 	shelf.position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
 	shelf.rotation.y = -PI / 2
+	_occupy(r.rect.position.x + 1.2, c.z + 3.2, 0.6, 1.8)
 
 	_table(h, Vector3(c.x + 2.6, 0, c.z + 2.0), 1.2, 0.7)
 	_prop(h, "tray", Vector3(c.x + 2.6, 0.85, c.z + 2.0))
@@ -320,6 +347,7 @@ static func _supply(h: Hospital, r: Room) -> void:
 		shelf.build(String(s[0]), valid)
 		shelf.position = Vector3(r.rect.position.x + 0.5, 0, c.z - 2.4 + float(i) * 2.4)
 		shelf.rotation.y = -PI / 2
+		_occupy(r.rect.position.x + 0.5, c.z - 2.4 + float(i) * 2.4, 0.6, 1.8)
 
 	_prop(h, "colour_lamp", Vector3(c.x + 1.4, 0.4, c.z - 1.0))
 	_prop(h, "steam_kit", Vector3(c.x + 1.4, 0.4, c.z + 0.2))
@@ -339,12 +367,14 @@ static func _office(h: Hospital, r: Room) -> void:
 	h.add_child(t)
 	t.build("Your Terminal", true)
 	t.position = Vector3(c.x - 0.3, 0.55, c.z + 0.7)
+	_occupy(c.x - 0.3, c.z + 0.7, 0.7, 0.5)
 
 	var sh := Shredder.new()
 	sh.room_key = r.key
 	h.add_child(sh)
 	sh.build()
 	sh.position = Vector3(c.x + 1.8, 0, c.z + 1.6)
+	_occupy(c.x + 1.8, c.z + 1.6, 0.6, 0.5)
 
 	_block(h, Vector3(1.0, 1.5, 0.5), Color(0.5, 0.52, 0.48), Vector3(r.rect.position.x + 0.8, 0.75, c.z - 2.4))
 	_wall_sign(h, "PERSONAL FILES", Vector3(r.rect.position.x + 0.8, 1.62, c.z - 2.4), 0.0, 0.07)

@@ -141,7 +141,16 @@ func _send_investigator(inv: Investigation) -> void:
 	if parent == null:
 		parent = get_tree().current_scene if get_tree().current_scene != null else get_tree().root
 	parent.add_child(npc)
-	npc.position = hospital.point_in("lobby", "inv_spawn")
+	# Away from the doors and from whoever is standing about, so nobody spawns
+	# wedged against the player or a chair.
+	var spot: Vector3 = hospital.point_in("lobby", "inv_spawn")
+	var player = get_tree().get_first_node_in_group("player")
+	if player != null:
+		for i in 6:
+			if spot.distance_to(player.global_position) > 3.0:
+				break
+			spot = hospital.point_in("lobby", "inv_spawn")
+	npc.position = spot
 	var mind := DB.make_mind(npc.npc_id, npc.display, "inspector", "investigator")
 	mind.trust = 0.25
 	if suspicion:

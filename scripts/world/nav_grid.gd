@@ -37,6 +37,14 @@ func add_area(r: Rect2) -> void:
 			if r.has_point(Vector2(centre.x, centre.z)):
 				_walkable[c] = true
 
+## Remove cells covered by a solid obstacle. Called for every piece of furniture
+## before baking, so paths route around desks rather than through them.
+func carve(r: Rect2) -> void:
+	for c in _walkable.keys():
+		var centre := cell_center(c)
+		if r.has_point(Vector2(centre.x, centre.z)):
+			_walkable.erase(c)
+
 ## Build the A* graph. Call once after all areas are added.
 func bake() -> void:
 	astar.clear()

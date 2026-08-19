@@ -42,6 +42,17 @@ var _legs: Array[Node3D] = []
 var _arms: Array[Node3D] = []
 var _torso: Node3D = null
 var _react_cooldown := 0.0
+## Speed we are TRYING to walk at, captured before move_and_slide resolves the
+## collision. Needed because a blocked body's post-slide velocity is ~0, so
+## gating the shove on it meant a body pressed against a door could never push
+## it — which is exactly what was happening to every nurse on every ward door.
+var _intended_speed := 0.0
+## Stuck detection. Anything that wants to walk but has not actually moved for a
+## while re-plans and steps aside. Without this a single bad spawn or a doorway
+## scrum leaves a character standing in place for the rest of the shift, which is
+## invisible in a screenshot and fatal to the simulation.
+var _stuck_time := 0.0
+var _last_progress_pos: Vector3 = Vector3.ZERO
 ## Set while physically startled — drives the flail animation.
 var _startle := 0.0
 
@@ -159,7 +170,10 @@ func _physics_process(delta: float) -> void:
 		velocity.y = 0.0
 	_follow_path(delta)
 	_face(delta)
+	_open_door_ahead()
 	move_and_slide()
+	_push_obstacles()
+	_check_stuck(delta)
 	_animate(delta)
 	_tick_speech(delta)
 
@@ -167,6 +181,7 @@ func _follow_path(delta: float) -> void:
 	if _path_i >= _path.size():
 		velocity.x = lerpf(velocity.x, 0.0, 1.0 - exp(-10.0 * delta))
 		velocity.z = lerpf(velocity.z, 0.0, 1.0 - exp(-10.0 * delta))
+		_intended_speed = 0.0
 		return
 	var target: Vector3 = _path[_path_i]
 	var to := target - global_position
@@ -179,6 +194,7 @@ func _follow_path(delta: float) -> void:
 	var dir := to.normalized()
 	velocity.x = lerpf(velocity.x, dir.x * _speed, 1.0 - exp(-9.0 * delta))
 	velocity.z = lerpf(velocity.z, dir.z * _speed, 1.0 - exp(-9.0 * delta))
+	_intended_speed = _speed
 
 func _face(delta: float) -> void:
 	var face_dir := Vector3.ZERO
@@ -210,6 +226,87 @@ func _animate(delta: float) -> void:
 		var to := _look_at - _head.global_position
 		var local := to.normalized() * global_transform.basis
 		_head.rotation.x = clampf(asin(clampf(local.y, -1.0, 1.0)) * 0.6, -0.5, 0.5)
+
+func _check_stuck(delta: float) -> void:
+	if _intended_speed < 0.15:
+		_stuck_time = 0.0
+		_last_progress_pos = global_position
+		return
+	if global_position.distance_to(_last_progress_pos) > 0.25:
+		_stuck_time = 0.0
+		_last_progress_pos = global_position
+		return
+	_stuck_time += delta
+	if _stuck_time < 1.5:
+		return
+	_stuck_time = 0.0
+	_unstick()
+
+## Step aside and re-plan. Sidestepping first matters: re-pathing from inside
+## whatever we are wedged against just produces the same route.
+func _unstick() -> void:
+	var side := global_transform.basis.x * (1.0 if randf() < 0.5 else -1.0)
+	global_position += side * 0.35 + Vector3(0, 0.05, 0)
+	_last_progress_pos = global_position
+	if _path_i < _path.size():
+		var target: Vector3 = _path[_path.size() - 1]
+		goto(target, _speed > WALK_SPEED)
+
+## Look a metre ahead and open any door in the way, BEFORE trying to walk into it.
+##
+## Reacting to slide collisions is not enough: a body pressed against a door has
+## its velocity zeroed by move_and_slide, so it reports no motion, no collision,
+## and no reason to push — it just stands there indefinitely. Probing ahead
+## breaks that deadlock, and it is also simply what a person does with a door.
+func _open_door_ahead() -> void:
+	if _intended_speed < 0.15 or not is_inside_tree():
+		return
+	var space := get_world_3d().direct_space_state
+	var from := global_position + Vector3(0, 1.0, 0)
+	var forward := -global_transform.basis.z
+	var q := PhysicsRayQueryParameters3D.create(from, from + forward * 1.15)
+	q.collision_mask = 1
+	q.exclude = [get_rid()]
+	var hit := space.intersect_ray(q)
+	if hit.is_empty():
+		return
+	var door := _door_of(hit.get("collider"))
+	if door != null and not door.is_open():
+		door.open_for(global_position)
+
+## Shove rigid bodies out of the way — doors especially.
+##
+## A CharacterBody3D does not move RigidBody3Ds it collides with, so before this
+## existed a nurse who walked into a closed door simply stopped there, forever.
+## Every ward was unreachable to staff and nobody ever noticed, because nothing
+## ran the AI with real frames.
+func _push_obstacles() -> void:
+	var speed := maxf(Vector2(velocity.x, velocity.z).length(), _intended_speed)
+	if speed < 0.15:
+		return
+	for i in get_slide_collision_count():
+		var c := get_slide_collision(i)
+		# A door is opened, not shoved: see SwingDoor.open_for. Checked before
+		# the RigidBody cast because the leaf is an AnimatableBody3D.
+		var door := _door_of(c.get_collider())
+		if door != null:
+			door.open_for(global_position)
+			continue
+		var rb := c.get_collider() as RigidBody3D
+		if rb == null:
+			continue
+		# Heavier things need more of a shove and give way more slowly, which is
+		# why a cart left in a doorway genuinely slows people down.
+		var push: float = clampf(28.0 / maxf(rb.mass, 1.0), 0.25, 3.0)
+		rb.apply_central_impulse(-c.get_normal() * push * speed * 0.35)
+
+func _door_of(body: Object) -> SwingDoor:
+	var n := body as Node
+	while n != null:
+		if n is SwingDoor:
+			return n
+		n = n.get_parent()
+	return null
 
 # ------------------------------------------------------------------ speech
 const SUBTITLE_RANGE := 14.0

@@ -45,8 +45,11 @@ func build() -> void:
 	_build_shell()
 	_build_doors()
 	_build_signage()
-	_bake_nav()
-	Furniture.furnish(self)
+	# Furniture must exist before navigation is baked: NPCs were previously
+	# pathing straight through desks, shelves and beds, and a nurse who spawned
+	# behind the station counter never went anywhere again.
+	var blocked := Furniture.furnish(self)
+	_bake_nav(blocked)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
 
 # ------------------------------------------------------------------ rooms
@@ -219,7 +222,7 @@ func _build_signage() -> void:
 		add_child(sign)
 
 # ------------------------------------------------------------------ nav
-func _bake_nav() -> void:
+func _bake_nav(blocked: Array[Rect2] = []) -> void:
 	for entry in LAYOUT:
 		var r: Rect2 = entry["rect"]
 		nav.add_area(r.grow(-0.55))
@@ -232,6 +235,8 @@ func _bake_nav() -> void:
 		var centre := float(entry["door"])
 		var z := 4.0 if rect.position.y > 0.0 else 0.0
 		nav.add_area(Rect2(centre - w * 0.35, z - 0.9, w * 0.7, 1.8))
+	for f in blocked:
+		nav.carve(f)
 	nav.bake()
 
 # ------------------------------------------------------------------ queries

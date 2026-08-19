@@ -36,6 +36,11 @@ func _physics_process(delta: float) -> void:
 
 func _enter(s: State) -> void:
 	state = s
+	# A round belongs to the TASK state. Leaving it without clearing the target
+	# left the nurse permanently "on a round" she had already abandoned, and the
+	# next patrol overwrote her path so she never arrived at all.
+	if s != State.TASK:
+		_round_target = ""
 	match s:
 		State.IDLE:
 			stop_moving()
@@ -58,6 +63,11 @@ func _enter(s: State) -> void:
 		State.TASK:
 			_timer = RNG.randf_range_s("staff_task", 6.0, 14.0)
 			_begin_round()
+			# A round takes as long as the walk takes. The default task timer is
+			# shorter than a trip across the ward, so it expired mid-corridor and
+			# the nurse turned around before seeing anything.
+			if _round_target != "":
+				_timer = 30.0
 		State.APPROACH:
 			_timer = 25.0
 

@@ -39,9 +39,17 @@ change — five real bugs have been caught only by looking at the game.
    for full-rect.
 7. **`Label` autowrap inside a container with no width collapses to one
    character per line.** `UIKit.label()` takes autowrap as an opt-in parameter.
-8. **Physics joints resolve their node paths immediately on assignment** and
-   read both bodies' global transforms, so they must be configured once the node
-   is in the tree (see `SwingDoor._attach_hinge`).
+8. **`HingeJoint3D` rotates about its own local Z**, which at identity is
+   horizontal. A door hinged with a default-oriented joint is welded shut. Doors
+   are now script-driven (`SwingDoor` integrates an angle by hand) because the
+   solver also fought every attempt to drive the leaf, and "can a nurse get into
+   this room" should be a certainty rather than a solver outcome.
+9. **A `CharacterBody3D` does not move rigid bodies it collides with**, and its
+   velocity is zeroed by `move_and_slide` on contact — so gating a shove on
+   post-slide speed means a blocked body can never push anything. Probe ahead
+   instead (`NPCBody._open_door_ahead`).
+10. **Navigation must be baked AFTER furniture exists**, or NPCs path straight
+    through desks and wedge against them.
 
 ## Design rules that are load-bearing
 
@@ -69,8 +77,12 @@ change — five real bugs have been caught only by looking at the game.
 |---|---|
 | unit + integration | maths, serialisation, floor connectivity |
 | `smoke_run.gd` | "everything compiles and nothing works" |
+| `live_run.gd` | anything that only breaks with real frames — it found that every ward door was welded shut and no member of staff could enter any patient room |
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
+
+`live_run.gd` must use `--fixed-fps`, or a frame is however long the host took
+and the result is flaky.
 
 Where a fix corrects a subtle behaviour, add the test that would have caught it
 and say in the comment *why* the obvious thing was wrong.

@@ -47,6 +47,7 @@ func tick() -> bool:
 			_check_a_wrong_site_can_be_revised()
 			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
+			_check_a_family_row_keeps_going()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
 			stage = "close"
@@ -477,6 +478,65 @@ func _check_the_morning_only_happens_once() -> void:
 ## so the five people who would normally be lying there watching you work are
 ## five people who are not. It is not free: they wake to a bang, so the
 ## distraction that moved the nurse also wakes the man in the next bed.
+## A family dispute is supposed to be a day-long condition of the ward, not a
+## single WorldEvent thirty seconds into the morning. Both halves of the row
+## used to walk out of the building on their first physics frame, and nothing
+## re-emitted the noise afterwards, so the one event whose entire promise is
+## "nobody is watching anything else" had never distracted anybody at all.
+func _check_a_family_row_keeps_going() -> void:
+	var ev = game.get_node_or_null("RandomEvents")
+	if ev == null:
+		ev = tree.get_first_node_in_group("random_events")
+	if ev == null:
+		_ok(false, "there is a random-event system to fire an event from")
+		return
+
+	var heard: Array = []
+	var probe := func(e): if e.kind == "argument": heard.append(e.pos)
+	EventBus.world_event.connect(probe)
+
+	ev.apply("family_dispute")
+	_ok(heard.size() == 1, "a family dispute makes a noise when it starts")
+
+	var arguing := 0
+	for v in tree.get_nodes_in_group("visitor"):
+		if String(v.npc_id).begins_with("argument_"):
+			arguing += 1
+	_ok(arguing == 2, "and puts two people in the corridor to make it (%d)" % arguing)
+
+	# Roll the clock past one period. The row should flare up again on its own.
+	GameState.career_minutes += ev.ROW_PERIOD + 1
+	ev._on_clock_tick(GameState.minute_of_day)
+	_ok(heard.size() == 2, "and it is still going twenty minutes later")
+
+	# ...and not more often than that, or it is a siren rather than an argument.
+	ev._on_clock_tick(GameState.minute_of_day)
+	_ok(heard.size() == 2, "but it does not go off every single minute")
+
+	# Both parties leaving is the one thing that ends it.
+	for v in tree.get_nodes_in_group("visitor"):
+		if String(v.npc_id).begins_with("argument_"):
+			v.queue_free()
+	await_free_hack(ev)
+	GameState.career_minutes += ev.ROW_PERIOD + 1
+	ev._on_clock_tick(GameState.minute_of_day)
+	_ok(not bool(GameState.flag("families_arguing", false)),
+		"and it stops when both of them finally go home")
+
+	EventBus.world_event.disconnect(probe)
+
+## queue_free() lands at the end of the frame; the row's guarded accessor has to
+## see the freed nodes, so drop them from its list the way the tree eventually
+## will. Reading them into a TYPED local here would abort this function outright
+## (CLAUDE.md #11), which is precisely the hazard the accessor exists to survive.
+func await_free_hack(ev) -> void:
+	var live: Array = []
+	for entry in ev._row:
+		var b = entry
+		if is_instance_valid(b) and not b.is_queued_for_deletion():
+			live.append(b)
+	ev._row = live
+
 func _check_the_ward_sleeps_at_night() -> void:
 	var pool: Array = game.patient_system.active()
 	if pool.is_empty():

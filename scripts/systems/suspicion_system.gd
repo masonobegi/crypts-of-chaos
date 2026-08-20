@@ -342,10 +342,27 @@ func file_complaint(from_id: String, severity: float) -> void:
 	var m: Mind = minds.get(from_id, null)
 	var who: String = m.display_name if m else from_id
 	GameState.stats.complaints += 1
-	GameState.add_heat(severity * 0.16, "complaint by %s" % who)
+
+	# A reporter in the lobby does not make the ward any more watchful. What it
+	# changes is where a complaint ENDS UP: on a press day the same grumble from
+	# the same relative leaves the building, and the medical board reads it.
+	# The event used to set a flag that picked one tannoy line and nothing else,
+	# so "Local Press" was a day you had no reason to play differently. It is
+	# now the day you either keep your head down or accept that everything costs
+	# roughly three times as much.
+	var press := bool(GameState.flag("press_present", false))
+	GameState.add_heat(severity * (0.42 if press else 0.16),
+		"complaint by %s%s" % [who, " (press present)" if press else ""])
 	GameState.adjust_rep("patient_sat", -0.03)
 	EventBus.complaint_filed.emit("player", from_id, severity)
-	EventBus.toast.emit("%s has filed a formal complaint." % who, "bad")
+	if press:
+		GameState.adjust_rep("hospital", -0.05)
+		GameState.adjust_rep("gov_scrutiny", severity * 0.10)
+		GameState.set_flag("press_story", true)
+		EventBus.toast.emit(
+			"%s complained. The reporter in the lobby wrote it all down." % who, "bad")
+	else:
+		EventBus.toast.emit("%s has filed a formal complaint." % who, "bad")
 
 	# The complaint itself becomes a RECORD in the institutional minds — and
 	# records barely decay, which is why one bad afternoon can follow you for

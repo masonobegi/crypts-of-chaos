@@ -28,6 +28,23 @@ func begin_visit(p_patient_id: String, ward_key: String, minutes: int) -> void:
 	if h:
 		goto(h.point_in(ward_key, "visitor_pt"))
 
+## Park a visitor somewhere and let them stay there for a while with nobody to
+## visit. Used by the corridor row.
+##
+## Setting `state = VISITING` from outside is NOT enough and never was: `_timer`
+## is only loaded on the ARRIVING -> VISITING transition, so a visitor dropped
+## straight into VISITING hit `if _timer <= 0.0: _leave()` on its very first
+## physics frame and walked out of the building. Both halves of every family
+## dispute did exactly that, which is why the event that promises "nobody is
+## watching anything else" had never once distracted anybody.
+func stand_and_argue(spot: Vector3, minutes: float) -> void:
+	patient_id = ""
+	state = State.VISITING
+	_timer = minutes
+	_visit_minutes = int(minutes)
+	position = spot
+	look_toward(spot + Vector3(0, 0, 1))
+
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)
 	_timer -= delta

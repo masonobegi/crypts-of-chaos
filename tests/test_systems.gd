@@ -879,3 +879,81 @@ func test_a_blocked_walker_can_still_shove_what_is_blocking_them() -> void:
 		"and nothing you nudge outruns you")
 	t.eq(Player.shove_impulse(light, 0.0), 0.0,
 		"and standing still shoves nothing")
+
+# ---------------------------------------------------------------- daily events
+#
+# Three of the nineteen random events set a flag and then nothing in the game
+# ever read it. An event the player cannot play differently is a loading screen
+# with a title on it, so each of these now asserts a MECHANICAL consequence
+# rather than the presence of the flag.
+
+func test_press_day_makes_a_complaint_public() -> void:
+	var sus := SuspicionSystem.new()
+	var m := DB.make_mind("rel_1", "Somebody's brother", "family", "litigious_family")
+	sus.minds["rel_1"] = m
+
+	GameState.start_new_career(4321)
+	GameState.set_flag("press_present", false)
+	var quiet_before := GameState.heat
+	sus.file_complaint("rel_1", 0.6)
+	var quiet_cost := GameState.heat - quiet_before
+
+	GameState.start_new_career(4321)
+	GameState.set_flag("press_present", true)
+	var loud_before := GameState.heat
+	var scrutiny_before := GameState.rep("gov_scrutiny")
+	sus.file_complaint("rel_1", 0.6)
+	var loud_cost := GameState.heat - loud_before
+
+	t.gt(loud_cost, quiet_cost * 2.0,
+		"the same complaint costs far more with a reporter in the lobby")
+	t.gt(GameState.rep("gov_scrutiny"), scrutiny_before,
+		"and it reaches the board, which a normal complaint does not")
+	t.ok(bool(GameState.flag("press_story", false)),
+		"the shift report is told there is going to be a piece")
+	GameState.start_new_career(1)
+	sus.free()
+
+func test_vinnie_gets_more_expensive_every_visit() -> void:
+	var ev := RandomEventSystem.new()
+	GameState.start_new_career(99)
+	var costs: Array[int] = []
+	for i in 3:
+		var before: int = GameState.personal_money
+		ev.apply("vinnie")
+		costs.append(before - int(GameState.personal_money))
+	t.gt(float(costs[1]), float(costs[0]),
+		"the second visit costs more than the first")
+	t.gt(float(costs[2]), float(costs[1]),
+		"and the third more than the second")
+	t.gt(GameState.heat, 0.0,
+		"by the third he is turning up at work, which people notice")
+	GameState.start_new_career(1)
+	ev.free()
+
+func test_a_visitor_parked_in_a_corridor_stays_there() -> void:
+	# Both halves of every family dispute used to walk out of the building on
+	# their first physics frame, because _timer is only loaded on the
+	# ARRIVING -> VISITING transition and setting the state from outside skips
+	# it. The event that promises "nobody is watching anything else" therefore
+	# distracted nobody, for the entire history of the project.
+	var v := VisitorNPC.new()
+	v.state = VisitorNPC.State.VISITING
+	t.ok(v._timer <= 0.0, "setting the state alone leaves the visit timer empty")
+	v.stand_and_argue(Vector3(3, 0, 4), 600.0)
+	t.gt(v._timer, 0.0, "standing somewhere on purpose gives them a reason to stay")
+	t.eq(v.patient_id, "", "and nobody in particular to visit")
+	v.free()
+
+func test_a_day_event_does_not_last_forever() -> void:
+	# Every event that puts a person on the floor described them as being there
+	# for the day, and every one of them stayed for the rest of the career.
+	var ev := RandomEventSystem.new()
+	var a := VisitorNPC.new()
+	a.npc_id = "argument_1_0"
+	ev._day_npcs.append(a)
+	t.eq(ev._day_npcs.size(), 1, "the day's arrivals are tracked")
+	ev._send_the_day_staff_home()
+	t.eq(ev._day_npcs.size(), 0, "and the day ends for them too")
+	t.ok(a.is_queued_for_deletion(), "the student's placement genuinely finishes")
+	ev.free()

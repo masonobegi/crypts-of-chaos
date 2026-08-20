@@ -27,11 +27,11 @@ const EVENTS := {
 	},
 	"family_dispute": {
 		"title": "Families Arguing", "weight": 0.7,
-		"body": "Two families are having a disagreement in the corridor. Nobody is watching anything else.",
+		"body": "Two families are having a disagreement in the corridor. It has been going since six. It will be going at five. Nobody is watching anything else.",
 	},
 	"news_reporter": {
 		"title": "Local Press", "weight": 0.45,
-		"body": "A reporter is in the lobby doing a piece on hospital waiting times. Smile.",
+		"body": "A reporter is in the lobby doing a piece on hospital waiting times. Anything anybody complains about today, they will hear about, and so will everyone else.",
 	},
 	"insurance_audit": {
 		"title": "Spot Audit", "weight": 0.6,
@@ -55,7 +55,7 @@ const EVENTS := {
 	},
 	"vinnie": {
 		"title": "Vinnie Called", "weight": 0.0,
-		"body": "Vinnie would like his money. Vinnie was very polite about it, which was worse.",
+		"body": "Vinnie would like his money. Vinnie was very polite about it, which was worse. He mentioned he has been keeping track.",
 	},
 	"mass_casualty": {
 		"title": "Multiple Admissions", "weight": 0.35,
@@ -88,15 +88,41 @@ var active_flags: Dictionary = {}     ## event id -> true, cleared at end of day
 
 var patient_system: PatientSystem = null
 
+## Everybody an event put on the floor today. Untyped for the same reason as
+## _row: these are nodes with lifetimes of their own.
+##
+## Nothing used to clear these. A student is assigned to shadow you "all day",
+## an agency nurse is "covering today", the row is two people having it out in
+## the corridor — and every one of them was still there on day thirty, because
+## the only cleanup anywhere was clear_day() resetting six booleans. A career
+## accumulated a permanent crowd of the most observant witnesses in the game,
+## and the events that read as a one-day inconvenience were quietly permanent.
+var _day_npcs: Array = []
+
+## The corridor row, if one is running today. Untyped on purpose — see the
+## guarded accessor below and CLAUDE.md #11.
+var _row: Array = []
+var _row_spot: Vector3 = Vector3.ZERO
+var _row_next: int = -1
+
+## How long the families take to get their breath back between rounds. Twenty
+## in-game minutes is about forty-five real seconds, which is long enough that
+## staff make it back to station and short enough that they never settle.
+const ROW_PERIOD := 20
+
 func _ready() -> void:
 	add_to_group("random_events")
 	patient_system = get_tree().get_first_node_in_group("patient_system")
+	EventBus.clock_tick.connect(_on_clock_tick)
 
 ## Roll for the day. Returns the events that fired so the morning screen can
 ## show them.
 func roll_daily() -> Array[Dictionary]:
 	fired_today.clear()
 	active_flags.clear()
+	_row.clear()
+	_row_spot = Vector3.ZERO
+	_row_next = -1
 	var out: Array[Dictionary] = []
 	# Day one is authored. A player who has never seen the building should meet
 	# it as it normally is — five beds, a handover, a list — and not spend their
@@ -156,8 +182,18 @@ func _pick() -> String:
 	return String(RNG.pick_weighted("random_event", weights))
 
 # ------------------------------------------------------------------ effects
+## Group lookup that survives being called on a system that is not in the tree.
+## Every spawn helper below already null-checks its hospital, but `apply` read
+## the tree on its very first line, so a RandomEventSystem instantiated on its
+## own — which is exactly how a unit test wants to poke at one arm of it —
+## aborted before reaching any of that.
+func _in_group(group: String):
+	if not is_inside_tree():
+		return null
+	return get_tree().get_first_node_in_group(group)
+
 func apply(id: String) -> void:
-	var hospital = get_tree().get_first_node_in_group("hospital")
+	var hospital = _in_group("hospital")
 	match id:
 		"vip_patient":
 			if patient_system:
@@ -173,10 +209,10 @@ func apply(id: String) -> void:
 		"inspection_warning":
 			GameState.set_flag("inspection_tomorrow", true)
 		"nurse_sick":
-			var staff := get_tree().get_nodes_in_group("staff")
+			var staff: Array = get_tree().get_nodes_in_group("staff") if is_inside_tree() else []
 			for s in staff:
 				if s is NurseNPC:
-					var sus = get_tree().get_first_node_in_group("suspicion_system")
+					var sus = _in_group("suspicion_system")
 					if sus:
 						sus.unregister(s.npc_id)
 					s.queue_free()
@@ -209,8 +245,9 @@ func apply(id: String) -> void:
 			_spawn_argument()
 		"news_reporter":
 			GameState.set_flag("press_present", true)
+			_spawn_reporter()
 		"insurance_audit":
-			var inv = get_tree().get_first_node_in_group("investigation_system")
+			var inv = _in_group("investigation_system")
 			if inv:
 				inv.open("insurance", 0)
 		"system_crash":
@@ -229,8 +266,20 @@ func apply(id: String) -> void:
 		"recognised":
 			GameState.add_heat(0.03, "recognised outside work")
 		"vinnie":
-			GameState.add_personal(-300, "Vinnie")
+			# Vinnie's arithmetic is simple and it compounds. The first visit is
+			# a nuisance; the fourth is most of a day's honest work, which is
+			# the point at which paying the man on time becomes a strategy
+			# rather than an option.
+			var visits := int(GameState.flag("vinnie_visits", 0)) + 1
+			GameState.set_flag("vinnie_visits", visits)
 			GameState.set_flag("vinnie_visited", true)
+			GameState.add_personal(-300 * visits, "Vinnie (visit %d)" % visits)
+			if visits >= 3:
+				# He has started turning up at work, and being seen with Vinnie
+				# is its own kind of paperwork.
+				GameState.add_heat(0.04, "Vinnie came to the hospital")
+				EventBus.toast.emit(
+					"Vinnie waited by the staff entrance. People saw.", "bad")
 		"mass_casualty":
 			if patient_system:
 				var free := patient_system.free_wards().size()
@@ -251,8 +300,8 @@ func apply(id: String) -> void:
 ## A student is a witness with legs. High observance, low escalation, glued to
 ## you — the single most disruptive thing that can happen to a plan.
 func _spawn_student() -> void:
-	var hospital = get_tree().get_first_node_in_group("hospital")
-	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	var hospital = _in_group("hospital")
+	var sus = _in_group("suspicion_system")
 	if hospital == null or sus == null:
 		return
 	var s := NurseNPC.new()
@@ -272,15 +321,19 @@ func _spawn_student() -> void:
 	mind.talkativeness = 0.85     # tells the staff room everything
 	mind.trust = 0.7
 	sus.register(mind, s)
+	_day_npcs.append(s)
 
 ## Two visitors having it out in the corridor. A standing distraction you did
 ## not have to cause and cannot switch off — staff keep drifting over to it.
 func _spawn_argument() -> void:
-	var hospital = get_tree().get_first_node_in_group("hospital")
-	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	var hospital = _in_group("hospital")
+	var sus = _in_group("suspicion_system")
 	if hospital == null or sus == null:
 		return
 	var spot: Vector3 = hospital.point_in("corridor", "argument_spot")
+	_row_spot = spot
+	_row_next = GameState.career_minutes + ROW_PERIOD
+	_row.clear()
 	for i in 2:
 		var v := VisitorNPC.new()
 		v.npc_id = "argument_%d_%d" % [GameState.day, i]
@@ -291,20 +344,108 @@ func _spawn_argument() -> void:
 		if parent == null:
 			parent = get_tree().root
 		parent.add_child(v)
-		v.position = spot + Vector3(float(i) * 1.4 - 0.7, 0, 0)
-		v.state = VisitorNPC.State.VISITING
+		v.stand_and_argue(spot + Vector3(float(i) * 1.4 - 0.7, 0, 0),
+			float(GameState.MINUTES_PER_DAY))
 		var mind := DB.make_mind(v.npc_id, v.display, "family", v.archetype)
 		mind.observance = 0.2      # far too busy with each other to notice you
 		sus.register(mind, v)
+		_row.append(v)
+		_day_npcs.append(v)
 	# Loud, continuous, and entirely innocent — the best kind of cover.
 	WorldEvent.new("argument", "").at(spot, "corridor") \
 		.heard(0.0, 26.0).tag("noise").tag("chaos") \
 		.says("a row in the corridor").emit()
 
+## Guarded accessor for the two arguing visitors. Reading a freed node into a
+## TYPED local aborts the enclosing function outright (CLAUDE.md #11), which is
+## exactly how the witnessing pass once switched itself off mid-shift, so `b`
+## here is deliberately untyped and every dead entry is dropped on the way past.
+func _row_bodies() -> Array:
+	var out: Array = []
+	var live: Array = []
+	for entry in _row:
+		var b = entry
+		if not is_instance_valid(b):
+			continue
+		live.append(b)
+		out.append(b)
+	_row = live
+	return out
+
+## A family row is not an event, it is a condition of the day. Left as a single
+## WorldEvent it moved staff exactly once, thirty seconds into the morning, and
+## was then indistinguishable from no event at all. Recurring, it is a tool: a
+## repeating pull off the station that you did not cause, cannot be blamed for,
+## and can plan a whole shift around.
+func _on_clock_tick(_minute: int) -> void:
+	if _row_next < 0 or not GameState.flag("families_arguing", false):
+		return
+	if GameState.career_minutes < _row_next:
+		return
+	_row_next = GameState.career_minutes + ROW_PERIOD
+	var bodies := _row_bodies()
+	if bodies.is_empty():
+		# Both parties have gone home. The day stops handing out free cover.
+		_row_next = -1
+		GameState.set_flag("families_arguing", false)
+		return
+
+	# They drift. A row that stays put becomes furniture — staff learn where it
+	# is and route around it — so it wanders, and takes the ward's attention to
+	# a different corner each time it flares up.
+	var hospital = _in_group("hospital")
+	if hospital and RNG.chance("row_move", 0.45):
+		_row_spot = hospital.point_in("corridor", "row_move")
+		var i := 0
+		for b in bodies:
+			if b.has_method("goto"):
+				b.goto(_row_spot + Vector3(float(i) * 1.4 - 0.7, 0, 0))
+			i += 1
+
+	var speaker = bodies[0]
+	if speaker.has_method("say"):
+		speaker.say(String(RNG.pick("row_bark", [
+			"That is NOT what the doctor said.",
+			"You weren't even here on Tuesday.",
+			"Mum would be appalled. Appalled.",
+			"I have it in writing. Somewhere.",
+			"Don't you walk away from me.",
+		])), 3.0)
+	WorldEvent.new("argument", "").at(_row_spot, "corridor") \
+		.heard(0.0, 26.0).tag("noise").tag("chaos") \
+		.says("the row in the corridor, again").emit()
+
+## The press, in the flesh. A flag alone made a press day indistinguishable from
+## any other day; a person standing in your lobby with a notebook makes the
+## lobby somewhere you would rather not be seen, which is the entire point.
+func _spawn_reporter() -> void:
+	var hospital = _in_group("hospital")
+	var sus = _in_group("suspicion_system")
+	if hospital == null or sus == null:
+		return
+	var r := VisitorNPC.new()
+	r.npc_id = "press_%d" % GameState.day
+	r.archetype = "questioner"
+	r.display = "%s, Ashcroft Gazette" % RNG.pick("press_name", DB.LAST_NAMES)
+	r.set_colours(Color(0.82, 0.66, 0.52), Color(0.72, 0.24, 0.28), Color(0.16, 0.13, 0.11))
+	var parent: Node = hospital.get_parent()
+	if parent == null:
+		parent = get_tree().root
+	parent.add_child(r)
+	r.stand_and_argue(hospital.point_in("lobby", "press_spot"),
+		float(GameState.MINUTES_PER_DAY))
+	var mind := DB.make_mind(r.npc_id, r.display, "family", "questioner")
+	mind.observance = 0.9        # it is literally their job to notice
+	mind.escalation = 0.9        # and to tell everyone
+	mind.talkativeness = 1.0
+	mind.trust = 0.15            # owes the hospital nothing
+	sus.register(mind, r)
+	_day_npcs.append(r)
+
 ## Agency cover: barely notices anything, but owes you nothing at all.
 func _spawn_agency_nurse() -> void:
-	var hospital = get_tree().get_first_node_in_group("hospital")
-	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	var hospital = _in_group("hospital")
+	var sus = _in_group("suspicion_system")
 	if hospital == null or sus == null:
 		return
 	var n := NurseNPC.new()
@@ -321,6 +462,22 @@ func _spawn_agency_nurse() -> void:
 	mind.trust = 0.2              # no history with you, and no reason to cover
 	mind.escalation = 0.7
 	sus.register(mind, n)
+	_day_npcs.append(n)
+
+## The student's placement ends, the agency shift ends, the families are asked
+## to leave. Their minds go with them: what a one-day witness saw stays only in
+## whatever they told the staff room before they went, which is what gossip is
+## for and is a far more interesting shape than an eternal observer.
+func _send_the_day_staff_home() -> void:
+	var sus = _in_group("suspicion_system")
+	for entry in _day_npcs:
+		var b = entry            # untyped: a typed local aborts here, CLAUDE.md #11
+		if not is_instance_valid(b):
+			continue
+		if sus:
+			sus.unregister(String(b.npc_id))
+		b.queue_free()
+	_day_npcs.clear()
 
 func is_active(id: String) -> bool:
 	return active_flags.has(id)
@@ -333,12 +490,23 @@ func clear_day() -> void:
 	GameState.set_flag("supply_shortage", false)
 	GameState.set_flag("coffee_broken", false)
 	GameState.set_flag("bed_closed", false)
+	_send_the_day_staff_home()
+	_row.clear()
+	_row_spot = Vector3.ZERO
+	_row_next = -1
+	# press_story is deliberately NOT cleared here. The reporter goes home; the
+	# piece runs. It is read once by the shift report and cleared there.
 
 func to_dict() -> Dictionary:
-	return {"fired": fired_today, "flags": active_flags}
+	return {"fired": fired_today, "flags": active_flags, "row_next": _row_next,
+		"row_spot": [_row_spot.x, _row_spot.y, _row_spot.z]}
 
 func from_dict(d: Dictionary) -> void:
 	fired_today.clear()
 	for x in d.get("fired", []):
 		fired_today.append(String(x))
 	active_flags = d.get("flags", {})
+	_row_next = int(d.get("row_next", -1))
+	var sp: Array = d.get("row_spot", [])
+	if sp.size() == 3:
+		_row_spot = Vector3(float(sp[0]), float(sp[1]), float(sp[2]))

@@ -605,6 +605,17 @@ func _shift_notes() -> Array[String]:
 	if patient_system.free_wards().is_empty():
 		out.append("Every bed is full. There is nowhere to put anybody.")
 
+	# A complaint made in front of the press stops being an internal matter, and
+	# the report should say so plainly — it is the only place the player finds
+	# out that today's grumble is going to be in a newspaper.
+	if bool(GameState.flag("press_story", false)):
+		out.append("The Gazette has what it needs for a piece. It will not be "
+			+ "about waiting times.")
+		GameState.set_flag("press_story", false)
+
+	if bool(GameState.flag("families_arguing", false)):
+		out.append("The two families were still at it when you left.")
+
 	if out.is_empty():
 		out.append("An unremarkable shift, on paper.")
 	return out.slice(0, 3) as Array[String]

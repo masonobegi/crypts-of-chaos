@@ -2022,3 +2022,51 @@ passing on luck:
 Five consecutive clean live runs and three clean full runs after.
 
 **1,569 assertions · 116 smoke · 23 live · boot check · 36 screenshots.**
+
+## Phase 8 — events that change how you play, not what you read
+
+Nineteen random events, all of which had an `apply()` arm, so none were pure
+text. Three of them, however, set a flag that **nothing in the game ever read**,
+and a fourth was read once to pick a tannoy line. An event you cannot play
+differently is a loading screen with a title on it.
+
+**A family row is now a condition of the day.** Both halves of every family
+dispute walked out of the building on their first physics frame: `_timer` is
+only loaded on the `ARRIVING -> VISITING` transition, and the event set the
+state directly, so `if _timer <= 0.0: _leave()` fired immediately. The one event
+whose entire promise is "nobody is watching anything else" had never once
+distracted anybody. `VisitorNPC.stand_and_argue()` parks them properly, and the
+row now flares up again every twenty in-game minutes — long enough that staff
+make it back to station, short enough that they never settle — wandering to a
+new stretch of corridor about half the time so it does not become furniture that
+people learn to route around. It ends when both parties finally go home, and the
+shift report says if it was still going when you left.
+
+**The press is a person now, and a press day has a price.** `press_present` used
+to weight one PA announcement. There is now a reporter from the Ashcroft Gazette
+standing in the lobby — the most observant, least loyal, most talkative mind in
+the building — and a complaint filed while she is there costs roughly three
+times the heat, reaches the medical board rather than just administration, and
+produces a piece. The strategy it creates is a real one: today is the day to
+keep your head down, or the day you accept that everything is worth triple.
+
+**Vinnie keeps track.** Each visit costs 300 more than the last, and from the
+third he starts waiting by the staff entrance, which is its own kind of
+paperwork. Paying the man becomes a plan rather than an option.
+
+**Nobody ever went home.** The student assigned to shadow you "all day", the
+agency nurse "covering today", both halves of the row — `clear_day()` reset six
+booleans and freed nothing. Every one of them was still on the ward on day
+thirty, so a career silently accumulated a permanent crowd of the game's most
+observant witnesses and the day-shaped events were quietly permanent. They are
+sent home at rollover, and their minds go with them: what a one-day witness saw
+survives only in what they told the staff room, which is a far more interesting
+shape than an eternal observer.
+
+Also: `RandomEventSystem.apply()` read the scene tree on its first line, so a
+system instantiated on its own aborted before reaching any of the null-checks
+the rest of the file is full of. It tolerates being out of tree now, which is
+what let the three effects above be unit-tested at all.
+
+Verified: 1,581 assertions · 121 smoke · 23 live · boot check · 21/21 balance
+across the strategy set · 36 screenshots.

@@ -93,6 +93,11 @@ var stats := {
 	"injuries_caused": 0, "injuries_documented": 0, "surgeries": 0,
 	"surgeries_botched": 0, "wrong_prescriptions": 0, "readmissions": 0,
 	"wrong_site_procedures": 0,
+	# The three new phases of the career: envelopes, evenings out, and court.
+	"bribes_paid": 0, "bribes_refused": 0,
+	"night_jobs": 0, "night_jobs_clean": 0, "night_jobs_botched": 0,
+	"lawsuits_filed": 0, "lawsuits_settled": 0, "lawsuits_won": 0,
+	"lawsuits_lost": 0, "damages_paid": 0,
 }
 
 func _ready() -> void:

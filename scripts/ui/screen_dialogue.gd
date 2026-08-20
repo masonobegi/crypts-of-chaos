@@ -116,7 +116,75 @@ func _build() -> void:
 	var opts := UIKit.vbox(6)
 	for o in Dialogue.options_for(_mind, _patient):
 		opts.add_child(_option_button(o))
+	var quiet := _quiet_word()
+	if quiet != null:
+		opts.add_child(UIKit.spacer(6))
+		opts.add_child(quiet)
 	v.add_child(UIKit.scroll(opts))
+
+## The envelope.
+##
+## Kept apart from the conversation list on purpose. Explaining yourself is
+## something you do with words and it is what the rest of this screen is for;
+## this is a different KIND of move, it has a price on it, and it should feel
+## like reaching into your own pocket rather than picking a line.
+##
+## Only offered to somebody who actually holds something against you — you
+## cannot pre-emptively buy a ward, and there is nothing to buy from a person
+## who saw nothing.
+func _quiet_word() -> Control:
+	if _mind.deal_state != "none":
+		return null
+	var worst := _mind.strongest(GameState.career_minutes)
+	if worst == null or worst.neutralized:
+		return null
+	var box := UIKit.panel(Color(0.20, 0.17, 0.10, 0.85), 6, 1, UIKit.WARN)
+	var bv := UIKit.vbox(4)
+	bv.add_child(UIKit.label("Have a quiet word.", 17, UIKit.WARN))
+	bv.add_child(UIKit.label(
+		"They have not written it down yet. If they say no, they will — and they "
+		+ "will write down that you asked.", 13, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_LEFT, true))
+	for tier in Bribery.TIERS:
+		var t: Dictionary = tier
+		var cost := Bribery.price(_mind, float(t["mult"]))
+		var odds := Bribery.chance(_mind, t)
+		var row := UIKit.hbox(8)
+		var b := UIKit.button("%s  (%s)" % [String(t["label"]), UIKit.money_str(cost)],
+			func(): _bribe(t), Color(0.30, 0.26, 0.14))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		if GameState.personal_money < cost:
+			b.disabled = true
+		row.add_child(b)
+		var colour := UIKit.GOOD
+		if odds < 0.2: colour = UIKit.BAD
+		elif odds < 0.4: colour = UIKit.WARN
+		elif odds < 0.6: colour = Color(0.85, 0.82, 0.5)
+		var l := UIKit.label(Bribery.band(odds), 12, colour, HORIZONTAL_ALIGNMENT_RIGHT)
+		l.custom_minimum_size.x = 190
+		row.add_child(l)
+		bv.add_child(row)
+	box.add_child(bv)
+	return box
+
+func _bribe(tier: Dictionary) -> void:
+	var sus = suspicion()
+	var body = sus.body_of(_mind.id) if sus else null
+	var at: Vector3 = body.global_position if body != null else player_position()
+	var room := ""
+	if _patient != null:
+		room = _patient.room
+	var res := Bribery.attempt(_mind, tier, at, room)
+	_reply = String(res.get("reply", ""))
+	if bool(res.get("broke", false)):
+		EventBus.toast.emit("You cannot afford to be discreet.", "bad")
+	elif bool(res.get("ok", false)):
+		EventBus.toast.emit("%s takes it." % _mind.display_name, "good")
+	else:
+		EventBus.toast.emit("%s does not take it — and now they have that, too."
+			% _mind.display_name, "suspicion")
+	rebuild()
 
 ## Do it, right there, with your hands in your pockets.
 func _perform(tid: String) -> void:

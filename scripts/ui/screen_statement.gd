@@ -109,5 +109,5 @@ func _build() -> void:
 		var ss = shift_system()
 		close()
 		if ss:
-			ss.next_day(), Color(0.16, 0.30, 0.28)))
+			ss.after_statement(), Color(0.16, 0.30, 0.28)))
 	v.add_child(buttons)

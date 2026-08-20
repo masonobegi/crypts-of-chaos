@@ -337,3 +337,163 @@ static func desk_clutter(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 		pen.rotation = Vector3(1.25 + 0.1 * float(i), 0.2 * float(i), 0)
 		root.add_child(pen)
 	return _add(h, root, pos, rot_y)
+
+## A bedside cabinet with a drawer, a lamp and a beaker on it. Small enough to
+## walk round, big enough that the space beside a bed stops being empty floor.
+static func cabinet(h: Node3D, pos: Vector3, rot_y := 0.0,
+		tint := Color(0.92, 0.93, 0.95)) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(0.52, 0.66, 0.46), tint, Vector3(0, 0.33, 0), 0.7, 0.012))
+	for i in 2:
+		root.add_child(Build.box_mi(Vector3(0.44, 0.03, 0.02), Color(0.55, 0.60, 0.64),
+			Vector3(0, 0.22 + float(i) * 0.24, 0.235), 0.5, 0.006))
+	root.add_child(Build.box_mi(Vector3(0.54, 0.04, 0.48), tint.darkened(0.10),
+		Vector3(0, 0.68, 0), 0.6, 0.010))
+	# A lamp and a beaker of water, because a flat top is a shelf nobody uses.
+	root.add_child(Build.mi(Build.cyl_mesh(0.07, 0.03, 12),
+		Build.mat(Color(0.35, 0.40, 0.44), 0.5), Vector3(-0.14, 0.71, 0)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.015, 0.22, 8),
+		Build.mat(Color(0.55, 0.58, 0.62), 0.5), Vector3(-0.14, 0.82, 0)))
+	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.16, 0.16), Vector2(0.09, 0.09), 0.13),
+		Build.mat(Color(0.96, 0.86, 0.52), 0.8, 0.0, Color(0.30, 0.26, 0.10)),
+		Vector3(-0.14, 0.99, 0)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.042, 0.11, 10),
+		Build.mat(Color(0.72, 0.90, 0.94), 0.35), Vector3(0.14, 0.755, 0.04)))
+	return _add(h, root, pos, rot_y)
+
+## The tray table that swings over a bed and is never where anybody wants it.
+static func overbed_table(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(0.46, 0.03, 0.30), Color(0.62, 0.66, 0.70),
+		Vector3(0, 0.03, 0), 0.6, 0.008))
+	root.add_child(Build.mi(Build.cyl_mesh(0.035, 0.86, 10),
+		Build.mat(STEEL, 0.4, 0.6), Vector3(0, 0.45, 0)))
+	root.add_child(Build.box_mi(Vector3(0.78, 0.045, 0.44), Color(0.94, 0.90, 0.78),
+		Vector3(0.20, 0.90, 0), 0.75, 0.012))
+	root.add_child(Build.mi(Build.cyl_mesh(0.055, 0.09, 12),
+		Build.mat(Color(0.90, 0.94, 0.96), 0.4), Vector3(0.34, 0.965, 0.10)))
+	root.add_child(Build.box_mi(Vector3(0.20, 0.012, 0.26), PAPER,
+		Vector3(0.06, 0.928, -0.06), 0.9, 0.0))
+	for i in 2:
+		root.add_child(Build.box_mi(Vector3(0.16, 0.02, 0.02),
+			[Color(0.55, 0.60, 0.66), Color(0.92, 0.62, 0.30)][i],
+			Vector3(0.02, 0.936 + float(i) * 0.022, 0.08), 0.5, 0.0))
+	return _add(h, root, pos, rot_y)
+
+## A round stool on castors. Doctors sit on these to look sympathetic.
+static func stool(h: Node3D, pos: Vector3, tint := Color(0.28, 0.52, 0.60)) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.mi(Build.cyl_mesh(0.22, 0.09, 14), Build.mat(tint, 0.75),
+		Vector3(0, 0.56, 0)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.035, 0.50, 8), Build.mat(STEEL, 0.4, 0.6),
+		Vector3(0, 0.28, 0)))
+	for i in 5:
+		var a: float = TAU * float(i) / 5.0
+		root.add_child(Build.box_mi(Vector3(0.06, 0.04, 0.24), Color(0.35, 0.38, 0.42),
+			Vector3(sin(a) * 0.11, 0.06, cos(a) * 0.11), 0.6, 0.006))
+		root.add_child(Build.mi(Build.cyl_mesh(0.035, 0.03, 8),
+			Build.mat(Color(0.20, 0.22, 0.24), 0.6),
+			Vector3(sin(a) * 0.22, 0.035, cos(a) * 0.22), ))
+	return _add(h, root, pos)
+
+## A laundry hamper with a bag in it, sagging.
+static func hamper(h: Node3D, pos: Vector3, rot_y := 0.0,
+		tint := Color(0.46, 0.72, 0.66)) -> Node3D:
+	var root := Node3D.new()
+	for i in 4:
+		var a: float = TAU * float(i) / 4.0
+		root.add_child(Build.mi(Build.cyl_mesh(0.022, 0.68, 8), Build.mat(STEEL, 0.4, 0.6),
+			Vector3(sin(a) * 0.24, 0.34, cos(a) * 0.24)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.27, 0.05, 14), Build.mat(STEEL, 0.4, 0.6),
+		Vector3(0, 0.70, 0)))
+	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.44, 0.44), Vector2(0.52, 0.52), 0.60),
+		Build.mat(tint, 0.95), Vector3(0, 0.34, 0)))
+	root.add_child(Build.box_mi(Vector3(0.30, 0.10, 0.26), Color(0.96, 0.97, 0.99),
+		Vector3(0.04, 0.70, 0.02), 0.95, 0.008))
+	return _add(h, root, pos, rot_y)
+
+## A mat inside a doorway. Flat, dark, and the reason a floor has a threshold.
+static func floor_mat(h: Node3D, pos: Vector3, size := Vector2(1.4, 0.9),
+		tint := Color(0.24, 0.32, 0.34), rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(size.x, 0.016, size.y), tint, Vector3.ZERO, 0.95, 0.0))
+	root.add_child(Build.box_mi(Vector3(size.x - 0.16, 0.018, size.y - 0.16),
+		tint.lightened(0.12), Vector3(0, 0.004, 0), 0.95, 0.0))
+	return _add(h, root, pos + Vector3(0, 0.01, 0), rot_y)
+
+## A screen on a bracket in the corner, showing nothing anybody chose.
+static func wall_tv(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(0.10, 0.10, 0.22), Color(0.35, 0.38, 0.42),
+		Vector3(0, 0, 0.11), 0.5, 0.008))
+	root.add_child(Build.box_mi(Vector3(0.92, 0.54, 0.06), Color(0.16, 0.17, 0.20),
+		Vector3(0, -0.02, 0.24), 0.5, 0.012))
+	root.add_child(Build.box_mi(Vector3(0.84, 0.46, 0.02), Color(0.28, 0.46, 0.60),
+		Vector3(0, -0.02, 0.275), 0.4, 0.0))
+	root.add_child(Build.box_mi(Vector3(0.30, 0.10, 0.01), Color(0.62, 0.80, 0.88),
+		Vector3(-0.20, 0.08, 0.286), 0.4, 0.0))
+	root.add_child(Build.box_mi(Vector3(0.52, 0.05, 0.01), Color(0.52, 0.70, 0.80),
+		Vector3(-0.10, -0.06, 0.286), 0.4, 0.0))
+	return _add(h, root, pos, rot_y)
+
+## A water cooler. Nobody has ever seen one of these being refilled.
+static func water_cooler(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(0.34, 0.92, 0.34), Color(0.90, 0.92, 0.94),
+		Vector3(0, 0.46, 0), 0.6, 0.012))
+	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.30, 0.30), Vector2(0.16, 0.16), 0.46),
+		Build.mat(Color(0.52, 0.80, 0.92, 1.0), 0.25), Vector3(0, 1.15, 0)))
+	root.add_child(Build.box_mi(Vector3(0.10, 0.06, 0.06), Color(0.30, 0.55, 0.65),
+		Vector3(0, 0.62, 0.19), 0.5, 0.006))
+	root.add_child(Build.mi(Build.cyl_mesh(0.05, 0.34, 10),
+		Build.mat(Color(0.94, 0.95, 0.96), 0.7), Vector3(0.22, 0.17, 0.10)))
+	return _add(h, root, pos, rot_y)
+
+## A vending machine, half empty, humming.
+static func vending(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(0.90, 1.80, 0.60), Color(0.24, 0.30, 0.36),
+		Vector3(0, 0.90, 0), 0.6, 0.014))
+	root.add_child(Build.box_mi(Vector3(0.70, 1.24, 0.04), Color(0.14, 0.16, 0.20),
+		Vector3(-0.05, 1.10, 0.30), 0.4, 0.008))
+	var snacks := [Color(0.92, 0.62, 0.28), Color(0.36, 0.72, 0.52), Color(0.86, 0.36, 0.38),
+		Color(0.42, 0.58, 0.86), Color(0.94, 0.84, 0.36)]
+	for row in 4:
+		for col in 4:
+			if (row * 4 + col) % 5 == 3:
+				continue
+			root.add_child(Build.box_mi(Vector3(0.13, 0.18, 0.02),
+				snacks[(row * 3 + col) % snacks.size()],
+				Vector3(-0.29 + float(col) * 0.16, 0.62 + float(row) * 0.30, 0.315), 0.8, 0.006))
+	root.add_child(Build.box_mi(Vector3(0.34, 0.20, 0.04), Color(0.10, 0.11, 0.13),
+		Vector3(-0.05, 0.28, 0.31), 0.4, 0.008))
+	root.add_child(Build.box_mi(Vector3(0.16, 0.30, 0.03), Color(0.55, 0.86, 0.80),
+		Vector3(0.32, 1.20, 0.31), 0.4, 0.006))
+	return _add(h, root, pos, rot_y)
+
+## A whiteboard with a grid of nonsense on it and a pen tray.
+static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 1.0) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(w + 0.06, tall + 0.06, 0.05), Color(0.62, 0.66, 0.70),
+		Vector3.ZERO, 0.5, 0.010))
+	root.add_child(Build.box_mi(Vector3(w, tall, 0.02), Color(0.96, 0.97, 0.97),
+		Vector3(0, 0, 0.032), 0.35, 0.0))
+	for i in 4:
+		root.add_child(Build.box_mi(Vector3(w - 0.14, 0.012, 0.006), Color(0.45, 0.50, 0.55),
+			Vector3(0, tall * 0.32 - float(i) * tall * 0.20, 0.042), 0.9, 0.0))
+	for i in 3:
+		root.add_child(Build.box_mi(Vector3(0.012, tall - 0.16, 0.006), Color(0.45, 0.50, 0.55),
+			Vector3(-w * 0.28 + float(i) * w * 0.28, 0, 0.042), 0.9, 0.0))
+	for i in 5:
+		root.add_child(Build.box_mi(Vector3(w * 0.18, 0.02, 0.006),
+			[Color(0.24, 0.44, 0.82), Color(0.80, 0.26, 0.26)][i % 2],
+			Vector3(-w * 0.24 + float(i % 3) * w * 0.26,
+				tall * 0.22 - float(i) * tall * 0.19, 0.046), 0.9, 0.0))
+	root.add_child(Build.box_mi(Vector3(w * 0.5, 0.04, 0.09), Color(0.55, 0.60, 0.64),
+		Vector3(0, -tall * 0.5 - 0.04, 0.06), 0.5, 0.008))
+	for i in 2:
+		root.add_child(Build.mi(Build.cyl_mesh(0.014, 0.13, 8),
+			Build.mat([Color(0.20, 0.22, 0.26), Color(0.80, 0.26, 0.26)][i], 0.5),
+			Vector3(-0.10 + float(i) * 0.12, -tall * 0.5 - 0.01, 0.08),
+			Vector3(0, 0, PI * 0.5)))
+	return _add(h, root, pos, rot_y)

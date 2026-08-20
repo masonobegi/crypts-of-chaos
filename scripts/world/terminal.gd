@@ -29,6 +29,8 @@ func build(disp: String, private: bool) -> void:
 func prompt(_player) -> Array:
 	if _going_home():
 		return ["Finish the shift", "sign off and go home"]
+	if _can_call_it_a_day():
+		return ["Call it a day", "anyone you have not seen gets seen by nursing"]
 	var sub := "in full view of the ward" if not is_private else "door's shut. nobody's looking."
 	return ["Use terminal", sub]
 
@@ -41,12 +43,29 @@ func prompt(_player) -> Array:
 func _going_home() -> bool:
 	return GameState.phase == GameState.Phase.CHART_REVIEW and mode == "admin"
 
+## Ending the day is a walk to your office rather than a clock running out.
+##
+## It makes the round a thing you choose the shape of: see five patients
+## properly, see one and spend the day on them, or see nobody and let nursing
+## have the whole ward. The clock is still there as a backstop, but the decision
+## is now yours and it is made in a specific room with a door on it.
+func _can_call_it_a_day() -> bool:
+	if mode != "admin" or not is_private:
+		return false
+	var ss = get_tree().get_first_node_in_group("shift_system")
+	return ss != null and ss.can_end_day()
+
 func interact(_player, _held) -> void:
 	AudioMgr.play("beep", -12.0)
 	if _going_home():
 		var ss = get_tree().get_first_node_in_group("shift_system")
 		if ss != null:
 			ss.clock_out()
+		return
+	if _can_call_it_a_day():
+		var ss2 = get_tree().get_first_node_in_group("shift_system")
+		if ss2 != null:
+			ss2.end_shift(true)
 		return
 	EventBus.request_ui.emit("records", {
 		"mode": mode, "private": is_private, "room": room_key,

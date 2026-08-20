@@ -133,6 +133,23 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	Dressing.clock(h, _door_wall(r, 0.72, 2.34), _door_rot(r))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.8, 0, _door_wall_z(r) - toward * 0.9))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, far_z + toward * 0.9), 0.9)
+	# The floor was the problem: a nine-metre room with everything against one
+	# wall reads as a warehouse with a bed in it. These are the things that are
+	# actually beside a hospital bed, and they take footprints where they are
+	# big enough for somebody to walk into.
+	var cab := Vector3(bed.x - 1.15, 0, bed.z + toward * -0.55)
+	Dressing.cabinet(h, cab, _far_rot(r))
+	_occupy(cab.x, cab.z, 0.6, 0.55)
+	var tray := Vector3(bed.x + 0.55, 0, bed.z + toward * 1.10)
+	Dressing.overbed_table(h, tray, _door_rot(r))
+	_occupy(tray.x + 0.2, tray.z, 0.8, 0.5)
+	Dressing.stool(h, Vector3(bed.x + 1.9, 0, bed.z + toward * 1.5), _ward_tint(r.key))
+	var hmp := Vector3(r.rect.position.x + 0.9, 0, far_z + toward * 1.3)
+	Dressing.hamper(h, hmp, 0.4)
+	_occupy(hmp.x, hmp.z, 0.6, 0.6)
+	Dressing.floor_mat(h, Vector3(_door_x(r), 0, _door_wall_z(r) - toward * 1.05),
+		Vector2(1.5, 0.9), Color(0.22, 0.30, 0.32))
+	Dressing.wall_tv(h, _right_wall(r, 0.80, 2.05), RIGHT_ROT)
 
 ## One colour per room, so a ward is somewhere rather than anywhere.
 static func _ward_tint(key: String) -> Color:
@@ -157,12 +174,18 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	for sgn in signs:
 		Dressing.ceiling_sign(h, Vector3(float(sgn[0]), 2.62, (z0 + z1) * 0.5),
 			String(sgn[1]))
-	Dressing.noticeboard(h, Vector3(7.0, 1.65, z1 - 0.10), PI, 1.8, 1.1)
-	Dressing.extinguisher(h, Vector3(20.5, 1.05, z1 - 0.10), PI)
+	# Ward door cards sit 1.12m to the left of each door, so everything hung on
+	# the ward frontage goes on the party walls between rooms — otherwise the
+	# corridor's own signage is the thing the decoration covers up.
+	Dressing.noticeboard(h, Vector3(9.6, 1.65, z0 + 0.10), 0.0, 1.8, 1.1)
+	Dressing.extinguisher(h, Vector3(20.4, 1.05, z1 - 0.10), PI)
 	Dressing.extinguisher(h, Vector3(-2.0, 1.05, z0 + 0.10), 0.0)
-	for x in [3.0, 17.0, 27.0, 39.0]:
+	for x in [8.4, 17.4, 27.4, 36.4]:
 		Dressing.poster(h, Vector3(float(x), 1.72, z1 - 0.10), PI, 0.58, 0.80,
 			Color(0.35, 0.72, 0.70), 4)
+	for x3 in [1.0, 19.6, 34.6]:
+		Dressing.wall_art(h, Vector3(float(x3), 1.74, z0 + 0.10), 0.0, 0.82, 0.62,
+			Color(0.44, 0.76, 0.86), Color(0.96, 0.72, 0.34))
 	for x2 in [-9.0, 25.0, 44.0]:
 		Dressing.plant(h, Vector3(float(x2), 0, z1 - 0.55), 0.95)
 	Dressing.bin(h, Vector3(10.5, 0, z1 - 0.5), Color(0.30, 0.50, 0.58))
@@ -177,6 +200,14 @@ static func _dress_lobby(h: Hospital, r: Room) -> void:
 	Dressing.plant(h, Vector3(r.rect.position.x + 1.0, 0, r.rect.position.y + 1.2), 1.15)
 	Dressing.plant(h, Vector3(r.rect.end.x - 1.1, 0, r.rect.position.y + 1.4), 0.95)
 	Dressing.bin(h, Vector3(r.rect.position.x + 1.2, 0, r.rect.end.y - 1.6))
+	var vend := Vector3(r.rect.end.x - 1.0, 0, r.rect.position.y + 2.8)
+	Dressing.vending(h, vend, RIGHT_ROT)
+	_occupy(vend.x, vend.z, 1.0, 0.7)
+	var cool := Vector3(r.rect.position.x + 0.7, 0, r.rect.position.y + 3.4)
+	Dressing.water_cooler(h, cool, LEFT_ROT)
+	_occupy(cool.x, cool.z, 0.5, 0.5)
+	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, _door_wall_z(r) + 1.1),
+		Vector2(2.4, 1.2), Color(0.30, 0.26, 0.22))
 
 static func _dress_station(h: Hospital, r: Room) -> void:
 	Dressing.noticeboard(h, _far_wall(r, 0.50, 1.68), _far_rot(r), 1.7, 1.05)
@@ -187,6 +218,12 @@ static func _dress_station(h: Hospital, r: Room) -> void:
 	Dressing.trays(h, Vector3(r.rect.end.x - 1.0, 0.90, r.rect.position.y + 1.4))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 1.4))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 1.5), 0.85)
+	# The board every ward station has, with the bed list on it in somebody's
+	# handwriting. It is the room's whole reason for existing, on a wall.
+	Dressing.whiteboard(h, _right_wall(r, 0.42, 1.72), RIGHT_ROT, 1.5, 1.0)
+	var cool2 := Vector3(r.rect.position.x + 0.7, 0, r.rect.get_center().y + 1.8)
+	Dressing.water_cooler(h, cool2, LEFT_ROT)
+	_occupy(cool2.x, cool2.z, 0.5, 0.5)
 
 static func _dress_treatment(h: Hospital, r: Room) -> void:
 	Dressing.oxygen_panel(h, _far_wall(r, 0.30, 1.42), _far_rot(r))
@@ -199,6 +236,10 @@ static func _dress_treatment(h: Hospital, r: Room) -> void:
 	Dressing.trays(h, Vector3(r.rect.position.x + 1.0, 0.90, r.rect.get_center().y))
 	Dressing.bin(h, Vector3(r.rect.end.x - 1.0, 0, r.rect.get_center().y + 1.2),
 		Color(0.66, 0.34, 0.34))
+	Dressing.stool(h, Vector3(r.rect.get_center().x + 1.4, 0, r.rect.get_center().y - 0.6))
+	Dressing.whiteboard(h, _left_wall(r, 0.68, 1.70), LEFT_ROT, 1.3, 0.9)
+	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, _door_wall_z(r) + 1.0),
+		Vector2(2.0, 1.1), Color(0.24, 0.34, 0.38))
 
 static func _dress_supply(h: Hospital, r: Room) -> void:
 	Dressing.boxes(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.get_center().y - 1.4), 0.3)
@@ -217,6 +258,9 @@ static func _dress_office(h: Hospital, r: Room) -> void:
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.position.y + 1.2), 1.1)
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.position.y + 1.1),
 		Color(0.46, 0.36, 0.30))
+	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, r.rect.get_center().y),
+		Vector2(2.6, 1.8), Color(0.42, 0.24, 0.22))
+	Dressing.whiteboard(h, _left_wall(r, 0.62, 1.66), LEFT_ROT, 1.1, 0.8)
 
 static func _dress_bathroom(h: Hospital, r: Room) -> void:
 	Dressing.poster(h, _far_wall(r, 0.50, 1.66), _far_rot(r), 0.46, 0.66,
@@ -250,6 +294,11 @@ static func _dress_day_room(h: Hospital, r: Room) -> void:
 		Color(0.52, 0.72, 0.92), Color(0.92, 0.52, 0.60))
 	Dressing.plant(h, Vector3(r.rect.position.x + 1.1, 0, r.rect.position.y + 1.3), 1.2)
 	Dressing.plant(h, Vector3(r.rect.end.x - 1.1, 0, r.rect.position.y + 1.5), 1.0)
+	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, r.rect.get_center().y),
+		Vector2(3.0, 2.2), Color(0.46, 0.38, 0.22))
+	var cool3 := Vector3(r.rect.position.x + 0.7, 0, r.rect.get_center().y + 1.0)
+	Dressing.water_cooler(h, cool3, LEFT_ROT)
+	_occupy(cool3.x, cool3.z, 0.5, 0.5)
 	Dressing.bin(h, Vector3(r.rect.position.x + 1.0, 0, r.rect.end.y - 1.5),
 		Color(0.72, 0.62, 0.36))
 

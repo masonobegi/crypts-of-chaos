@@ -343,6 +343,103 @@ func take_readmissions() -> Array[Dictionary]:
 	readmissions = still
 	return out
 
+## Somebody who has just gone home decides whether to do anything about it.
+##
+## Everything the ward accumulated against this patient adds up here and is
+## rolled ONCE, at the door, because that is when a person stops being a patient
+## and starts being somebody with a solicitor. Most of the time nothing happens
+## — which is what makes the letter, when it comes, feel like a consequence
+## rather than a tax on playing.
+func _consider_legal_action(p: Patient, reason: String) -> void:
+	var legal = get_tree().get_first_node_in_group("legal_system")
+	if legal == null:
+		return
+	# Whatever the procedures did to them, carried on the patient since the day
+	# it happened.
+	var risk := float(p.get_meta("sue_risk", 0.0))
+	var kind := "procedure" if risk > 0.0 else ""
+
+	# Sent home before they were fit. The single most-requested consequence in
+	# the game and the one the player has the most control over.
+	if reason == "premature" or reason == "self_discharge":
+		var short: float = clampf(1.0 - p.recovery, 0.0, 1.0)
+		# A shade under recovered is nobody's lawsuit. Half-mended is.
+		if short > 0.15:
+			risk += (short - 0.15) * 0.85
+			kind = "premature_discharge"
+
+	# And anything they are leaving with that they did not arrive with, which
+	# nobody troubled to write a cause against.
+	for c in p.acquired_injuries():
+		risk += 0.10
+		if c.documented_cause == "":
+			risk += 0.12
+		kind = "injury"
+
+	# Somebody who knows perfectly well how they came to be here.
+	if p.mind != null:
+		for ev in p.mind.evidence:
+			if ev.kind == "recognises_you" and not ev.neutralized:
+				risk += 0.30
+				kind = "night"
+
+	if kind == "" or risk <= 0.0:
+		return
+	# Being liked is worth money. A patient who trusts you and was treated
+	# decently forgives a great deal; one who does not, does not.
+	if p.mind != null:
+		risk *= clampf(1.35 - p.mind.trust * 0.6, 0.6, 1.4)
+	risk *= clampf(1.30 - p.satisfaction * 0.7, 0.6, 1.4)
+	legal.consider_claim(p, kind, clampf(risk, 0.0, 0.9))
+
+# ------------------------------------------------------------------ overnight
+## People you met last night.
+##
+## The same shape as a readmission, because from the ward's point of view that
+## is what it is: somebody arriving in the morning with an injury and a story.
+## What is different is what they carry — a mark who saw your face arrives
+## already holding evidence about you, in a bed, for a week.
+var night_admissions: Array[Dictionary] = []
+
+func take_night_admissions() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	var still: Array[Dictionary] = []
+	for r in night_admissions:
+		if int(r["day"]) > GameState.day:
+			still.append(r)
+			continue
+		if free_wards().is_empty():
+			r["day"] = GameState.day + 1
+			still.append(r)
+			continue
+		var p := generate(String(r["condition"]))
+		p.display_name = String(r["name"])
+		p.presenting_complaint = "%s — brought in from %s" % [
+			DB.condition_name(p.condition_id), String(r.get("place", "the street"))]
+		p.chart.presenting_complaint = p.presenting_complaint
+		if not admit(p):
+			continue
+		var outcome := String(r.get("outcome", "clean"))
+		if outcome != "clean" and p.mind != null:
+			# They got a look at you. Not a certainty — a bad light, a fast
+			# thing, a face they have now seen twice — but it is in the room.
+			var ev := Evidence.new()
+			ev.kind = "recognises_you"
+			ev.about_actor = "player"
+			ev.patient_id = p.id
+			ev.source = Evidence.Source.WITNESSED
+			ev.time = GameState.career_minutes
+			ev.base_weight = 0.45 if outcome == "messy" else 0.78
+			ev.certainty = 0.5 if outcome == "messy" else 0.85
+			ev.summary = "has seen you somewhere before and cannot place it"
+			p.mind.add_evidence(ev)
+			p.mind.observance = clampf(p.mind.observance + 0.25, 0.0, 1.0)
+			p.mind.trust = clampf(p.mind.trust - 0.35, 0.0, 1.0)
+		out.append({"name": p.display_name, "condition": p.condition_name(),
+			"outcome": outcome})
+	night_admissions = still
+	return out
+
 ## Cleared and sent away without ever being admitted. Costs nothing, earns the
 ## consultation fee, and is the correct thing to do roughly always.
 func send_home(p: Patient, reason := "cleared") -> void:
@@ -604,6 +701,8 @@ func discharge(p: Patient, reason := "recovered") -> void:
 		chart.queue_free()
 	charts.erase(p.id)
 
+	_consider_legal_action(p, reason)
+
 	EventBus.patient_discharged.emit(p, reason)
 	EventBus.toast.emit("%s discharged after %.1f days (projected %.1f)." % [
 		p.display_name, p.days_admitted, p.expected_stay_days],
@@ -808,7 +907,8 @@ func to_dict() -> Dictionary:
 	for w in waiting:
 		wait.append(w.to_dict())
 	return {"patients": out, "next_id": _next_id, "waiting": wait,
-		"visitors": _visitor_pool, "readmits": readmissions}
+		"visitors": _visitor_pool, "readmits": readmissions,
+		"overnight": night_admissions}
 
 func from_dict(d: Dictionary) -> void:
 	for id in bodies:
@@ -828,6 +928,9 @@ func from_dict(d: Dictionary) -> void:
 	readmissions.clear()
 	for r in d.get("readmits", []):
 		readmissions.append(r)
+	night_admissions.clear()
+	for r2 in d.get("overnight", []):
+		night_admissions.append(r2)
 	_visitor_pool = d.get("visitors", [])
 	var stored: Dictionary = d.get("patients", {})
 	var sus = get_tree().get_first_node_in_group("suspicion_system")

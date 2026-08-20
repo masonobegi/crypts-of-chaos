@@ -37,6 +37,11 @@ const UI_SHOTS := [
 	["20f3_medicate_dose", "medicate#dose"],
 	["20g_suture", "suture"],
 	["20g2_suture_field", "suture#treat"],
+	["30_court_letter", "court"],
+	["30b_court_lawyers", "court#lawyers"],
+	["30c_court_hearing", "court#hearing"],
+	["31_night_choose", "night"],
+	["31b_night_street", "night#street"],
 	["27b_settings", "settings"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
@@ -94,6 +99,14 @@ func _tick_ui() -> bool:
 ## through it would.
 func _stage_ui(screen, screen_id: String, stage: String) -> void:
 	match screen_id:
+		"court":
+			screen.set("_stage", "lawyers" if stage == "lawyers" else "hearing")
+			if stage == "hearing":
+				screen.set("_lawyer", "fixer")
+		"night":
+			screen.set("_stage", "street")
+			screen.set("_place", NightSystem.PLACES[2])
+			screen.set("_mark_name", "Wendell Tosh")
 		"setbone", "suture":
 			screen.set("_intent", "treat" if stage == "treat" else "worsen")
 		"medicate":
@@ -130,6 +143,13 @@ func _pose_ui(screen, id: String) -> void:
 		"medicate#dose":
 			screen.set("_level", 0.62)
 			screen.set("_drawing", true)
+		"night#street":
+			# A moment into the evening: partway down the street, one lamp too
+			# close, with somebody's eyeline just clipping you.
+			screen.set("_elapsed", 3.4)
+			screen.set("_mark_t", 0.22)
+			screen.set("_exposure", 0.31)
+			screen.set("_me", Vector2(360.0, 250.0))
 	var canvas = screen.get("_canvas")
 	if canvas != null:
 		canvas.queue_redraw()
@@ -176,6 +196,22 @@ func _ui_context(id: String) -> Dictionary:
 			any[0].condition_id = "fractured_wrist" if want == "set_bone" else \
 				("knuckle_weather" if want == "suture" else "chronic_beige")
 			return {"patient_id": any[0].id}
+		"court", "court#lawyers", "court#hearing":
+			# A real claim against a real patient, filed on the spot, so the
+			# screenshot is of the game rather than of a mock-up.
+			var lg = game.get("legal")
+			var pool2: Array = game.patient_system.active()
+			if lg == null or pool2.is_empty():
+				return {}
+			var victim2 = pool2[0]
+			victim2.recovery = 0.35
+			game.patient_system.add_complication(victim2, "fractured_wrist", "examination")
+			var claim: Dictionary = lg.file_claim(victim2, "premature_discharge")
+			claim["witnesses"] = ["Nurse Sarah Pell", "Ms Odile Vane"]
+			claim["imaging"] = true
+			return {"claim": claim}
+		"night", "night#street":
+			return {}
 		"chart", "dialogue":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():

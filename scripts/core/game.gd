@@ -20,6 +20,8 @@ var investigations: InvestigationSystem
 var events: RandomEventSystem
 var appointments: AppointmentSystem
 var shift: ShiftSystem
+var legal: LegalSystem
+var night: NightSystem
 var codex: Codex
 var ui: Node
 
@@ -270,6 +272,16 @@ func _spawn_systems() -> void:
 	appointments.name = "AppointmentSystem"
 	add_child(appointments)
 
+	# The two phases either side of the ward. Both are added before ShiftSystem
+	# because it looks them up by group at the end of every day.
+	legal = LegalSystem.new()
+	legal.name = "LegalSystem"
+	add_child(legal)
+
+	night = NightSystem.new()
+	night.name = "NightSystem"
+	add_child(night)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)
@@ -399,6 +411,8 @@ func _register_saves() -> void:
 	SaveSystem.register("investigations", investigations.to_dict, investigations.from_dict)
 	SaveSystem.register("events", events.to_dict, events.from_dict)
 	SaveSystem.register("appointments", appointments.to_dict, appointments.from_dict)
+	SaveSystem.register("legal", legal.to_dict, legal.from_dict)
+	SaveSystem.register("night", night.to_dict, night.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
 	SaveSystem.register("codex", codex.to_dict, codex.from_dict)
 	SaveSystem.register("devices", _save_devices, _load_devices)

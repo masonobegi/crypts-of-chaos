@@ -36,6 +36,9 @@ var last_review := {}
 var last_statement := {}
 
 func _ready() -> void:
+	EventBus.treatment_applied.connect(func(p, _tid, _q):
+		if p != null:
+			seen_today[p.id] = true)
 	add_to_group("shift_system")
 	patient_system = get_tree().get_first_node_in_group("patient_system")
 	economy = get_tree().get_first_node_in_group("economy")
@@ -128,10 +131,18 @@ func begin_day(kind: String = "") -> Dictionary:
 	var returning := patient_system.take_readmissions()
 	for r in returning:
 		EventBus.toast.emit("%s is back." % String(r["name"]), "money")
+	# And anybody you arranged to meet last night.
+	var overnight := patient_system.take_night_admissions()
+	for r in overnight:
+		EventBus.toast.emit("%s came in overnight." % String(r["name"]),
+			"money" if String(r.get("outcome", "clean")) == "clean" else "suspicion")
 	var arrivals := _admit_morning_patients()
 	for r in returning:
 		arrivals.append({"name": String(r["name"]), "condition": String(r["condition"]),
 			"stay": 0.0, "insurance": "", "revenue": 0, "room": "", "archetype": "returning"})
+	for r in overnight:
+		arrivals.append({"name": String(r["name"]), "condition": String(r["condition"]),
+			"stay": 0.0, "insurance": "", "revenue": 0, "room": "", "archetype": "overnight"})
 	if appointments:
 		appointments.build_for_shift()
 
@@ -297,7 +308,13 @@ func _admit_morning_patients() -> Array[Dictionary]:
 	return out
 
 # ================================================================ shift
+## Who the player personally laid a hand on today. Anybody not in here at the
+## end of the day was covered by a nurse, properly, which is the whole point of
+## being allowed to leave early.
+var seen_today: Dictionary = {}
+
 func clock_in() -> void:
+	seen_today.clear()
 	shift_start_snapshot = {
 		"heat": GameState.heat,
 		"complaints": GameState.stats.complaints,
@@ -317,7 +334,8 @@ func clock_in() -> void:
 	# with "Get through the shift."
 	var tut = get_tree().get_first_node_in_group("tutorial")
 	if tut == null or not tut.is_active():
-		EventBus.objective_changed.emit("Get through the shift.")
+		EventBus.objective_changed.emit(
+			"See who is worth seeing. End the day at your office desk.")
 	AudioMgr.play("ding", -10.0)
 	# The first slot on the list sits at the hour the shift starts, and hour
 	# ticks only fire on the hour AFTER that — so nobody was ever marked as
@@ -388,8 +406,18 @@ func _auto_discharge_ready() -> void:
 			patient_system.discharge(p, "self_discharge")
 
 # ================================================================ chart review
-func end_shift() -> void:
+## Can the day be ended by hand right now? True during the shift proper, so the
+## office desk is a way out rather than a thing you wait for.
+func can_end_day() -> bool:
+	return GameState.phase == GameState.Phase.SHIFT
+
+func end_shift(early := false) -> void:
+	if GameState.phase != GameState.Phase.SHIFT:
+		return
 	GameState.set_phase(GameState.Phase.CHART_REVIEW)
+	if early:
+		EventBus.toast.emit("You call it a day at %s." % GameState.time_string(), "info")
+	_nurses_cover_unseen()
 	EventBus.shift_ended.emit(GameState.day)
 
 	# Colleagues read your charts on their way out.
@@ -414,6 +442,50 @@ func end_shift() -> void:
 	review_ready.emit(data)
 	EventBus.objective_changed.emit(
 		"Finish your paperwork, then clock out at the terminal in your office.")
+
+## Everybody you did not get to is seen by a nurse.
+##
+## This is the load-bearing half of being allowed to end the day whenever you
+## like. A patient you never touched is not a patient nothing happened to — the
+## ward has nurses, the nurses are competent, and they treat people correctly
+## because they are not the ones with the debt.
+##
+## So the choice the day poses is not "how many can I get through" but "which
+## ones are worth MY hands". A nurse's version is honest: they improve, they go
+## home on time, the bed frees up, and you bill nothing beyond the ward rate.
+## Every dishonest shilling in the game has to come from somebody you chose to
+## see personally, and every one of those is a person who can later testify
+## that you were the one in the room.
+func _nurses_cover_unseen() -> void:
+	var names := _nurse_names()
+	var covered := 0
+	for p in patient_system.active():
+		if p.discharged or seen_today.has(p.id):
+			continue
+		var who: String = String(names[covered % names.size()]) if not names.is_empty() \
+			else "the ward nurse"
+		# Deliberately a bit less than a good doctor doing it themselves: a
+		# clean reduction is 0.85, and this is a competent nurse doing the
+		# indicated thing without the theatre.
+		p.recovery = clampf(p.recovery + 0.28 + p.recovery_rate * 0.22, -0.2, 1.0)
+		p.satisfaction = clampf(p.satisfaction + 0.06, 0.0, 1.0)
+		p.record_treatment("nursing_care", 0.6)
+		if p.chart != null:
+			p.chart.add_note("Reviewed and treated as indicated by %s." % who,
+				GameState.career_minutes, who, true)
+		if p.mind != null:
+			p.mind.trust = clampf(p.mind.trust + 0.04, 0.0, 1.0)
+		covered += 1
+	if covered > 0:
+		EventBus.toast.emit("Nursing covered %d patient%s you did not see." % [
+			covered, "" if covered == 1 else "s"], "info")
+
+func _nurse_names() -> Array:
+	var out: Array = []
+	for n in get_tree().get_nodes_in_group("staff"):
+		if n is NurseNPC:
+			out.append(String(n.display))
+	return out
 
 ## A colleague who asked for a scan this morning notices at going-home time that
 ## it never happened. There is no way to explain this in the record, because
@@ -733,7 +805,32 @@ func _was_clean_shift() -> bool:
 	return true
 
 # ================================================================ rollover
+## What happens after the statement screen and before tomorrow.
+##
+## The day has three phases now and this is the join between them: any claim
+## that has been served gets answered, then the evening is offered, then the
+## morning happens. Each screen calls back here when it closes, so the sequence
+## is driven by the player finishing with each one rather than by a timer.
+func after_statement() -> void:
+	var legal = get_tree().get_first_node_in_group("legal_system")
+	if legal != null:
+		var due: Array = legal.due_claims()
+		if not due.is_empty():
+			EventBus.request_ui.emit("court", {"claim": due[0]})
+			return
+	var night = get_tree().get_first_node_in_group("night_system")
+	if night != null and night.available():
+		EventBus.request_ui.emit("night", {})
+		return
+	next_day()
+
 func next_day() -> void:
+	var legal = get_tree().get_first_node_in_group("legal_system")
+	if legal != null:
+		legal.expire_overdue()
+	var night = get_tree().get_first_node_in_group("night_system")
+	if night != null:
+		night.new_day()
 	# The 16 hours you are not on the ward still pass, for everyone.
 	var off_shift: int = GameState.MINUTES_PER_DAY - GameState.shift_hours() * 60
 	patient_system.tick(float(off_shift) * DAY_PER_MINUTE)

@@ -184,50 +184,64 @@ static func _fingers(base: Vector2, dir: Vector2, span: float, length: float,
 	var n := dir.orthogonal().normalized()
 	for i in 4:
 		var t: float = (float(i) / 3.0 - 0.5) * span
-		var l: float = length * (0.82 + 0.22 * sin((float(i) + 0.6) * 1.1))
+		var l: float = length * (0.80 + 0.24 * sin((float(i) + 0.6) * 1.1))
 		var a: Vector2 = base + n * t
-		var b: Vector2 = a + dir * l + n * t * 0.35
-		out.append(cap(a.x, a.y, b.x, b.y, 0.024, 0.021, slot))
+		var b: Vector2 = a + dir * l + n * t * 0.22
+		out.append(cap(a.x, a.y, b.x, b.y, 0.027, 0.023, slot))
 		var tip: Vector2 = b + dir * 0.006
 		out.append(cap(tip.x, tip.y, tip.x, tip.y, 0.013, 0.013, "nail"))
 	return out
 
 ## Elbow on the left, hand on the right. `brk` is how far along the fracture
 ## sits, which is the only difference between "forearm" and "wrist".
+##
+## Built from two points and a direction rather than from thirty literals: the
+## first version was hand-typed coordinates and it took four passes to stop it
+## looking like a baguette with fingers.
 static func _rig_forearm(brk: float) -> Dictionary:
-	var pivot := Vector2(brk, 0.62 - brk * 0.20)
+	var elbow := Vector2(0.135, 0.735)
+	var wristp := Vector2(0.690, 0.415)
+	var d := (wristp - elbow).normalized()
+	var n := d.orthogonal()
+	var pivot := elbow + (wristp - elbow) * brk
 	var prox: Array = [
-		cap(0.09, 0.63, 0.09, 0.63, 0.125),                      # elbow
-		cap(0.09, 0.63, pivot.x, pivot.y, 0.115, 0.088),
+		cap(elbow.x, elbow.y, elbow.x, elbow.y, 0.140),           # elbow
+		cap(elbow.x, elbow.y, pivot.x, pivot.y, 0.128, 0.104),
 	]
 	var pbone: Array = [
-		cap(0.12, 0.605, pivot.x - 0.01, pivot.y - 0.018, 0.030, 0.024, "bone"),
-		cap(0.12, 0.660, pivot.x - 0.01, pivot.y + 0.026, 0.024, 0.019, "bone"),
+		_bone_between(elbow + d * 0.03 - n * 0.030, pivot - n * 0.028, 0.022, 0.019),
+		_bone_between(elbow + d * 0.03 + n * 0.034, pivot + n * 0.030, 0.018, 0.015),
 	]
-	var wristp := Vector2(0.755, 0.487)
-	var palm := Vector2(0.825, 0.478)
+	var palm := wristp + d * 0.062
 	var dist: Array = [
-		cap(pivot.x, pivot.y, wristp.x, wristp.y, 0.088, 0.072),
-		cap(wristp.x, wristp.y, palm.x, palm.y, 0.078, 0.086),   # palm
-		cap(0.800, 0.545, 0.855, 0.575, 0.028, 0.024),           # thumb
+		cap(pivot.x, pivot.y, wristp.x, wristp.y, 0.104, 0.084),
+		cap(wristp.x, wristp.y, palm.x, palm.y, 0.084, 0.100),    # palm
 	]
-	dist.append_array(_fingers(Vector2(0.862, 0.478), Vector2(1.0, -0.06).normalized(),
-		0.115, 0.075))
+	var thumb_a := wristp + d * 0.020 + n * 0.082
+	var thumb_b := thumb_a + (d * 0.5 + n * 0.9).normalized() * 0.072
+	dist.append(cap(thumb_a.x, thumb_a.y, thumb_b.x, thumb_b.y, 0.030, 0.025))
+	dist.append_array(_fingers(palm + d * 0.026, d, 0.130, 0.070))
 	var dbone: Array = [
-		cap(pivot.x + 0.012, pivot.y - 0.018, wristp.x - 0.01, wristp.y - 0.016, 0.028, 0.022, "bone"),
-		cap(pivot.x + 0.012, pivot.y + 0.026, wristp.x - 0.01, wristp.y + 0.020, 0.022, 0.018, "bone"),
-		dot(wristp.x + 0.014, wristp.y, 0.026),
-		dot(wristp.x + 0.030, wristp.y - 0.026, 0.020),
-		dot(wristp.x + 0.030, wristp.y + 0.026, 0.020),
+		_bone_between(pivot + d * 0.014 - n * 0.028, wristp - n * 0.024, 0.021, 0.018),
+		_bone_between(pivot + d * 0.014 + n * 0.030, wristp + n * 0.026, 0.017, 0.014),
+		dot((wristp + d * 0.016).x, (wristp + d * 0.016).y, 0.022),
+		dot((wristp + d * 0.032 - n * 0.030).x, (wristp + d * 0.032 - n * 0.030).y, 0.017),
+		dot((wristp + d * 0.032 + n * 0.030).x, (wristp + d * 0.032 + n * 0.030).y, 0.017),
 	]
 	for i in 4:
-		var t: float = (float(i) / 3.0 - 0.5) * 0.098
-		dbone.append(cap(palm.x - 0.020, palm.y + t * 0.7, 0.860, 0.478 + t, 0.013, 0.011, "bone"))
+		var t: float = (float(i) / 3.0 - 0.5) * 0.130
+		var a: Vector2 = palm - d * 0.030 + n * t * 0.6
+		var b: Vector2 = palm + d * 0.026 + n * t
+		dbone.append(_bone_between(a, b, 0.011, 0.009))
 	return {
 		"prox": prox, "dist": dist, "pbone": pbone, "dbone": dbone,
-		"pivot": pivot, "axis": Vector2(1.0, -0.16).normalized(),
-		"bone_r": 0.030, "wound": [Vector2(0.20, 0.615), Vector2(0.62, 0.535)],
+		"pivot": pivot, "axis": d, "bone_r": 0.024,
+		"wound": [elbow + (wristp - elbow) * 0.18 + n * 0.055,
+			elbow + (wristp - elbow) * 0.72 + n * 0.040],
 	}
+
+static func _bone_between(a: Vector2, b: Vector2, ra: float, rb: float) -> Dictionary:
+	return cap(a.x, a.y, b.x, b.y, ra, rb, "bone")
 
 static func _rig_hand() -> Dictionary:
 	var pivot := Vector2(0.60, 0.48)
@@ -429,7 +443,7 @@ static func draw_part(ci: CanvasItem, part: String, field: Vector2, tone: Color,
 ## The part mid-procedure: fixed half, swinging half, and the bones showing
 ## through both like a lamp behind a hand.
 static func draw_part_split(ci: CanvasItem, part: String, field: Vector2, tone: Color,
-		xf: Transform2D, bone_alpha := 0.92) -> Dictionary:
+		xf: Transform2D, bone_alpha := 0.70) -> Dictionary:
 	var r := rig(part)
 	draw_caps(ci, r["prox"], field, tone)
 	draw_caps(ci, r["dist"], field, tone, xf)

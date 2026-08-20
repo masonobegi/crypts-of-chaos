@@ -13,6 +13,8 @@ const SCREEN_SCRIPTS := {
 	"setbone": "res://scripts/ui/screen_setbone.gd",
 	"medicate": "res://scripts/ui/screen_medicate.gd",
 	"suture": "res://scripts/ui/screen_suture.gd",
+	"court": "res://scripts/ui/screen_court.gd",
+	"night": "res://scripts/ui/screen_night.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"statement": "res://scripts/ui/screen_statement.gd",

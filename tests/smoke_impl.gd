@@ -44,6 +44,7 @@ func tick() -> bool:
 			_check_midshift()
 			_check_the_morning_only_happens_once()
 			_check_every_indicated_treatment_can_be_given()
+			_check_a_wrong_site_can_be_revised()
 			_check_the_tutorial_can_advance()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
@@ -459,6 +460,44 @@ func _check_the_morning_only_happens_once() -> void:
 		"and does not rebuild a list that is already half worked")
 	# begin_day() sets PRE_SHIFT; the shift was in progress, so put it back.
 	GameState.set_phase(GameState.Phase.SHIFT)
+
+## A wrong site has to be a situation the player can respond to.
+##
+## Opening a part of somebody that was not the problem is catastrophic and stays
+## catastrophic — but before this the only thing left to do about it was press
+## Close, and a mistake you cannot respond to is not a mistake, it is a
+## punishment. A surgeon who realises mid-list does the indicated procedure as
+## well: a second operation, a second set of risks, and a theatre record with
+## two sites on it that no auditor reads charitably.
+func _check_a_wrong_site_can_be_revised() -> void:
+	var pool: Array = game.patient_system.active()
+	if pool.is_empty():
+		return
+	# The LAST patient on the ward, not the first. The save/load round-trip
+	# further down authors a theatre record on active()[0] and then asserts its
+	# exact contents, so operating on the same person here rewrites the thing
+	# that check is checking.
+	var p = pool[pool.size() - 1]
+	var right: String = TreatmentSystem.indicated_site_for(p)
+	var wrong := "knee" if right != "knee" else "wrist"
+	var before := int(GameState.stats.surgeries)
+
+	var bad: Dictionary = game.treatment.perform_surgery(p, wrong,
+		["careful", "careful", "careful"])
+	_ok(bool(bad.get("wrong_site", false)),
+		"operating somewhere other than the indicated site is recorded as one")
+	_ok(String(bad.get("indicated", "")) == right,
+		"and the outcome names the site that should have been opened (%s)" % right)
+
+	# The revision: same patient, correct site, on a body already opened once.
+	var fixed: Dictionary = game.treatment.perform_surgery(p, right,
+		["improvise", "improvise", "improvise"])
+	_ok(not bool(fixed.get("wrong_site", true)),
+		"going back for the indicated site is not itself a wrong site")
+	_ok(int(GameState.stats.surgeries) == before + 2,
+		"and the record shows both operations, not one")
+	_ok(p.chart.surgery_log.size() >= 2,
+		"with both sites on the theatre record for anybody who reads it")
 
 func _check_every_indicated_treatment_can_be_given() -> void:
 	var obtainable := {}

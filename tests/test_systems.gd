@@ -288,6 +288,19 @@ func test_a_mislabelled_container_is_both_noticeable_and_fixable() -> void:
 	for n in [syringe, canister, form]:
 		n.queue_free()
 
+## And the site is legible on the patient, not only on a screen.
+func test_every_operable_site_can_be_marked_on_a_body() -> void:
+	var marks: Dictionary = load("res://scripts/npc/patient_npc.gd").SITE_MARKS
+	var missing: Array[String] = []
+	for site in TreatmentSystem.SURGERY_SITES:
+		if String(site) == "general":
+			continue      # nothing to point at
+		if not marks.has(String(site)):
+			missing.append(String(site))
+	t.ok(missing.is_empty(),
+		"every operable site has somewhere on the body to mark%s" % (
+			"" if missing.is_empty() else ": " + ", ".join(missing)))
+
 func test_machine_keeps_an_auditable_log() -> void:
 	var m = load("res://scripts/world/machine.gd").new()
 	m.treatment_id = "humour_rebalance"

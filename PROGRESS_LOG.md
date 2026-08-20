@@ -1905,3 +1905,54 @@ nurse now also asserts she stopped and wrote it down.
 
 **1,568 assertions · 106 smoke · 22 live · boot check. Three consecutive clean
 full runs.**
+
+---
+
+## Session 4 (cont.) — Phase 9: a wrong site is a situation, not a dead end
+
+The brief: soften *accidental* wrong-site failure without removing the
+catastrophic consequence, no obnoxious confirm dialogs, find a diegetic or
+skill-based solution.
+
+The theatre screen already states the indicated site and colours its button
+differently, so an accident needs a genuine misread rather than a fumble. The
+real problem was what happened next: **the only thing left to do about it was
+press Close.** A mistake you cannot respond to is not a mistake, it is a
+punishment.
+
+### The revision
+
+A surgeon who realises mid-list does the indicated procedure as well. The
+outcome screen now says, flatly:
+
+> The knee was not the problem. The wrist still is.
+> **Open the wrist as well**
+>     recorded as: site revised intra-operatively
+
+It runs a second operation on a body that has already been opened once today —
+so every stage is treated as improvised, which is both the higher risk and the
+more honest note — and the theatre record ends up with two sites on it, which no
+auditor will read charitably. Walking away is still available, and still the
+version that ends careers.
+
+No confirmation dialog anywhere. The choice is made in the fiction, out of a
+theatre record, in the same words the rest of the screen uses.
+
+### And the site is on the patient
+
+Real theatres mark the operative site on the patient, for exactly the reason it
+is here: so the answer to "which one" exists somewhere other than a screen
+somebody has to have read carefully. Patients now carry a bright band on the
+indicated limb — wrist, shoulder, knee or ribs — in the one colour nothing else
+in the building uses, kept current as injuries appear and resolve.
+
+You can see, from the doorway, which limb has a mark on it.
+
+Five new smoke checks, including one that would have caught the whole class:
+every operable site in `SURGERY_SITES` must have somewhere on the body to mark.
+
+One thing found on the way: the new check originally operated on `active()[0]`,
+which is the patient the save/load round-trip authors a theatre record on and
+then asserts the exact contents of. It uses the last patient on the ward now.
+
+**1,569 assertions · 111 smoke · 22 live · boot check.**

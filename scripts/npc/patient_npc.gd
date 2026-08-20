@@ -66,9 +66,54 @@ func _hold_bed_pose(_delta: float) -> void:
 func can_step_aside() -> bool:
 	return state == State.WANDERING
 
+## Surgical site marking, which is a thing real theatres do for exactly the
+## reason it is here: so that the answer to "which side" exists on the patient
+## and not only on a screen somebody has to have read carefully.
+##
+## Opening the wrong part of somebody is catastrophic and stays catastrophic.
+## But a player who did it by misreading one line of a menu had been punished
+## for a UI problem, and the fix is not a confirmation dialog — it is putting
+## the information where the act happens. You can now see, from the doorway,
+## which limb has an arrow on it.
+const SITE_MARKS := {
+	"wrist":    {"limb": "arm", "y": -0.42},
+	"shoulder": {"limb": "arm", "y": -0.02},
+	"knee":     {"limb": "leg", "y": -0.32},
+	"ribs":     {"limb": "torso", "y": 0.06},
+}
+
+var _site_mark: MeshInstance3D = null
+var _marked_site := ""
+
+func refresh_site_mark() -> void:
+	if data == null:
+		return
+	var site: String = TreatmentSystem.indicated_site_for(data)
+	if site == _marked_site:
+		return
+	_marked_site = site
+	if _site_mark != null:
+		_site_mark.queue_free()
+		_site_mark = null
+	if not SITE_MARKS.has(site):
+		return
+	var spec: Dictionary = SITE_MARKS[site]
+	var host: Node3D = null
+	match String(spec["limb"]):
+		"arm": host = _arms[0] if not _arms.is_empty() else null
+		"leg": host = _legs[0] if not _legs.is_empty() else null
+		_: host = _torso
+	if host == null:
+		return
+	# A band, in the one colour nothing else in the building uses.
+	_site_mark = Build.mi(Build.cyl_mesh(0.13, 0.055, 12),
+		Build.unshaded(Color(0.95, 0.25, 0.62)), Vector3(0, float(spec["y"]), 0))
+	host.add_child(_site_mark)
+
 func _tick_state(_delta: float) -> void:
 	if data == null or data.discharged:
 		return
+	refresh_site_mark()
 	match state:
 		State.IN_BED:
 			if _timer <= 0.0:

@@ -2252,3 +2252,44 @@ in Room 101 9.9 s, Room 101 to the treatment bay 8.6 s.
 
 Verified: 1,585 assertions · 124 smoke · 23 live (three consecutive clean full
 runs) · boot check · 40 screenshots.
+
+## Every patient in this game has been hovering above their bed
+
+The closest look a player ever gets at a character is somebody lying two metres
+away, and the close-up screenshot of that was a head with no body attached,
+floating over the linen. Screenshots were ambiguous enough to argue about, so
+the answer came from a check that measures the head against the mattress: the
+head sat 0.58 m above it.
+
+`PatientNPC._hold_bed_pose` re-pins a patient to the bed's origin every frame —
+which is what makes wheeling a bed wheel the patient — and then the solver ran
+anyway. The bed's collision box is 1.0 x 0.7 x 2.1 about its own centre, the
+patient was pinned INSIDE it, and depenetration ejected them half a metre
+straight up, every frame, since beds were added. `NPCBody.pinned` now suppresses
+gravity and `move_and_slide` outright for a body something else is holding in
+place, and the reclined offset puts the head on the pillow rather than a hand's
+width above it.
+
+Two things worth recording about how this was found:
+
+- The check does **not** belong in the smoke run. Put there, it reported a
+  number that was an artifact of that harness's own brevity — the smoke run gets
+  through about forty physics frames, which is not enough for a body to be
+  pinned, ejected and settle. It lives in `live_run.gd`, which is the layer
+  CLAUDE.md already says exists for "anything that only breaks with real
+  frames", and this is exactly that.
+- Pairing a patient with a bed by room key picked somebody else's bed twenty
+  metres away, because earlier checks in the same run wheel a bed into Intake.
+  It asks the body which bed it is bound to.
+
+Free consequence: five patients no longer run the character solver at all, and
+the measured frame went from 3.74 ms mean to **2.88 ms**.
+
+Also, the hair is a squashed sphere rather than a box. A slab reads as hair from
+straight on only, and a patient in bed is rotated ninety degrees and seen from
+the side — from there it was a dark plank stuck to the side of somebody's face.
+The comment above that line has described this exact bug since the first pass;
+it was the shape that was wrong, not the size.
+
+Verified: 1,585 assertions · 124 smoke · 26 live · boot check · 21/21 balance ·
+40 screenshots.

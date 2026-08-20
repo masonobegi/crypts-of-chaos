@@ -61,6 +61,18 @@ var _startle := 0.0
 var on_duty := true
 var _duty_layer := 8
 var _off_duty_at := Vector3.ZERO
+## Held in place by something else — a bed, for now. A pinned body does no
+## physics at all.
+##
+## A patient in bed is re-pinned to the bed's origin every frame, and then the
+## solver ran anyway: the bed's collision box is 1.0 x 0.7 x 2.1 about its own
+## centre, the patient was pinned INSIDE it, and depenetration ejected them half
+## a metre straight up. Every patient in the game has been hovering above their
+## bed since beds were added, which reads at a distance as somebody lying down
+## and at two metres as a head floating over the linen with no body attached.
+## The screenshots were ambiguous enough to argue about; a smoke check that
+## measures the head against the mattress is not.
+var pinned := false
 ## Set while getting out of somebody's way. See step_aside().
 var _yield_time := 0.0
 var _yield_dir := Vector3.ZERO
@@ -121,8 +133,15 @@ func _build_body() -> void:
 	# a helmet — and a patient lying in a bed is rotated ninety degrees, so the
 	# first rendered close-up was a brown block where a face should be with two
 	# eyes peering over the top of it.
-	_head.add_child(Build.mi(Build.box_mesh(Vector3(0.31, 0.12, 0.29)), Build.mat(hair),
-		Vector3(0, 0.135, -0.035)))
+	# A squashed SPHERE, not a box. A slab reads as hair only from straight on;
+	# a patient lying in bed is rotated ninety degrees and seen from the side at
+	# a metre and a half, and from there the box was a dark plank stuck to the
+	# side of somebody's face. Scaling a sphere keeps it a rounded skull cap
+	# from every angle the game can actually be looked at from, which for the
+	# closest thing to a character model in this project is worth the extra
+	# fifty triangles.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.203), Build.mat(hair),
+		Vector3(0, 0.052, -0.028), Vector3.ZERO, Vector3(1.0, 0.72, 1.0)))
 	# Eyes: the cheapest possible way to make "is this person looking at me"
 	# legible across a corridor, which the whole suspicion system depends on.
 	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
@@ -317,6 +336,13 @@ func _physics_process(delta: float) -> void:
 		_follow_path(delta)
 	_face(delta)
 	_open_door_ahead()
+	if pinned:
+		velocity = Vector3.ZERO
+		_intended_speed = 0.0
+		_animate(delta)
+		_tick_speech(delta)
+		return
+
 	# Somebody standing still does not need the solver.
 	#
 	# move_and_slide() was measured at roughly four fifths of all the time this
@@ -614,7 +640,9 @@ func set_reclined(on: bool) -> void:
 		return
 	var b: Node3D = body
 	b.rotation.x = -PI * 0.5 if on else 0.0
-	b.position = Vector3(0, 0.86, 0.52) if on else Vector3.ZERO
+	# 1.02 puts the head on the pillow rather than a hand's width above it: the
+	# mattress top is 0.78 over the bed's origin and a head is 0.20 across.
+	b.position = Vector3(0, 1.02, 0.52) if on else Vector3.ZERO
 	if _nametag:
 		_nametag.position.y = 1.35 if on else 1.92 * height_scale
 	if _speech:

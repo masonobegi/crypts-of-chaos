@@ -55,6 +55,7 @@ func _hold_bed_pose(_delta: float) -> void:
 	if in_bed != _reclined:
 		_reclined = in_bed
 		set_reclined(in_bed)
+	pinned = in_bed
 	if not in_bed:
 		return
 	global_position = bed.global_position

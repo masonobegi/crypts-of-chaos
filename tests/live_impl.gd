@@ -389,6 +389,7 @@ func _finish() -> void:
 		"a witness in the room recorded a blatant act (%d)" % _seen_in_the_open)
 	_ok(_seen_through_wall == 0,
 		"a ward wall stopped that same act being seen (%d)" % _seen_through_wall)
+	_check_a_patient_is_actually_in_the_bed()
 	_ok(_witness_took_a_note == 1,
 		"and she stopped and wrote it down where the player could see her do it")
 	_ok(_witness_suspicion > 0.0,
@@ -438,6 +439,40 @@ func _finish() -> void:
 	_ok(progressed, "the simulation advanced patient state")
 
 	_report()
+
+## Is the person in the bed, or beside it?
+##
+## The closest look a player ever gets at a character is a patient lying two
+## metres away, and screenshots of that were ambiguous enough to argue about: a
+## head, some linen, and no obvious body. Numbers settle it.
+##
+## This lives HERE and not in the smoke run because it is entirely a
+## real-frames question — the smoke harness gets through about forty physics
+## frames, which is not enough for a body to be pinned, ejected and settle, so
+## it reported a number that was an artifact of its own brevity.
+func _check_a_patient_is_actually_in_the_bed() -> void:
+	var body = null
+	var bed = null
+	for cand in game.patient_system.active():
+		var b = game.patient_system.get_body(cand.id)
+		if b == null or b.state != PatientNPC.State.IN_BED:
+			continue
+		if b.bed == null or not is_instance_valid(b.bed):
+			continue
+		body = b
+		bed = b.bed
+		break
+	if body == null:
+		_ok(false, "somebody on this ward is in a bed")
+		return
+
+	var rel: Vector3 = body.head_position() - bed.global_position
+	# The bed frame is 1.0 x 2.1 about its own origin; mattress top is +0.78.
+	_ok(absf(rel.x) < 0.5, "the patient's head is over the bed, not beside it (x %+.2f)" % rel.x)
+	_ok(rel.z < -0.15 and rel.z > -1.05,
+		"and at the pillow end rather than the foot (z %+.2f)" % rel.z)
+	_ok(rel.y > 0.85 and rel.y < 1.20,
+		"and resting on the mattress rather than hovering over it (y %+.2f)" % rel.y)
 
 # ------------------------------------------------------------------ cost
 ## Phase 19. What a frame of this game actually costs, measured on the one

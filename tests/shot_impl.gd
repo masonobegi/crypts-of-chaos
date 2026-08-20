@@ -165,7 +165,11 @@ const SHOTS := [
 	# Close enough to see a face. Characters are the one thing in this game that
 	# has to read at four metres AND at forty, and every other shot is framed
 	# for the room.
-	["04b_bedside", Vector3(4.9, 1.55, 8.4), Vector3(3.1, 1.15, 10.4)],
+	# Beside the pillow, looking across at the face — where a doctor stands.
+	# Down the bed from the foot the headboard is between the camera and the
+	# patient (it is 1.06 x 0.5 and sits at z -1.05), and off to one side you
+	# get the back of a head behind an IV stand.
+	["04b_bedside", Vector3(5.1, 1.68, 8.8), Vector3(3.05, 1.14, 9.9)],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
 	["06_treatment_bay", Vector3(24.0, 1.7, -2.0), Vector3(24.0, 1.3, -9.0)],
 	["07_supply", Vector3(32.0, 1.7, -2.0), Vector3(31.0, 1.3, -8.0)],

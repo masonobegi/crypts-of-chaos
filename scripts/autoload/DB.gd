@@ -155,6 +155,7 @@ static func staff_on(kind: String) -> int:
 const CONDITIONS := {
 	"funny_bone": {
 		"name": "Inflamed Funny Bone",
+		"procedure": "dial",
 		"desc": "The bone is not funny. It is furious.",
 		"base_days": 2.0, "rate": 0.55, "revenue": 1200,
 		"treats": ["percussive_realign", "chalkinol", "rest"],
@@ -163,6 +164,7 @@ const CONDITIONS := {
 	},
 	"chronic_beige": {
 		"name": "Chronic Beige",
+		"procedure": "prescribe",
 		"desc": "Patient is beiging. Prognosis: taupe.",
 		"base_days": 3.0, "rate": 0.4, "revenue": 900,
 		"treats": ["vibe_stabilize", "colour_therapy", "rest"],
@@ -171,6 +173,7 @@ const CONDITIONS := {
 	},
 	"spleen_torque": {
 		"name": "Excessive Spleen Torque",
+		"procedure": "dial",
 		"desc": "Spleen is over-tightened. Do not overtighten the spleen.",
 		"base_days": 2.5, "rate": 0.48, "revenue": 1500,
 		"treats": ["torque_wrench", "humour_rebalance", "fluids"],
@@ -179,6 +182,7 @@ const CONDITIONS := {
 	},
 	"percussive_sinus": {
 		"name": "Percussive Sinus Syndrome",
+		"procedure": "suture",
 		"desc": "Sinuses keep time. Badly.",
 		"base_days": 1.5, "rate": 0.7, "revenue": 700,
 		"treats": ["steam_tent", "chalkinol", "rest"],
@@ -187,6 +191,7 @@ const CONDITIONS := {
 	},
 	"gravitational_confusion": {
 		"name": "Mild Gravitational Confusion",
+		"procedure": "dial",
 		"desc": "Patient is unsure which way is down. Down is unsure too.",
 		"base_days": 4.0, "rate": 0.32, "revenue": 1800,
 		"treats": ["vibe_stabilize", "weighted_blanket", "fluids"],
@@ -195,6 +200,7 @@ const CONDITIONS := {
 	},
 	"calcified_grudge": {
 		"name": "Calcified Grudge",
+		"procedure": "suture",
 		"desc": "An old resentment has hardened into a physical object.",
 		"base_days": 5.0, "rate": 0.26, "revenue": 2200,
 		"treats": ["dread_extraction", "talk_therapy_lite", "rest"],
@@ -203,6 +209,7 @@ const CONDITIONS := {
 	},
 	"knuckle_weather": {
 		"name": "Localised Knuckle Weather",
+		"procedure": "suture",
 		"desc": "It is raining in one hand.",
 		"base_days": 2.0, "rate": 0.52, "revenue": 1000,
 		"treats": ["steam_tent", "warm_compress", "chalkinol"],
@@ -211,6 +218,7 @@ const CONDITIONS := {
 	},
 	"lactose_hostility": {
 		"name": "Lactose Hostility",
+		"procedure": "prescribe",
 		"desc": "Beyond intolerance. The dairy started it, allegedly.",
 		"base_days": 1.0, "rate": 0.85, "revenue": 600,
 		"treats": ["placebex", "fluids", "rest"],
@@ -219,6 +227,7 @@ const CONDITIONS := {
 	},
 	"reverse_shivers": {
 		"name": "Reverse Shivers",
+		"procedure": "prescribe",
 		"desc": "Shivering outward. The room gets cold instead.",
 		"base_days": 3.0, "rate": 0.38, "revenue": 1400,
 		"treats": ["warm_compress", "weighted_blanket", "vibe_stabilize"],
@@ -227,6 +236,7 @@ const CONDITIONS := {
 	},
 	"ossified_vibes": {
 		"name": "Ossified Vibes",
+		"procedure": "dial",
 		"desc": "The vibes have gone to bone. Rare. Expensive.",
 		"base_days": 6.0, "rate": 0.22, "revenue": 2600,
 		"treats": ["dread_extraction", "vibe_stabilize", "humour_rebalance"],
@@ -235,6 +245,7 @@ const CONDITIONS := {
 	},
 	"spontaneous_tuesday": {
 		"name": "Spontaneous Tuesday",
+		"procedure": "prescribe",
 		"desc": "It is Tuesday inside this patient regardless of external evidence.",
 		"base_days": 2.0, "rate": 0.5, "revenue": 1100,
 		"treats": ["talk_therapy_lite", "placebex", "rest"],
@@ -243,6 +254,7 @@ const CONDITIONS := {
 	},
 	"acute_moustache_strain": {
 		"name": "Acute Moustache Strain",
+		"procedure": "suture",
 		"desc": "Overexertion of facial hair. Often competitive.",
 		"base_days": 1.5, "rate": 0.66, "revenue": 800,
 		"treats": ["warm_compress", "rest", "chalkinol"],
@@ -251,6 +263,7 @@ const CONDITIONS := {
 	},
 	"bilateral_opinions": {
 		"name": "Bilateral Wrist Opinions",
+		"procedure": "dial",
 		"desc": "Both wrists have views. The views differ.",
 		"base_days": 2.5, "rate": 0.46, "revenue": 1300,
 		"treats": ["opinion_realign", "torque_wrench", "rest"],
@@ -259,6 +272,7 @@ const CONDITIONS := {
 	},
 	"recursive_sneeze": {
 		"name": "Recursive Sneeze",
+		"procedure": "prescribe",
 		"desc": "Each sneeze causes the previous sneeze. Do not think about it.",
 		"base_days": 2.0, "rate": 0.54, "revenue": 1150,
 		"treats": ["steam_tent", "ultrasonic_dusting", "placebex"],
@@ -267,6 +281,7 @@ const CONDITIONS := {
 	},
 	"unfinished_yawn": {
 		"name": "Chronic Unfinished Yawn",
+		"procedure": "prescribe",
 		"desc": "It has been going since Thursday. It is not going well.",
 		"base_days": 3.5, "rate": 0.34, "revenue": 1600,
 		"treats": ["counter_yawn", "dread_extraction", "rest"],
@@ -275,6 +290,7 @@ const CONDITIONS := {
 	},
 	"borrowed_ache": {
 		"name": "Borrowed Ache",
+		"procedure": "prescribe",
 		"desc": "The ache belongs to somebody else. Nobody has come forward.",
 		"base_days": 3.0, "rate": 0.4, "revenue": 1450,
 		"treats": ["talk_therapy_lite", "vibe_stabilize", "warm_compress"],
@@ -283,6 +299,7 @@ const CONDITIONS := {
 	},
 	"magnetic_indecision": {
 		"name": "Magnetic Indecision",
+		"procedure": "dial",
 		"desc": "Cannot choose. Attracts cutlery while failing to.",
 		"base_days": 4.0, "rate": 0.3, "revenue": 1900,
 		"treats": ["vibe_stabilize", "opinion_realign", "weighted_blanket"],
@@ -291,6 +308,7 @@ const CONDITIONS := {
 	},
 	"premonitory_hangover": {
 		"name": "Premonitory Hangover",
+		"procedure": "prescribe",
 		"desc": "The hangover has arrived early. The event has not been scheduled.",
 		"base_days": 1.5, "rate": 0.7, "revenue": 750,
 		"treats": ["fluids", "chalkinol", "rest"],
@@ -300,6 +318,7 @@ const CONDITIONS := {
 	# ---------------------------------------------------------- emergency dept
 	"acute_shatter": {
 		"name": "Acute Vibe Shatter",
+		"procedure": "set_bone",
 		"desc": "Something broke. Loudly. Internally.",
 		"base_days": 1.0, "rate": 0.95, "revenue": 3200,
 		"treats": ["vibe_stabilize", "fluids", "chalkinol"],
@@ -308,6 +327,7 @@ const CONDITIONS := {
 	},
 	"percussive_collapse": {
 		"name": "Percussive Collapse",
+		"procedure": "set_bone",
 		"desc": "The rhythm section has given out entirely.",
 		"base_days": 1.5, "rate": 0.8, "revenue": 2800,
 		"treats": ["percussive_realign", "fluids", "humour_rebalance"],
@@ -316,6 +336,7 @@ const CONDITIONS := {
 	},
 	"catastrophic_yawn": {
 		"name": "Catastrophic Yawn",
+		"procedure": "prescribe",
 		"desc": "It got away from them.",
 		"base_days": 1.0, "rate": 0.9, "revenue": 2600,
 		"treats": ["counter_yawn", "dread_extraction", "fluids"],
@@ -325,6 +346,7 @@ const CONDITIONS := {
 	# ---------------------------------------------------------- radiology
 	"opaque_torso": {
 		"name": "Radiologically Opaque Torso",
+		"procedure": "set_bone",
 		"desc": "Nothing gets through. Nobody knows what is in there.",
 		"base_days": 4.0, "rate": 0.3, "revenue": 2100,
 		"treats": ["imaging", "ultrasonic_dusting", "vibe_stabilize"],
@@ -333,6 +355,7 @@ const CONDITIONS := {
 	},
 	"ghost_fracture": {
 		"name": "Ghost Fracture",
+		"procedure": "set_bone",
 		"desc": "A break that is not there yet.",
 		"base_days": 3.0, "rate": 0.38, "revenue": 1900,
 		"treats": ["imaging", "weighted_blanket", "warm_compress"],
@@ -342,6 +365,7 @@ const CONDITIONS := {
 	# ---------------------------------------------------------- psychiatry
 	"recursive_worry": {
 		"name": "Recursive Worry",
+		"procedure": "dial",
 		"desc": "Worried about the worrying. And about that.",
 		"base_days": 4.0, "rate": 0.28, "revenue": 1700,
 		"treats": ["talk_therapy_lite", "dread_extraction", "colour_therapy"],
@@ -350,6 +374,7 @@ const CONDITIONS := {
 	},
 	"borrowed_conviction": {
 		"name": "Borrowed Conviction",
+		"procedure": "dial",
 		"desc": "Absolutely certain about something that belongs to somebody else.",
 		"base_days": 5.0, "rate": 0.24, "revenue": 2000,
 		"treats": ["talk_therapy_lite", "vibe_stabilize", "rest"],
@@ -358,6 +383,7 @@ const CONDITIONS := {
 	},
 	"clerical_lung": {
 		"name": "Clerical Lung",
+		"procedure": "prescribe",
 		"desc": "Breathing has become administrative.",
 		"base_days": 5.0, "rate": 0.25, "revenue": 2400,
 		"treats": ["dread_extraction", "ultrasonic_dusting", "steam_tent"],
@@ -367,6 +393,7 @@ const CONDITIONS := {
 	# ---- second wave. Everything here is invented, and deliberately absurd.
 	"escalating_posture": {
 		"name": "Escalating Posture",
+		"procedure": "suture",
 		"desc": "Patient is becoming imperceptibly taller. Perceptibly.",
 		"base_days": 2.5, "rate": 0.5, "revenue": 1300,
 		"treats": ["reorientation_walk", "percussive_realign", "rest"],
@@ -375,6 +402,7 @@ const CONDITIONS := {
 	},
 	"residual_monday": {
 		"name": "Residual Monday",
+		"procedure": "prescribe",
 		"desc": "It is not Monday. They are still in one.",
 		"base_days": 3.5, "rate": 0.35, "revenue": 1050,
 		"treats": ["rest", "colour_therapy", "sequential_apology"],
@@ -383,6 +411,7 @@ const CONDITIONS := {
 	},
 	"argumentative_reflex": {
 		"name": "Argumentative Reflex",
+		"procedure": "suture",
 		"desc": "The reflex does not respond. It replies.",
 		"base_days": 2.0, "rate": 0.6, "revenue": 1150,
 		"treats": ["opinion_realign", "sequential_apology", "rest"],
@@ -391,6 +420,7 @@ const CONDITIONS := {
 	},
 	"perforated_patience": {
 		"name": "Perforated Patience",
+		"procedure": "prescribe",
 		"desc": "Structurally sound. Emotionally draughty.",
 		"base_days": 4.0, "rate": 0.3, "revenue": 1600,
 		"treats": ["pressure_bath", "talk_therapy_lite", "steam_tent"],
@@ -399,6 +429,7 @@ const CONDITIONS := {
 	},
 	"chronic_certainty": {
 		"name": "Chronic Certainty",
+		"procedure": "dial",
 		"desc": "Has never said 'maybe' and is not about to start.",
 		"base_days": 5.0, "rate": 0.26, "revenue": 1700,
 		"treats": ["talk_therapy_lite", "opinion_realign", "sequential_apology"],
@@ -407,6 +438,7 @@ const CONDITIONS := {
 	},
 	"ambient_grievance": {
 		"name": "Ambient Grievance",
+		"procedure": "prescribe",
 		"desc": "The grievance predates the admission by some years.",
 		"base_days": 4.5, "rate": 0.28, "revenue": 1550,
 		"treats": ["talk_therapy_lite", "colour_therapy", "weighted_blanket"],
@@ -415,6 +447,7 @@ const CONDITIONS := {
 	},
 	"acute_deflation": {
 		"name": "Acute Deflation",
+		"procedure": "prescribe",
 		"desc": "Visibly less than they were this morning.",
 		"base_days": 1.2, "rate": 0.9, "revenue": 3100,
 		"treats": ["steam_tent", "fluids", "pressure_bath"],
@@ -423,6 +456,7 @@ const CONDITIONS := {
 	},
 	"latent_geometry": {
 		"name": "Latent Geometry",
+		"procedure": "set_bone",
 		"desc": "The angles do not add up. They have been checked twice.",
 		"base_days": 3.0, "rate": 0.42, "revenue": 2100,
 		"treats": ["imaging", "static_discharge", "ultrasonic_dusting"],
@@ -434,7 +468,8 @@ const CONDITIONS := {
 	# point: a fractured wrist reads identically on the chart whether they
 	# arrived with it or acquired it here. What differs is when it was written.
 	"fractured_wrist": {
-		"name": "Fractured Wrist", "injury": true, "part": "wrist",
+		"name": "Fractured Wrist",
+		"procedure": "set_bone", "injury": true, "part": "wrist",
 		"desc": "Fell off something. Says it was a kerb.",
 		"base_days": 3.0, "rate": 0.4, "revenue": 1500,
 		"treats": ["splinting", "pressure_bath", "rest"],
@@ -442,7 +477,8 @@ const CONDITIONS := {
 		"color": Color(0.86, 0.72, 0.66),
 	},
 	"fractured_ankle": {
-		"name": "Fractured Ankle", "injury": true, "part": "ankle",
+		"name": "Fractured Ankle",
+		"procedure": "set_bone", "injury": true, "part": "ankle",
 		"desc": "Stairs. It is always stairs.",
 		"base_days": 4.0, "rate": 0.34, "revenue": 1650,
 		"treats": ["splinting", "rest", "pressure_bath"],
@@ -450,7 +486,8 @@ const CONDITIONS := {
 		"color": Color(0.80, 0.66, 0.60),
 	},
 	"cracked_ribs": {
-		"name": "Cracked Ribs", "injury": true, "part": "ribs",
+		"name": "Cracked Ribs",
+		"procedure": "set_bone", "injury": true, "part": "ribs",
 		"desc": "Breathing has become a considered decision.",
 		"base_days": 4.5, "rate": 0.3, "revenue": 1750,
 		"treats": ["rest", "pressure_bath", "sling_support"],
@@ -458,7 +495,8 @@ const CONDITIONS := {
 		"color": Color(0.78, 0.62, 0.62),
 	},
 	"dislocated_shoulder": {
-		"name": "Dislocated Shoulder", "injury": true, "part": "shoulder",
+		"name": "Dislocated Shoulder",
+		"procedure": "set_bone", "injury": true, "part": "shoulder",
 		"desc": "Out. Was in this morning.",
 		"base_days": 2.5, "rate": 0.5, "revenue": 1450,
 		"treats": ["reduction", "sling_support", "rest"],
@@ -466,7 +504,8 @@ const CONDITIONS := {
 		"color": Color(0.84, 0.70, 0.64),
 	},
 	"torn_knee": {
-		"name": "Torn Knee", "injury": true, "part": "knee",
+		"name": "Torn Knee",
+		"procedure": "set_bone", "injury": true, "part": "knee",
 		"desc": "Went one way. Knee went the other.",
 		"base_days": 5.0, "rate": 0.26, "revenue": 1800,
 		"treats": ["splinting", "rest", "pressure_bath"],
@@ -474,7 +513,8 @@ const CONDITIONS := {
 		"color": Color(0.76, 0.68, 0.62),
 	},
 	"concussion": {
-		"name": "Concussion", "injury": true, "part": "head",
+		"name": "Concussion",
+		"procedure": "dial", "injury": true, "part": "head",
 		"desc": "Present, mostly. Asks the same question twice.",
 		"base_days": 1.6, "rate": 0.62, "revenue": 2400,
 		"treats": ["rest", "reorientation_walk", "imaging"],

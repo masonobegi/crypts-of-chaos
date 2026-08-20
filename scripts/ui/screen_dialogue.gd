@@ -64,6 +64,19 @@ func _build() -> void:
 	# The clinical action, kept out of the conversation list because it is not a
 	# thing you say to somebody.
 	if _patient != null and not _patient.discharged:
+		# The procedure this person's actual ailment calls for. Forty conditions
+		# used to funnel into one dial; a broken wrist and a head cold are not
+		# the same job and should not be the same verb.
+		var kind := Procedures.procedure_for(_patient.condition_id)
+		if kind == "set_bone" or kind == "prescribe":
+			var screen := "setbone" if kind == "set_bone" else "medicate"
+			var pb := UIKit.button(Procedures.procedure_name(kind), func():
+				var pid: String = _patient.id
+				close()
+				EventBus.request_ui.emit(screen, {"patient_id": pid}),
+				Color(0.20, 0.32, 0.30))
+			pb.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			v.add_child(pb)
 		var ex := UIKit.button("Examine them", func():
 			var pid: String = _patient.id
 			close()

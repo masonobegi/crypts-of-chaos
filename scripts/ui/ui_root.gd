@@ -10,6 +10,8 @@ const SCREEN_SCRIPTS := {
 	"exam": "res://scripts/ui/screen_exam.gd",
 	"surgery": "res://scripts/ui/screen_surgery.gd",
 	"prescribe": "res://scripts/ui/screen_prescribe.gd",
+	"setbone": "res://scripts/ui/screen_setbone.gd",
+	"medicate": "res://scripts/ui/screen_medicate.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"statement": "res://scripts/ui/screen_statement.gd",

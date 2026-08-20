@@ -41,6 +41,16 @@ func shift_system():
 func player():
 	return get_tree().get_first_node_in_group("player")
 
+func treatment_system():
+	return get_tree().get_first_node_in_group("treatment_system")
+
+## Where the act happened, for the witnessing pass. A procedure performed at a
+## bedside is seen from the doorway; the same procedure is not seen at all if
+## the door is shut, which is the whole reason doors matter.
+func player_position() -> Vector3:
+	var p = player()
+	return p.global_position if p != null else Vector3.ZERO
+
 ## Rebuild the whole screen in place — simpler and less bug-prone than trying to
 ## patch individual widgets after an action changes the underlying data.
 func rebuild() -> void:

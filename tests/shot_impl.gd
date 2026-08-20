@@ -29,6 +29,8 @@ const UI_SHOTS := [
 	["25_review", "review"],
 	["26_statement", "statement"],
 	["27_upgrades", "upgrades"],
+	["20e_setbone", "setbone"],
+	["20f_medicate", "medicate"],
 	["27b_settings", "settings"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
@@ -93,6 +95,20 @@ func _ui_context(id: String) -> Dictionary:
 			if pool.is_empty():
 				return {}
 			return {"patient_id": pool[0].id}
+		"setbone", "medicate":
+			# A patient whose ailment actually calls for this procedure, so the
+			# screenshot is of the thing rather than of a fallback.
+			var want := "set_bone" if id == "setbone" else "prescribe"
+			for cand in game.patient_system.active():
+				if Procedures.procedure_for(cand.condition_id) == want:
+					return {"patient_id": cand.id}
+			# Nobody on the ward has one today: give the first patient the
+			# condition, so the screen still has something to draw.
+			var any: Array = game.patient_system.active()
+			if any.is_empty():
+				return {}
+			any[0].condition_id = "fractured_wrist" if want == "set_bone" else "chronic_beige"
+			return {"patient_id": any[0].id}
 		"chart", "dialogue":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():

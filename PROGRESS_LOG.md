@@ -2617,3 +2617,61 @@ the rails and turns it into a buzz.
 
 Audio also split into master / effects / ambience, so the settings sliders have
 something to move, and `refresh_music_volume()` is called when they do.
+
+## The redesign — stage A and the first half of B
+
+Playtest two produced a direction change, not a bug list. Recorded here because
+the shape of the game is now different from everything above.
+
+**The game is three phases**: doctor (day), criminal (night), courtroom (when
+sued). Patients are not all bedridden. Ailments play differently from each
+other. Discharging too early can get you sued. Five rooms is the constraint the
+whole thing turns on.
+
+### Feel bugs from the session
+
+**"When people are walking backwards I can still see their face."** Two bugs in
+`_face()`. The sign was wrong — this model's eyes are on its local +Z, so the
+yaw that faces direction d is `atan2(d.x, d.z)`, and `atan2(-d.x, -d.z)` is a
+hundred and eighty degrees out. Every character in the building walked backwards
+down the corridor looking straight at you. (The doors had the identical bug
+months ago; it is a very easy sign to get wrong when +Z is forward.) And a look
+target outranked movement, so anybody who noticed you turned to face you and
+then moonwalked wherever they were going. The body follows where it is walking
+now and the head turns separately, clamped to what a neck can do — which is what
+lets a nurse walk past while watching you, the single most important thing a
+witness can be seen doing.
+
+**"Talking to people feels weird, the subtitles go so quick."** Replies type out
+at the speed of speech with a voice blip per syllable, pitched off the
+character's own id from three timbres so a ward is a ward of different voices,
+and a click hurries the line along. World barks now hold for a length scaled to
+how much there is to read rather than a flat 3.2 seconds.
+
+### Ailments that are different jobs
+
+Forty conditions funnelled into one verb: turn a dial, read a toast. A broken
+wrist and a head cold are not the same job.
+
+Every condition now names a **procedure**, and each is a different thing to do
+with your hands, with an honest option and a dishonest one — and the dishonest
+one is never a button that says so. It is the same interaction performed
+differently, and usually performed *better*, because it takes more skill to
+injure somebody plausibly than to help them.
+
+**Setting a bone** is a needle sweeping a five-band bar. The clean window is
+narrow and central; the two ruinous bands are wide and at the ends. Helping is a
+skill check you can fail by accident; harming is one you can pass on purpose.
+Clean: a fee now, they improve, the bed frees up. Displaced further: the stay
+grows by two days of billing, a complication, and a lawsuit risk.
+
+**Prescribing** is knowledge, not skill. The right drug is on the chart if you
+examined them; otherwise you are going on the name of the illness. Three
+outcomes, and only one is violence — `inert` is the interesting one: a sugar
+pill does no harm, leaves nothing on a body, and they are still in the bed
+tomorrow. The most profitable honest-*looking* act in the game, and the record
+of it is a correctly filed prescription for the wrong thing.
+
+The tradeoff is the same shape everywhere because it is the thesis: treat them
+well and you get a fee and your bed back; treat them badly and the bed keeps
+paying until somebody sues.

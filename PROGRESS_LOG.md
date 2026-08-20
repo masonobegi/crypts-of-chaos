@@ -2310,3 +2310,25 @@ it the moment the work is done, which is what makes a booked list feel like a
 list rather than a chore.
 
 The backing panel had to grow with it, or the census line hangs off the bottom.
+
+## The one door of eleven that failed was not a door
+
+`play.sh doors` has had ward 102's lateral approach red for as long as the
+harness has existed, and it has been written down twice as a door bug. It was a
+bench.
+
+The corridor benches sat at x 11.0 and 12.4. Ward 102's opening starts at 12.8.
+Four centimetres of clearance, on exactly the line a player walking the north
+wall arrives on — so they caught the bench, stopped dead half a metre short of a
+door that was working perfectly, and the prompt in front of them said "or just
+walk into it". The benches now sit in the middle of the gaps between openings,
+and all eleven doors pass from all three approaches.
+
+Two harness improvements got there. `push_forward` timeouts print the same
+blocker diagnostic a `walk` timeout does — without it, a door failure reported
+only that it had not happened, which is the one thing already obvious from the
+timing. And `_blockers` names each collider's position and its parent chain
+rather than printing `@StaticBody3D@727`, which identifies nothing: walls,
+counters and chairs are all auto-named static bodies, and the answer here was
+entirely in "under an anonymous Node3D at (12, 0, 4)" — the shape of a
+`Furniture._chair`.

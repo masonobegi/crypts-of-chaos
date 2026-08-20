@@ -54,6 +54,13 @@ func tick() -> bool:
 	if done or _beat_frames > int(float(b.get("timeout", 20.0)) * FPS):
 		if not done:
 			_say("  ! TIMED OUT after %.1fs: %s" % [_beat_frames / FPS, _describe(b)])
+			if String(b["do"]) == "push_forward":
+				# Same diagnostic a walk gets. Without it a door failure reports
+				# only that it did not happen, which is the one thing already
+				# obvious from the timing.
+				_say("      stopped at %s facing %s, against %s" % [
+					str(game.player.global_position.round()), str(b["at"].round()),
+					_blockers(game.player)])
 			if String(b["do"]) == "walk":
 				_say("      stopped at %s, leg %d of %d%s, against %s" % [
 					str(game.player.global_position.round()), _leg, _route.size(),
@@ -360,6 +367,17 @@ func _blockers(p) -> String:
 		var label := String(o.name)
 		if o.has_method("get_class"):
 			label += " (%s)" % o.get_class()
+		# Walls and counters are auto-named StaticBody3D@nnn, which identifies
+		# nothing. Where it is, and what its parent is, does.
+		if o is Node3D:
+			label += " at %s" % str((o as Node3D).global_position.round())
+		if o is Node and (o as Node).get_parent() != null:
+			var par: Node = (o as Node).get_parent()
+			label += " under %s" % String(par.name)
+			if par.get_parent() != null:
+				label += "/%s" % String(par.get_parent().name)
+			if par is Node3D:
+				label += " @%s" % str((par as Node3D).global_position.round())
 		if o.get("display") != null and String(o.get("display")) != "":
 			label = "%s [%s]" % [label, String(o.get("display"))]
 		if not names.has(label):

@@ -251,8 +251,16 @@ static func _corridor(h: Hospital, r: Room) -> void:
 	_prop(h, "wheelchair", Vector3(9.5, 0.55, z + 1.2), 0.4)
 	_prop(h, "wheelchair", Vector3(30.5, 0.55, z - 1.2), -1.1)
 	_iv_stand(h, Vector3(17.0, 0, z + 1.3))
-	# Benches along the corridor wall.
-	for x in [11.0, 12.4, 38.0, 39.4]:
+	# Benches along the corridor wall, clear of every doorway.
+	#
+	# The pair used to sit at 11.0 and 12.4, and ward 102's opening starts at
+	# 12.8 — so the second bench was four centimetres of clearance from the
+	# doorway a player walking the north wall arrives at, and they caught on it
+	# every time. It was the one door of eleven that failed the door harness's
+	# lateral approach, and it read for a long time as a fault in the door.
+	# North-wing openings are 3.8-5.2, 12.8-14.2, 22.3-23.7, 31.8-33.2 and
+	# 40.8-42.2; these sit in the middle of two of the gaps between them.
+	for x in [9.4, 10.8, 37.0, 38.4]:
 		_chair(h, Vector3(x, 0, z + 1.5), PI)
 	_wall_sign(h, "◄  WARDS 101-105        TREATMENT  ►", Vector3(23.0, 2.6, 3.85), PI, 0.16)
 

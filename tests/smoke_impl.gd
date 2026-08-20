@@ -48,6 +48,7 @@ func tick() -> bool:
 			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
 			_check_a_family_row_keeps_going()
+			_check_the_money_is_visible_in_the_building()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
 			stage = "close"
@@ -478,6 +479,33 @@ func _check_the_morning_only_happens_once() -> void:
 ## so the five people who would normally be lying there watching you work are
 ## five people who are not. It is not free: they wake to a bang, so the
 ## distraction that moved the nurse also wakes the man in the next bed.
+## Eighteen upgrades and the only one you could SEE was a shutter rolling up.
+## This asserts the fittings exist, that they track ownership rather than being
+## built once, and that they survive the rebuild a save-load triggers — a career
+## restored from disk finding a bare ward would read as having lost the money.
+func _check_the_money_is_visible_in_the_building() -> void:
+	var h = game.hospital
+	var owned_before: Array = GameState.owned_upgrades.duplicate()
+
+	GameState.owned_upgrades.clear()
+	h.refresh_fittings()
+	var bare: int = h.get_node("Fittings").get_child_count()
+	_ok(bare == 0, "a ward nobody has spent anything on has no fittings in it")
+
+	for id in ["security_cameras", "private_rooms", "shred_bin", "board_appointment"]:
+		GameState.owned_upgrades.append(id)
+	h.refresh_fittings()
+	var kitted: int = h.get_node("Fittings").get_child_count()
+	_ok(kitted > bare, "buying things puts things in the building (%d)" % kitted)
+
+	# Twice in a row must not stack: this runs on build, on purchase AND on load.
+	h.refresh_fittings()
+	_ok(h.get_node("Fittings").get_child_count() == kitted,
+		"and refreshing again does not build a second set of them")
+
+	GameState.owned_upgrades.assign(owned_before)
+	h.refresh_fittings()
+
 ## A family dispute is supposed to be a day-long condition of the ward, not a
 ## single WorldEvent thirty seconds into the morning. Both halves of the row
 ## used to walk out of the building on their first physics frame, and nothing

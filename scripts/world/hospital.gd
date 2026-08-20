@@ -69,8 +69,10 @@ func build() -> void:
 	var blocked := Furniture.furnish(self)
 	_bake_nav(blocked)
 	_build_shutters()
+	refresh_fittings()
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
 	EventBus.game_loaded.connect(refresh_departments)
+	EventBus.game_loaded.connect(refresh_fittings)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
 
 # ------------------------------------------------------------------ rooms
@@ -279,6 +281,165 @@ func _build_shutters() -> void:
 
 func _on_upgrade_purchased(_id: String) -> void:
 	refresh_departments()
+	refresh_fittings()
+
+# ------------------------------------------------------------------ fittings
+## What the money BOUGHT, standing in the building.
+##
+## Eighteen upgrades, and the only one of them you could see was a department
+## shutter rolling up. Everything else — cameras watching the corridor, curtains
+## round every bed, the confidential-waste bin, a seat on the board — was a
+## boolean read by a system and never by the player, so a career's worth of
+## reinvestment left the ward looking exactly as it did on the first morning.
+## Half of these change how you have to play; you should be able to walk down
+## the corridor and see which half you bought.
+##
+## Rebuilt wholesale rather than diffed: it runs on build, on purchase and on
+## load, and a career restored from disk must find its fittings there.
+var _fittings: Node3D = null
+
+func refresh_fittings() -> void:
+	if _fittings != null and is_instance_valid(_fittings):
+		# remove_child BEFORE freeing. queue_free() is deferred, so the old node
+		# is still a child holding the name "Fittings" when the new one is added
+		# — Godot renames the newcomer to "Fittings2", get_node("Fittings")
+		# returns the corpse, and every refresh quietly adds another whole set of
+		# cameras and curtains on top of the last.
+		remove_child(_fittings)
+		_fittings.queue_free()
+	_fittings = Node3D.new()
+	_fittings.name = "Fittings"
+	add_child(_fittings)
+
+	if GameState.has_upgrade("security_cameras"):
+		_fit_cameras()
+	if GameState.has_upgrade("private_rooms"):
+		_fit_curtains()
+	if GameState.has_upgrade("better_beds"):
+		_fit_bed_rails()
+	if GameState.has_upgrade("shred_bin"):
+		_fit_shred_bin()
+	if GameState.has_upgrade("vip_suite"):
+		_fit_vip()
+	if GameState.has_upgrade("board_appointment") or GameState.has_upgrade("legal_retainer"):
+		_fit_office_wall()
+	if GameState.has_upgrade("coffee_machine"):
+		_fit_coffee()
+
+## One per covered room, mounted high and angled down the corridor. The lens is
+## unshaded red so it reads from the far end — which is the point, because
+## camera_rooms() is a list of places it is now a much worse idea to be seen in.
+func _fit_cameras() -> void:
+	var mounts := {
+		# Picked to sit BETWEEN the ward door signs rather than on top of them —
+		# the doors are at 4.5, 13.5, 23, 32.5 and 41.5, and each carries a flag
+		# sign at door + half a doorway + 0.28.
+		"corridor": [Vector3(9.5, 2.72, 3.66), Vector3(19.5, 2.72, 3.66),
+			Vector3(29.0, 2.72, 3.66), Vector3(-6.0, 2.72, 3.66)],
+		"lobby": [Vector3(9.9, 2.72, -1.4)],
+	}
+	for key in mounts:
+		if not Upgrades.camera_rooms().has(key):
+			continue
+		for pos in mounts[key]:
+			var body := Build.box_mi(Vector3(0.34, 0.24, 0.46), Color(0.93, 0.94, 0.96), pos)
+			_fittings.add_child(body)
+			var arm := Build.box_mi(Vector3(0.07, 0.36, 0.07),
+				Color(0.50, 0.53, 0.58), pos + Vector3(0, 0.28, 0.18))
+			_fittings.add_child(arm)
+			var lens := Build.cyl_mi(0.085, 0.14, Color(0.10, 0.11, 0.13),
+				pos + Vector3(0, -0.04, -0.28))
+			lens.rotation.x = PI * 0.5
+			_fittings.add_child(lens)
+			var led := Build.mi(Build.sphere_mesh(0.035),
+				Build.unshaded(Color(1.0, 0.20, 0.22)), pos + Vector3(0.12, 0.08, -0.23))
+			_fittings.add_child(led)
+
+## A rail and a drawn-back curtain beside every bed. Private rooms are the
+## single biggest reduction in witnesses in the game; this is what that bought.
+func _fit_curtains() -> void:
+	for r in wards():
+		var b := bed_position(r.key)
+		# The rail runs along the bed, which lies along X — a cylinder stands up
+		# by default, so it is rotation.z that lays it down the right way.
+		var rail := Build.cyl_mi(0.028, 3.0, Color(0.80, 0.82, 0.86),
+			b + Vector3(0.1, 2.16, -0.55), 8)
+		rail.rotation.z = PI * 0.5
+		_fittings.add_child(rail)
+		# Droppers from the ceiling down to the rail, not stubs poking up off it.
+		for hook in 2:
+			_fittings.add_child(Build.cyl_mi(0.02, 1.02, Color(0.80, 0.82, 0.86),
+				b + Vector3(-1.3 + float(hook) * 2.8, 2.67, -0.55), 6))
+		# Drawn back and bunched at the foot end, the way a curtain in a room
+		# somebody is currently in actually sits.
+		# Bunched at the end of the rail AWAY from the vitals console, which is
+		# the one thing in the room you need to be able to see and reach.
+		var drape := Build.box_mi(Vector3(0.34, 1.72, 0.42), Color(0.40, 0.72, 0.74),
+			b + Vector3(-1.32, 1.22, -0.55))
+		_fittings.add_child(drape)
+
+## Adjustable beds get a visible head section and a control pendant.
+func _fit_bed_rails() -> void:
+	for r in wards():
+		var b := bed_position(r.key)
+		_fittings.add_child(Build.box_mi(Vector3(1.0, 0.06, 0.5),
+			Color(0.86, 0.89, 0.94), b + Vector3(0, 0.62, -0.72)))
+		_fittings.add_child(Build.box_mi(Vector3(0.10, 0.16, 0.05),
+			Color(0.30, 0.34, 0.40), b + Vector3(0.62, 0.72, -0.2)))
+
+func _fit_shred_bin() -> void:
+	var o: Room = rooms.get("office", null)
+	if o == null:
+		return
+	var c := o.center()
+	_fittings.add_child(Build.box_mi(Vector3(0.5, 0.9, 0.5),
+		Color(0.20, 0.24, 0.30), Vector3(c.x - 2.1, 0.45, c.z - 1.4)))
+	_fittings.add_child(Build.box_mi(Vector3(0.44, 0.06, 0.10),
+		Color(0.10, 0.11, 0.13), Vector3(c.x - 2.1, 0.92, c.z - 1.4)))
+
+func _fit_vip() -> void:
+	var r: Room = rooms.get("ward_105", null)
+	if r == null:
+		return
+	var c := r.center()
+	# A rug, a lamp and something alive, which is more than anybody else gets.
+	_fittings.add_child(Build.box_mi(Vector3(3.2, 0.03, 2.4),
+		Color(0.46, 0.19, 0.23), Vector3(c.x, 0.02, c.z + 1.2)))
+	_fittings.add_child(Build.cyl_mi(0.22, 0.5, Color(0.55, 0.40, 0.28),
+		Vector3(c.x + 2.6, 0.25, c.z + 2.6), 10))
+	_fittings.add_child(Build.mi(Build.sphere_mesh(0.42),
+		Build.mat(Color(0.24, 0.62, 0.34)), Vector3(c.x + 2.6, 0.85, c.z + 2.6)))
+
+## Two framed things on your office wall, in the order you bought them.
+func _fit_office_wall() -> void:
+	var o: Room = rooms.get("office", null)
+	if o == null:
+		return
+	var c := o.center()
+	var wall_z: float = o.rect.position.y + 0.14
+	# Clear of the desk terminal in the middle of that wall, or the expensive
+	# framed things you bought are behind a monitor.
+	if GameState.has_upgrade("legal_retainer"):
+		_fittings.add_child(Build.box_mi(Vector3(0.5, 0.66, 0.04),
+			Color(0.34, 0.26, 0.18), Vector3(c.x - 2.3, 2.15, wall_z)))
+		_fittings.add_child(Build.box_mi(Vector3(0.42, 0.56, 0.02),
+			Build.PAPER, Vector3(c.x - 2.3, 2.15, wall_z + 0.03)))
+	if GameState.has_upgrade("board_appointment"):
+		_fittings.add_child(Build.box_mi(Vector3(0.72, 0.52, 0.04),
+			Color(0.30, 0.24, 0.16), Vector3(c.x + 2.3, 2.15, wall_z)))
+		_fittings.add_child(Build.box_mi(Vector3(0.62, 0.42, 0.02),
+			Color(0.94, 0.88, 0.62), Vector3(c.x + 2.3, 2.15, wall_z + 0.03)))
+
+## The machine that is, mechanically, a nurse-retention device.
+func _fit_coffee() -> void:
+	var st: Room = rooms.get("station", null)
+	if st == null:
+		return
+	var c := st.center()
+	_fittings.add_child(Build.box_mi(Vector3(0.62, 0.86, 0.52),
+		Color(0.16, 0.18, 0.22), Vector3(c.x + 2.6, 1.18, c.z + 3.2)))
+	_fittings.add_child(Build.box_mi(Vector3(0.5, 0.16, 0.03),
+		Color(0.94, 0.36, 0.24), Vector3(c.x + 2.6, 1.44, c.z + 2.93)))
 
 ## Bring the shutters into line with what has actually been bought. Called on
 ## build, on every purchase, and after a save is loaded — a career restored from

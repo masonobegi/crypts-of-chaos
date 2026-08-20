@@ -2107,3 +2107,37 @@ a noise deliberately does not stop to write. It forces the state now, so it
 tests the routing it claims to test rather than patrol timing.
 
 Verified: 1,581 assertions · 121 smoke · 23 live · boot check · 36 screenshots.
+
+## Phase 11 — you can see what the money bought
+
+Eighteen upgrades, half of which genuinely change how you have to play, and the
+only one you could SEE was a department shutter rolling up. Everything else was
+a boolean read by a system and never by the player, so a career's worth of total
+reinvestment left the ward looking exactly as it did on the first morning.
+
+`Hospital.refresh_fittings()` rebuilds a `Fittings` node from what is owned, on
+build, on purchase and on load:
+
+- **Corridor cameras** — four in the corridor and one in the lobby, matching
+  `Upgrades.camera_rooms()` exactly, with an unshaded red LED so they read from
+  the far end. This is the one that matters most: camera coverage was a list of
+  room keys in a static function, and it is now a thing you can look up and see,
+  which turns the purchase into a map of where it is a much worse idea to be
+  seen rather than a line in a menu.
+- **Curtains** round every bed, hung off ceiling droppers and bunched at the end
+  of the rail away from the vitals console.
+- **Adjustable beds** get a raised head section and a control pendant.
+- **Confidential waste**, a locked bin beside the filing cabinet.
+- **VIP suite** — a rug, a lamp and something alive, which is more than anybody
+  else on the ward gets.
+- **Legal retainer and a seat on the board**, framed, on your office wall,
+  placed clear of the desk terminal.
+- **The coffee machine** the nurses reorganise their shift around.
+
+The smoke check that asserts fittings track ownership found that
+`refresh_fittings()` doubled them every time it ran: `queue_free()` is deferred,
+so the outgoing node still held the name "Fittings" when the replacement was
+added, Godot renamed the newcomer, and `get_node("Fittings")` returned the
+corpse. `remove_child` before freeing.
+
+Verified: 1,581 assertions · 124 smoke · 23 live · boot check · 40 screenshots.

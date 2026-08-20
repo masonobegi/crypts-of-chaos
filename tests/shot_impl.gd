@@ -176,6 +176,11 @@ const SHOTS := [
 	["11_intake", Vector3(-8.0, 1.7, 5.2), Vector3(-8.0, 1.3, 12.0), "unlock"],
 	["12_radiology", Vector3(-12.0, 1.7, -0.8), Vector3(-11.2, 1.3, -9.0)],
 	["13_day_room", Vector3(-4.0, 1.7, -1.4), Vector3(-4.0, 1.3, -8.5)],
+	# ---- the same building with the whole catalogue bought.
+	["13b_kitted_corridor", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.6, 2.0), "kitted"],
+	["13c_kitted_ward", Vector3(4.5, 1.7, 5.5), Vector3(4.0, 1.2, 11.0)],
+	["13d_kitted_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.5, -9.5)],
+	["13e_kitted_vip", Vector3(41.5, 1.7, 5.5), Vector3(41.0, 1.1, 11.0)],
 	["14_overview", Vector3(15.0, 33.0, 33.0), Vector3(15.0, 0.0, 1.0)],
 	# The same corridor on all three shifts. The shifts differ in five numbers
 	# on a selection screen and, until now, in nothing a player could see — so
@@ -198,6 +203,17 @@ func _unlock_departments() -> void:
 			GameState.unlocked_departments.append(d)
 	if game != null and game.hospital != null:
 		game.hospital.refresh_departments()
+
+## Every fitting in the building at once. Half the catalogue changes how you
+## have to play and none of it used to change what the ward looks like, so these
+## are the shots that answer "can you see what a career's reinvestment bought".
+func _buy_everything() -> void:
+	for id in Upgrades.CATALOGUE:
+		if not GameState.owned_upgrades.has(id):
+			GameState.owned_upgrades.append(id)
+	_unlock_departments()
+	if game != null and game.hospital != null:
+		game.hospital.refresh_fittings()
 
 func start() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
@@ -225,6 +241,8 @@ func tick() -> bool:
 	var shot: Array = SHOTS[index]
 	if shot.size() > 3 and String(shot[3]) == "unlock":
 		_unlock_departments()
+	if shot.size() > 3 and String(shot[3]) == "kitted":
+		_buy_everything()
 	if shot.size() > 3 and String(shot[3]).begins_with("shift:"):
 		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
 		game.apply_shift_look()

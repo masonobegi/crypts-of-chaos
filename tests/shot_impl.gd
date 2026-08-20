@@ -144,8 +144,10 @@ func _set_ceilings_visible(v: bool) -> void:
 		return
 	for r in game.hospital.room_list():
 		for c in r.get_children():
-			# Ceilings are the only bare MeshInstance3D parented to a Room.
-			if c is MeshInstance3D:
+			# By meta, not by type. "The only bare MeshInstance3D parented to a
+			# Room" was true until floor borders were added, at which point
+			# taking the roof off also took the floor markings with it.
+			if c is MeshInstance3D and c.has_meta("is_ceiling"):
 				(c as MeshInstance3D).visible = v
 
 const SHOTS := [
@@ -191,7 +193,10 @@ const SHOTS := [
 	["13c_kitted_ward", Vector3(4.5, 1.7, 5.5), Vector3(4.0, 1.2, 11.0)],
 	["13d_kitted_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.5, -9.5)],
 	["13e_kitted_vip", Vector3(41.5, 1.7, 5.5), Vector3(41.0, 1.1, 11.0)],
-	["14_overview", Vector3(15.0, 33.0, 33.0), Vector3(15.0, 0.0, 1.0)],
+	# ...and hand it all back, so everything after this photographs the hospital
+	# a new player actually starts in. The shutters stay up — RollerShutter.open
+	# is one-way and re-sealing them mid-run is not something the game does.
+	["14_overview", Vector3(15.0, 33.0, 33.0), Vector3(15.0, 0.0, 1.0), "unkit"],
 	# The same corridor on all three shifts. The shifts differ in five numbers
 	# on a selection screen and, until now, in nothing a player could see — so
 	# this is the shot that says whether "Skeleton crew. Nobody is watching."
@@ -217,7 +222,20 @@ func _unlock_departments() -> void:
 ## Every fitting in the building at once. Half the catalogue changes how you
 ## have to play and none of it used to change what the ward looks like, so these
 ## are the shots that answer "can you see what a career's reinvestment bought".
+## What was owned before the kitted-out block, so it can be handed back.
+##
+## Captured ONCE. Every beat in this harness re-runs until its settle counter
+## is up, so the naive version snapshotted the list again on the second frame —
+## by which point the first frame had already bought everything, and "what was
+## owned before" was the full catalogue. The hand-back then handed back
+## everything, and the Capital Spending screenshot had an empty AVAILABLE list.
+var _owned_before: Array = []
+var _took_snapshot := false
+
 func _buy_everything() -> void:
+	if not _took_snapshot:
+		_owned_before = GameState.owned_upgrades.duplicate()
+		_took_snapshot = true
 	for id in Upgrades.CATALOGUE:
 		if not GameState.owned_upgrades.has(id):
 			GameState.owned_upgrades.append(id)
@@ -225,8 +243,32 @@ func _buy_everything() -> void:
 	if game != null and game.hospital != null:
 		game.hospital.refresh_fittings()
 
+## Hand it all back.
+##
+## _buy_everything used to be permanent, so every shot after the kitted-out
+## block photographed a fully upgraded hospital — including the three
+## shift-look shots and the Capital Spending screen, which had an empty
+## AVAILABLE list and nothing to advertise.
+func _sell_everything() -> void:
+	GameState.owned_upgrades.assign(_owned_before)
+	GameState.unlocked_departments.clear()
+	if game != null and game.hospital != null:
+		game.hospital.refresh_fittings()
+
 func start() -> void:
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	# Clear the last run's frames first.
+	#
+	# These accumulate, and a renamed or removed shot leaves its old PNG sitting
+	# in the directory looking exactly like a current one. A stale `10_overview`
+	# survived several rounds of this and was read as evidence about a build it
+	# predated by hours, which is the worst failure mode a screenshot harness
+	# has: it does not go wrong, it goes convincingly out of date.
+	var d := DirAccess.open(out_dir)
+	if d != null:
+		for f in d.get_files():
+			if f.ends_with(".png"):
+				d.remove(f)
 	GameState.start_new_career(20260819)
 	# Skip the first-run tutorial; its dim overlay darkens every shot.
 	GameState.set_flag("tutorial_done", true)
@@ -253,6 +295,8 @@ func tick() -> bool:
 		_unlock_departments()
 	if shot.size() > 3 and String(shot[3]) == "kitted":
 		_buy_everything()
+	if shot.size() > 3 and String(shot[3]) == "unkit":
+		_sell_everything()
 	if shot.size() > 3 and String(shot[3]).begins_with("shift:"):
 		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
 		game.apply_shift_look()
@@ -276,7 +320,12 @@ func tick() -> bool:
 		cam.global_position = shot[1]
 		cam.look_at(shot[2], Vector3.UP)
 	# The overview is shot from above, so the ceilings have to come off.
-	var overview := index == SHOTS.size() - 1
+	#
+	# By NAME, not by position. This was `index == SHOTS.size() - 1`, which was
+	# true of whatever happened to be last in the list — so the moment any shot
+	# was added after the overviews, both of them started photographing the
+	# roof of the building, and did for some time.
+	var overview := String(shot[0]).ends_with("overview")
 	cam.fov = 60.0 if overview else 78.0
 	_set_ceilings_visible(not overview)
 

@@ -358,6 +358,47 @@ static func _station(h: Hospital, r: Room) -> void:
 	_chair(h, Vector3(c.x + 1.2, 0, c.z + 2.4), 2.6)
 	# Coffee machine: the single most important object to a nurse's schedule.
 	_block(h, Vector3(0.5, 0.6, 0.45), Color(0.30, 0.32, 0.36), Vector3(c.x + 2.6, 1.05, c.z + 3.2))
+
+	# ...and the rest of a room people actually work in.
+	#
+	# Seen from above with the roof off, this was conspicuously the emptiest
+	# room in the building — a counter, two terminals and forty square metres of
+	# floor — which is a strange look for the ward's one permanent staffed post
+	# and the room every nurse in the game walks back to all day.
+	# Filing along the west wall, a rota board over the worktop, a printer that
+	# is out of paper, and something alive on the end of the counter.
+	for fi in 3:
+		var fx: float = r.rect.position.x + 0.55
+		var fz: float = c.z - 2.0 + float(fi) * 1.15
+		_block(h, Vector3(0.62, 1.32, 1.0), Color(0.52, 0.56, 0.60), Vector3(fx, 0.66, fz))
+		for drawer in 3:
+			_block(h, Vector3(0.05, 0.06, 0.34), Color(0.30, 0.33, 0.37),
+				Vector3(fx + 0.33, 0.34 + 0.38 * float(drawer), fz))
+		_occupy(fx, fz, 0.7, 1.0)
+	_wall_sign(h, "PERSONNEL", Vector3(r.rect.position.x + 0.2, 1.75, c.z - 0.85), PI * 0.5, 0.085)
+
+	# The rota, over the back worktop. Whiteboard, four ruled lines, permanently
+	# out of date.
+	var board_z: float = r.rect.position.y + 0.2
+	_block(h, Vector3(2.6, 1.2, 0.07), Color(0.93, 0.94, 0.92), Vector3(c.x - 1.4, 1.85, board_z))
+	for ln in 4:
+		_block(h, Vector3(2.3, 0.03, 0.02), Color(0.62, 0.68, 0.72),
+			Vector3(c.x - 1.4, 1.42 + 0.24 * float(ln), board_z + 0.05))
+	_wall_sign(h, "TODAY", Vector3(c.x - 1.4, 2.32, board_z + 0.06), 0.0, 0.095)
+
+	# A printer, and the paper it has run out of.
+	_block(h, Vector3(0.52, 0.34, 0.44), Color(0.86, 0.87, 0.85),
+		Vector3(c.x + 2.2, 1.29, r.rect.position.y + 0.5))
+	_block(h, Vector3(0.40, 0.03, 0.30), Build.PAPER,
+		Vector3(c.x + 2.2, 1.47, r.rect.position.y + 0.62))
+	_prop(h, "blank_form", Vector3(c.x + 1.5, 1.2, r.rect.position.y + 0.55))
+	_prop(h, "coffee", Vector3(c.x - 3.6, 1.2, corridor_z))
+
+	# Something alive, in a pot, that somebody is quietly keeping going.
+	_block(h, Vector3(0.26, 0.24, 0.26), Color(0.72, 0.46, 0.34),
+		Vector3(c.x + 3.9, 1.28, corridor_z))
+	h.add_child(Build.mi(Build.sphere_mesh(0.22), Build.mat(Color(0.26, 0.62, 0.34)),
+		Vector3(c.x + 3.9, 1.56, corridor_z), Vector3.ZERO, Vector3(1.0, 0.85, 1.0)))
 	_table(h, Vector3(c.x + 2.6, 0, c.z + 3.2), 0.8, 0.6, 0.75)
 	_wall_sign(h, "COFFEE", Vector3(c.x + 2.6, 1.5, c.z + 2.95), 0.0, 0.08)
 	_prop(h, "coffee", Vector3(c.x + 2.2, 0.9, c.z + 3.0))
@@ -399,7 +440,9 @@ static func _treatment(h: Hospital, r: Room) -> void:
 	shelf.build("Treatment Stock",
 		["syringe", "iv_bag", "compress", "splint", "sling", "mallet", "wrench", "duster"])
 	shelf.position = Vector3(r.rect.position.x + 1.2, 0, c.z + 3.2)
-	shelf.rotation.y = -PI / 2
+	# +PI/2. Same bug as the three units in the supply room: a shelf's front is
+	# its local +Z, and -90 degrees about Y turns that into the wall behind it.
+	shelf.rotation.y = PI / 2
 	_occupy(r.rect.position.x + 1.2, c.z + 3.2, 0.6, 1.8)
 
 	_table(h, Vector3(c.x + 2.6, 0, c.z + 2.0), 1.2, 0.7)
@@ -413,6 +456,25 @@ static func _treatment(h: Hospital, r: Room) -> void:
 		clinic_seats.append(seat)
 	_wall_sign(h, "PLEASE WAIT TO BE CALLED",
 		Vector3(r.rect.position.x + 0.18, 1.9, c.z - 3.6), PI / 2, 0.075)
+
+	# A scrub sink, a bin, and a wall chart nobody reads. The bay had two
+	# machines and a lot of floor, and it is the room the player spends the
+	# second-most time in.
+	var sink_x: float = r.rect.position.x + r.rect.size.x - 1.3
+	_block(h, Vector3(1.1, 0.86, 0.6), Color(0.60, 0.64, 0.68), Vector3(sink_x, 0.43, c.z - 2.6))
+	_block(h, Vector3(1.15, 0.10, 0.65), Color(0.88, 0.90, 0.92), Vector3(sink_x, 0.91, c.z - 2.6))
+	_block(h, Vector3(0.62, 0.07, 0.40), Color(0.72, 0.78, 0.82), Vector3(sink_x, 0.95, c.z - 2.6))
+	h.add_child(Build.cyl_mi(0.022, 0.34, Build.METAL,
+		Vector3(sink_x, 1.12, c.z - 2.85), 8))
+	_occupy(sink_x, c.z - 2.6, 1.2, 0.7)
+	_block(h, Vector3(0.42, 0.62, 0.42), Color(0.24, 0.30, 0.36), Vector3(sink_x - 0.95, 0.31, c.z - 2.6))
+	_wall_sign(h, "WASH YOUR HANDS\n(all of them)",
+		Vector3(sink_x, 1.62, r.rect.position.y + r.rect.size.y * 0.5 - 3.0), 0.0, 0.075)
+
+	# A folding privacy screen, parked against the wall the way they always are.
+	for pi in 3:
+		_block(h, Vector3(0.05, 1.65, 0.62), Color(0.62, 0.74, 0.76),
+			Vector3(sink_x + 0.4 - 0.09 * float(pi), 0.86, c.z + 1.2 + 0.04 * float(pi)))
 
 	_wall_sign(h, "TREATMENT BAY", Vector3(c.x, 2.4, r.rect.position.y + 0.16), 0.0, 0.18)
 

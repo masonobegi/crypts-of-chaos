@@ -104,6 +104,9 @@ func _build_floor_and_ceiling(r: Room) -> void:
 	# the player can never get stuck against it.
 	var c := Build.box_mi(Vector3(r.rect.size.x, 0.1, r.rect.size.y), Build.CEILING,
 		Vector3(0, WALL_H, 0), 0.85, 0.0)
+	# Tagged, because "the only bare MeshInstance3D parented to a Room" stopped
+	# being a safe way to find a ceiling the moment floor borders were added.
+	c.set_meta("is_ceiling", true)
 	r.add_child(c)
 
 	# An inlaid border a foot in from the walls, in a darker shade of the room's

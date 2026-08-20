@@ -2431,3 +2431,48 @@ Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screensho
 Frame cost 2.55 ms mean with 5,553 nodes — lower than before the restyle
 started, because the same pass that added the geometry also stopped patients and
 idle staff running the character solver.
+
+## "So everything looks good?" — no, and four of the reasons were the harness
+
+Checking properly rather than answering from impression turned up more in the
+screenshot harness than in the game.
+
+**The overview shots had been photographing the roof.** `overview` was
+`index == SHOTS.size() - 1` — true of whatever happened to be last in the list —
+so the moment any shot was added after them, both overviews stopped taking their
+ceilings off. It is decided by name now. The ceiling toggle also needed a meta
+tag: "the only bare MeshInstance3D parented to a Room" stopped being a safe way
+to find a ceiling the moment floor borders were added, so taking the roof off
+was also taking the floor markings with it.
+
+**Stale frames were being read as current.** The output directory was never
+cleared, so a renamed or deleted shot left its PNG sitting there looking exactly
+like a live one — a `10_overview` from an earlier build survived several rounds
+and was read as evidence about a build it predated by hours. That is the worst
+failure mode a screenshot harness has: it does not go wrong, it goes
+convincingly out of date. `start()` clears the directory now.
+
+**The kitted-out block was permanent.** Buying the whole catalogue for four
+shots left every later shot photographing a fully upgraded hospital, including
+all three shift-look shots and the Capital Spending screen — which had an empty
+AVAILABLE list and nothing to show. It hands everything back now. The obvious
+version of that was wrong too: every beat re-runs until its settle counter is
+up, so the snapshot of "what was owned before" was retaken on the second frame,
+by which point the first frame had bought everything.
+
+And two in the game:
+
+**The nurses' station and the treatment bay were the emptiest rooms in the
+building**, which the overview made obvious the moment it started working. The
+station — the ward's one permanently staffed post — had a counter, two terminals
+and forty square metres of floor; it now has filing along the west wall, a rota
+whiteboard over the worktop, a printer that is out of paper and a plant somebody
+is quietly keeping going. The treatment bay got a scrub sink, a bin and a
+folding privacy screen parked against the wall the way they always are.
+
+**Two more shelf units were facing the wall.** The treatment bay's stock shelf
+had the same `-PI/2` as the supply room's three: a shelf's front is its local
++Z, and -90 degrees about Y turns that into the wall behind it.
+
+Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screenshots,
+frame 2.43 ms mean.

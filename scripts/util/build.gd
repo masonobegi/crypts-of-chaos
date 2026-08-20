@@ -349,8 +349,13 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 const FLOOR_A := Color(0.72, 0.80, 0.74)
 const FLOOR_B := Color(0.66, 0.75, 0.72)
 const WALL_LOWER := Color(0.22, 0.62, 0.60)
-const WALL_UPPER := Color(0.94, 0.90, 0.78)
-const CEILING := Color(0.76, 0.77, 0.75)
+const WALL_UPPER := Color(0.87, 0.83, 0.71)
+## Darker than the walls on purpose. A ceiling is the top third of every
+## interior shot and it is lit from below by a lamp every five metres, so at
+## anything near the wall's value it clips to flat white and the room loses its
+## lid — the first pass had 0.84 here and the corners of every photograph were
+## pure paper.
+const CEILING := Color(0.66, 0.67, 0.66)
 const TRIM := Color(0.13, 0.50, 0.54)
 const BED_FRAME := Color(0.90, 0.92, 0.95)
 const LINEN := Color(0.96, 0.97, 0.99)

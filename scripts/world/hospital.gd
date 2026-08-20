@@ -160,7 +160,7 @@ func _build_room_lights(r: Room) -> void:
 			var x := r.rect.position.x + r.rect.size.x * (float(i) + 0.5) / float(cols)
 			var z := r.rect.position.y + r.rect.size.y * (float(j) + 0.5) / float(rows)
 			var lamp := Build.ceiling_light(
-				Vector3(x, WALL_H - 0.25, z) - r.center(), 1.05, Color(1.0, 0.97, 0.90), 8.5)
+				Vector3(x, WALL_H - 0.25, z) - r.center(), 0.82, Color(1.0, 0.97, 0.90), 8.5)
 			lamp.set_meta("is_light", true)
 			r.add_child(lamp)
 

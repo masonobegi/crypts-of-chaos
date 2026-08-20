@@ -41,6 +41,7 @@ func bind(p: Patient, p_bed: PatientBed) -> void:
 		p_bed.occupant = self
 
 func _physics_process(delta: float) -> void:
+	_tick_cycle(delta)
 	_hold_bed_pose(delta)
 	super._physics_process(delta)
 	_timer -= delta
@@ -88,6 +89,52 @@ func _on_shift_started(_day: int) -> void:
 		return
 	set_asleep(RNG.chance("patient_sleep", float(
 		SLEEP_CHANCE.get(GameState.shift_kind, 0.06))))
+
+## Being in a machine cycle, from the patient's side.
+##
+## The treatment used to happen entirely on the doctor's side of the room: a
+## button, a noise, a toast. The person it was being done TO did nothing at all,
+## which made the whole act read as operating equipment rather than as treating
+## somebody. They twitch for the length of the cycle now, harder the further the
+## dial is from where it should be, and they say something about it — which is
+## also the honest tell, because a patient noticing is how this gets reported.
+var _cycle_t := 0.0
+var _cycle_strength := 0.0
+
+func undergo_cycle(seconds: float, deviation: int) -> void:
+	_cycle_t = maxf(seconds, 0.3)
+	# Capped low. Startle drives an arm flail, and re-applying it every frame
+	# for two and a half seconds took a patient from "shuddering" to "windmilling
+	# both arms over their head in bed" — which is funny once and looks broken
+	# every time after that.
+	_cycle_strength = clampf(0.14 + float(deviation) * 0.06, 0.14, 0.38)
+	wake_up()
+	startle(minf(0.35 + float(deviation) * 0.18, 1.0))
+	if deviation >= 3:
+		say(String(RNG.pick("cycle_bark_bad", [
+			"That is — that is a LOT.",
+			"Ow. Ow, that's — is it meant to do that?",
+			"Turn it down. Turn it DOWN.",
+			"I can feel that in my back teeth.",
+		])), 3.0)
+	elif deviation >= 1:
+		say(String(RNG.pick("cycle_bark_off", [
+			"Hm. That's warmer than last time.",
+			"Is that the usual setting?",
+			"Oh. That's new.",
+		])), 2.6)
+	elif RNG.chance("cycle_bark_ok", 0.4):
+		say(String(RNG.pick("cycle_bark_ok_line", [
+			"Oh, that's the good one.", "Mm. That's better.", "That's the one, yes.",
+		])), 2.4)
+
+func _tick_cycle(delta: float) -> void:
+	if _cycle_t <= 0.0:
+		return
+	_cycle_t = maxf(0.0, _cycle_t - delta)
+	# Re-applied every frame rather than set once: startle decays, and what this
+	# wants is a sustained shudder for as long as the machine is running.
+	startle(_cycle_strength * delta * 1.6)
 
 func set_asleep(v: bool) -> void:
 	if asleep == v:

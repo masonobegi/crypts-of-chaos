@@ -38,6 +38,16 @@ var _prescribed_for := ""
 var _dial_settle := 1.0
 var _announced_dial := -1
 
+## The cycle. `_cycle_t` counts DOWN while the machine is working.
+var _emitter: Node3D = null
+var _glow: MeshInstance3D = null
+var _beam_light: OmniLight3D = null
+var _motes: Array[MeshInstance3D] = []
+var _cycle_t := 0.0
+var _cycle_len := 0.0
+var _cycle_dev := 0
+var _cycle_target: Node3D = null
+
 func build(disp: String) -> void:
 	fixture_name = disp
 	var body := Build.mat(Color(0.86, 0.88, 0.90))
@@ -63,6 +73,37 @@ func build(disp: String) -> void:
 	_dial_label = Build.label3d("5", 0.14, Color(1, 1, 1), false)
 	_dial_label.position = Vector3(-0.32, 0.78, 0.41)
 	add_child(_dial_label)
+
+	# The emitter: the part that points at the patient and does the thing.
+	# There was no such part. A treatment was three seconds of holding a button
+	# followed by a line of text, and the single most important act in the game
+	# had no physical presence at all — you could not have pointed at the moment
+	# it happened.
+	_emitter = Node3D.new()
+	_emitter.position = Vector3(0, 1.05, 0.42)
+	add_child(_emitter)
+	var horn := Build.mi(Build.cyl_mesh(0.13, 0.22, 12),
+		Build.mat(Color(0.62, 0.66, 0.70), 0.4, 0.2), Vector3(0, 0, 0.11))
+	horn.rotation.x = PI * 0.5
+	_emitter.add_child(horn)
+	_glow = Build.mi(Build.sphere_mesh(0.085), Build.unshaded(Color(0.5, 0.95, 0.8)),
+		Vector3(0, 0, 0.20))
+	_glow.visible = false
+	_emitter.add_child(_glow)
+	_beam_light = OmniLight3D.new()
+	_beam_light.omni_range = 2.4
+	_beam_light.light_energy = 0.0
+	_beam_light.shadow_enabled = false
+	_emitter.add_child(_beam_light)
+
+	# Six motes that travel from the horn to whatever is in front of it. Cheap,
+	# and the difference between "a machine is on" and "a machine is doing
+	# something TO somebody".
+	for i in 6:
+		var mote := Build.mi(Build.sphere_mesh(0.018), Build.unshaded(Color(0.6, 1.0, 0.85)))
+		mote.visible = false
+		_emitter.add_child(mote)
+		_motes.append(mote)
 	_refresh()
 
 # ------------------------------------------------------------------ display
@@ -185,7 +226,82 @@ func _push_prompt(player, held = null) -> void:
 	var pr := _prompt_for(player, held)
 	EventBus.interact_prompt.emit(String(pr[0]), String(pr[1]))
 
+## Start the visible cycle. Called by the run button the moment the hold
+## completes, and it runs for a second and a half AFTER the treatment has
+## already been applied — because standing next to a machine that is obviously
+## working is the exposure, and a treatment that resolves the instant you let go
+## of the button has no exposure in it at all.
+func begin_cycle(seconds: float, deviation: int, target: Node3D) -> void:
+	_cycle_len = maxf(seconds, 0.4)
+	_cycle_t = _cycle_len
+	_cycle_dev = absi(deviation)
+	_cycle_target = target
+	if _glow:
+		_glow.visible = true
+
+func is_running() -> bool:
+	return _cycle_t > 0.0
+
+## The colour of the whole event. Green at the prescribed setting, amber as it
+## drifts, red at the extremes — the same three-step language the lamp already
+## speaks, so nothing new has to be learned to read it.
+func _cycle_colour() -> Color:
+	if _cycle_dev >= 4:
+		return Color(1.0, 0.38, 0.30)
+	if _cycle_dev >= 2:
+		return Color(1.0, 0.74, 0.24)
+	return Color(0.50, 0.98, 0.78)
+
+func _tick_cycle(delta: float) -> void:
+	if _cycle_t <= 0.0:
+		return
+	_cycle_t = maxf(0.0, _cycle_t - delta)
+	var phase: float = 1.0 - (_cycle_t / maxf(_cycle_len, 0.001))
+	var col := _cycle_colour()
+	# A wobble that gets faster and rougher the further the dial is from where
+	# it should be. Nothing says so; it is just harder to stand next to.
+	var rough: float = 1.0 + float(_cycle_dev) * 0.8
+	var pulse: float = 0.55 + 0.45 * sin(phase * TAU * (2.0 + rough))
+
+	if _glow:
+		_glow.visible = true
+		_glow.material_override = Build.unshaded(col)
+		var sc: float = 0.7 + pulse * (0.5 + float(_cycle_dev) * 0.12)
+		_glow.scale = Vector3.ONE * sc
+	if _beam_light:
+		_beam_light.light_color = col
+		_beam_light.light_energy = pulse * (0.9 + float(_cycle_dev) * 0.16)
+
+	# Motes travel out of the horn towards whoever is in front of it, on
+	# staggered offsets so they read as a stream rather than a pulse.
+	var reach := 1.1
+	if _cycle_target != null and is_instance_valid(_cycle_target) and _emitter != null:
+		reach = clampf(_emitter.global_position.distance_to(
+			_cycle_target.global_position), 0.5, 1.7)
+	for i in _motes.size():
+		var m: MeshInstance3D = _motes[i]
+		var t: float = fposmod(phase * (1.4 + rough * 0.25) + float(i) / float(_motes.size()), 1.0)
+		m.visible = true
+		m.material_override = Build.unshaded(col)
+		var wob: float = sin(t * TAU * 2.0 + float(i)) * 0.022 * float(1 + _cycle_dev)
+		m.position = Vector3(wob, wob * 0.6, 0.22 + t * reach)
+		m.scale = Vector3.ONE * (1.0 - t * 0.55)
+
+	if _cycle_t <= 0.0:
+		_end_cycle()
+
+func _end_cycle() -> void:
+	if _glow:
+		_glow.visible = false
+		_glow.scale = Vector3.ONE
+	if _beam_light:
+		_beam_light.light_energy = 0.0
+	for m in _motes:
+		m.visible = false
+	_cycle_target = null
+
 func _process(delta: float) -> void:
+	_tick_cycle(delta)
 	# A panel left hanging open is a panel somebody will notice. It shuts itself
 	# once you have walked away from it.
 	if _panel_open:

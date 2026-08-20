@@ -2507,3 +2507,45 @@ reading as decoration. They are ON/OFF in words and in colour now. And fifteen
 fixed-height rows overflowed a fixed-height panel and pushed "Back" off the
 bottom of the screen — a settings screen you cannot leave is worse than none —
 so the options scroll and the buttons do not.
+
+## Towards Steam — 2: the crime is an act now
+
+The central thing this game is about — running a machine on somebody — was a
+three-second button hold followed by a line of text. Nothing physical happened,
+on either side of the room. You could not have pointed at the moment it
+occurred.
+
+Machines have an **emitter** now: a horn, a glow, a light, and six motes that
+travel from the horn to whoever is in front of it. `begin_cycle()` runs for two
+and a half seconds and is started BEFORE the treatment resolves, outlasting it
+by well over a second — and that gap is the entire point. A treatment that
+finishes the instant you let go of the button costs nothing to perform; the
+exposure in this game is the time you spend standing next to a machine that is
+obviously working, in a room with a door, while somebody walks past it.
+
+How wrong the dial is drives all of it, in the three-step language the status
+lamp already speaks: green at the prescribed setting, amber as it drifts, red at
+the extremes, with the pulse getting faster and the motes wider the further out
+it goes. Nothing is labelled. It is just harder to stand next to.
+
+**The patient is in the room for it.** `PatientNPC.undergo_cycle()` wakes them,
+shakes them for the length of the cycle, and gives them something to say about
+it — gentler or worse by deviation, and the line is also the honest tell,
+because a patient noticing is one of the ways this gets reported.
+
+Tuned twice off screenshots: re-applying startle every frame for two and a half
+seconds took a patient from "shuddering" to windmilling both arms over their
+head in bed, and the first mote reach put them scattered across the floor
+instead of in a beam.
+
+The screenshot harness got `04c_cycle`, which fires a cycle at five over the
+prescribed setting and holds it open — every other shot in the harness is of a
+room standing still, so the one thing the player spends the game doing had never
+been photographed. It has to re-trigger every settle frame, or the shutter opens
+after the cycle has finished and photographs a machine doing nothing, which is
+the state it was already in.
+
+One test lesson: the first version asserted a shake magnitude of `> 0.6` and
+went red the moment the shake was tuned down. That is a test measuring a tuning
+value rather than the behaviour it exists for. It compares a bad cycle against a
+correct one now.

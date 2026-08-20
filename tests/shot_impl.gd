@@ -172,6 +172,9 @@ const SHOTS := [
 	# Down the bed from the foot the headboard is between the camera and the
 	# patient (it is 1.06 x 0.5 and sits at z -1.05), and off to one side you
 	# get the back of a head behind an IV stand.
+	# The machine mid-cycle, dialled well past the prescribed setting: the one
+	# act the whole game is about, which nothing had ever photographed.
+	["04c_cycle", Vector3(5.6, 1.5, 8.2), Vector3(3.4, 1.15, 9.9), "cycle"],
 	["04b_bedside", Vector3(5.1, 1.68, 8.8), Vector3(3.05, 1.14, 9.9)],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
 	["06_treatment_bay", Vector3(24.0, 1.7, -2.0), Vector3(24.0, 1.3, -9.0)],
@@ -244,6 +247,35 @@ func _buy_everything() -> void:
 	if game != null and game.hospital != null:
 		game.hospital.refresh_fittings()
 
+## Fire a machine cycle in Room 101 and hold it open.
+##
+## The central act of the game is a two-and-a-half second event, and every other
+## shot in this harness is of a room standing still — so the one thing the
+## player spends the game doing had never been photographed at all.
+##
+## Re-triggered every settle frame so the cycle is still running when the
+## shutter opens; without that the shot lands after it has finished and is a
+## picture of a machine doing nothing, which is the state it was already in.
+func _start_a_cycle() -> void:
+	var m = null
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is TreatmentMachine and String(f.room_key) == "ward_101":
+			m = f
+			break
+	if m == null:
+		return
+	m.dial = m.prescribed + 5
+	m._refresh()
+	var body = null
+	if game.patient_system != null:
+		for pt in game.patient_system.active():
+			if String(pt.room) == "ward_101":
+				body = game.patient_system.get_body(pt.id)
+				break
+	m.begin_cycle(3.0, 5, body)
+	if body != null:
+		body.undergo_cycle(3.0, 5)
+
 ## Hand it all back.
 ##
 ## _buy_everything used to be permanent, so every shot after the kitted-out
@@ -294,6 +326,8 @@ func tick() -> bool:
 	var shot: Array = SHOTS[index]
 	if shot.size() > 3 and String(shot[3]) == "unlock":
 		_unlock_departments()
+	if shot.size() > 3 and String(shot[3]) == "cycle":
+		_start_a_cycle()
 	if shot.size() > 3 and String(shot[3]) == "kitted":
 		_buy_everything()
 	if shot.size() > 3 and String(shot[3]) == "unkit":

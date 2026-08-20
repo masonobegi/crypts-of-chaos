@@ -31,10 +31,24 @@ func interact(player, _held) -> void:
 	if p == null:
 		EventBus.toast.emit("The cycle runs. There is nobody in it.", "info")
 		AudioMgr.play_at_var("machine_on", global_position, -14.0)
+		machine.begin_cycle(1.6, 0, null)
 		return
 	# Straight into the world. No modal, nothing paused: the machine makes its
 	# noise, the patient reacts where you can see them, and whoever is standing
 	# in the doorway gets to watch you do it.
+	#
+	# The cycle is started BEFORE the treatment resolves and outlasts it by a
+	# second and a half. That gap is the whole point: a machine that finishes
+	# the instant you let go of the button costs you nothing to use, and the
+	# exposure in this game is the time you spend standing next to one that is
+	# obviously working.
+	var body = null
+	var ps = get_tree().get_first_node_in_group("patient_system")
+	if ps != null:
+		body = ps.get_body(p.id)
+	machine.begin_cycle(2.4, machine.dial - machine.prescribed, body)
+	if body != null and body.has_method("undergo_cycle"):
+		body.undergo_cycle(2.4, absi(machine.dial - machine.prescribed))
 	ts.run_machine(machine, p)
 	var rs = get_tree().get_first_node_in_group("records_system")
 	if rs:

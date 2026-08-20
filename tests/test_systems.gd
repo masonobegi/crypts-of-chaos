@@ -1021,3 +1021,56 @@ func test_unknown_settings_are_rejected() -> void:
 	var n := Settings.values.size()
 	Settings.set_value("turbo_mode", true)
 	t.eq(Settings.values.size(), n, "a key that is not in DEFAULTS is not stored")
+
+# ------------------------------------------------------------------ the cycle
+#
+# The central act of the game — running a machine on somebody — used to be a
+# three-second button hold followed by a line of text. Nothing physical
+# happened, on either side of the room. These assert that it does now, and in
+# particular that the machine keeps running after the treatment has resolved,
+# because that gap is the exposure and the exposure is the game.
+
+func test_a_machine_cycle_is_a_visible_event() -> void:
+	var m := TreatmentMachine.new()
+	m.machine_id = "machine_vibe"
+	m.treatment_id = "vibe_stabilize"
+	m.units = "TEST INDEX"
+	m.build("Test Machine")
+	t.ok(not m.is_running(), "a machine at rest is not running")
+	m.begin_cycle(2.0, 0, null)
+	t.ok(m.is_running(), "starting a cycle runs it")
+	m._tick_cycle(0.5)
+	t.ok(m.is_running(), "and it is still going half a second later")
+	m._tick_cycle(2.0)
+	t.ok(not m.is_running(), "and stops when its time is up")
+	m.free()
+
+func test_how_wrong_the_dial_is_changes_what_you_see() -> void:
+	var m := TreatmentMachine.new()
+	m.machine_id = "machine_vibe"
+	m.treatment_id = "vibe_stabilize"
+	m.build("Test Machine")
+	m.begin_cycle(1.0, 0, null)
+	var ok_colour: Color = m._cycle_colour()
+	m.begin_cycle(1.0, 5, null)
+	var bad_colour: Color = m._cycle_colour()
+	t.ok(ok_colour != bad_colour,
+		"a cycle at the prescribed setting does not look like one at the extreme")
+	t.gt(bad_colour.r, ok_colour.r, "and the wrong one is the redder of the two")
+	m.free()
+
+func test_the_patient_is_in_the_room_for_it() -> void:
+	var b := PatientNPC.new()
+	t.near(b._cycle_t, 0.0, 0.001, "nobody is mid-treatment to begin with")
+	b.undergo_cycle(2.0, 4)
+	t.gt(b._cycle_t, 0.0, "being in a cycle is a state the patient is in")
+	var gentle := PatientNPC.new()
+	gentle.undergo_cycle(2.0, 0)
+	# Relative, not absolute. The first version of this asserted a magnitude
+	# (> 0.6) and went red the first time the shake was tuned down — which is
+	# a test measuring a tuning value rather than the behaviour it is there for.
+	# What matters is that being further from the prescribed setting is worse.
+	t.gt(b._cycle_strength, gentle._cycle_strength * 1.4,
+		"a badly-set cycle shakes them meaningfully harder than a correct one")
+	b.free()
+	gentle.free()

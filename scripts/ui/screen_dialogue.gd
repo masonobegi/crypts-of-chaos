@@ -7,6 +7,12 @@ var _mind: Mind = null
 var _patient = null
 var _reply := ""
 var _typer: Typewriter = null
+## "speaking" is a beat that takes over the whole screen and waits for a click.
+## "options" is the menu. A conversation alternates between them, which is what
+## makes it a conversation rather than a form with a quote box on it.
+var _stage := "speaking"
+var _spoke_hint: Label = null
+var _was_down := false
 
 func _build() -> void:
 	var sus = suspicion()
@@ -20,7 +26,68 @@ func _build() -> void:
 	_patient = patient_system().get_patient(_mind.id) if patient_system() else null
 	if _patient == null and _mind.patient_id != "":
 		_patient = patient_system().get_patient(_mind.patient_id) if patient_system() else null
+	if _reply == "":
+		_reply = Dialogue.greeting(_mind, _patient)
+	if _stage == "speaking":
+		_build_speech()
+		return
+	_build_options()
 
+# ------------------------------------------------------------------ speaking
+## One line, one face, and nothing else on screen until you click.
+##
+## The note was "talking to people feels weird because the subtitles go so
+## quick — it should lock you in a talking phase where you have to click for
+## them to mumble words." This is that. The line types at the speed of speech
+## with a blip per syllable pitched off their own id, the first click hurries
+## it, and the second click is you deciding to answer.
+func _build_speech() -> void:
+	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
+	var v := shell(760, 460, _mind.display_name, sub)
+	v.add_child(UIKit.spacer(10))
+	var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.95), 8, 1, UIKit.ACCENT)
+	var rl := UIKit.label("", 20, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
+	rl.custom_minimum_size.y = 128
+	rp.add_child(rl)
+	v.add_child(rp)
+	v.add_child(UIKit.spacer(8))
+	_spoke_hint = UIKit.label("", 14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(_spoke_hint)
+	_typer = Typewriter.new()
+	add_child(_typer)
+	_typer.speak(rl, "\"%s\"" % _reply, _mind.id)
+	_was_down = true      # swallow the click that opened this screen
+	set_process(true)
+
+func _process(_delta: float) -> void:
+	if _stage != "speaking":
+		return
+	if _spoke_hint != null:
+		_spoke_hint.text = "" if (_typer != null and _typer.is_running()) \
+			else "click to answer"
+	var down: bool = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	if down and not _was_down:
+		_advance()
+	_was_down = down
+
+func _unhandled_input(event: InputEvent) -> void:
+	if _stage != "speaking":
+		return
+	if event is InputEventKey and event.pressed and not event.echo \
+			and event.keycode in [KEY_SPACE, KEY_ENTER, KEY_E]:
+		get_viewport().set_input_as_handled()
+		_advance()
+
+func _advance() -> void:
+	if _typer != null and _typer.hurry():
+		AudioMgr.play("tick", -26.0, 1.2)
+		return
+	_stage = "options"
+	set_process(false)
+	rebuild()
+
+# ------------------------------------------------------------------ options
+func _build_options() -> void:
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
 	var v := shell(760, 640, _mind.display_name, sub)
 
@@ -44,21 +111,13 @@ func _build() -> void:
 			int(ceil(_patient.days_admitted)), int(ceil(_patient.expected_stay_days))],
 			UIKit.WARN if _patient.is_overdue() else UIKit.INK))
 
+	# The last thing they said, kept on screen while you decide what to say
+	# back. Not typed here — it has already been read, in the speaking beat.
 	if _reply != "":
-		# Typed out, in their voice, rather than appearing complete.
-		#
-		# A reply used to arrive as finished text in a box, which is why talking
-		# to somebody "goes so quick": nothing to read AT, no pace, no sense that
-		# a person is saying it. It arrives at the speed of speech now, with a
-		# blip per syllable pitched off their own id, and a click hurries it.
 		var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.9), 6)
-		var rl := UIKit.label("", 16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
-		rl.custom_minimum_size.y = 52
-		rp.add_child(rl)
+		rp.add_child(UIKit.label("\"%s\"" % _reply, 15, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(rp)
-		_typer = Typewriter.new()
-		add_child(_typer)
-		_typer.speak(rl, "\"%s\"" % _reply, _mind.id)
 
 	v.add_child(UIKit.rule())
 	# The clinical action, kept out of the conversation list because it is not a
@@ -197,6 +256,7 @@ func _bribe(tier: Dictionary) -> void:
 		room = _patient.room
 	var res := Bribery.attempt(_mind, tier, at, room)
 	_reply = String(res.get("reply", ""))
+	_stage = "speaking"
 	if bool(res.get("broke", false)):
 		EventBus.toast.emit("You cannot afford to be discreet.", "bad")
 	elif bool(res.get("ok", false)):
@@ -286,6 +346,8 @@ func _choose(o) -> void:
 		return
 	var res := Dialogue.resolve(_mind, o, _patient)
 	_reply = String(res.get("reply", ""))
+	if _reply != "":
+		_stage = "speaking"
 	if bool(res.get("discharge_promise", false)) and _patient != null:
 		var ts = get_tree().get_first_node_in_group("treatment_system")
 		if ts:
@@ -307,18 +369,3 @@ func _choose(o) -> void:
 		EventBus.toast.emit("%s did not buy it." % _mind.display_name, "bad")
 	rebuild()
 
-
-## Click (or E) anywhere to hurry the line along.
-##
-## The screen is modal and the tree is paused, so this is the only input that
-## reaches it — and "let me read that at my own pace" is the first thing anybody
-## wants from dialogue.
-func _unhandled_input(event: InputEvent) -> void:
-	if _typer == null or not _typer.is_running():
-		return
-	var pressed: bool = (event is InputEventMouseButton and event.pressed) \
-		or (event is InputEventKey and event.pressed and not event.echo)
-	if pressed:
-		_typer.hurry()
-		AudioMgr.play("page", -22.0)
-		get_viewport().set_input_as_handled()

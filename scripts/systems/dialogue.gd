@@ -429,6 +429,43 @@ static func resolve(mind: Mind, opt: Option, p = null) -> Dictionary:
 
 ## Being decent to people is not a mechanic with a roll attached, but it is not
 ## free either — it costs shift time, and trust is a genuine defence later.
+## The first thing they say when you walk up, before you have said anything.
+##
+## A conversation that opens on a menu of things YOU could say is a menu. A
+## conversation that opens with somebody talking to you is a conversation, and
+## it is what the second playtest asked for: "lock you in a talking phase where
+## you have to click for them to mumble words."
+##
+## What they open with is the most useful readout in the game, because it comes
+## straight off what they are holding: a nurse on tier three greets you very
+## differently from a nurse on tier zero, and you learn where you stand before
+## you have picked a single line.
+static func greeting(mind: Mind, p = null) -> String:
+	var tier := mind.tier(GameState.career_minutes)
+	if tier >= 2:
+		return String(RNG.pick("greet_hot_%s" % mind.id, WITNESS_LINES[tier]))
+	if mind.deal_state == "paid":
+		return String(RNG.pick("greet_paid", [
+			"Doctor. Everything's fine. Everything's always fine.",
+			"I've not seen anything all week.",
+			"Whatever it is — no, I didn't."]))
+	if p != null and mind.role == "patient":
+		if p.is_overdue():
+			return String(RNG.pick("greet_overdue_%s" % mind.id, [
+				"Am I going home today? Only you said Tuesday.",
+				"I've been counting the ceiling tiles. There are sixty-one.",
+				"My sister keeps asking when I'm out. I keep not knowing."]))
+		if not p.admitted:
+			return String(RNG.pick("greet_walkin_%s" % mind.id, [
+				"I've been sat here a while. Not complaining.",
+				"It's probably nothing. It's probably nothing, isn't it?",
+				"They said to wait for a doctor. Are you a doctor?"]))
+		return _small_talk_reply(mind)
+	if ROLE_FLAVOUR.has(mind.role):
+		return String(RNG.pick("greet_role_%s" % mind.id, ROLE_FLAVOUR[mind.role]))
+	return String(RNG.pick("greet_generic", [
+		"Doctor.", "Yes?", "Sorry — busy. Go on.", "Alright?"]))
+
 static func _small_talk_reply(mind: Mind) -> String:
 	match mind.archetype:
 		"paranoid": return "Fine. Why?"

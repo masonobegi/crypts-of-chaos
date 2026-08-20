@@ -143,7 +143,7 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	var cab := Vector3(bed.x - 1.15, 0, bed.z + toward * -0.55)
 	Dressing.cabinet(h, cab, _far_rot(r))
 	_occupy(cab.x, cab.z, 0.6, 0.55)
-	var tray := Vector3(bed.x + 0.55, 0, bed.z + toward * 1.10)
+	var tray := Vector3(bed.x + 0.55, 0, bed.z + toward * 1.98)
 	Dressing.overbed_table(h, tray, _door_rot(r))
 	_occupy(tray.x + 0.2, tray.z, 0.8, 0.5)
 	Dressing.stool(h, Vector3(bed.x + 1.9, 0, bed.z + toward * 1.5), _ward_tint(r.key))
@@ -219,8 +219,8 @@ static func _dress_station(h: Hospital, r: Room) -> void:
 	Dressing.clock(h, _far_wall(r, 0.16, 2.30), _far_rot(r))
 	Dressing.linen(h, Vector3(r.rect.position.x + 0.9, 0.90, r.rect.position.y + 1.2))
 	Dressing.trays(h, Vector3(r.rect.end.x - 1.0, 0.90, r.rect.position.y + 1.4))
-	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 1.4))
-	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 1.5), 0.85)
+	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 3.0))
+	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 3.0), 0.85)
 	# The board every ward station has, with the bed list on it in somebody's
 	# handwriting. It is the room's whole reason for existing, on a wall.
 	Dressing.whiteboard(h, _right_wall(r, 0.42, 1.72), RIGHT_ROT, 1.5, 1.0)
@@ -299,7 +299,7 @@ static func _dress_day_room(h: Hospital, r: Room) -> void:
 	Dressing.plant(h, Vector3(r.rect.end.x - 1.1, 0, r.rect.position.y + 1.5), 1.0)
 	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, r.rect.get_center().y),
 		Vector2(3.0, 2.2), Color(0.46, 0.38, 0.22))
-	var cool3 := Vector3(r.rect.position.x + 0.7, 0, r.rect.get_center().y + 1.0)
+	var cool3 := Vector3(r.rect.position.x + 1.8, 0, r.rect.get_center().y + 3.2)
 	Dressing.water_cooler(h, cool3, LEFT_ROT)
 	_occupy(cool3.x, cool3.z, 0.5, 0.5)
 	Dressing.bin(h, Vector3(r.rect.position.x + 1.0, 0, r.rect.end.y - 1.5),
@@ -327,6 +327,7 @@ static func _prop(h: Hospital, id: String, pos: Vector3, rot_y := 0.0) -> Prop:
 ## Simple static furniture: a box with collision, no behaviour.
 static func _block(h: Hospital, size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
 	var b := Build.wall(size, color, pos, rot_y)
+	b.name = "Block"
 	h.add_child(b)
 	# Only things tall enough to stop a person count as obstacles; a low plinth
 	# at ankle height does not need to be routed around.
@@ -348,6 +349,7 @@ static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72
 
 static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35, 0.48, 0.55)) -> void:
 	var root := Node3D.new()
+	root.name = "Chair"
 	h.add_child(root)
 	root.position = pos
 	root.rotation.y = rot_y
@@ -599,12 +601,16 @@ static func _station(h: Hospital, r: Room) -> void:
 	# with a sideboard in it, which is a strange thing for the building's one
 	# permanent surveillance post to look like.
 	var corridor_z: float = r.rect.position.y + r.rect.size.y - 0.9
-	for sx in [c.x - 3.0, c.x + 3.0]:
-		_block(h, Vector3(2.4, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(sx, 0.55, corridor_z))
-		_block(h, Vector3(2.6, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
-		_occupy(sx, corridor_z, 2.6, 0.9)
-	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 3.0, 1.55, corridor_z + 0.32), 0.0, 0.13)
-	_prop(h, "blank_form", Vector3(c.x + 3.4, 1.22, corridor_z))
+	# Both runs used to be 2.6m wide centred 3m from the middle of an 8m room,
+	# which put 30cm of worktop inside the wall at each end — one of the "things
+	# phasing through each other" from the playtest, and the reason the overlap
+	# audit exists at all.
+	for sx in [c.x - 2.6, c.x + 2.6]:
+		_block(h, Vector3(2.1, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(sx, 0.55, corridor_z))
+		_block(h, Vector3(2.3, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
+		_occupy(sx, corridor_z, 2.3, 0.9)
+	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 2.6, 1.55, corridor_z + 0.32), 0.0, 0.13)
+	_prop(h, "blank_form", Vector3(c.x + 2.9, 1.22, corridor_z))
 
 	for i in 2:
 		var t := RecordsTerminal.new()
@@ -655,13 +661,13 @@ static func _station(h: Hospital, r: Room) -> void:
 	_block(h, Vector3(0.40, 0.03, 0.30), Build.PAPER,
 		Vector3(c.x + 2.2, 1.47, r.rect.position.y + 0.62))
 	_prop(h, "blank_form", Vector3(c.x + 1.5, 1.2, r.rect.position.y + 0.55))
-	_prop(h, "coffee", Vector3(c.x - 3.6, 1.2, corridor_z))
+	_prop(h, "coffee", Vector3(c.x - 3.2, 1.2, corridor_z))
 
 	# Something alive, in a pot, that somebody is quietly keeping going.
 	_block(h, Vector3(0.26, 0.24, 0.26), Color(0.72, 0.46, 0.34),
-		Vector3(c.x + 3.9, 1.28, corridor_z))
+		Vector3(c.x + 3.2, 1.28, corridor_z))
 	h.add_child(Build.mi(Build.sphere_mesh(0.22), Build.mat(Color(0.26, 0.62, 0.34)),
-		Vector3(c.x + 3.9, 1.56, corridor_z), Vector3.ZERO, Vector3(1.0, 0.85, 1.0)))
+		Vector3(c.x + 3.2, 1.56, corridor_z), Vector3.ZERO, Vector3(1.0, 0.85, 1.0)))
 	_table(h, Vector3(c.x + 2.6, 0, c.z + 3.2), 0.8, 0.6, 0.75)
 	_wall_sign(h, "COFFEE", Vector3(c.x + 2.6, 1.5, c.z + 2.95), 0.0, 0.08)
 	_prop(h, "coffee", Vector3(c.x + 2.2, 0.9, c.z + 3.0))
@@ -936,8 +942,10 @@ static func _radiology(h: Hospital, r: Room) -> void:
 	_block(h, Vector3(bore * 2.0 + 1.2, 0.35, 1.1), shell.darkened(0.15),
 		Vector3(lane, 0.18, ring_z))
 	# The bore itself, dark, so the hole reads as a hole.
-	h.add_child(Build.box_mi(Vector3(bore * 2.0, bore * 1.7, 0.9),
-		Color(0.10, 0.11, 0.13), Vector3(lane, bore * 0.95, ring_z)))
+	# Sits ON the plinth rather than through it: a bore that reaches below the
+	# base of the machine is a hole in the floor.
+	h.add_child(Build.box_mi(Vector3(bore * 2.0, bore * 1.52, 0.9),
+		Color(0.10, 0.11, 0.13), Vector3(lane, 0.36 + bore * 0.76, ring_z)))
 	_occupy(lane, ring_z, bore * 2.0 + 1.2, 1.1)
 
 	# The couch that slides through it, and the bench you actually operate.

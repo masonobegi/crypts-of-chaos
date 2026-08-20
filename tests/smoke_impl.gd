@@ -141,6 +141,120 @@ func _find_button(n: Node, fragment: String) -> Button:
 			return f
 	return null
 
+## Nothing is standing inside anything else.
+##
+## The playtest note was "a couple of weird rendering things where things are
+## phasing through". That is not a renderer problem — it is two objects placed
+## at overlapping positions by two different pieces of code that do not know
+## about each other, and it is exactly the failure mode of adding a decoration
+## pass on top of a furniture pass on top of a floor plan.
+##
+## So this walks every free-standing object in the building — anything with a
+## mesh, small enough not to be architecture — and fails on any pair whose boxes
+## genuinely interpenetrate. The threshold is deliberately generous: a chair
+## tucked under a table shares space and is fine; a shelf unit occupying the
+## same cubic metre as a desk is not.
+const OVERLAP_MIN := 0.10          ## metres of interpenetration on EVERY axis
+const ARCHITECTURE := 3.4          ## anything bigger than this on two axes is a wall
+## What fraction of the smaller object has to be inside the bigger one before
+## this is a bug rather than carpentry.
+##
+## The first version measured raw overlap and immediately failed on the CT
+## gantry, whose pillars stand IN its plinth — which is how a machine is built.
+## A pillar in a plinth is a tenth of the pillar; a bin standing inside the
+## nurses' station counter is two thirds of the bin. The difference between an
+## assembly and a mistake is what proportion of the thing has disappeared.
+const OVERLAP_FRACTION := 0.30
+
+func _check_nothing_is_inside_anything_else() -> void:
+	if game.hospital == null:
+		return
+	var boxes: Array = []
+	for child in game.hospital.get_children():
+		if not (child is Node3D):
+			continue
+		var aabb := _world_aabb(child)
+		if aabb.size == Vector3.ZERO:
+			continue
+		var big := 0
+		for axis in 3:
+			if aabb.size[axis] > ARCHITECTURE:
+				big += 1
+		# A wall with a doorway in it is only 2.1m tall, so "big on two axes"
+		# let every one of them into the audit and the report was mostly
+		# fittings correctly attached to walls.
+		if big >= 2 or (big >= 1 and aabb.size.y >= 2.0):
+			continue
+		boxes.append({"name": _describe(child), "aabb": aabb})
+
+	var clashes: Array[String] = []
+	for i in boxes.size():
+		for j in range(i + 1, boxes.size()):
+			var a: AABB = boxes[i]["aabb"]
+			var b: AABB = boxes[j]["aabb"]
+			if not a.intersects(b):
+				continue
+			var over := a.intersection(b)
+			if over.size.x < OVERLAP_MIN or over.size.y < OVERLAP_MIN \
+					or over.size.z < OVERLAP_MIN:
+				continue
+			var vol: float = over.size.x * over.size.y * over.size.z
+			var smallest: float = minf(
+				a.size.x * a.size.y * a.size.z, b.size.x * b.size.y * b.size.z)
+			if smallest <= 0.0 or vol / smallest < OVERLAP_FRACTION:
+				continue
+			clashes.append("%s@(%.2f,%.2f,%.2f)%.2fx%.2fx%.2f ∩ %s@(%.2f,%.2f,%.2f)%.2fx%.2fx%.2f" % [
+				boxes[i]["name"], a.get_center().x, a.get_center().y, a.get_center().z,
+				a.size.x, a.size.y, a.size.z,
+				boxes[j]["name"], b.get_center().x, b.get_center().y, b.get_center().z,
+				b.size.x, b.size.y, b.size.z])
+	if clashes.is_empty():
+		_ok(true, "nothing in the building is standing inside anything else")
+	else:
+		for c in clashes:
+			notes.append("overlap: " + c)
+		_ok(false, "%d pairs of objects interpenetrate (first: %s)" % [
+			clashes.size(), clashes[0]])
+
+## Something a person could act on: the node's own name if it has been given
+## one, otherwise its class and what it calls itself in the fiction.
+func _describe(n: Node) -> String:
+	var nm := String(n.name)
+	if not nm.begins_with("@"):
+		return nm
+	if n.has_method("get_item_id"):
+		return "prop:%s" % String(n.call("get_item_id"))
+	var disp = n.get("fixture_name")
+	if disp != null and String(disp) != "":
+		return "fixture:%s" % String(disp)
+	var scr = n.get_script()
+	if scr != null:
+		return "%s(%s)" % [n.get_class(), String(scr.resource_path).get_file()]
+	return n.get_class()
+
+## The world-space box of everything a node draws. Built from its mesh
+## descendants rather than from a collision shape, because most of what is
+## being audited here is decoration and has no collider at all.
+func _world_aabb(root: Node3D) -> AABB:
+	var out := AABB()
+	var first := true
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n = stack.pop_back()
+		for c in n.get_children():
+			stack.append(c)
+		if not (n is MeshInstance3D) or n.mesh == null:
+			continue
+		var local: AABB = n.mesh.get_aabb()
+		var xf: Transform3D = (n as Node3D).global_transform
+		var world := xf * local
+		if first:
+			out = world
+			first = false
+		else:
+			out = out.merge(world)
+	return out
+
 func _check_boot() -> void:
 	_ok(game.hospital != null and game.hospital.rooms.size() == 15, "hospital built with 15 rooms")
 	# The three annexe departments are built but shuttered on day one.
@@ -149,6 +263,7 @@ func _check_boot() -> void:
 	_ok(game.player != null, "player spawned")
 	_ok(game.player.global_position.y > -5.0, "player is not under the floor")
 	_ok(tree.get_nodes_in_group("staff").size() >= 3, "staff spawned")
+	_check_nothing_is_inside_anything_else()
 	_ok(game.patient_system != null, "patient system exists")
 	_ok(game.patient_system.active_count() > 0, "patients admitted at briefing (%d)"
 		% game.patient_system.active_count())

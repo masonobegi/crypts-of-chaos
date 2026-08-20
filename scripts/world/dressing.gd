@@ -23,9 +23,15 @@ const FRAME := Color(0.20, 0.24, 0.28)
 const CORK := Color(0.78, 0.60, 0.38)
 const STEEL := Color(0.80, 0.85, 0.92)
 
-static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+## `depth` is how far the piece sticks out from its own origin, and it exists
+## because wall fittings are not flat. A poster is 3cm thick and can sit 9cm
+## proud of the plaster; a sharps bin is 20cm deep and half of it was inside the
+## wall — which is exactly the "things phasing through each other" the second
+## playtest reported. Pushing the root out by half its depth along its own
+## facing makes one mounting offset correct for everything.
+static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0) -> Node3D:
 	h.add_child(n)
-	n.position = pos
+	n.position = pos + Vector3(sin(rot_y), 0.0, cos(rot_y)) * depth * 0.5
 	n.rotation.y = rot_y
 	return n
 
@@ -40,6 +46,7 @@ static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 static func poster(h: Node3D, pos: Vector3, rot_y: float, w := 0.62, tall := 0.86,
 		accent := Color(0.35, 0.72, 0.70), lines := 4) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Poster"
 	root.add_child(Build.box_mi(Vector3(w, tall, 0.035), FRAME, Vector3.ZERO, 0.6, 0.010))
 	root.add_child(Build.box_mi(Vector3(w - 0.07, tall - 0.07, 0.012), PAPER,
 		Vector3(0, 0, 0.022), 0.9, 0.0))
@@ -51,12 +58,13 @@ static func poster(h: Node3D, pos: Vector3, rot_y: float, w := 0.62, tall := 0.8
 			Color(0.42, 0.45, 0.48),
 			Vector3(-(w - 0.20 - lw) * 0.5, tall * 0.10 - float(i) * tall * 0.12, 0.030),
 			0.9, 0.0))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.035)
 
 ## A cork board with notes pinned to it at slightly wrong angles, because a
 ## noticeboard where everything is straight is a noticeboard nobody uses.
 static func noticeboard(h: Node3D, pos: Vector3, rot_y: float, w := 1.5, tall := 1.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Noticeboard"
 	root.add_child(Build.box_mi(Vector3(w + 0.08, tall + 0.08, 0.05), FRAME,
 		Vector3.ZERO, 0.6, 0.010))
 	root.add_child(Build.box_mi(Vector3(w, tall, 0.02), CORK, Vector3(0, 0, 0.032), 0.95, 0.0))
@@ -71,13 +79,14 @@ static func noticeboard(h: Node3D, pos: Vector3, rot_y: float, w := 1.5, tall :=
 					tall * 0.22 - float(j) * 0.40, 0.046), 0.95, 0.006)
 			note.rotation.z = (0.09 if (i + j) % 2 == 0 else -0.07)
 			root.add_child(note)
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.050)
 
 ## Framed art. Abstract, cheerful, and exactly as related to medicine as the
 ## art in a real waiting room.
 static func wall_art(h: Node3D, pos: Vector3, rot_y: float, w := 0.9, tall := 0.7,
 		a := Color(0.30, 0.70, 0.85), b := Color(0.98, 0.72, 0.32)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "WallArt"
 	root.add_child(Build.box_mi(Vector3(w, tall, 0.045), FRAME, Vector3.ZERO, 0.5, 0.010))
 	root.add_child(Build.box_mi(Vector3(w - 0.08, tall - 0.08, 0.012),
 		Color(0.95, 0.94, 0.90), Vector3(0, 0, 0.028), 0.9, 0.0))
@@ -87,7 +96,7 @@ static func wall_art(h: Node3D, pos: Vector3, rot_y: float, w := 0.9, tall := 0.
 		Vector3(w * 0.18, -tall * 0.10, 0.036), 0.8, 0.006))
 	root.add_child(Build.box_mi(Vector3(w * 0.62, 0.03, 0.01), Color(0.28, 0.32, 0.36),
 		Vector3(0, -tall * 0.30, 0.036), 0.8, 0.0))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.045)
 
 # ------------------------------------------------------------------ fittings
 ## A privacy curtain on a rail, gathered at one end. Gathered rather than drawn
@@ -95,6 +104,7 @@ static func wall_art(h: Node3D, pos: Vector3, rot_y: float, w := 0.9, tall := 0.
 static func curtain(h: Node3D, pos: Vector3, span: float, rot_y := 0.0,
 		tint := Color(0.36, 0.68, 0.72)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Curtain"
 	root.add_child(Build.mi(Build.cyl_mesh(0.022, span, 10), Build.mat(STEEL, 0.4, 0.6),
 		Vector3(0, 2.28, 0), Vector3(0, 0, PI * 0.5)))
 	for i in 2:
@@ -114,6 +124,7 @@ static func curtain(h: Node3D, pos: Vector3, span: float, rot_y := 0.0,
 ## most "this is a hospital" object per polygon in the entire building.
 static func oxygen_panel(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "OxygenPanel"
 	root.add_child(Build.box_mi(Vector3(0.86, 0.34, 0.06), Color(0.90, 0.92, 0.94),
 		Vector3.ZERO, 0.45, 0.010))
 	var cols := [Color(0.30, 0.66, 0.95), Color(0.96, 0.96, 0.96),
@@ -124,33 +135,36 @@ static func oxygen_panel(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 			Vector3(-0.30 + float(i) * 0.20, 0.0, 0.070), Vector3(PI * 0.5, 0, 0)))
 	root.add_child(Build.box_mi(Vector3(0.80, 0.03, 0.008), Color(0.35, 0.40, 0.44),
 		Vector3(0, 0.13, 0.034), 0.8, 0.0))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.060)
 
 ## Sharps bin. Yellow, lidded, and the correct kind of ominous.
 static func sharps(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Sharps"
 	root.add_child(Build.box_mi(Vector3(0.26, 0.30, 0.20), Color(0.98, 0.80, 0.14),
 		Vector3.ZERO, 0.8, 0.010))
 	root.add_child(Build.box_mi(Vector3(0.27, 0.07, 0.21), Color(0.92, 0.36, 0.20),
 		Vector3(0, 0.18, 0), 0.7, 0.008))
 	root.add_child(Build.box_mi(Vector3(0.14, 0.02, 0.06), Color(0.25, 0.20, 0.10),
 		Vector3(0, 0.215, 0.02), 0.9, 0.0))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.200)
 
 ## Hand gel by the door. Everybody in the building walks past one of these
 ## fifty times a shift and the player is about to as well.
 static func dispenser(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Dispenser"
 	root.add_child(Build.box_mi(Vector3(0.16, 0.28, 0.11), Color(0.92, 0.94, 0.96),
 		Vector3.ZERO, 0.55, 0.008))
 	root.add_child(Build.box_mi(Vector3(0.10, 0.16, 0.06), Color(0.55, 0.86, 0.80),
 		Vector3(0, 0.01, 0.055), 0.35, 0.006))
 	root.add_child(Build.box_mi(Vector3(0.09, 0.04, 0.05), Color(0.35, 0.40, 0.44),
 		Vector3(0, -0.16, 0.04), 0.6, 0.006))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.110)
 
 static func extinguisher(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Extinguisher"
 	root.add_child(Build.box_mi(Vector3(0.30, 0.50, 0.03), Color(0.90, 0.90, 0.88),
 		Vector3(0, 0.05, 0), 0.9, 0.0))
 	root.add_child(Build.mi(Build.cyl_mesh(0.085, 0.42, 12),
@@ -159,10 +173,11 @@ static func extinguisher(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 		Vector3(0, 0.25, 0.11)))
 	root.add_child(Build.box_mi(Vector3(0.12, 0.03, 0.03), Color(0.20, 0.22, 0.24),
 		Vector3(0.06, 0.29, 0.11), 0.6, 0.006))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.220)
 
 static func clock(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Clock"
 	root.add_child(Build.mi(Build.cyl_mesh(0.20, 0.05, 18), Build.mat(FRAME, 0.5),
 		Vector3.ZERO, Vector3(PI * 0.5, 0, 0)))
 	root.add_child(Build.mi(Build.cyl_mesh(0.175, 0.02, 18), Build.unshaded(PAPER),
@@ -173,12 +188,13 @@ static func clock(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 		Vector3(0.045, -0.02, 0.045), 0.9, 0.0)
 	min_hand.rotation.z = 1.9
 	root.add_child(min_hand)
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.050)
 
 ## A ceiling vent. Four slats in a frame — the thing that stops a ceiling being
 ## an unbroken plane across the top third of every shot.
 static func vent(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Vent"
 	root.add_child(Build.box_mi(Vector3(0.62, 0.04, 0.42), Color(0.88, 0.89, 0.87),
 		Vector3.ZERO, 0.5, 0.008))
 	for i in 4:
@@ -188,6 +204,7 @@ static func vent(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 
 static func sprinkler(h: Node3D, pos: Vector3) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Sprinkler"
 	root.add_child(Build.mi(Build.cyl_mesh(0.045, 0.05, 10), Build.mat(STEEL, 0.35, 0.7),
 		Vector3.ZERO))
 	root.add_child(Build.mi(Build.cyl_mesh(0.018, 0.07, 8),
@@ -198,6 +215,7 @@ static func sprinkler(h: Node3D, pos: Vector3) -> Node3D:
 static func handrail(h: Node3D, x0: float, x1: float, z: float, y := 0.92,
 		tint := Color(0.78, 0.62, 0.38)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Handrail"
 	var span: float = absf(x1 - x0)
 	root.add_child(Build.mi(Build.cyl_mesh(0.045, span, 10), Build.mat(tint, 0.6),
 		Vector3.ZERO, Vector3(0, 0, PI * 0.5)))
@@ -213,6 +231,7 @@ static func handrail(h: Node3D, x0: float, x1: float, z: float, y := 0.92,
 static func floor_line(h: Node3D, x0: float, x1: float, z: float, tint: Color,
 		width := 0.10) -> Node3D:
 	var root := Node3D.new()
+	root.name = "FloorLine"
 	root.add_child(Build.box_mi(Vector3(absf(x1 - x0), 0.012, width), tint,
 		Vector3.ZERO, 0.6, 0.0))
 	return _add(h, root, Vector3((x0 + x1) * 0.5, 0.008, z))
@@ -221,6 +240,7 @@ static func floor_line(h: Node3D, x0: float, x1: float, z: float, tint: Color,
 static func ceiling_sign(h: Node3D, pos: Vector3, text: String, rot_y := 0.0,
 		tint := Color(0.16, 0.42, 0.52)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "CeilingSign"
 	for dx in [-0.55, 0.55]:
 		root.add_child(Build.mi(Build.cyl_mesh(0.012, 0.34, 6), Build.mat(STEEL, 0.4, 0.6),
 			Vector3(dx, 0.30, 0)))
@@ -240,6 +260,7 @@ static func ceiling_sign(h: Node3D, pos: Vector3, text: String, rot_y := 0.0,
 static func bin(h: Node3D, pos: Vector3, tint := Color(0.32, 0.55, 0.62),
 		pedal := true) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Bin"
 	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.30, 0.30), Vector2(0.34, 0.34), 0.46),
 		Build.mat(tint, 0.75), Vector3(0, 0.23, 0)))
 	root.add_child(Build.box_mi(Vector3(0.36, 0.04, 0.36), tint.lightened(0.22),
@@ -251,6 +272,7 @@ static func bin(h: Node3D, pos: Vector3, tint := Color(0.32, 0.55, 0.62),
 
 static func plant(h: Node3D, pos: Vector3, scale_f := 1.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Plant"
 	root.scale = Vector3.ONE * scale_f
 	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.24, 0.24), Vector2(0.32, 0.32), 0.30),
 		Build.mat(Color(0.78, 0.46, 0.32), 0.85), Vector3(0, 0.15, 0)))
@@ -269,6 +291,7 @@ static func plant(h: Node3D, pos: Vector3, scale_f := 1.0) -> Node3D:
 ## other, because a stack of one colour reads as a solid block.
 static func linen(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Linen"
 	for i in 4:
 		root.add_child(Build.box_mi(Vector3(0.40, 0.07, 0.30),
 			Color(0.94, 0.95, 0.97).darkened(0.045 * float(i % 2)),
@@ -277,6 +300,7 @@ static func linen(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 
 static func mop_bucket(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "MopBucket"
 	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.40, 0.30), Vector2(0.46, 0.34), 0.34),
 		Build.mat(Color(0.95, 0.72, 0.20), 0.8), Vector3(0, 0.17, 0)))
 	root.add_child(Build.box_mi(Vector3(0.20, 0.14, 0.26), Color(0.55, 0.58, 0.62),
@@ -293,6 +317,7 @@ static func mop_bucket(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## people who are behind on something.
 static func boxes(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Boxes"
 	var sizes := [Vector3(0.52, 0.36, 0.42), Vector3(0.44, 0.30, 0.36),
 		Vector3(0.36, 0.26, 0.30)]
 	var y := 0.0
@@ -311,6 +336,7 @@ static func boxes(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## A wheeled drip stand's poorer cousin: a stack of trays on a shelf unit face.
 static func trays(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Trays"
 	for i in 5:
 		root.add_child(Build.box_mi(Vector3(0.34, 0.035, 0.26),
 			[Color(0.36, 0.68, 0.72), Color(0.94, 0.86, 0.42)][i % 2],
@@ -321,6 +347,7 @@ static func trays(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## and a table.
 static func desk_clutter(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "DeskClutter"
 	root.add_child(Build.mi(Build.cyl_mesh(0.043, 0.10, 10),
 		Build.mat(Color(0.92, 0.44, 0.36), 0.6), Vector3(0.22, 0.05, 0.04)))
 	root.add_child(Build.box_mi(Vector3(0.02, 0.05, 0.05), Color(0.92, 0.44, 0.36),
@@ -343,6 +370,7 @@ static func desk_clutter(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 static func cabinet(h: Node3D, pos: Vector3, rot_y := 0.0,
 		tint := Color(0.92, 0.93, 0.95)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Cabinet"
 	root.add_child(Build.box_mi(Vector3(0.52, 0.66, 0.46), tint, Vector3(0, 0.33, 0), 0.7, 0.012))
 	for i in 2:
 		root.add_child(Build.box_mi(Vector3(0.44, 0.03, 0.02), Color(0.55, 0.60, 0.64),
@@ -364,6 +392,7 @@ static func cabinet(h: Node3D, pos: Vector3, rot_y := 0.0,
 ## The tray table that swings over a bed and is never where anybody wants it.
 static func overbed_table(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "OverbedTable"
 	root.add_child(Build.box_mi(Vector3(0.46, 0.03, 0.30), Color(0.62, 0.66, 0.70),
 		Vector3(0, 0.03, 0), 0.6, 0.008))
 	root.add_child(Build.mi(Build.cyl_mesh(0.035, 0.86, 10),
@@ -383,6 +412,7 @@ static func overbed_table(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## A round stool on castors. Doctors sit on these to look sympathetic.
 static func stool(h: Node3D, pos: Vector3, tint := Color(0.28, 0.52, 0.60)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Stool"
 	root.add_child(Build.mi(Build.cyl_mesh(0.22, 0.09, 14), Build.mat(tint, 0.75),
 		Vector3(0, 0.56, 0)))
 	root.add_child(Build.mi(Build.cyl_mesh(0.035, 0.50, 8), Build.mat(STEEL, 0.4, 0.6),
@@ -400,6 +430,7 @@ static func stool(h: Node3D, pos: Vector3, tint := Color(0.28, 0.52, 0.60)) -> N
 static func hamper(h: Node3D, pos: Vector3, rot_y := 0.0,
 		tint := Color(0.46, 0.72, 0.66)) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Hamper"
 	for i in 4:
 		var a: float = TAU * float(i) / 4.0
 		root.add_child(Build.mi(Build.cyl_mesh(0.022, 0.68, 8), Build.mat(STEEL, 0.4, 0.6),
@@ -416,6 +447,7 @@ static func hamper(h: Node3D, pos: Vector3, rot_y := 0.0,
 static func floor_mat(h: Node3D, pos: Vector3, size := Vector2(1.4, 0.9),
 		tint := Color(0.24, 0.32, 0.34), rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "FloorMat"
 	root.add_child(Build.box_mi(Vector3(size.x, 0.016, size.y), tint, Vector3.ZERO, 0.95, 0.0))
 	root.add_child(Build.box_mi(Vector3(size.x - 0.16, 0.018, size.y - 0.16),
 		tint.lightened(0.12), Vector3(0, 0.004, 0), 0.95, 0.0))
@@ -424,6 +456,7 @@ static func floor_mat(h: Node3D, pos: Vector3, size := Vector2(1.4, 0.9),
 ## A screen on a bracket in the corner, showing nothing anybody chose.
 static func wall_tv(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "WallTv"
 	root.add_child(Build.box_mi(Vector3(0.10, 0.10, 0.22), Color(0.35, 0.38, 0.42),
 		Vector3(0, 0, 0.11), 0.5, 0.008))
 	root.add_child(Build.box_mi(Vector3(0.92, 0.54, 0.06), Color(0.16, 0.17, 0.20),
@@ -434,11 +467,12 @@ static func wall_tv(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 		Vector3(-0.20, 0.08, 0.286), 0.4, 0.0))
 	root.add_child(Build.box_mi(Vector3(0.52, 0.05, 0.01), Color(0.52, 0.70, 0.80),
 		Vector3(-0.10, -0.06, 0.286), 0.4, 0.0))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.300)
 
 ## A water cooler. Nobody has ever seen one of these being refilled.
 static func water_cooler(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "WaterCooler"
 	root.add_child(Build.box_mi(Vector3(0.34, 0.92, 0.34), Color(0.90, 0.92, 0.94),
 		Vector3(0, 0.46, 0), 0.6, 0.012))
 	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.30, 0.30), Vector2(0.16, 0.16), 0.46),
@@ -452,6 +486,7 @@ static func water_cooler(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## A vending machine, half empty, humming.
 static func vending(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Vending"
 	root.add_child(Build.box_mi(Vector3(0.90, 1.80, 0.60), Color(0.24, 0.30, 0.36),
 		Vector3(0, 0.90, 0), 0.6, 0.014))
 	root.add_child(Build.box_mi(Vector3(0.70, 1.24, 0.04), Color(0.14, 0.16, 0.20),
@@ -474,6 +509,7 @@ static func vending(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 ## A whiteboard with a grid of nonsense on it and a pen tray.
 static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 1.0) -> Node3D:
 	var root := Node3D.new()
+	root.name = "Whiteboard"
 	root.add_child(Build.box_mi(Vector3(w + 0.06, tall + 0.06, 0.05), Color(0.62, 0.66, 0.70),
 		Vector3.ZERO, 0.5, 0.010))
 	root.add_child(Build.box_mi(Vector3(w, tall, 0.02), Color(0.96, 0.97, 0.97),
@@ -496,13 +532,14 @@ static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 
 			Build.mat([Color(0.20, 0.22, 0.26), Color(0.80, 0.26, 0.26)][i], 0.5),
 			Vector3(-0.10 + float(i) * 0.12, -tall * 0.5 - 0.01, 0.08),
 			Vector3(0, 0, PI * 0.5)))
-	return _add(h, root, pos, rot_y)
+	return _add(h, root, pos, rot_y, 0.050)
 
 ## A bay of different-coloured flooring, with a border. Hospitals mark out the
 ## bit of the room the bed lives in, and a floor with a zone on it is a floor
 ## somebody planned rather than a coloured plane.
 static func floor_zone(h: Node3D, centre: Vector3, size: Vector2, tint: Color) -> Node3D:
 	var root := Node3D.new()
+	root.name = "FloorZone"
 	root.add_child(Build.box_mi(Vector3(size.x, 0.012, size.y), tint,
 		Vector3.ZERO, 0.85, 0.0))
 	root.add_child(Build.box_mi(Vector3(size.x - 0.14, 0.014, size.y - 0.14),

@@ -149,7 +149,10 @@ func _set_ceilings_visible(v: bool) -> void:
 				(c as MeshInstance3D).visible = v
 
 const SHOTS := [
-	["01_lobby", Vector3(5.5, 1.7, -4.0), Vector3(5.5, 1.5, 2.0)],
+	# Looking SOUTH, into the room. This shot used to face the corridor doorway
+	# with reception, every chair and the vending machine behind the camera, so
+	# the lobby photographed as a blank wall and was assumed to be one.
+	["01_lobby", Vector3(6.2, 1.7, -1.6), Vector3(4.6, 1.3, -8.5)],
 	["02_corridor_west", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.5, 2.0)],
 	["03_corridor_east", Vector3(40.0, 1.7, 2.0), Vector3(3.0, 1.5, 2.0)],
 	# Standing in the corridor outside 101, at head height, looking at the door

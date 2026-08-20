@@ -343,12 +343,18 @@ func _build_signage() -> void:
 		var centre := float(entry.get("door", rect.get_center().x))
 		var north := rect.position.y > 0.0
 		var z := (4.0 - 0.2) if north else (0.0 + 0.2)
+		var door_plate := Build.box_mi(
+			Vector3(float(String(entry["display"]).length()) * 0.085 * 0.62 + 0.1, 0.17, 0.03),
+			Color(0.14, 0.20, 0.26), Vector3.ZERO)
 		var sign := Build.label3d(String(entry["display"]), 0.085, Color(0.96, 0.97, 0.94), false)
 		# Offset to the side of the doorway rather than over it, so the sign
 		# reads as a door plate instead of a banner across the opening.
 		var w := float(entry.get("door_w", DOOR_W))
 		sign.position = Vector3(centre + w * 0.5 + 0.45, 2.05, z + (0.11 if not north else -0.11))
 		sign.rotation.y = PI if north else 0.0
+		# Clear of the plate face, or the text z-fights with it and vanishes.
+		door_plate.position = sign.position + Vector3(0, 0, -0.03 if not north else 0.03)
+		add_child(door_plate)
 		add_child(sign)
 
 		# A flag sign, projecting into the corridor at right angles to the wall.
@@ -360,10 +366,28 @@ func _build_signage() -> void:
 		# way and MIRRORED walking the other, which is worse than no sign at all
 		# — the first screenshot of this read "l0l" and "ǝʞɐʇnI ⅋ ʎqqo˥".
 		var short := _short_name(String(entry["display"]))
+		# The plate the two faces are stuck to. Without it the text hangs in
+		# mid-air off the wall, which is the one thing signage never does, and
+		# reads as a HUD element that has escaped into the world.
+		var plate_w := float(short.length()) * 0.155 * 0.62 + 0.16
+		var plate := Build.box_mi(Vector3(0.05, 0.30, plate_w),
+			Color(0.14, 0.20, 0.26), Vector3.ZERO)
+		plate.position = Vector3(centre + w * 0.5 + 0.28, 2.42,
+			z + (0.30 if not north else -0.30))
+		add_child(plate)
+		# A stub back to the wall, so the plate is mounted rather than hovering.
+		var arm := Build.box_mi(Vector3(0.04, 0.05, 0.30),
+			Color(0.14, 0.20, 0.26), Vector3.ZERO)
+		arm.position = Vector3(centre + w * 0.5 + 0.28, 2.42,
+			z + (0.16 if not north else -0.16))
+		add_child(arm)
 		for face in [0.0, PI]:
 			var flag := Build.label3d(short, 0.155, Color(0.93, 0.96, 0.98), false)
 			flag.double_sided = false
-			flag.position = Vector3(centre + w * 0.5 + 0.28, 2.42,
+			# Each face sits proud of its own side of the plate. Centred, both
+			# labels are buried inside the box and the corridor loses its signs.
+			var side := 0.045 if is_zero_approx(face) else -0.045
+			flag.position = Vector3(centre + w * 0.5 + 0.28 + side, 2.42,
 				z + (0.30 if not north else -0.30))
 			flag.rotation.y = PI * 0.5 + face
 			add_child(flag)

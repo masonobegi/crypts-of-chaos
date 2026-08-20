@@ -136,8 +136,32 @@ static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
 	stand.position = pos + Vector3(0, 0.9, 0)
 	return stand
 
-static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float, size := 0.1) -> void:
-	var l := Build.label3d(text, size, Color(0.92, 0.94, 0.90), false)
+## Signage on a plate. White outlined text floating directly on a pale wall was
+## legible in the sense that you could read it if you already knew it was there;
+## a hospital's actual signs are a coloured plate with the text on it, which is
+## both what the building looks like and the reason you can find anything in it
+## from the far end of a corridor.
+static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float,
+		size := 0.1, plate := true) -> void:
+	# The wall normal the sign is mounted on, so the plate sits just behind the
+	# text rather than z-fighting with it.
+	var out := Vector3(sin(rot_y), 0.0, cos(rot_y))
+	if plate:
+		var lines: PackedStringArray = text.split("\n")
+		var widest := 0
+		for ln in lines:
+			widest = maxi(widest, ln.length())
+		var w := float(widest) * size * 0.62 + size * 0.9
+		var tall := float(lines.size()) * size * 1.34 + size * 0.7
+		var q := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = Vector2(w, tall)
+		q.mesh = qm
+		q.material_override = Build.unshaded(Color(0.14, 0.20, 0.26))
+		h.add_child(q)
+		q.position = pos - out * 0.012
+		q.rotation.y = rot_y
+	var l := Build.label3d(text, size, Color(0.96, 0.97, 0.94), false)
 	h.add_child(l)
 	l.position = pos
 	l.rotation.y = rot_y
@@ -276,9 +300,23 @@ static func _lobby(h: Hospital, r: Room) -> void:
 # ------------------------------------------------------------------ station
 static func _station(h: Hospital, r: Room) -> void:
 	var c := r.center()
-	# Counter facing the corridor — nurses stand behind it and see everything.
+	# The back worktop, against the exterior wall.
 	_block(h, Vector3(6.0, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(c.x, 0.55, r.rect.position.y + 0.5))
 	_block(h, Vector3(6.2, 0.08, 0.85), Color(0.66, 0.70, 0.72), Vector3(c.x, 1.12, r.rect.position.y + 0.5))
+
+	# ...and the counter that actually faces the corridor, in two runs either
+	# side of the doorway. The comment above the back worktop used to claim it
+	# was this one, and it is at the far wall, ten metres and a partition away
+	# from anything: the nurses' station photographed and read as an empty room
+	# with a sideboard in it, which is a strange thing for the building's one
+	# permanent surveillance post to look like.
+	var corridor_z: float = r.rect.position.y + r.rect.size.y - 0.9
+	for sx in [c.x - 3.0, c.x + 3.0]:
+		_block(h, Vector3(2.4, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(sx, 0.55, corridor_z))
+		_block(h, Vector3(2.6, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
+		_occupy(sx, corridor_z, 2.6, 0.9)
+	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 3.0, 1.55, corridor_z + 0.32), 0.0, 0.13)
+	_prop(h, "blank_form", Vector3(c.x + 3.4, 1.22, corridor_z))
 
 	for i in 2:
 		var t := RecordsTerminal.new()

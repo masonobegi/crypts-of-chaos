@@ -22,6 +22,11 @@ var _watch_panel: PanelContainer
 var _subtitle: Label
 var _subtitle_panel: PanelContainer
 var _toasts: VBoxContainer
+var _toast_queue: Array = []
+var _toast_gap := 0.0
+var _last_toast_text := ""
+var _last_toast_count := 1
+var _last_toast_label: Label = null
 var _ticker: VBoxContainer
 var _crosshair: Control
 var _subtitle_timer := 0.0
@@ -172,6 +177,7 @@ func _process(delta: float) -> void:
 		_subtitle_timer -= delta
 		if _subtitle_timer <= 0.0:
 			_subtitle_panel.visible = false
+	_drain_toasts(delta)
 	_refresh_watchers()
 
 ## "Eyes on you" — the readable version of the whole perception system. It never
@@ -333,7 +339,34 @@ func _on_transaction(label: String, amount: int, is_hospital: bool) -> void:
 	if is_instance_valid(l):
 		l.queue_free()
 
+## Toasts arrive in bursts — five patients handed over at 8:00, a run of
+## machine alarms, an argument's worth of complaints — and six of them landing
+## in the same frame is a wall of text that reads as decoration. They queue
+## instead: at most three on screen, one released every half second, and an
+## identical line repeated inside the window becomes a count on the line that is
+## already there rather than a second copy of it.
 func _on_toast(text: String, kind: String) -> void:
+	if _toast_queue.size() >= 14:
+		return                    # something is spamming; do not build a backlog
+	_toast_queue.append({"text": text, "kind": kind})
+
+func _drain_toasts(delta: float) -> void:
+	_toast_gap = maxf(0.0, _toast_gap - delta)
+	if _toast_queue.is_empty() or _toast_gap > 0.0:
+		return
+	var next: Dictionary = _toast_queue.pop_front()
+	# A repeat of the line already at the bottom is a tally, not a new toast.
+	if _last_toast_text == String(next["text"]) and is_instance_valid(_last_toast_label):
+		_last_toast_count += 1
+		_last_toast_label.text = "%s  ×%d" % [_last_toast_text, _last_toast_count]
+		_toast_gap = 0.2
+		return
+	_last_toast_text = String(next["text"])
+	_last_toast_count = 1
+	_toast_gap = 0.5
+	_show_toast(String(next["text"]), String(next["kind"]))
+
+func _show_toast(text: String, kind: String) -> void:
 	var colour := UIKit.INK
 	match kind:
 		"good": colour = UIKit.GOOD
@@ -345,18 +378,19 @@ func _on_toast(text: String, kind: String) -> void:
 	l.custom_minimum_size.x = 370
 	p.add_child(l)
 	_toasts.add_child(p)
+	_last_toast_label = l
 	if kind == "money":
 		AudioMgr.play("money", -14.0)
 	elif kind == "bad":
 		AudioMgr.play("error", -14.0)
-	while _toasts.get_child_count() > 6:
+	while _toasts.get_child_count() > 3:
 		_toasts.get_child(0).free()
 	# Guard every await: the HUD can be torn down while a toast is still
 	# counting down (scene change, or a headless harness rebuilding the world),
 	# and resuming on a freed node throws.
 	if not is_inside_tree():
 		return
-	await get_tree().create_timer(7.0).timeout
+	await get_tree().create_timer(6.0).timeout
 	if not is_instance_valid(p) or not is_inside_tree():
 		return
 	var tw := create_tween()

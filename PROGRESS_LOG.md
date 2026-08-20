@@ -2070,3 +2070,40 @@ what let the three effects above be unit-tested at all.
 
 Verified: 1,581 assertions · 121 smoke · 23 live · boot check · 21/21 balance
 across the strategy set · 36 screenshots.
+
+## A building you can read, and a HUD that stops shouting over it
+
+**Toasts queue instead of arriving all at once.** Five patients are handed over
+at 8:00 on the first morning, and all five toasts landed in the same frame — a
+wall of text that reads as decoration and is gone before you have parsed the
+second line. At most three are on screen now, one released every half second,
+and an identical line repeated inside the window becomes a count on the line
+that is already there rather than a second copy of it. Every burst in the game
+benefits; the opening handover most of all, because it is now five names you
+read one at a time instead of a paragraph you skip.
+
+**Signage is on plates.** White outlined text floating on a pale wall was
+legible in the sense that you could read it once you knew it was there. Room
+plates, corridor flag signs and every wall sign in the furniture recipes now sit
+on a dark plate, and the flag signs have a stub mounting them to the wall
+instead of hovering off it. Two hazards worth recording: a plate centred on its
+label swallows the label whole, and the two back-to-back faces of a flag sign
+each need to sit proud of their own side of it.
+
+**The nurses' station had its counter against the exterior wall** — ten metres
+and a partition from anything, with a comment above it claiming it faced the
+corridor so nurses could see everything. There is now a counter that does face
+the corridor, in two runs either side of the doorway, so the building's one
+permanent surveillance post looks like one from outside it.
+
+**The lobby was being photographed as a blank wall.** The shot faced the
+corridor doorway with reception, every chair and the vending machine behind the
+camera. Turned around. This is a note about the harness, not the game, but the
+harness is how any of this gets looked at.
+
+One live check went red on the way: the witness note probe depended on whichever
+nurse it grabbed not happening to be mid-investigation, because a nurse chasing
+a noise deliberately does not stop to write. It forces the state now, so it
+tests the routing it claims to test rather than patrol timing.
+
+Verified: 1,581 assertions · 121 smoke · 23 live · boot check · 36 screenshots.

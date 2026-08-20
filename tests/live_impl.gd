@@ -138,6 +138,13 @@ func _test_perception() -> void:
 	nurse.mind.observance = 1.0
 	nurse.perception.attention = 1.0
 	nurse.stop_moving()
+	# ...and put her in a state where writing is ALLOWED. A nurse already
+	# chasing a noise deliberately does not stop to take notes
+	# (StaffNPC.can_stop_to_write), so whether this nurse happened to be
+	# mid-investigation when the probe ran silently decided the result — the
+	# check went red the first time a furniture change moved staff around, which
+	# is a patrol-timing coincidence rather than anything about perception.
+	nurse.state = StaffNPC.State.IDLE
 	# Inside Room 101, well clear of its doorway at x = 4.5.
 	var act := Vector3(1.5, 1.4, 6.0)
 

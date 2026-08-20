@@ -2588,3 +2588,32 @@ otherwise a one-in-eight chance of photographing somebody mid-blink, which reads
 as a broken model rather than a working one.
 
 Verified: 1,609 assertions · 126 smoke · 26 live · boot check · 46 screenshots.
+
+## Towards Steam — 4: a score
+
+There was none. Thirty-six one-shots and a room-tone hum. A game with no music
+reads as unfinished however good everything else is, and it is the first thing a
+trailer needs.
+
+Synthesised the same way as everything else here — a buffer of maths, no assets.
+A sixteen-second four-chord loop: soft triangle pads that swell and release
+across each bar so it breathes rather than switching on, a root bass with a slow
+pulse, a sparse plucked line on the off-beats, and a whisper of air over the top
+so it is not purely tonal. The last half-second cross-fades into the first, so
+the loop seam is inaudible without every frequency having to divide the buffer.
+
+One mood per shift, because three shifts that differ only in a spreadsheet are
+not three choices: day is major and unbothered, evening drops a third for
+something warmer and more tired, night is minor and mostly absent — at night the
+game wants you listening for footsteps.
+
+**Levels were measured, not guessed.** I cannot hear this, so the first version
+went out at a peak of 16% of full scale, which after the player's own -13 dB and
+a default ambience slider put the score at roughly -29 dBFS: present in the file
+and inaudible in the room. It peaks near half scale now, and there is a test
+that reads the buffer back and asserts a level window — it would have caught the
+quiet version, and it catches the opposite, a gain tweak that slams the pad into
+the rails and turns it into a buzz.
+
+Audio also split into master / effects / ambience, so the settings sliders have
+something to move, and `refresh_music_volume()` is called when they do.

@@ -1121,3 +1121,58 @@ func test_sitting_folds_the_knee() -> void:
 	p.set_seated(false)
 	t.near(p._knees[0].rotation.x, 0.0, 0.001, "standing up straightens them again")
 	p.free()
+
+# ------------------------------------------------------------------- the score
+#
+# There was no music at all. A game with none reads as unfinished however good
+# everything else is, and it is the first thing a trailer needs.
+
+func test_the_score_is_built_and_loops() -> void:
+	var day := AudioMgr._build_music("day")
+	t.ok(day != null, "a shift has a score")
+	t.gt(float(day.data.size()), 0.0, "with actual samples in it")
+	t.eq(day.loop_mode, AudioStreamWAV.LOOP_FORWARD, "and it loops")
+	t.eq(day.loop_end, int(day.data.size() / 2), "over its whole length")
+
+func test_each_shift_sounds_different() -> void:
+	var day := AudioMgr._build_music("day")
+	var night := AudioMgr._build_music("night")
+	t.ok(day.data != night.data, "night is not the same music as day")
+
+## Loud enough to hear, quiet enough not to clip.
+##
+## The first version of the score peaked at 16% of full scale, which after the
+## player's own -13 dB and a default ambience slider put it around -29 dBFS:
+## present in the file, inaudible in the room. This is the check that would
+## have caught that, and it also catches the opposite — a gain tweak that
+## slams the buffer into the rails and turns the pad into a buzz.
+func test_the_score_sits_in_a_sane_level_window() -> void:
+	for kind in ["day", "evening", "night"]:
+		var st: AudioStreamWAV = AudioMgr._build_music(kind)
+		var d: PackedByteArray = st.data
+		var n := int(d.size() / 2)
+		var peak := 0
+		var sum := 0.0
+		# Every 7th sample: this is a check on level, not a spectrum analysis,
+		# and 350k samples per shift in a unit test is a second of nothing.
+		var counted := 0
+		var i := 0
+		while i < n:
+			var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+			if v >= 32768:
+				v -= 65536
+			peak = maxi(peak, absi(v))
+			sum += float(v) * float(v)
+			counted += 1
+			i += 7
+		var peak_pct: float = 100.0 * float(peak) / 32767.0
+		var rms_pct: float = 100.0 * sqrt(sum / float(counted)) / 32767.0
+		t.gt(peak_pct, 25.0, "%s is loud enough to be heard (peak %.0f%%)" % [kind, peak_pct])
+		t.lt(peak_pct, 90.0, "%s has headroom left (peak %.0f%%)" % [kind, peak_pct])
+		t.gt(rms_pct, 3.0, "%s is not mostly silence (rms %.1f%%)" % [kind, rms_pct])
+
+func test_an_unknown_shift_still_gets_a_score() -> void:
+	# Adding a fourth shift should not produce silence while somebody remembers
+	# to write it a mood.
+	var odd := AudioMgr._build_music("graveyard_double")
+	t.gt(float(odd.data.size()), 0.0, "an unlisted shift falls back rather than failing")

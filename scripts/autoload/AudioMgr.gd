@@ -169,6 +169,149 @@ func _build_hum() -> AudioStreamWAV:
 	_cache["__hum"] = st
 	return st
 
+# ------------------------------------------------------------------ music
+## A synthesised score.
+##
+## There was none. Thirty-six one-shots and a room-tone hum, and a game with no
+## music at all reads as unfinished however good everything else is — it is the
+## first thing a Steam trailer needs and the first thing a player notices is
+## missing.
+##
+## Built the same way as everything else here: a buffer of maths, no assets. A
+## slow four-chord loop on soft triangle pads with a plucked top line, at a
+## tempo and in a mode chosen per shift. Deliberately sparse and deliberately
+## a bit municipal — the joke of this hospital is that it is completely normal.
+## Gains are set so the loop PEAKS at roughly half of full scale. The first
+## pass peaked at 16%, which after the player's own -13 dB and a default 55%
+## ambience slider put the score at about -29 dBFS — present in a file and
+## inaudible in a room. Measured rather than guessed: see the note in
+## PROGRESS_LOG about analysing the buffer.
+const MUSIC_BARS := 4
+const MUSIC_BAR_SECONDS := 4.0
+
+## Semitone offsets from the root, per shift. Day is major and unbothered,
+## evening drops a third for something warmer and more tired, night is minor
+## and mostly absent — at night the game wants you listening for footsteps.
+const MUSIC_MOODS := {
+	"day": {"root": 196.0, "chords": [[0, 4, 7], [5, 9, 12], [7, 11, 14], [2, 5, 9]],
+		"pluck": 0.5, "gain": 0.95},
+	"evening": {"root": 174.6, "chords": [[0, 3, 7], [5, 8, 12], [3, 7, 10], [-2, 2, 5]],
+		"pluck": 0.34, "gain": 0.86},
+	"night": {"root": 146.8, "chords": [[0, 3, 7], [-2, 3, 7], [-4, 3, 8], [-5, 2, 7]],
+		"pluck": 0.16, "gain": 0.70},
+}
+
+var _music_player: AudioStreamPlayer = null
+var _music_kind := ""
+
+static func _semitone(root: float, n: int) -> float:
+	return root * pow(2.0, float(n) / 12.0)
+
+func _build_music(kind: String) -> AudioStreamWAV:
+	var key := "__music_" + kind
+	if _cache.has(key):
+		return _cache[key]
+	var mood: Dictionary = MUSIC_MOODS.get(kind, MUSIC_MOODS["day"])
+	var root: float = float(mood["root"])
+	var chords: Array = mood["chords"]
+	var total: float = MUSIC_BAR_SECONDS * float(MUSIC_BARS)
+	var n_samples := int(total * SR)
+	var data := PackedByteArray()
+	data.resize(n_samples * 2)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(key)
+
+	for i in n_samples:
+		var t := float(i) / float(SR)
+		var bar := int(t / MUSIC_BAR_SECONDS) % MUSIC_BARS
+		var bar_t: float = fposmod(t, MUSIC_BAR_SECONDS)
+		var chord: Array = chords[bar]
+		var s := 0.0
+
+		# Pad: three triangle-ish voices with a slow swell and release, so each
+		# bar breathes rather than switching on.
+		var swell: float = clampf(bar_t / 0.9, 0.0, 1.0) \
+			* clampf((MUSIC_BAR_SECONDS - bar_t) / 1.1, 0.0, 1.0)
+		for n in chord:
+			var f: float = _semitone(root, int(n)) * 0.5
+			# Triangle from a sine, which is warmer than a raw sine and much
+			# softer than the saw the one-shots use.
+			var tri: float = asin(sin(TAU * f * t)) * (2.0 / PI)
+			s += tri * 0.22 * swell
+
+		# Bass: the root of the bar, an octave down, with a gentle pulse.
+		var bass_f: float = _semitone(root, int(chord[0])) * 0.25
+		s += sin(TAU * bass_f * t) * 0.30 * swell * (0.7 + 0.3 * sin(TAU * 0.5 * t))
+
+		# A plucked top line on the off-beats. Sparse on purpose: this plays
+		# under a shift that lasts eighteen minutes, and anything busier stops
+		# being background inside two loops.
+		var pluck_gain: float = float(mood["pluck"])
+		if pluck_gain > 0.0:
+			var step: float = fposmod(t, 1.0)
+			var beat := int(t) % 4
+			if beat == 1 or beat == 3:
+				var note: int = int(chord[(bar + beat) % chord.size()])
+				var pf: float = _semitone(root, note) * 2.0
+				var env: float = exp(-6.0 * step)
+				s += sin(TAU * pf * t) * 0.16 * env * pluck_gain
+
+		# A whisper of air over the top so it is not purely tonal.
+		s += rng.randf_range(-1.0, 1.0) * 0.012
+
+		# Cross-fade the last half second into the first, so the loop seam is
+		# inaudible without needing every frequency to divide the buffer.
+		var fade := 0.5
+		if t > total - fade:
+			var k: float = (total - t) / fade
+			s *= k
+
+		var v := int(clampf(s * float(mood["gain"]) * 22000.0, -32768.0, 32767.0))
+		var uv := v & 0xFFFF
+		data[i * 2] = uv & 0xFF
+		data[i * 2 + 1] = (uv >> 8) & 0xFF
+
+	var st := AudioStreamWAV.new()
+	st.format = AudioStreamWAV.FORMAT_16_BITS
+	st.mix_rate = SR
+	st.stereo = false
+	st.data = data
+	st.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	st.loop_begin = 0
+	st.loop_end = n_samples
+	_cache[key] = st
+	return st
+
+## Start (or switch) the score. Idempotent for the same shift, so calling it
+## every time a shift starts does not restart the loop mid-bar.
+func play_music(kind: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	_ensure_voices()
+	if _music_player == null:
+		_music_player = AudioStreamPlayer.new()
+		_music_player.name = "Music"
+		_music_player.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(_music_player)
+	if _music_kind == kind and _music_player.playing:
+		refresh_music_volume()
+		return
+	_music_kind = kind
+	_music_player.stream = _build_music(kind)
+	refresh_music_volume()
+	_music_player.play()
+
+func stop_music() -> void:
+	if _music_player != null:
+		_music_player.stop()
+	_music_kind = ""
+
+func refresh_music_volume() -> void:
+	if _music_player == null:
+		return
+	var g: float = maxf(master_volume * music_volume, 0.0001)
+	_music_player.volume_db = -13.0 + linear_to_db(g)
+
 func start_ambience(volume_db := -30.0) -> void:
 	_ensure_voices()
 	if _hum_player == null:

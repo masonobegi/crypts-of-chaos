@@ -135,6 +135,9 @@ func _build_environment() -> void:
 	_sun = sun
 	_fill = fill
 	EventBus.shift_started.connect(func(_d): apply_shift_look())
+	# The score follows the shift, for the same reason the light does: three
+	# shifts that differ only in a spreadsheet are not three choices.
+	EventBus.shift_started.connect(func(_d): AudioMgr.play_music(GameState.shift_kind))
 	apply_shift_look()
 
 ## What time of day it is, in light.

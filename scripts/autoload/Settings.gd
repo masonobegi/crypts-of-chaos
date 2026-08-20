@@ -69,6 +69,7 @@ func _apply(key: String) -> void:
 				AudioMgr.master_volume = float(get_value("master_volume"))
 				AudioMgr.sfx_volume = float(get_value("sfx_volume"))
 				AudioMgr.music_volume = float(get_value("music_volume"))
+				AudioMgr.refresh_music_volume()
 		"fullscreen":
 			# Guarded: a headless run has no window to resize, and every test
 			# harness in this project is headless.

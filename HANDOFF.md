@@ -37,8 +37,8 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,568 assertions · 106 smoke · 21 live · boot check · 21/21 balance design
-checks over 3 seeds.** Windows and Linux both export, and the exported Linux
+**1,569 assertions · 116 smoke · 23 live · boot check · 21/21 balance design
+checks over 3 seeds · 36 screenshots.** Windows and Linux both export, and the exported Linux
 build boots and exits cleanly.
 
 ## Building
@@ -76,11 +76,15 @@ throwing something to distract a nurse had never worked; the tutorial could
 never get past step 1 of 6; calibration sabotage and log-wiping had no way in;
 and substituting a syringe's contents was completely free.
 
-Brief phases not yet started: 5 (NPC behavioural tells), 6 (comedy pass), 7
-(emergent chaos), 8 (events that change strategy), 9 (soften accidental
-wrong-site failure diegetically), 11 (visible progression), 12 (content), 13
-(shift results with personality), 14 (juice), 15 (streamability), 16 (make the
-three shifts substantially different), 19 (performance profiling).
+Brief phases not yet started: 6 (comedy pass), 7 (emergent chaos), 8 (events
+that change strategy), 11 (visible progression), 12 (content), 14 (juice), 15
+(streamability), 19 (performance profiling).
+
+Done since: 5 (NPC behavioural tells — they stop and write things down, gossip
+is a scene), 9 (a wrong site is a revisable situation, and the site is marked on
+the patient), 13 (the shift report says what the shift was), 16 (three shifts
+that look and play differently — the ward sleeps at night), 20 (export), plus a
+bright/cartoony visual pass across the whole game.
 
 Phase 20 (export) is DONE — `export.sh` builds both presets and launches the
 Linux one. The only cosmetic outstanding is that the .exe carries no icon or

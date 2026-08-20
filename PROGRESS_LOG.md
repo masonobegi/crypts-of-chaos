@@ -2293,3 +2293,20 @@ it was the shape that was wrong, not the size.
 
 Verified: 1,585 assertions · 124 smoke · 26 live · boot check · 21/21 balance ·
 40 screenshots.
+
+## The number you are trying to survive on did not move all shift
+
+Across all four scripted playstyle runs the personal-money readout was identical
+at 8:00 and at 3:59. The ward bills every fifteen game minutes and the hospital
+balance ticks up all day, but your cut is computed once, at clock-out — so the
+one number the whole game is about sat still while you played, and every
+decision you made about it paid off only in a screen you see after the fact.
+
+The HUD carries a fourth line now: **today +$X**, your share of what the ward has
+billed so far. It is not a payment — the money still lands at clock-out and the
+statement is still the reveal — but keeping somebody another night is now
+something you can watch rather than something you infer. Procedure fees land on
+it the moment the work is done, which is what makes a booked list feel like a
+list rather than a chore.
+
+The backing panel had to grow with it, or the census line hangs off the bottom.

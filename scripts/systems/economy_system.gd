@@ -105,6 +105,7 @@ func bill_interval() -> void:
 	# itemises it; the thing on screen every half minute is the ward, because
 	# five separate lines every thirty seconds is not a readout, it is weather.
 	GameState.add_hospital(total, "%d bed%s occupied" % [beds, "" if beds == 1 else "s"])
+	earned_today += total
 
 ## Bill every occupied bed for whatever the hours have not already covered.
 ## This is where a longer stay becomes money.
@@ -126,6 +127,7 @@ func bill_day() -> Dictionary:
 		if owed > 0:
 			GameState.add_hospital(owed, "%s — rest of the day" % p.display_name)
 	billed_today.clear()
+	earned_today = 0
 	return {"revenue": revenue, "lines": lines}
 
 ## A one-off procedure fee: consultations, reviews, operations, discharges.
@@ -146,6 +148,7 @@ func bill_procedure(label: String, amount: int) -> void:
 	if amount <= 0:
 		return
 	procedure_fees += amount
+	earned_today += amount
 	procedure_lines.append({"label": label, "amount": amount})
 	GameState.add_hospital(amount, label)
 
@@ -153,6 +156,7 @@ func bill_procedure_cost(label: String, amount: int) -> void:
 	if amount <= 0:
 		return
 	procedure_fees -= amount
+	earned_today -= amount
 	procedure_lines.append({"label": label, "amount": -amount})
 	GameState.add_hospital(-amount, label)
 
@@ -172,6 +176,19 @@ func daily_costs() -> Dictionary:
 
 ## Your cut. Improved by upgrades and by the hospital actually being profitable —
 ## which is why running a genuinely good ward is a viable strategy, not a joke.
+## What your cut of the shift is worth SO FAR, for the HUD.
+##
+## The player's own money did not move once during an entire shift in any of the
+## four playstyle runs — the crime pays at clock-out and nowhere else, so the
+## thing you are actually trying to survive was a static number in the corner
+## while you played. This is not a payment; it is the running total the payment
+## will be computed from, which is the feedback that was missing. The money
+## still lands at clock-out, and the statement is still the reveal.
+var earned_today := 0
+
+func take_so_far() -> int:
+	return compute_bonus(earned_today)
+
 func compute_bonus(profit: int) -> int:
 	if profit <= 0:
 		return 0
@@ -284,8 +301,9 @@ func total_owed() -> int:
 	return GameState.total_debt()
 
 func to_dict() -> Dictionary:
-	return {"last": last_statement, "adm": admissions_today}
+	return {"last": last_statement, "adm": admissions_today, "earned": earned_today}
 
 func from_dict(d: Dictionary) -> void:
 	last_statement = d.get("last", {})
 	admissions_today = int(d.get("adm", 0))
+	earned_today = int(d.get("earned", 0))

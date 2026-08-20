@@ -21,6 +21,7 @@ var _watch: Label
 var _watch_panel: PanelContainer
 var _subtitle: Label
 var _subtitle_panel: PanelContainer
+var _today: Label
 var _toasts: VBoxContainer
 var _toast_queue: Array = []
 var _toast_gap := 0.0
@@ -89,12 +90,15 @@ func _build() -> void:
 
 	# ---- top right: money
 	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
-	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -256, 10, 244, 104)
+	# Four lines now, not three — the running take goes under the balance, and
+	# the backing panel has to grow with them or the census line hangs off it.
+	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -256, 10, 244, 132)
 	add_child(tr_bg)
 	var tr := UIKit.vbox(2)
-	UIKit.place(tr, Control.PRESET_TOP_RIGHT, -248, 18, 228, 100)
+	# Four lines now, not three: the running take goes under the balance.
+	UIKit.place(tr, Control.PRESET_TOP_RIGHT, -252, 18, 232, 126)
 	_ticker = UIKit.vbox(1)
-	UIKit.place(_ticker, Control.PRESET_TOP_RIGHT, -330, 118, 310, 200)
+	UIKit.place(_ticker, Control.PRESET_TOP_RIGHT, -330, 148, 310, 200)
 	_ticker.alignment = BoxContainer.ALIGNMENT_BEGIN
 	_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ticker)
@@ -102,7 +106,14 @@ func _build() -> void:
 	_personal = UIKit.label("$0", 26, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hospital = UIKit.label("Hospital $0", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
 	_census = UIKit.label("0 admitted", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
-	for n in [_personal, _hospital, _census]:
+	# Your cut of the shift, as it happens. The player's own money did not move
+	# once in an entire shift in any of the four playstyle runs — the crime pays
+	# at clock-out and nowhere else — so the number you are actually trying to
+	# survive on sat still while you played. It is not paid until you clock out;
+	# this only says what it is worth so far, which is what makes keeping
+	# somebody another night a thing you can WATCH rather than infer.
+	_today = UIKit.label("", 15, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
+	for n in [_personal, _today, _hospital, _census]:
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tr.add_child(n)
 	add_child(tr)
@@ -232,6 +243,12 @@ func _on_clock(_m: int) -> void:
 		_census.text = "%d admitted · %s/day" % [ps.active_count(),
 			UIKit.money_str(ps.total_daily_revenue())]
 	_refresh_deadline()
+	var eco = get_tree().get_first_node_in_group("economy")
+	if eco != null and GameState.phase == GameState.Phase.SHIFT:
+		var take: int = eco.take_so_far()
+		_today.text = "today  +%s" % UIKit.money_str(take) if take > 0 else ""
+	else:
+		_today.text = ""
 
 ## The two clocks that actually govern a decision: how long is left of the
 ## shift, and how long until somebody is expecting you somewhere.

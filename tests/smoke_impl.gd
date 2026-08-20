@@ -48,6 +48,7 @@ func tick() -> bool:
 			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
 			_check_a_family_row_keeps_going()
+			_check_your_cut_moves_while_you_play()
 			_check_the_money_is_visible_in_the_building()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
@@ -479,6 +480,23 @@ func _check_the_morning_only_happens_once() -> void:
 ## so the five people who would normally be lying there watching you work are
 ## five people who are not. It is not free: they wake to a bang, so the
 ## distraction that moved the nurse also wakes the man in the next bed.
+## Does the number the player is actually trying to survive on ever move?
+##
+## It did not: across four scripted playstyle runs the personal-money readout
+## was identical at 8:00 and at 3:59, because the crime pays at clock-out and
+## nowhere else. The take is now accrued as the ward bills, so keeping somebody
+## another night is something you watch rather than something you infer.
+func _check_your_cut_moves_while_you_play() -> void:
+	var eco = game.economy
+	var before: int = eco.take_so_far()
+	eco.bill_interval()
+	eco.bill_interval()
+	var after: int = eco.take_so_far()
+	_ok(after > before, "your cut of the shift grows while the shift is running (%d -> %d)"
+		% [before, after])
+	eco.bill_procedure("Smoke Test Procedure", 900)
+	_ok(eco.take_so_far() > after, "and a procedure you performed lands on it immediately")
+
 ## Eighteen upgrades and the only one you could SEE was a shutter rolling up.
 ## This asserts the fittings exist, that they track ownership rather than being
 ## built once, and that they survive the rebuild a save-load triggers — a career

@@ -5,9 +5,15 @@ is only ever "where things stand right now".
 
 ## Where the work lives
 
-Branch: `claude/chronic-care`. Everything is committed and pushed after each
-milestone — there should never be more than one batch of uncommitted work.
-`main` is untouched.
+Branch: `claude/github-repo-deletion-3hf0gq`. Everything is committed and pushed
+after each milestone — there should never be more than one batch of uncommitted
+work. `main` is untouched.
+
+An earlier stretch of this work was pushed to `claude/chronic-care`; the
+designated branch was fast-forwarded onto it, so the two share history and the
+designated branch is the one to use. If a container recycle ever leaves the
+checkout behind again, `git log --oneline origin/claude/chronic-care` is where
+to look for what went missing.
 
 ## How to run anything
 
@@ -37,9 +43,16 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,569 assertions · 116 smoke · 23 live · boot check · 21/21 balance design
-checks over 3 seeds · 36 screenshots.** Windows and Linux both export, and the exported Linux
+**1,585 assertions · 124 smoke · 26 live · boot check · 21/21 balance design
+checks · 40 screenshots.** Windows and Linux both export, and the exported Linux
 build boots and exits cleanly.
+
+Measured frame cost, simulation only, reported by the live run: **mean 2.88 ms,
+p50 2.73, p99 5.03, 4,730 nodes** with fifteen characters live.
+
+`play.sh` takes 30-45 real minutes under this container's software GL — it is
+rendering-bound, not simulation-bound. Use `playfast.sh` for the quick loop and
+`play.sh` only when you need the photographs.
 
 ## Building
 
@@ -76,9 +89,16 @@ throwing something to distract a nurse had never worked; the tutorial could
 never get past step 1 of 6; calibration sabotage and log-wiping had no way in;
 and substituting a syringe's contents was completely free.
 
-Brief phases not yet started: 6 (comedy pass), 7 (emergent chaos), 8 (events
-that change strategy), 11 (visible progression), 12 (content), 14 (juice), 15
-(streamability), 19 (performance profiling).
+Brief phases not yet started: **7 (emergent chaos), 12 (content), 15
+(streamability)**.
+
+Done since the last rewrite of this file: **8** (three events set a flag nothing
+ever read — the family row, the press, and Vinnie all change strategy now, and
+day-scoped NPCs finally go home instead of accumulating for a whole career),
+**11** (`Hospital.refresh_fittings` — cameras, curtains, bed rails, the shred
+bin, the VIP rug, framed things on the office wall), **19** (frame cost measured
+and a fifth of it given back), **6 and part of 12** (every bark pool roughly
+doubled), **14** (a camera kick on the moments that deserve one).
 
 Done since: 5 (NPC behavioural tells — they stop and write things down, gossip
 is a scene), 9 (a wrong site is a revisable situation, and the site is marked on
@@ -94,6 +114,10 @@ Two things worth knowing before picking anything up:
 
 - **ward_102 approached laterally from the hinge side** is the only door of
   eleven that still fails `play.sh doors`.
+- The play harness's `_press` sends real InputEvents now, **on transitions
+  only**. Firing one every frame floods the input queue and wedges the player
+  into a wall; `Input.action_press()` alone never reaches `_unhandled_input`,
+  which is where [Q] and [Esc] live.
 - Across all four playstyle runs, **the player's money never moves during a
   shift**. The crime pays only at clock-out, so the HUD money ticker has
   nothing to show while you are actually playing.

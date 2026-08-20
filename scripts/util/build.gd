@@ -71,14 +71,19 @@ static func unshaded(color: Color) -> StandardMaterial3D:
 	return m
 
 # ------------------------------------------------------------------ meshes
-static func box_mesh(size: Vector3) -> BoxMesh:
-	var key := "box%s" % size
-	if _mesh_cache.has(key):
-		return _mesh_cache[key]
-	var b := BoxMesh.new()
-	b.size = size
-	_mesh_cache[key] = b
-	return b
+## Every "box" in this game is a rounded box.
+##
+## This is the same call it always was and every one of the ~60 call sites is
+## unchanged, but it returns rbox_mesh now. Two reasons, and the second is the
+## real one: a hard-cornered box reads as programmer art at any distance, and
+## the outline pass CANNOT work on one — a BoxMesh has three separate normals at
+## every corner, so growing along them tears the hull into three detached slabs
+## and the line breaks at exactly the corner the eye is drawn to.
+##
+## Nothing casts the result to BoxMesh or reads `.size` back off it, which is
+## the only reason this could be done in one place instead of sixty.
+static func box_mesh(size: Vector3) -> Mesh:
+	return rbox_mesh(size, corner_for(size))
 
 ## A box with its edges rounded off.
 ##

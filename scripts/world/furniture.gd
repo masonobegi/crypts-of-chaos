@@ -443,7 +443,11 @@ static func _supply(h: Hospital, r: Room) -> void:
 				valid.append(it)
 		shelf.build(String(s[0]), valid)
 		shelf.position = Vector3(r.rect.position.x + 0.5, 0, c.z - 2.4 + float(i) * 2.4)
-		shelf.rotation.y = -PI / 2
+		# +PI/2, not -PI/2. A shelf's front is its local +Z, and rotating -90
+		# degrees about Y sends +Z to -X — straight into the wall it is standing
+		# against. All three units in the room the game sends you to for
+		# equipment were facing the wall, showing the room their backs.
+		shelf.rotation.y = PI / 2
 		_occupy(r.rect.position.x + 0.5, c.z - 2.4 + float(i) * 2.4, 0.6, 1.8)
 
 	_prop(h, "colour_lamp", Vector3(c.x + 1.4, 0.4, c.z - 1.0))

@@ -20,15 +20,40 @@ func build(disp: String, stock: Array) -> void:
 		{"mesh": Build.box_mesh(Vector3(1.6, 0.06, 0.5)), "mat": frame, "pos": Vector3(0, 1.5, 0)},
 		{"mesh": Build.box_mesh(Vector3(0.06, 1.9, 0.5)), "mat": frame, "pos": Vector3(-0.78, 0.95, 0)},
 		{"mesh": Build.box_mesh(Vector3(0.06, 1.9, 0.5)), "mat": frame, "pos": Vector3(0.78, 0.95, 0)},
-		{"mesh": Build.box_mesh(Vector3(1.6, 1.9, 0.04)), "mat": Build.mat(Color(0.5, 0.52, 0.54)), "pos": Vector3(0, 0.95, -0.25)},
+		{"mesh": Build.box_mesh(Vector3(1.6, 1.9, 0.04)), "mat": Build.mat(Color(0.34, 0.37, 0.40)), "pos": Vector3(0, 0.95, -0.25)},
 	]
 	# Dummy stock so the shelf reads as full even after you empty it.
-	for i in 6:
-		parts.append({
-			"mesh": Build.box_mesh(Vector3(0.2, 0.22, 0.28)),
-			"mat": Build.mat(Color(0.7 + 0.05 * float(i % 3), 0.65, 0.5)),
-			"pos": Vector3(-0.55 + 0.22 * float(i), 0.64, 0.02),
-		})
+	#
+	# ALL THREE shelves, and in more than one shape. Only the bottom one was
+	# ever filled, so a supply room photographed as three blank white cabinets
+	# — which is a strange look for the room the whole game sends you to for
+	# equipment. Boxes, cartons and bottles, sized and coloured off the index so
+	# it is the same shelf every run and no RNG stream is disturbed.
+	const CARTONS := [
+		Color(0.86, 0.72, 0.46), Color(0.72, 0.80, 0.86), Color(0.84, 0.56, 0.50),
+		Color(0.64, 0.78, 0.62), Color(0.90, 0.86, 0.74), Color(0.58, 0.62, 0.74),
+	]
+	for row in 3:
+		var y := 0.64 + 0.50 * float(row)
+		for i in 6:
+			var n := row * 6 + i
+			var col: Color = CARTONS[n % CARTONS.size()]
+			if n % 5 == 3:
+				# A bottle, standing. One round thing per shelf is enough to stop
+				# the whole unit reading as a wall of identical cubes.
+				parts.append({
+					"mesh": Build.cyl_mesh(0.055, 0.26, 10),
+					"mat": Build.mat(col.lightened(0.10), 0.35),
+					"pos": Vector3(-0.56 + 0.224 * float(i), y + 0.02, 0.02),
+				})
+				continue
+			var w := 0.17 + 0.04 * float(n % 3)
+			var tall := 0.19 + 0.05 * float((n + 1) % 3)
+			parts.append({
+				"mesh": Build.box_mesh(Vector3(w, tall, 0.28)),
+				"mat": Build.mat(col),
+				"pos": Vector3(-0.56 + 0.224 * float(i), y - 0.11 + tall * 0.5, 0.02),
+			})
 	setup_body(Vector3(1.7, 1.9, 0.55), parts, Vector3(0, 0.95, 0))
 
 	var sign := Build.label3d(disp, 0.09, Color(0.9, 0.92, 0.88), false)

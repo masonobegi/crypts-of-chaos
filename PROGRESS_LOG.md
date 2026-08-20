@@ -2402,3 +2402,32 @@ harness span forever on the first shot.
 
 Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screenshots,
 and the frame is unchanged at 2.58 ms mean despite roughly 800 more nodes.
+
+## ...and the same pass, finished
+
+`Build.box_mesh()` itself returns a rounded box now. Same call, all ~60 sites
+unchanged, and it caught every prop, terminal, machine, notice board and window
+frame in the game in one edit — nothing casts the result to `BoxMesh` or reads
+`.size` back off it, which is the only reason that could be done in one place
+instead of sixty.
+
+The supply room was three blank white cabinets, for two separate reasons.
+
+Only the BOTTOM shelf of each unit was ever stocked; the other two were empty
+frames. All three carry cartons and bottles now, sized and coloured off the
+index so it is the same shelf every run and no seeded RNG stream is disturbed.
+
+And **all three units were facing the wall.** A shelf's front is its local +Z,
+and rotating -90 degrees about Y sends +Z to -X — straight into the wall they
+stand against. The room the whole game sends you to for equipment had been
+showing it their backs.
+
+Ceiling and wall values came down again (`CEILING` 0.84 → 0.66, `WALL_UPPER`
+0.94 → 0.87, ceiling lamps 1.05 → 0.82). A ceiling is the top third of every
+interior shot and it is lit from below by a lamp every five metres, so at
+anything near the wall's value it clips to flat white and the room loses its lid.
+
+Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screenshots.
+Frame cost 2.55 ms mean with 5,553 nodes — lower than before the restyle
+started, because the same pass that added the geometry also stopped patients and
+idle staff running the character solver.

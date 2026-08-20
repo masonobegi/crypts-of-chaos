@@ -271,7 +271,7 @@ func _resolve(ran_out: bool) -> void:
 		ts.apply_outcome(_patient, spec, "set_bone", player_position())
 	var rs = records()
 	if rs != null and rs.has_method("log_real_treatment"):
-		rs.log_real_treatment(_patient, "reduction")
+		rs.log_real_treatment(_patient, "set_bone")
 	AudioMgr.play("crack" if String(spec["band"]) == "poor" else "bone_grind", -11.0)
 	await get_tree().create_timer(2.0).timeout
 	if is_instance_valid(self):

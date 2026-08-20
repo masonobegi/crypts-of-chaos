@@ -370,8 +370,25 @@ func _resolve(inv: Investigation) -> void:
 		inv.outcome = "concerns"
 		GameState.add_heat(0.04, "investigation concerns")
 		GameState.stats.investigations_survived += 1
-		EventBus.toast.emit("%s closed with concerns noted." % inv.title, "info")
-		escalate(1, "%s: concerns noted" % inv.title)
+		# "Concerns noted" is a line on a file, not a finding. The first one
+		# should not move the sanction ladder at all — a doctor who has had one
+		# review close without a finding against them is a doctor who has had a
+		# bad week, and the design brief says a mild cheat is comfortable.
+		#
+		# Every one after the first does move it, because two reviews closing
+		# with concerns is not a bad week, it is a pattern, and the whole point
+		# of the ladder is that a pattern is what climbs it.
+		var noted: int = int(GameState.flag("concerns_noted", 0)) + 1
+		GameState.set_flag("concerns_noted", noted)
+		# ...and only when the institution is already paying attention. A second
+		# set of concerns on a doctor nobody has any heat about is two pieces of
+		# paper in a drawer; the same two on a doctor already being watched is
+		# the file somebody opens.
+		if noted >= 2 and GameState.heat > 0.35:
+			EventBus.toast.emit("%s closed with concerns noted. Again." % inv.title, "bad")
+			escalate(1, "%s: concerns noted, not for the first time" % inv.title)
+		else:
+			EventBus.toast.emit("%s closed with concerns noted." % inv.title, "info")
 	else:
 		inv.outcome = "adverse"
 		var steps := 1
@@ -396,6 +413,13 @@ func escalate(steps: int, reason: String) -> void:
 		steps = maxi(0, steps - 1)
 		if steps <= 0:
 			return
+	# A first finding is a first rung, never two. The ladder exists to give a
+	# career room to recover, and a doctor whose first ever adverse finding put
+	# them straight onto Probation had no room at all — which is what made "a
+	# mild cheat is comfortable" false in the balance simulation despite mild
+	# play averaging less than one finding per career.
+	if before == 0:
+		steps = 1
 	if before >= 4:
 		# Scaled by heat: a doctor who has cooled off gets room to recover, one
 		# running at maximum institutional heat does not.

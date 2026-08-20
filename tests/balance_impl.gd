@@ -63,6 +63,7 @@ func _run(strategy: String, run_seed: int) -> Dictionary:
 		_act(game, strategy)
 		game.shift.end_shift()
 		var report: Dictionary = game.shift.clock_out()
+		_answer_the_post(game, strategy)
 		_spend(game, strategy)
 		day_log.append({
 			"day": GameState.day,
@@ -136,6 +137,46 @@ const BUY_ORDER := [
 	"dept_radiology", "second_opinion_policy", "vip_suite", "security_cameras",
 	"records_consultant", "board_appointment",
 ]
+
+## Deal with the letters, the way a player who understands them would.
+##
+## A career that never opens its post loses every claim in default for the full
+## amount, which is both the worst possible outcome and a thing no real player
+## does — so a harness that skipped this was not measuring the design, it was
+## measuring an unopened drawer.
+##
+## The rule is the one the screen puts in front of the player: settle a strong
+## claim, fight a weak one, and buy representation in proportion to what is at
+## stake. Nobody here is clever about it; that is deliberate. If ORDINARY
+## handling of a lawsuit still wrecks a mild cheat's career, the numbers are
+## wrong and this is where it shows up.
+func _answer_the_post(game, strategy: String) -> void:
+	var legal = game.get("legal")
+	if legal == null:
+		return
+	for claim in legal.due_claims().duplicate():
+		var strength: float = float(claim["strength"])
+		var settle: int = LegalSystem.settlement(claim)
+		var can_pay: bool = GameState.personal_money + GameState.hospital_money > settle * 2
+		if strength >= 0.55 and can_pay:
+			legal.settle(claim)
+			continue
+		# Fight it, with the best counsel this career can actually afford.
+		var pick := "duty"
+		for l in LegalSystem.LAWYERS:
+			var fee := LegalSystem.lawyer_fee(String(l["id"]), int(claim["amount"]))
+			# Shady representation only from a career that is already shady.
+			if float(l["shady"]) > 0.4 and strategy in ["honest", "mild"]:
+				continue
+			if fee < GameState.personal_money / 3:
+				pick = String(l["id"])
+		var scores: Array = []
+		for ex in LegalSystem.exchanges(claim):
+			var best := 0.0
+			for key in ex["replies"]:
+				best = maxf(best, LegalSystem.reply_score(claim, String(key), pick))
+			scores.append(best)
+		legal.verdict(claim, pick, LegalSystem.hearing_score(scores))
 
 func _spend(game, strategy: String) -> void:
 	if strategy == "honest":

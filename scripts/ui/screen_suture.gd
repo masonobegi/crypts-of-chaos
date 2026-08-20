@@ -249,7 +249,7 @@ func _resolve() -> void:
 		ts.apply_outcome(_patient, spec, "suture", player_position())
 	var rs = records()
 	if rs != null and rs.has_method("log_real_treatment"):
-		rs.log_real_treatment(_patient, "closure")
+		rs.log_real_treatment(_patient, "suture")
 	await get_tree().create_timer(2.0).timeout
 	if is_instance_valid(self):
 		close()

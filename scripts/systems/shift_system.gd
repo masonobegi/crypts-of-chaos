@@ -471,6 +471,11 @@ func _nurses_cover_unseen() -> void:
 		p.satisfaction = clampf(p.satisfaction + 0.06, 0.0, 1.0)
 		p.record_treatment("nursing_care", 0.6)
 		if p.chart != null:
+			# Charted as well as done. Nurses write things down — and without
+			# this the audit found an undocumented treatment on every patient
+			# the ward covered for you, which is the opposite of the point: the
+			# honest option must not quietly generate paperwork findings.
+			p.chart.log_treatment("nursing_care", GameState.career_minutes, true)
 			p.chart.add_note("Reviewed and treated as indicated by %s." % who,
 				GameState.career_minutes, who, true)
 		if p.mind != null:

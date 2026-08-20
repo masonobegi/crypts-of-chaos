@@ -187,7 +187,7 @@ func _give() -> void:
 				Procedures.medicine_effect(_patient.condition_id, _med), precision))
 	var rs = records()
 	if rs != null and rs.has_method("log_real_treatment"):
-		rs.log_real_treatment(_patient, _med)
+		rs.log_real_treatment(_patient, "dose")
 	_finish(spec)
 
 func _finish(spec: Dictionary) -> void:

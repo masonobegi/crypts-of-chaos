@@ -11,7 +11,15 @@ var _players: Array[AudioStreamPlayer] = []
 var _players3d: Array[AudioStreamPlayer3D] = []
 var _next := 0
 var _next3d := 0
+## Three knobs, so the settings screen has something to turn. `master_volume`
+## was the only one and nothing exposed it.
 var master_volume := 0.7
+var sfx_volume := 1.0
+var music_volume := 0.55
+
+## Effective gain for a one-shot effect, in linear terms.
+func _sfx_gain() -> float:
+	return clampf(master_volume * sfx_volume, 0.0, 1.0)
 
 ## name -> [waveform, freq, dur, decay, noise_mix, sweep, vibrato]
 const RECIPES := {
@@ -168,7 +176,7 @@ func start_ambience(volume_db := -30.0) -> void:
 		_hum_player.name = "Hum"
 		add_child(_hum_player)
 	_hum_player.stream = _build_hum()
-	_hum_player.volume_db = volume_db + linear_to_db(master_volume)
+	_hum_player.volume_db = volume_db + linear_to_db(maxf(master_volume * music_volume, 0.0001))
 	_hum_player.play()
 
 func stop_ambience() -> void:
@@ -182,7 +190,7 @@ func play(name: String, volume_db: float = -6.0, pitch: float = 1.0) -> void:
 	var p := _players[_next]
 	_next = (_next + 1) % _players.size()
 	p.stream = st
-	p.volume_db = volume_db + linear_to_db(master_volume)
+	p.volume_db = volume_db + linear_to_db(maxf(_sfx_gain(), 0.0001))
 	p.pitch_scale = clampf(pitch, 0.05, 4.0)
 	p.play()
 
@@ -197,7 +205,7 @@ func play_at(name: String, pos: Vector3, volume_db: float = -4.0, pitch: float =
 	_next3d = (_next3d + 1) % _players3d.size()
 	p.global_position = pos
 	p.stream = st
-	p.volume_db = volume_db + linear_to_db(master_volume)
+	p.volume_db = volume_db + linear_to_db(maxf(_sfx_gain(), 0.0001))
 	p.pitch_scale = clampf(pitch, 0.05, 4.0)
 	p.play()
 

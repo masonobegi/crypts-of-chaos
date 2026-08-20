@@ -979,3 +979,45 @@ func test_the_tutorial_credits_you_for_what_you_actually_did() -> void:
 	t.ok(not t9.is_active(), "and the last of them finishes it")
 	GameState.start_new_career(1)
 	t9.free()
+
+# ------------------------------------------------------------------- settings
+#
+# There were none at all: no volume, no mouse sensitivity, no way to turn the
+# camera shake off. These assert the parts that are easy to get subtly wrong —
+# that a value survives a round trip to disk, that a hand-edited file cannot
+# put a string where a float goes, and that reset actually resets.
+
+func test_settings_round_trip_through_disk() -> void:
+	var before: float = Settings.get_value("mouse_sensitivity")
+	Settings.set_value("mouse_sensitivity", 2.25)
+	Settings.values["mouse_sensitivity"] = 0.0        # scribble over it in memory
+	Settings.load_from_disk()
+	t.near(Settings.get_value("mouse_sensitivity"), 2.25, 0.001,
+		"a setting survives being written and read back")
+	Settings.set_value("mouse_sensitivity", before)
+
+func test_settings_refuse_the_wrong_type() -> void:
+	# A hand-edited config saying "loud" for a volume should not reach the bus.
+	var cfg := ConfigFile.new()
+	cfg.set_value("options", "master_volume", "loud")
+	cfg.set_value("options", "fov", 95.0)
+	cfg.save(Settings.PATH)
+	Settings.values["master_volume"] = 0.5
+	Settings.load_from_disk()
+	t.near(Settings.get_value("master_volume"), 0.5, 0.001,
+		"a string where a float belongs is ignored")
+	t.near(Settings.get_value("fov"), 95.0, 0.001, "and a valid neighbour still loads")
+	Settings.reset_to_defaults()
+
+func test_settings_reset_puts_everything_back() -> void:
+	Settings.set_value("fov", 61.0)
+	Settings.set_value("subtitles", false)
+	Settings.reset_to_defaults()
+	t.near(Settings.get_value("fov"), float(Settings.DEFAULTS["fov"]), 0.001,
+		"reset restores a number")
+	t.ok(bool(Settings.get_value("subtitles")), "and a switch")
+
+func test_unknown_settings_are_rejected() -> void:
+	var n := Settings.values.size()
+	Settings.set_value("turbo_mode", true)
+	t.eq(Settings.values.size(), n, "a key that is not in DEFAULTS is not stored")

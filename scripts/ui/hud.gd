@@ -320,6 +320,10 @@ func _on_prompt_cleared() -> void:
 	_prompt_panel.visible = false
 
 func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
+	# Off means off. Somebody who turned subtitles off did not mean "except
+	# for the barks", which are most of what this panel ever shows.
+	if not bool(Settings.get_value("subtitles")):
+		return
 	_subtitle.text = "%s: \"%s\"" % [speaker, text]
 	_subtitle_panel.visible = true
 	_subtitle_timer = seconds

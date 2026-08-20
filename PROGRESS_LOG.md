@@ -2476,3 +2476,34 @@ had the same `-PI/2` as the supply room's three: a shelf's front is its local
 
 Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screenshots,
 frame 2.43 ms mean.
+
+## Towards something you could put on Steam — 1: settings
+
+There were none. No volume, no mouse sensitivity, no fullscreen, no way to turn
+the camera shake off. In a first-person game an unchangeable look speed is what
+somebody refunds rather than adjusts to, and it is the cheapest thing on the
+list of what this needs before anyone plays it.
+
+A `Settings` autoload holds them, applies them and persists them to
+`user://settings.cfg` — deliberately NOT in the save file, because settings
+belong to the machine and not to the career: loading somebody else's save
+should not change your mouse sensitivity, and starting a new run should not
+reset your volume. Loading is typed against the defaults, so a hand-edited file
+that says "loud" for a float cannot take the audio bus with it.
+
+Audio splits into master / effects / ambience. Controls: sensitivity, invert
+look, field of view. Comfort: camera shake and head bob are sliders that go to
+zero, and subtitles are a switch. Display: fullscreen and V-Sync, both guarded
+so a headless test run has no window to resize.
+
+Reachable from the pause menu and from the title screen — the menu builds its
+own UIRoot, because a player should not have to start a career to turn the
+volume down.
+
+Two UI things worth recording. Godot's default CheckButton draws its OFF state
+as a small grey dot with no track, which at a glance is indistinguishable from a
+bullet point: the first render of this screen had "Invert look" and "Fullscreen"
+reading as decoration. They are ON/OFF in words and in colour now. And fifteen
+fixed-height rows overflowed a fixed-height panel and pushed "Back" off the
+bottom of the screen — a settings screen you cannot leave is worse than none —
+so the options scroll and the buttons do not.

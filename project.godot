@@ -23,6 +23,7 @@ GameState="*res://scripts/autoload/GameState.gd"
 AudioMgr="*res://scripts/autoload/AudioMgr.gd"
 SaveSystem="*res://scripts/autoload/SaveSystem.gd"
 Meta="*res://scripts/autoload/Meta.gd"
+Settings="*res://scripts/autoload/Settings.gd"
 
 [display]
 

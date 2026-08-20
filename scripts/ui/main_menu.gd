@@ -53,6 +53,7 @@ func _ready() -> void:
 				v.add_child(UIKit.label(Meta.perk_desc(Meta.selected_perk), 12, UIKit.INK_DIM,
 					HORIZONTAL_ALIGNMENT_LEFT, true))
 
+	v.add_child(UIKit.button("Settings", func(): _open_settings()))
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.label("Run seed (optional)", 13, UIKit.INK_DIM))
 	_seed_field = LineEdit.new()
@@ -89,3 +90,13 @@ func _pick_perk(id: String) -> void:
 func _continue() -> void:
 	GameState.set_flag("continue_save", true)
 	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+
+## The options screen, from the title. UIRoot lives inside the game scene, so
+## the menu builds its own instance of it rather than reaching for one that
+## does not exist yet — a player should not have to start a career to turn the
+## volume down.
+func _open_settings() -> void:
+	var ui: Node = load("res://scripts/ui/ui_root.gd").new()
+	ui.name = "MenuUI"
+	add_child(ui)
+	ui.open("settings", {})

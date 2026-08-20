@@ -108,6 +108,70 @@ static func spacer(min_size := 0.0, vertical := true) -> Control:
 		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL if min_size == 0.0 else 0
 	return c
 
+## A labelled slider with its value written out beside it.
+##
+## `fmt` is a Callable(float) -> String so a volume can read "70%", a
+## sensitivity "1.00x" and a field of view "78" without three widgets.
+static func slider(text: String, value: float, min_v: float, max_v: float,
+		step: float, on_change: Callable, fmt := Callable()) -> Control:
+	var row_box := hbox(10)
+	row_box.custom_minimum_size.y = 34
+	var name_label := label(text, 15, INK, HORIZONTAL_ALIGNMENT_LEFT)
+	name_label.custom_minimum_size.x = 200
+	row_box.add_child(name_label)
+
+	var sl := HSlider.new()
+	sl.min_value = min_v
+	sl.max_value = max_v
+	sl.step = step
+	sl.value = value
+	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sl.custom_minimum_size = Vector2(220, 24)
+	row_box.add_child(sl)
+
+	var readout := label("", 15, ACCENT, HORIZONTAL_ALIGNMENT_RIGHT)
+	readout.custom_minimum_size.x = 76
+	row_box.add_child(readout)
+
+	var write := func(v: float) -> void:
+		readout.text = (fmt.call(v) if fmt.is_valid() else "%.2f" % v)
+	write.call(value)
+	sl.value_changed.connect(func(v: float) -> void:
+		write.call(v)
+		on_change.call(v))
+	return row_box
+
+## A labelled on/off switch. A CheckButton rather than a checkbox because at a
+## glance "is this on" should be readable without reading.
+static func toggle(text: String, value: bool, on_change: Callable) -> Control:
+	var row_box := hbox(10)
+	row_box.custom_minimum_size.y = 34
+	var name_label := label(text, 15, INK, HORIZONTAL_ALIGNMENT_LEFT)
+	name_label.custom_minimum_size.x = 200
+	row_box.add_child(name_label)
+	var spacer_ctl := Control.new()
+	spacer_ctl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_box.add_child(spacer_ctl)
+	# A labelled button rather than a CheckButton. Godot's default CheckButton
+	# theme draws the OFF state as a small grey dot with no track, which at a
+	# glance is indistinguishable from a bullet point — the first screenshot of
+	# this screen had "Invert look" and "Fullscreen" reading as decoration.
+	# ON and OFF in words, in colour, cannot be misread.
+	var state := value
+	var b := button("", Callable(), PANEL_LIGHT, 96)
+	var paint := func() -> void:
+		b.text = "ON" if state else "OFF"
+		b.add_theme_color_override("font_color", GOOD if state else INK_DIM)
+		b.add_theme_stylebox_override("normal",
+			stylebox(Color(0.16, 0.30, 0.24) if state else Color(0.20, 0.21, 0.24), 6))
+	paint.call()
+	b.pressed.connect(func() -> void:
+		state = not state
+		paint.call()
+		on_change.call(state))
+	row_box.add_child(b)
+	return row_box
+
 static func rule(color := Color(1, 1, 1, 0.12)) -> ColorRect:
 	var r := ColorRect.new()
 	r.color = color

@@ -29,6 +29,7 @@ const UI_SHOTS := [
 	["25_review", "review"],
 	["26_statement", "statement"],
 	["27_upgrades", "upgrades"],
+	["27b_settings", "settings"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
 ]

@@ -299,6 +299,8 @@ func _spawn_player() -> void:
 	# spot behind reception looking at the way out: chairs on the right, the
 	# desk on the left, the corridor doorway dead ahead and the objective
 	# through it.
+	# Whatever the player set the last time they were here.
+	cam.fov = float(Settings.get_value("fov"))
 	player.global_position = hospital.lobby_spawn() + Vector3(0, 0.2, 0)
 	player.face(Vector3(5.5, 0, 4.0))
 

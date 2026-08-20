@@ -135,6 +135,7 @@ func _set_modal(on: bool) -> void:
 func _build_simple(id: String, ctx: Dictionary) -> Control:
 	match id:
 		"pause": return _pause_screen()
+		"settings": return _settings_screen()
 		"tutorial": return _tutorial_screen()
 		"game_over": return _game_over_screen(String(ctx.get("ending", "saint")))
 		"vitals": return _vitals_screen(String(ctx.get("patient_id", "")))
@@ -154,9 +155,86 @@ func _shell(width: float, height: float, heading: String) -> Array:
 		v.add_child(UIKit.rule())
 	return [root, v]
 
+# ---- settings
+##
+## Every one of these is a thing a player will look for in the first two
+## minutes and, until now, not find. Mouse sensitivity in particular: a
+## first-person game whose look speed cannot be changed is one somebody
+## refunds rather than adjusts to.
+func _settings_screen() -> Control:
+	var parts := _shell(680, 720, "Settings")
+	var outer: VBoxContainer = parts[1]
+	# The options scroll and the buttons do not.
+	#
+	# Fifteen rows at a fixed height overflowed a fixed-height panel and pushed
+	# "Back" off the bottom of the screen — a settings screen you cannot leave
+	# is worse than no settings screen. A scroll region means this cannot break
+	# again if a row is added, or on a shorter display.
+	var v := UIKit.vbox(6)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var scroller := UIKit.scroll(v)
+	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(scroller)
+	var pct := func(x: float) -> String: return "%d%%" % int(round(x * 100.0))
+
+	v.add_child(UIKit.label("AUDIO", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.slider("Master volume", Settings.get_value("master_volume"),
+		0.0, 1.0, 0.05, func(x): Settings.set_value("master_volume", x), pct))
+	v.add_child(UIKit.slider("Effects", Settings.get_value("sfx_volume"),
+		0.0, 1.0, 0.05, func(x):
+			Settings.set_value("sfx_volume", x)
+			# Play something at the new level, so the slider answers the
+			# question it is actually being asked.
+			AudioMgr.play("beep", -8.0), pct))
+	v.add_child(UIKit.slider("Ambience", Settings.get_value("music_volume"),
+		0.0, 1.0, 0.05, func(x): Settings.set_value("music_volume", x), pct))
+
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("CONTROLS AND CAMERA", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.slider("Mouse sensitivity", Settings.get_value("mouse_sensitivity"),
+		0.2, 3.0, 0.05, func(x): Settings.set_value("mouse_sensitivity", x),
+		func(x: float) -> String: return "%.2fx" % x))
+	v.add_child(UIKit.toggle("Invert look", Settings.get_value("invert_y"),
+		func(b): Settings.set_value("invert_y", b)))
+	v.add_child(UIKit.slider("Field of view", Settings.get_value("fov"),
+		60.0, 110.0, 1.0, func(x): Settings.set_value("fov", x),
+		func(x: float) -> String: return "%d" % int(x)))
+
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("COMFORT", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.slider("Camera shake", Settings.get_value("camera_shake"),
+		0.0, 1.0, 0.1, func(x): Settings.set_value("camera_shake", x), pct))
+	v.add_child(UIKit.slider("Head bob", Settings.get_value("head_bob"),
+		0.0, 1.0, 0.1, func(x): Settings.set_value("head_bob", x), pct))
+	v.add_child(UIKit.toggle("Subtitles", Settings.get_value("subtitles"),
+		func(b): Settings.set_value("subtitles", b)))
+
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("DISPLAY", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.toggle("Fullscreen", Settings.get_value("fullscreen"),
+		func(b): Settings.set_value("fullscreen", b)))
+	v.add_child(UIKit.toggle("V-Sync", Settings.get_value("vsync"),
+		func(b): Settings.set_value("vsync", b)))
+
+	outer.add_child(UIKit.spacer(6))
+	var row := UIKit.hbox(10)
+	var reset := UIKit.button("Reset to defaults", func():
+		Settings.reset_to_defaults()
+		# Rebuilt rather than updated: fifteen widgets each holding their own
+		# copy of a value is fifteen things to forget to refresh.
+		close()
+		open("settings", {}), Color(0.28, 0.20, 0.20))
+	reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(reset)
+	var back := UIKit.button("Back", close)
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(back)
+	outer.add_child(row)
+	return parts[0]
+
 # ---- pause
 func _pause_screen() -> Control:
-	var parts := _shell(400, 380, "Paused")
+	var parts := _shell(400, 430, "Paused")
 	var v: VBoxContainer = parts[1]
 	v.add_child(UIKit.label("Day %d · %s" % [GameState.day, GameState.time_string()], 15, UIKit.INK_DIM))
 	v.add_child(UIKit.spacer(8))
@@ -165,6 +243,7 @@ func _pause_screen() -> Control:
 		SaveSystem.save_game(SaveSystem.AUTOSAVE)
 		EventBus.toast.emit("Saved.", "good")))
 	v.add_child(UIKit.button("Tablet", func(): open("tablet", {})))
+	v.add_child(UIKit.button("Settings", func(): open("settings", {})))
 	v.add_child(UIKit.spacer(8))
 	v.add_child(UIKit.button("Quit to Menu", func():
 		get_tree().paused = false

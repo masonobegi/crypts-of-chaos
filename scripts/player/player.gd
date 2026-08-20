@@ -58,8 +58,10 @@ func _ready() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and can_look and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-		_yaw -= event.relative.x * MOUSE_SENS
-		_pitch = clampf(_pitch - event.relative.y * MOUSE_SENS, -1.45, 1.45)
+		var sens: float = MOUSE_SENS * float(Settings.get_value("mouse_sensitivity"))
+		var pitch_dir := 1.0 if not bool(Settings.get_value("invert_y")) else -1.0
+		_yaw -= event.relative.x * sens
+		_pitch = clampf(_pitch - event.relative.y * sens * pitch_dir, -1.45, 1.45)
 		rotation.y = _yaw
 		head.rotation.x = _pitch
 
@@ -257,15 +259,19 @@ func _handle_bob(delta: float) -> void:
 	_shake = maxf(0.0, _shake - delta * 2.6)
 	_shake_t += delta * 34.0
 	var k := _shake * _shake
-	camera.position.y = sin(_bob) * 0.035 + sin(_shake_t) * k * 0.05
-	camera.position.x = cos(_bob * 0.5) * 0.022 + sin(_shake_t * 1.7) * k * 0.04
-	camera.rotation.z = lerpf(camera.rotation.z, -cos(_bob * 0.5) * 0.012, 1.0 - exp(-10.0 * delta)) \
+	# Both amounts are scaled by the comfort sliders. Somebody who cannot play
+	# with head bob on should be able to turn it off rather than stop playing.
+	var bob_amt: float = float(Settings.get_value("head_bob"))
+	camera.position.y = sin(_bob) * 0.035 * bob_amt + sin(_shake_t) * k * 0.05
+	camera.position.x = cos(_bob * 0.5) * 0.022 * bob_amt + sin(_shake_t * 1.7) * k * 0.04
+	camera.rotation.z = lerpf(camera.rotation.z,
+		-cos(_bob * 0.5) * 0.012 * bob_amt, 1.0 - exp(-10.0 * delta)) \
 		+ sin(_shake_t * 0.9) * k * 0.03
 
 ## Kick the camera. `amount` is roughly "how much of a full jolt", 0..1; they do
 ## not stack past one, so a pile-up of small events cannot black out the screen.
 func shake(amount: float) -> void:
-	_shake = clampf(maxf(_shake, amount), 0.0, 1.0)
+	_shake = clampf(maxf(_shake, amount * float(Settings.get_value("camera_shake"))), 0.0, 1.0)
 
 ## Where the player is, in room terms — used by perception and events.
 func current_room() -> String:

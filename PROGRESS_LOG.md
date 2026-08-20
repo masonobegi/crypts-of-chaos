@@ -2141,3 +2141,63 @@ added, Godot renamed the newcomer, and `get_node("Fittings")` returned the
 corpse. `remove_child` before freeing.
 
 Verified: 1,581 assertions · 124 smoke · 23 live · boot check · 40 screenshots.
+
+## Phase 19 — what a frame actually costs
+
+The live harness now reports it, because a number nobody has is a number nobody
+improves. First reading was 5.90 ms mean, and it took a while to see that it was
+roughly four hundred times too pessimistic: `live_impl` force-advances three
+game MINUTES per frame so that hourly and daily behaviour fires inside seven
+thousand frames, and real play advances 0.0074. Every per-minute system in the
+game — economy, shift, suspicion decay, the tannoy — was running four hundred
+times more often than it ever will. Cost is now sampled only inside a window
+where the clock is left alone.
+
+At the honest rate: **mean 4.37 ms, p50 3.69, p99 9.85, worst 13.29, 4,728
+nodes** — simulation only, no rendering, fifteen characters live.
+
+Breaking that down put four fifths of all character time in `move_and_slide()`,
+and most of the building is stationary most of the time: nurses at the station,
+patients in bed, visitors sitting. Bodies that are already resting on the floor
+with no path and no velocity now skip the solver (and `_push_obstacles` with it,
+which reads the slide collisions the solver produces and has nothing to do for
+somebody standing still). The test is deliberately strict, because a body that
+skips the solver also skips gravity and a patient hovering where their bed used
+to be is a far worse bug than a slow frame.
+
+After: **mean 3.74 ms, p50 3.18, p99 9.00, worst 9.94** — about a fifth of the
+frame given back, with the AI still moving five of eight staff under its own
+steam in the same run.
+
+Also caching `SuspicionSystem.watchers()` for a tenth of a second: it fires one
+physics raycast per registered body and the HUD asked for it every frame to
+redraw a three-line text panel. Smaller than expected (the HUD is idle in the
+harness) but it is free and it was obviously wrong.
+
+Two engine messages, recorded so nobody chases them twice: `Parameter "m" is
+null` at `mesh_get_surface_count` is the DUMMY renderer's mesh storage and
+appears only under `--headless` — the windowed screenshot runs are clean. The
+`ObjectDB instances leaked at exit` warning comes from harness teardown, not the
+game: `boot_check.sh`, which exercises the real entry point, exits clean.
+
+## Comedy and content pass on the barks
+
+Every idle pool roughly doubled, in the same register — deadpan, institutional,
+never winking. Eight patient archetypes, six family archetypes, four witness
+tiers, gossip, overdue and ready-to-go-home lines. A twenty-minute shift was
+cycling three lines per archetype, which turns a character into a slot machine.
+
+`Dialogue.gossip_line()` said "101" every single time regardless of where
+anything had happened. It names the room the evidence is actually about now, and
+falls back to "one of the side rooms" when the evidence has no patient — a small
+lie, but paying attention is the exact skill the game asks for, and it should
+reward that rather than punish it.
+
+## Juice
+
+A camera kick, reserved for the handful of moments the game wants you to feel
+rather than read: an injury happening within six metres of you, a door slammed
+within five, something you were holding breaking, an investigation opening, a
+sanction landing. Two frequencies so it reads as a jolt rather than a wobble,
+laid on top of the head bob instead of replacing it, and clamped so a pile-up
+cannot black out the screen.

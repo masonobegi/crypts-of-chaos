@@ -403,18 +403,55 @@ func _face(at) -> void:
 	p.set("_pitch", pitch)
 	p.head.rotation.x = pitch
 
+## Press an action for real.
+##
+## `Input.action_press()` alone sets the action's STATE — everything that polls
+## `is_action_pressed` / `is_action_just_pressed` sees it — but it synthesises no
+## InputEvent, so nothing in an `_unhandled_input` handler ever hears about it.
+## The tablet [Q] and the pause menu [Esc] both live there, which meant this
+## harness could not open either of them: the "what does the tablet say"
+## screenshot was a photograph of the room, and the tutorial step that completes
+## when the tablet opens could never complete no matter how the plan was
+## written. Both halves are needed, and they are cheap.
 func _press(action: String) -> void:
-	if not _held.has(action):
-		_held.append(action)
 	Input.action_press(action)
+	if _held.has(action):
+		return            # already down: do NOT re-fire the event, see below
+	_held.append(action)
+	_send(action, true)
 
 func _release(action: String) -> void:
-	_held.erase(action)
 	Input.action_release(action)
+	if not _held.has(action):
+		return
+	_held.erase(action)
+	_send(action, false)
+
+## Deliver the action as a real InputEvent as well as setting its state.
+##
+## `Input.action_press()` alone sets the STATE — everything polling
+## `is_action_pressed` / `is_action_just_pressed` sees it — but synthesises no
+## InputEvent, so nothing in an `_unhandled_input` handler ever hears about it.
+## The tablet [Q] and the pause menu [Esc] both live there, which meant this
+## harness could not open either: the "what does the tablet say" screenshot was
+## a photograph of the room, and the tutorial step that completes when the
+## tablet opens could never complete however the plan was written.
+##
+## ONLY ON TRANSITIONS. `_walk` calls _press every single frame for the whole
+## length of a walk, and queueing a press event 120 times a second flooded the
+## input queue badly enough that a sprint down the corridor ended with the
+## player wedged in the north wall and pushing at 3.4 m/s into it forever.
+## Verified by running the same plan with and without.
+func _send(action: String, pressed: bool) -> void:
+	var ev := InputEventAction.new()
+	ev.action = action
+	ev.pressed = pressed
+	Input.parse_input_event(ev)
 
 func _release_all() -> void:
 	for a in _held.duplicate():
 		Input.action_release(a)
+		_send(a, false)
 	_held.clear()
 
 func _shot(name: String) -> bool:

@@ -502,12 +502,18 @@ func highest_suspicion() -> float:
 ## raycasts at 60Hz to redraw the same three names. A tenth of a second is
 ## below the point at which anybody notices the panel is late, and it is the
 ## single largest saving in the frame.
+## Counted in PHYSICS FRAMES, not seconds. A wall-clock cache is a different
+## amount of staleness depending on how fast the machine happens to be running,
+## which makes a --fixed-fps harness stop being deterministic — it cost two
+## intermittent live-run failures before the cause was obvious. Six frames is a
+## tenth of a second at 60Hz and is exactly six frames everywhere.
+const WATCHERS_CACHE_FRAMES := 6
 var _watchers_cache: Array[NPCBody] = []
-var _watchers_at := -1.0
+var _watchers_at := -1
 
 func watchers() -> Array[NPCBody]:
-	var now := float(Time.get_ticks_msec()) * 0.001
-	if _watchers_at >= 0.0 and now - _watchers_at < 0.1:
+	var now := int(Engine.get_physics_frames())
+	if _watchers_at >= 0 and now - _watchers_at < WATCHERS_CACHE_FRAMES:
 		# Somebody in the cached list may have been freed since it was built.
 		var live: Array[NPCBody] = []
 		for w in _watchers_cache:

@@ -19,6 +19,8 @@ const STEPS := [
 
 var _index := 0
 var _active := false
+## Steps already satisfied, whenever they happened. See complete().
+var _done: Dictionary = {}
 
 func _ready() -> void:
 	add_to_group("tutorial")
@@ -43,6 +45,7 @@ func _on_shift_started(day: int) -> void:
 		return
 	_active = true
 	_index = 0
+	_done.clear()
 	_show()
 
 func _on_ui(id: String, _ctx: Dictionary) -> void:
@@ -52,12 +55,25 @@ func _on_ui(id: String, _ctx: Dictionary) -> void:
 		"vitals": complete("vitals")
 		"records": complete("records")
 
+## Credit is given for the act whenever it happens, not only when the objective
+## is currently asking for it.
+##
+## This used to drop anything out of order outright, which is the wrong shape
+## for a game whose whole pitch is a sandbox: a player who walks into a room,
+## examines somebody and treats them before they think to pick up the chart had
+## done four of the seven steps and been credited with none of them, and the
+## objective line sat there asking for something they had already done twice.
 func complete(step_id: String) -> void:
 	if not _active or _index >= STEPS.size():
 		return
-	if String(STEPS[_index]["id"]) != step_id:
+	if _done.has(step_id):
 		return
-	_index += 1
+	_done[step_id] = true
+	var was := _index
+	while _index < STEPS.size() and _done.has(String(STEPS[_index]["id"])):
+		_index += 1
+	if _index == was:
+		return             # credited, but the objective has not moved on yet
 	AudioMgr.play("ding", -14.0)
 	if _index >= STEPS.size():
 		_active = false

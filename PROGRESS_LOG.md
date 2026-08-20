@@ -2214,3 +2214,41 @@ out-of-order vending machine and a parked wheelchair to the right, and the
 corridor doorway dead ahead with the objective through it. `screenshots.sh`
 takes `00_first_frame` from the player's own camera, where the game actually
 puts it, so this can never silently drift again.
+
+## The play harness could not press half the keys in the game
+
+`play_impl._press` used `Input.action_press()`, which sets an action's STATE —
+everything polling `is_action_pressed` sees it — but synthesises no InputEvent,
+so nothing in an `_unhandled_input` handler ever heard about it. The tablet [Q]
+and the pause menu [Esc] both live there. The harness's "what does the tablet
+say" screenshot was, for its whole existence, a photograph of the room; and the
+tutorial step that completes when the tablet opens could never complete however
+the plan was written, so every play run reported the objective stuck on step one
+of seven and that read as a game bug rather than a harness one.
+
+Actions are now delivered as real events too — **on transitions only**. Firing
+one every frame (which is what `_walk` does, for the whole length of a walk)
+flooded the input queue badly enough that a sprint down the corridor ended with
+the player wedged in the north wall pushing 3.4 m/s into it forever. Confirmed
+by running the same plan with the change and without: 10.3 s versus a 60 s
+timeout.
+
+**The tutorial now credits you for what you actually did.** It used to drop any
+step completed out of order outright, which is the wrong shape for a sandbox: a
+player who walks in, examines somebody and treats them before thinking to pick
+up the chart had done four of the seven steps, been credited with none, and was
+still being asked for the first one. Completions are remembered whenever they
+happen and the objective skips to the first thing genuinely outstanding.
+
+**A cache keyed on wall time is not deterministic under `--fixed-fps`.** The
+`watchers()` cache I added for the frame-cost work held for a tenth of a
+SECOND, which is a different number of frames depending on how fast the machine
+happens to be running — two live checks failed intermittently before that was
+obvious. It counts physics frames now, which is exactly six frames everywhere.
+
+Measured movement, from the harness, at 60fps: spawn to the corridor 2.4 s, the
+full 58 m corridor 17.0 s walking and 10.3 s sprinting, clinic board to a bedside
+in Room 101 9.9 s, Room 101 to the treatment bay 8.6 s.
+
+Verified: 1,585 assertions · 124 smoke · 23 live (three consecutive clean full
+runs) · boot check · 40 screenshots.

@@ -957,3 +957,25 @@ func test_a_day_event_does_not_last_forever() -> void:
 	t.eq(ev._day_npcs.size(), 0, "and the day ends for them too")
 	t.ok(a.is_queued_for_deletion(), "the student's placement genuinely finishes")
 	ev.free()
+
+func test_the_tutorial_credits_you_for_what_you_actually_did() -> void:
+	# It used to drop anything done out of order outright, so a player who
+	# examined and treated somebody before picking up the chart had done four of
+	# the seven steps, been credited with none, and was still being asked for
+	# the first one.
+	var t9 := TutorialSystem.new()
+	GameState.start_new_career(7)
+	t9._on_shift_started(1)
+	t9.complete("treat")            # step 5, done first
+	t9.complete("examine")          # step 3
+	t9.complete("chart")            # step 2
+	t9.complete("vitals")           # step 4
+	t.eq(t9._index, 0, "none of that satisfies step one, which is a different act")
+	t9.complete("list")             # step 1, finally
+	t.eq(t9._index, 5, "and doing step one now credits everything already done")
+	t.ok(t9.is_active(), "with two steps still to go")
+	t9.complete("records")
+	t9.complete("shift")
+	t.ok(not t9.is_active(), "and the last of them finishes it")
+	GameState.start_new_career(1)
+	t9.free()

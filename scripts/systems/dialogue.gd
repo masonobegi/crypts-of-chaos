@@ -14,29 +14,44 @@ const WITNESS_LINES := {
 	1: [
 		"Hm.", "...huh.", "That's a new one.", "Sorry, what was that?",
 		"Doctor? ...never mind.", "Odd.",
+		"Hm. No. Carry on.", "Thought I heard something.",
+		"That's — no, fine.", "Long day.",
 	],
 	2: [
 		"Doctor, what are you doing?", "Is that... normal?",
 		"I don't think that's the setting.", "Hang on.",
 		"That's not what the chart says.", "Should I be writing this down?",
+		"Sorry — is there a reason for that?",
+		"I'm going to pretend I'm looking at the window.",
+		"That's the second time today.",
 	],
 	3: [
 		"I saw that. I definitely saw that.", "Doctor. DOCTOR.",
 		"I'm going to have to mention this.", "That is not a treatment.",
 		"You know I can see you, right?",
+		"I'd like to be somewhere else, please.",
+		"No. No, I'm not doing this again.",
+		"Whatever that was, it wasn't clinical.",
 	],
 	4: [
 		"Right. I'm reporting this.", "I've written it all down. All of it.",
 		"You're going to explain this to someone who isn't me.",
 		"I've been counting, you know.",
+		"There's a form for this. I've already got one.",
+		"I've stopped giving you the benefit of the doubt.",
+		"Names, times, rooms. All of it.",
 	],
 }
 
 const ROLE_FLAVOUR := {
-	"nurse": ["Not my ward, not my problem. ...it is my ward.", "Twelve hour shift. Twelve."],
-	"doctor": ["Interesting technique.", "Is that in the guidelines? It isn't."],
-	"patient": ["Was that meant to happen?", "I felt that in my teeth."],
-	"family": ["Excuse me — what was that?", "Is that standard?"],
+	"nurse": ["Not my ward, not my problem. ...it is my ward.", "Twelve hour shift. Twelve.",
+		"I have four of these and two hands.", "Nobody tells me anything and then everyone does."],
+	"doctor": ["Interesting technique.", "Is that in the guidelines? It isn't.",
+		"I'd have done it differently. I'd have done it correctly."],
+	"patient": ["Was that meant to happen?", "I felt that in my teeth.",
+		"Should I say something? I'm going to say something."],
+	"family": ["Excuse me — what was that?", "Is that standard?",
+		"I'd like whoever is in charge. Not you. Whoever is in charge."],
 }
 
 const GOSSIP_LINES := [
@@ -46,21 +61,42 @@ const GOSSIP_LINES := [
 	"Right, so. You know that doctor.",
 	"I'm not saying anything. I'm just saying.",
 	"Between us? Something's off.",
+	"Do me a favour and keep an eye on %s.",
+	"I'd have said nothing last week. This week I'm saying something.",
+	"It's not one thing, is it. That's what I mean.",
+	"Ask me again at handover.",
 ]
 
 const PATIENT_IDLE := {
-	"trusting": ["Whatever you think is best, doctor.", "You're the expert!", "I feel a bit better, I think."],
-	"paranoid": ["Why is that machine humming?", "Who else has been in this room?", "I'd like that in writing."],
+	"trusting": ["Whatever you think is best, doctor.", "You're the expert!",
+		"I feel a bit better, I think.", "You'd tell me, wouldn't you.",
+		"My wife says I'm in good hands. I said yes, obviously.",
+		"Take your time. I'm not going anywhere. ...am I?"],
+	"paranoid": ["Why is that machine humming?", "Who else has been in this room?",
+		"I'd like that in writing.", "Somebody moved my chair.",
+		"That's a different pen. That's a different pen to yesterday.",
+		"I don't sleep. I want you to know that I don't sleep."],
 	"hypochondriac": ["I've got a new symptom.", "Should I stay another night? I should, shouldn't I.",
-		"I read about this. It's usually fatal."],
+		"I read about this. It's usually fatal.", "Is my foot meant to be that temperature?",
+		"I've been having a feeling. In the general area.",
+		"My cousin had this and he's still not right."],
 	"confrontational": ["How long is this going to take?", "I want to speak to someone senior.",
-		"This is ridiculous."],
-	"confused": ["Is this the airport?", "Have I eaten?", "Which one are you again?"],
+		"This is ridiculous.", "I've been very patient and I'd like that noted.",
+		"Don't do the voice. I know the voice.",
+		"Right. Who do I talk to about the food."],
+	"confused": ["Is this the airport?", "Have I eaten?", "Which one are you again?",
+		"Have they let the dog out?", "I'll get my coat, shall I.",
+		"You've got your father's hands."],
 	"observant": ["That dial was on five yesterday.", "You've changed the chart.",
-		"The window's open again. It was open last night too."],
-	"stoic": ["Fine.", "Mm.", "It's fine."],
+		"The window's open again. It was open last night too.",
+		"You came in at ten past. The other one comes at nine.",
+		"That's not the same clipboard.",
+		"There were two of those this morning."],
+	"stoic": ["Fine.", "Mm.", "It's fine.", "No complaints.", "Been worse.", "Aye."],
 	"litigious": ["My cousin's a solicitor, you know.", "I've kept a log.",
-		"I'd like a copy of everything."],
+		"I'd like a copy of everything.", "What's your full name, sorry?",
+		"I'm writing the time down. Not for any reason.",
+		"I'd like that repeated slowly."],
 }
 
 const OVERDUE_LINES := [
@@ -69,6 +105,10 @@ const OVERDUE_LINES := [
 	"My family keep asking when I'm coming home.",
 	"I feel fine. I felt fine on Tuesday.",
 	"Is there a reason I'm still here?",
+	"I've started recognising the trolley by its sound.",
+	"The man in the next room has been and gone twice.",
+	"I've run out of things to look at.",
+	"Somebody must know. Somebody must know when.",
 ]
 
 ## Said by somebody who is well, whose paperwork is not finished, and who has
@@ -84,17 +124,28 @@ const READY_LINES := [
 	"I packed. Probably shouldn't have packed.",
 	"Nobody's said anything, but I feel ready. I feel ready.",
 	"I'm allowed to just... ask, aren't I? When I can go?",
+	"I've said my goodbyes twice now. It's getting awkward.",
+	"There's nothing wrong with me, is there. Say if there is.",
+	"I'd quite like to sleep in my own bed. That's all it is.",
 ]
 
 const FAMILY_LINES := {
-	"absent": ["I can't stay long.", "Just popping in."],
-	"constant": ["I've been here since six.", "I brought a chair. My own chair."],
-	"questioner": ["What's that machine for?", "Why has the date changed?", "And what does that do?"],
+	"absent": ["I can't stay long.", "Just popping in.", "I've left the car on a meter.",
+		"Tell him I came. Tell him I came for a while."],
+	"constant": ["I've been here since six.", "I brought a chair. My own chair.",
+		"I've met all the nurses. I know about Bev.",
+		"I'll be here tomorrow. And the day after."],
+	"questioner": ["What's that machine for?", "Why has the date changed?", "And what does that do?",
+		"Who signed that?", "Is that the same one as yesterday, or a different one?",
+		"Sorry — one more."],
 	"litigious_family": ["I've spoken to a solicitor.", "I want this documented.",
-		"You'll be hearing from someone."],
+		"You'll be hearing from someone.", "I'd like your name for my notes.",
+		"We're past 'concerns'. We're at 'complaint'."],
 	"knows_medicine": ["That's not the setting for this.", "I was a nurse for eleven years.",
-		"Where's the incident report?"],
-	"clueless": ["Is the big humming one the good one?", "Does he need more of the beeping?"],
+		"Where's the incident report?", "You've not written that up, have you.",
+		"I know what that noise means, and so do you."],
+	"clueless": ["Is the big humming one the good one?", "Does he need more of the beeping?",
+		"Should I be pressing anything?", "I brought grapes. Is that still a thing?"],
 }
 
 static func witness_line(mind: Mind, _ev: Evidence, tier: int) -> String:
@@ -103,9 +154,24 @@ static func witness_line(mind: Mind, _ev: Evidence, tier: int) -> String:
 		pool = ROLE_FLAVOUR[mind.role]
 	return String(RNG.pick("bark", pool))
 
-static func gossip_line(_mind: Mind, _ev: Evidence) -> String:
+## Gossip names a real room where it can. It used to say "101" every single time
+## regardless of where anything happened, which is a small lie that a player who
+## is paying attention catches inside one shift — and paying attention is the
+## skill the whole game is asking for.
+static func gossip_line(_mind: Mind, ev: Evidence) -> String:
 	var line := String(RNG.pick("gossip_line", GOSSIP_LINES))
-	return line.replace("%s", "101")
+	if not line.contains("%s"):
+		return line
+	var where := "one of the side rooms"
+	var ps = Engine.get_main_loop().get_first_node_in_group("patient_system") \
+		if Engine.get_main_loop() != null else null
+	var h = Engine.get_main_loop().get_first_node_in_group("hospital") \
+		if Engine.get_main_loop() != null else null
+	if ev != null and ev.patient_id != "" and ps != null and h != null:
+		var p = ps.get_patient(ev.patient_id)
+		if p != null and h.room(p.room) != null:
+			where = h.room(p.room).display
+	return line.replace("%s", where)
 
 static func patient_idle(p) -> String:
 	var pool: Array = PATIENT_IDLE.get(p.archetype, PATIENT_IDLE["trusting"])

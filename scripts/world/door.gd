@@ -247,5 +247,9 @@ func slam() -> void:
 	if leaf:
 		leaf.rotation.y = 0.0
 	AudioMgr.play_at("thud", global_position, -6.0)
+	var pl = get_tree().get_first_node_in_group("player")
+	if pl != null and pl.has_method("shake") \
+			and pl.global_position.distance_to(global_position) < 5.0:
+		pl.shake(0.4)
 	WorldEvent.new("door_slammed", "player").at(global_position, room_key) \
 		.heard(0.0, 16.0).tag("noise").says("a door slammed").emit()

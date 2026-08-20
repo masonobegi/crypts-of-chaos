@@ -57,10 +57,11 @@ func start() -> void:
 func tick() -> bool:
 	frames += 1
 	tree.paused = false
+	_sample_cost()
 
 	if frames == 20:
 		_begin()
-	if frames > 20:
+	if frames > 20 and not _in_cost_window():
 		# Push the clock along so hourly and daily behaviour fires too.
 		for i in 3:
 			GameState._advance_minute()
@@ -438,6 +439,54 @@ func _finish() -> void:
 
 	_report()
 
+# ------------------------------------------------------------------ cost
+## Phase 19. What a frame of this game actually costs, measured on the one
+## harness that runs the whole simulation with real frames.
+##
+## --fixed-fps makes the CLOCK deterministic; it does not make the work free, so
+## the wall time between ticks is still a true reading of how long a frame took
+## to produce. Reported rather than asserted: a threshold here would fail on
+## whatever machine happens to be busy, and the number is the point.
+var _cost_ms: Array[float] = []
+var _last_us := 0
+
+## Frames 2500-4000, during which the clock is left alone.
+##
+## Sampling everywhere gave a number 400x too pessimistic, and it took a while
+## to see why: this harness force-advances three game MINUTES per frame so that
+## hourly and daily behaviour fires inside seven thousand frames, and real play
+## advances 0.0074. Every per-minute system in the game — economy, shift,
+## suspicion decay, the tannoy — was therefore running four hundred times more
+## often than it ever will, and that was most of the frame.
+func _in_cost_window() -> bool:
+	return frames >= 2500 and frames < 4000
+
+func _sample_cost() -> void:
+	var now := Time.get_ticks_usec()
+	if _last_us > 0 and _in_cost_window():
+		_cost_ms.append(float(now - _last_us) / 1000.0)
+	_last_us = now
+
+func _cost_line() -> String:
+	if _cost_ms.is_empty():
+		return "  cost: not sampled"
+	var sorted := _cost_ms.duplicate()
+	sorted.sort()
+	var total := 0.0
+	for v in sorted:
+		total += v
+	var p50: float = sorted[int(sorted.size() * 0.50)]
+	var p99: float = sorted[int(sorted.size() * 0.99)]
+	var nodes := 0
+	var stack: Array = [tree.root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		nodes += 1
+		for c in n.get_children():
+			stack.append(c)
+	return "  cost: mean %.2f ms  ·  p50 %.2f  ·  p99 %.2f  ·  worst %.2f  ·  %d nodes" % [
+		total / float(sorted.size()), p50, p99, sorted[-1], nodes]
+
 func _ok(cond: bool, msg: String) -> void:
 	if cond:
 		notes.append("  ok: " + msg)
@@ -447,6 +496,7 @@ func _ok(cond: bool, msg: String) -> void:
 func _report() -> void:
 	for n in notes:
 		print(n)
+	print(_cost_line())
 	print("\n--------------------------------------")
 	if errors.is_empty():
 		print("LIVE RUN PASSED — %d checks over %d frames" % [notes.size(), FRAMES])

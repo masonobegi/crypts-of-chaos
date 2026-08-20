@@ -317,8 +317,26 @@ func _physics_process(delta: float) -> void:
 		_follow_path(delta)
 	_face(delta)
 	_open_door_ahead()
-	move_and_slide()
-	_push_obstacles()
+	# Somebody standing still does not need the solver.
+	#
+	# move_and_slide() was measured at roughly four fifths of all the time this
+	# game spends on characters, and most of the building is stationary most of
+	# the time: nurses at the station, patients in bed, visitors sitting. Held
+	# to a strict test — already resting on the floor, not being pushed, and
+	# asking to go nowhere — because a body that skips the solver also skips
+	# gravity, and a patient hovering where their bed used to be is a far worse
+	# bug than a slow frame. _push_obstacles is skipped with it: it reads the
+	# slide collisions move_and_slide produces, and somebody standing still is
+	# not shoving anything anyway.
+	var resting: bool = is_on_floor() and _path_i >= _path.size() \
+		and absf(velocity.y) < 0.01 \
+		and Vector2(velocity.x, velocity.z).length_squared() < 0.0004
+	if resting:
+		velocity.x = 0.0
+		velocity.z = 0.0
+	else:
+		move_and_slide()
+		_push_obstacles()
 	_check_stuck(delta)
 	_animate(delta)
 	_footsteps(delta)

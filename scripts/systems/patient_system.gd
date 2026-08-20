@@ -533,6 +533,13 @@ func add_complication(p: Patient, comp_id: String, true_cause: String) -> Compli
 		AudioMgr.play_at("gasp", body.global_position, -6.0)
 		if c.is_injury:
 			AudioMgr.play_at("snap", body.global_position, -7.0)
+			# ...and a kick in the camera if you are close enough to have done
+			# it. The one moment the game most wants you to feel rather than
+			# read, and it was a toast in the corner like everything else.
+			var pl = get_tree().get_first_node_in_group("player")
+			if pl != null and pl.has_method("shake") \
+					and pl.global_position.distance_to(body.global_position) < 6.0:
+				pl.shake(0.75)
 	EventBus.toast.emit("%s: %s" % [p.display_name, c.display_name], "suspicion")
 	return c
 

@@ -26,6 +26,11 @@ var _target_head_y := STAND_HEIGHT
 ## Speed you are asking for this frame, before collision resolution. Needed
 ## because move_and_slide overwrites velocity — see _push_obstacles.
 var _intended_speed := 0.0
+## Camera kick, decaying. Deliberately reserved for the handful of moments the
+## game wants you to FEEL rather than read in a toast: something breaking, a
+## door slammed, somebody's condition turning. Everything else is head bob.
+var _shake := 0.0
+var _shake_t := 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -40,6 +45,12 @@ var input_locked := false:
 		can_look = not v
 
 func _ready() -> void:
+	# The two moments where the institution moves against you. A letter opening
+	# an investigation and a sanction landing are the biggest things that can
+	# happen in a career and both of them used to be a line of text.
+	EventBus.investigation_opened.connect(func(_inv): shake(0.55))
+	EventBus.sanction_applied.connect(func(_lvl, _why): shake(0.95))
+	EventBus.item_broke.connect(_on_item_broke)
 	add_to_group("player")
 	collision_layer = 2      # player
 	collision_mask = 1 | 4 | 8   # world | props | npc
@@ -240,9 +251,21 @@ func _handle_bob(delta: float) -> void:
 			AudioMgr.play_at_var("step", global_position, -22.0, 0.18)
 	else:
 		_bob = lerpf(_bob, 0.0, 1.0 - exp(-8.0 * delta))
-	camera.position.y = sin(_bob) * 0.035
-	camera.position.x = cos(_bob * 0.5) * 0.022
-	camera.rotation.z = lerpf(camera.rotation.z, -cos(_bob * 0.5) * 0.012, 1.0 - exp(-10.0 * delta))
+	# Two different frequencies so a kick reads as a jolt rather than a wobble,
+	# and it lands on TOP of the bob instead of replacing it — a shake that
+	# cancels your footsteps feels like the game stopped for a moment.
+	_shake = maxf(0.0, _shake - delta * 2.6)
+	_shake_t += delta * 34.0
+	var k := _shake * _shake
+	camera.position.y = sin(_bob) * 0.035 + sin(_shake_t) * k * 0.05
+	camera.position.x = cos(_bob * 0.5) * 0.022 + sin(_shake_t * 1.7) * k * 0.04
+	camera.rotation.z = lerpf(camera.rotation.z, -cos(_bob * 0.5) * 0.012, 1.0 - exp(-10.0 * delta)) \
+		+ sin(_shake_t * 0.9) * k * 0.03
+
+## Kick the camera. `amount` is roughly "how much of a full jolt", 0..1; they do
+## not stack past one, so a pile-up of small events cannot black out the screen.
+func shake(amount: float) -> void:
+	_shake = clampf(maxf(_shake, amount), 0.0, 1.0)
 
 ## Where the player is, in room terms — used by perception and events.
 func current_room() -> String:
@@ -258,3 +281,7 @@ func face(target: Vector3) -> void:
 	var to := target - global_position
 	_yaw = atan2(-to.x, -to.z)
 	rotation.y = _yaw
+
+func _on_item_broke(item: Node) -> void:
+	if item is Node3D and global_position.distance_to((item as Node3D).global_position) < 5.0:
+		shake(0.45)

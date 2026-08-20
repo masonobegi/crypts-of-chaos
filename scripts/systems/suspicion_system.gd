@@ -495,12 +495,33 @@ func highest_suspicion() -> float:
 	return top
 
 ## Anyone currently able to see the player. Drives the HUD "eyes on you" tell.
+## Who can see the player right now.
+##
+## Cached for a tenth of a second. This fires one physics raycast per registered
+## body and the HUD asked for it EVERY FRAME to update a text panel — fifteen
+## raycasts at 60Hz to redraw the same three names. A tenth of a second is
+## below the point at which anybody notices the panel is late, and it is the
+## single largest saving in the frame.
+var _watchers_cache: Array[NPCBody] = []
+var _watchers_at := -1.0
+
 func watchers() -> Array[NPCBody]:
+	var now := float(Time.get_ticks_msec()) * 0.001
+	if _watchers_at >= 0.0 and now - _watchers_at < 0.1:
+		# Somebody in the cached list may have been freed since it was built.
+		var live: Array[NPCBody] = []
+		for w in _watchers_cache:
+			if is_instance_valid(w):
+				live.append(w)
+		_watchers_cache = live
+		return _watchers_cache
 	var out: Array[NPCBody] = []
 	for id in _bodies.keys():
 		var b = _body(id)
 		if b and b.is_inside_tree() and b.perception and b.perception.sees_player():
 			out.append(b)
+	_watchers_cache = out
+	_watchers_at = now
 	return out
 
 func is_observed() -> bool:

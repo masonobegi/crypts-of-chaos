@@ -63,6 +63,19 @@ const RECIPES := {
 	"snap":      {"w": "noise", "f": 1400.0,"d": 0.11, "dec": 34.0, "n": 0.85, "sw": -0.65, "vib": 0.0},
 	"theatre":   {"w": "noise", "f": 240.0, "d": 0.55, "dec": 6.0,  "n": 0.9,  "sw": -0.25, "vib": 3.0},
 	"pills":     {"w": "noise", "f": 2100.0,"d": 0.22, "dec": 15.0, "n": 1.0,  "sw": 0.15,  "vib": 26.0},
+	# The procedure bench. Asked for by name after the second playtest: "sound
+	# effects for all the things I can do, gross if needed". These are the gross
+	# ones. Every hand-procedure in the game makes at least one of them, and the
+	# difference between a good manoeuvre and a bad one is audible before the
+	# verdict text arrives.
+	"squelch":   {"w": "noise", "f": 300.0, "d": 0.30, "dec": 9.0,  "n": 1.0,  "sw": -0.58, "vib": 4.0},
+	"stitch":    {"w": "noise", "f": 2500.0,"d": 0.07, "dec": 30.0, "n": 0.9,  "sw": -0.45, "vib": 0.0},
+	"crack":     {"w": "noise", "f": 950.0, "d": 0.09, "dec": 46.0, "n": 0.7,  "sw": -0.80, "vib": 0.0},
+	"bone_grind":{"w": "saw",   "f": 145.0, "d": 0.45, "dec": 4.5,  "n": 0.55, "sw": -0.18, "vib": 28.0},
+	"seat":      {"w": "sine",  "f": 190.0, "d": 0.20, "dec": 15.0, "n": 0.30, "sw": -0.45, "vib": 0.0},
+	"inject":    {"w": "saw",   "f": 680.0, "d": 0.45, "dec": 3.2,  "n": 0.22, "sw": 0.30,  "vib": 13.0},
+	"swab":      {"w": "noise", "f": 1600.0,"d": 0.20, "dec": 11.0, "n": 1.0,  "sw": -0.25, "vib": 0.0},
+	"wet":       {"w": "noise", "f": 175.0, "d": 0.40, "dec": 7.0,  "n": 1.0,  "sw": -0.62, "vib": 2.0},
 }
 
 ## The continuous bed: a long, low, quietly unpleasant loop. Built separately

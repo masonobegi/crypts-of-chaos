@@ -40,7 +40,218 @@ static func furnish(h: Hospital) -> Array[Rect2]:
 			"intake": _intake(h, r)
 			"radiology": _radiology(h, r)
 			"day_room": _day_room(h, r)
+		_dress(h, r)
 	return footprints
+
+# ------------------------------------------------------------------ dressing
+## Which wall is which. Wards are on the north side of the corridor and their
+## door is on their MINIMUM z edge; everything in the south wing opens onto the
+## same corridor from below, so its door is on its MAXIMUM z edge. One check
+## against the corridor's own z, and every room after this can say "the wall
+## with the door in it" and mean it.
+static func _door_on_min_z(r: Room) -> bool:
+	return r.rect.position.y >= 4.0
+
+static func _door_wall_z(r: Room) -> float:
+	return r.rect.position.y if _door_on_min_z(r) else r.rect.position.y + r.rect.size.y
+
+static func _far_wall_z(r: Room) -> float:
+	return r.rect.position.y + r.rect.size.y if _door_on_min_z(r) else r.rect.position.y
+
+## A point on a wall, `t` along it from one end, `y` up it, standing 9cm proud
+## of the plaster. Dressing is flat and shallow, so 9cm clears the wall without
+## ever being something the player can walk into.
+const OFF := 0.09
+
+static func _door_wall(r: Room, t: float, y: float) -> Vector3:
+	var z := _door_wall_z(r)
+	return Vector3(r.rect.position.x + r.rect.size.x * t, y,
+		z + (OFF if _door_on_min_z(r) else -OFF))
+
+static func _far_wall(r: Room, t: float, y: float) -> Vector3:
+	var z := _far_wall_z(r)
+	return Vector3(r.rect.position.x + r.rect.size.x * t, y,
+		z + (-OFF if _door_on_min_z(r) else OFF))
+
+static func _left_wall(r: Room, t: float, y: float) -> Vector3:
+	return Vector3(r.rect.position.x + OFF, y, r.rect.position.y + r.rect.size.y * t)
+
+static func _right_wall(r: Room, t: float, y: float) -> Vector3:
+	return Vector3(r.rect.end.x - OFF, y, r.rect.position.y + r.rect.size.y * t)
+
+static func _door_rot(r: Room) -> float:
+	return 0.0 if _door_on_min_z(r) else PI
+
+static func _far_rot(r: Room) -> float:
+	return PI if _door_on_min_z(r) else 0.0
+
+const LEFT_ROT := PI * 0.5
+const RIGHT_ROT := -PI * 0.5
+
+## Everything that is on a wall or a ceiling and does nothing.
+##
+## Called for every room after its real furniture is placed. Nothing here takes
+## a footprint or has collision, so it can be added anywhere without a nurse
+## getting stuck on it — which is the rule that lets there be a lot of it.
+static func _dress(h: Hospital, r: Room) -> void:
+	var c := r.center()
+	var w: float = r.rect.size.x
+	var d: float = r.rect.size.y
+	# Air and water, on every ceiling. The ceiling is the top third of every
+	# interior shot and it used to be one unbroken plane with a lamp in it.
+	if w > 4.0 and d > 4.0:
+		Dressing.vent(h, Vector3(c.x + w * 0.26, Hospital.WALL_H - 0.07, c.z - d * 0.24))
+		Dressing.sprinkler(h, Vector3(c.x - w * 0.24, Hospital.WALL_H - 0.09, c.z + d * 0.22))
+	if r.kind != "corridor":
+		Dressing.dispenser(h, _door_wall(r, 0.14, 1.32), _door_rot(r))
+	match r.kind:
+		"ward": _dress_ward(h, r)
+		"corridor": _dress_corridor(h, r)
+		"lobby": _dress_lobby(h, r)
+		"station": _dress_station(h, r)
+		"treatment": _dress_treatment(h, r)
+		"supply": _dress_supply(h, r)
+		"office": _dress_office(h, r)
+		"bathroom": _dress_bathroom(h, r)
+		"intake": _dress_intake(h, r)
+		"radiology": _dress_radiology(h, r)
+		"day_room": _dress_day_room(h, r)
+
+static func _dress_ward(h: Hospital, r: Room) -> void:
+	var bed := h.bed_position(r.key)
+	var far_z := _far_wall_z(r)
+	var toward: float = -1.0 if _door_on_min_z(r) else 1.0
+	# Gas outlets behind the head of the bed, and a curtain rail across it.
+	Dressing.oxygen_panel(h, Vector3(bed.x, 1.42, far_z + toward * 0.10), _far_rot(r))
+	Dressing.curtain(h, Vector3(bed.x - 0.2, 0, bed.z + toward * -0.95), 3.0, 0.0,
+		_ward_tint(r.key))
+	Dressing.sharps(h, Vector3(bed.x - 1.55, 1.15, bed.z + toward * -0.30), _far_rot(r))
+	Dressing.poster(h, _left_wall(r, 0.62, 1.62), LEFT_ROT, 0.60, 0.84,
+		_ward_tint(r.key), 5)
+	Dressing.wall_art(h, _right_wall(r, 0.55, 1.70), RIGHT_ROT, 0.86, 0.66,
+		_ward_tint(r.key), Color(0.98, 0.78, 0.38))
+	Dressing.clock(h, _door_wall(r, 0.72, 2.34), _door_rot(r))
+	Dressing.bin(h, Vector3(r.rect.position.x + 0.8, 0, _door_wall_z(r) - toward * 0.9))
+	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, far_z + toward * 0.9), 0.9)
+
+## One colour per room, so a ward is somewhere rather than anywhere.
+static func _ward_tint(key: String) -> Color:
+	var tints := [Color(0.36, 0.68, 0.72), Color(0.86, 0.55, 0.40),
+		Color(0.48, 0.62, 0.86), Color(0.52, 0.74, 0.46), Color(0.78, 0.52, 0.74)]
+	return tints[absi(hash(key)) % tints.size()]
+
+static func _dress_corridor(h: Hospital, r: Room) -> void:
+	var z0: float = r.rect.position.y
+	var z1: float = r.rect.end.y
+	var x0: float = r.rect.position.x + 1.0
+	var x1: float = r.rect.end.x - 1.0
+	# Rails both sides, and the coloured lines on the floor that every real
+	# hospital uses instead of signage nobody reads.
+	Dressing.handrail(h, x0, x1, z0 + 0.12)
+	Dressing.handrail(h, x0, x1, z1 - 0.12)
+	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88))
+	Dressing.floor_line(h, x0, x1, z0 + 0.95, Color(0.94, 0.72, 0.24))
+	Dressing.floor_line(h, x0, x1, z1 - 0.80, Color(0.42, 0.76, 0.52))
+	var signs := [[-6.0, "◀  RADIOLOGY   ·   INTAKE"], [12.0, "WARDS 101–105  ▶"],
+		[30.0, "SUPPLY  ·  OFFICE  ▶"]]
+	for sgn in signs:
+		Dressing.ceiling_sign(h, Vector3(float(sgn[0]), 2.62, (z0 + z1) * 0.5),
+			String(sgn[1]))
+	Dressing.noticeboard(h, Vector3(7.0, 1.65, z1 - 0.10), PI, 1.8, 1.1)
+	Dressing.extinguisher(h, Vector3(20.5, 1.05, z1 - 0.10), PI)
+	Dressing.extinguisher(h, Vector3(-2.0, 1.05, z0 + 0.10), 0.0)
+	for x in [3.0, 17.0, 27.0, 39.0]:
+		Dressing.poster(h, Vector3(float(x), 1.72, z1 - 0.10), PI, 0.58, 0.80,
+			Color(0.35, 0.72, 0.70), 4)
+	for x2 in [-9.0, 25.0, 44.0]:
+		Dressing.plant(h, Vector3(float(x2), 0, z1 - 0.55), 0.95)
+	Dressing.bin(h, Vector3(10.5, 0, z1 - 0.5), Color(0.30, 0.50, 0.58))
+
+static func _dress_lobby(h: Hospital, r: Room) -> void:
+	Dressing.noticeboard(h, _far_wall(r, 0.30, 1.70), _far_rot(r), 1.8, 1.1)
+	Dressing.wall_art(h, _far_wall(r, 0.72, 1.75), _far_rot(r), 1.10, 0.80,
+		Color(0.40, 0.74, 0.86), Color(0.98, 0.66, 0.30))
+	Dressing.wall_art(h, _left_wall(r, 0.40, 1.70), LEFT_ROT, 0.80, 0.62,
+		Color(0.52, 0.80, 0.60), Color(0.92, 0.46, 0.42))
+	Dressing.clock(h, _far_wall(r, 0.50, 2.36), _far_rot(r))
+	Dressing.plant(h, Vector3(r.rect.position.x + 1.0, 0, r.rect.position.y + 1.2), 1.15)
+	Dressing.plant(h, Vector3(r.rect.end.x - 1.1, 0, r.rect.position.y + 1.4), 0.95)
+	Dressing.bin(h, Vector3(r.rect.position.x + 1.2, 0, r.rect.end.y - 1.6))
+
+static func _dress_station(h: Hospital, r: Room) -> void:
+	Dressing.noticeboard(h, _far_wall(r, 0.50, 1.68), _far_rot(r), 1.7, 1.05)
+	Dressing.poster(h, _left_wall(r, 0.35, 1.66), LEFT_ROT, 0.56, 0.78,
+		Color(0.94, 0.66, 0.30), 5)
+	Dressing.clock(h, _far_wall(r, 0.16, 2.30), _far_rot(r))
+	Dressing.linen(h, Vector3(r.rect.position.x + 0.9, 0.90, r.rect.position.y + 1.2))
+	Dressing.trays(h, Vector3(r.rect.end.x - 1.0, 0.90, r.rect.position.y + 1.4))
+	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 1.4))
+	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 1.5), 0.85)
+
+static func _dress_treatment(h: Hospital, r: Room) -> void:
+	Dressing.oxygen_panel(h, _far_wall(r, 0.30, 1.42), _far_rot(r))
+	Dressing.sharps(h, _far_wall(r, 0.58, 1.18), _far_rot(r))
+	Dressing.sharps(h, _left_wall(r, 0.45, 1.18), LEFT_ROT)
+	Dressing.poster(h, _far_wall(r, 0.76, 1.68), _far_rot(r), 0.62, 0.86,
+		Color(0.40, 0.76, 0.72), 6)
+	Dressing.curtain(h, Vector3(r.rect.get_center().x, 0,
+		r.rect.position.y + r.rect.size.y * 0.34), 2.6, 0.0, Color(0.44, 0.70, 0.78))
+	Dressing.trays(h, Vector3(r.rect.position.x + 1.0, 0.90, r.rect.get_center().y))
+	Dressing.bin(h, Vector3(r.rect.end.x - 1.0, 0, r.rect.get_center().y + 1.2),
+		Color(0.66, 0.34, 0.34))
+
+static func _dress_supply(h: Hospital, r: Room) -> void:
+	Dressing.boxes(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.get_center().y - 1.4), 0.3)
+	Dressing.boxes(h, Vector3(r.rect.end.x - 1.0, 0, r.rect.get_center().y + 1.6), -0.5)
+	Dressing.linen(h, Vector3(r.rect.get_center().x, 0.92, r.rect.position.y + 1.1))
+	Dressing.mop_bucket(h, Vector3(r.rect.position.x + 0.8, 0, r.rect.end.y - 1.3), 0.4)
+	Dressing.poster(h, _far_wall(r, 0.50, 1.70), _far_rot(r), 0.54, 0.76,
+		Color(0.86, 0.62, 0.34), 4)
+
+static func _dress_office(h: Hospital, r: Room) -> void:
+	Dressing.wall_art(h, _far_wall(r, 0.36, 1.72), _far_rot(r), 0.94, 0.72,
+		Color(0.72, 0.52, 0.86), Color(0.96, 0.80, 0.42))
+	Dressing.poster(h, _far_wall(r, 0.74, 1.70), _far_rot(r), 0.52, 0.74,
+		Color(0.60, 0.48, 0.86), 5)
+	Dressing.clock(h, _left_wall(r, 0.30, 2.28), LEFT_ROT)
+	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.position.y + 1.2), 1.1)
+	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.position.y + 1.1),
+		Color(0.46, 0.36, 0.30))
+
+static func _dress_bathroom(h: Hospital, r: Room) -> void:
+	Dressing.poster(h, _far_wall(r, 0.50, 1.66), _far_rot(r), 0.46, 0.66,
+		Color(0.44, 0.74, 0.84), 4)
+	Dressing.bin(h, Vector3(r.rect.position.x + 0.7, 0, r.rect.get_center().y),
+		Color(0.40, 0.62, 0.70))
+
+static func _dress_intake(h: Hospital, r: Room) -> void:
+	Dressing.ceiling_sign(h, Vector3(r.rect.get_center().x, 2.62,
+		r.rect.position.y + 1.6), "EMERGENCY INTAKE", 0.0, Color(0.62, 0.22, 0.22))
+	Dressing.noticeboard(h, _far_wall(r, 0.28, 1.68), _far_rot(r), 1.6, 1.0)
+	Dressing.extinguisher(h, _left_wall(r, 0.30, 1.05), LEFT_ROT)
+	Dressing.floor_line(h, r.rect.position.x + 1.0, r.rect.end.x - 1.0,
+		r.rect.get_center().y, Color(0.88, 0.32, 0.30), 0.14)
+	Dressing.bin(h, Vector3(r.rect.end.x - 1.2, 0, r.rect.end.y - 1.4),
+		Color(0.62, 0.30, 0.30))
+	Dressing.plant(h, Vector3(r.rect.position.x + 1.2, 0, r.rect.end.y - 1.4), 1.0)
+
+static func _dress_radiology(h: Hospital, r: Room) -> void:
+	for i in 3:
+		Dressing.poster(h, _far_wall(r, 0.24 + float(i) * 0.24, 1.72), _far_rot(r),
+			0.48, 0.66, Color(0.34, 0.52, 0.86), 3)
+	Dressing.sharps(h, _left_wall(r, 0.40, 1.15), LEFT_ROT)
+	Dressing.bin(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.position.y + 1.2),
+		Color(0.34, 0.44, 0.62))
+
+static func _dress_day_room(h: Hospital, r: Room) -> void:
+	Dressing.wall_art(h, _far_wall(r, 0.32, 1.72), _far_rot(r), 0.92, 0.70,
+		Color(0.96, 0.72, 0.34), Color(0.44, 0.78, 0.62))
+	Dressing.wall_art(h, _far_wall(r, 0.70, 1.68), _far_rot(r), 0.76, 0.60,
+		Color(0.52, 0.72, 0.92), Color(0.92, 0.52, 0.60))
+	Dressing.plant(h, Vector3(r.rect.position.x + 1.1, 0, r.rect.position.y + 1.3), 1.2)
+	Dressing.plant(h, Vector3(r.rect.end.x - 1.1, 0, r.rect.position.y + 1.5), 1.0)
+	Dressing.bin(h, Vector3(r.rect.position.x + 1.0, 0, r.rect.end.y - 1.5),
+		Color(0.72, 0.62, 0.36))
 
 ## Record a solid footprint, grown slightly so NPCs keep their shoulders clear.
 static func _occupy(centre_x: float, centre_z: float, w: float, d: float) -> void:

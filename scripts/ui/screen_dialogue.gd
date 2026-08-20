@@ -68,8 +68,8 @@ func _build() -> void:
 		# used to funnel into one dial; a broken wrist and a head cold are not
 		# the same job and should not be the same verb.
 		var kind := Procedures.procedure_for(_patient.condition_id)
-		if kind == "set_bone" or kind == "prescribe":
-			var screen := "setbone" if kind == "set_bone" else "medicate"
+		var screen := Procedures.screen_for(kind)
+		if screen != "":
 			var pb := UIKit.button(Procedures.procedure_name(kind), func():
 				var pid: String = _patient.id
 				close()

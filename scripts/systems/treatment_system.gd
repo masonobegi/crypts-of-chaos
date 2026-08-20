@@ -409,123 +409,126 @@ func prescribe(p: Patient, med_id: String) -> Dictionary:
 		fee = appts.complete("discharge", p.id)
 	return {"indicated": indicated, "kind": kind, "fee": fee}
 
-# ------------------------------------------------------------------ machines
-## Setting a bone, resolved.
+# ------------------------------------------------------------------ procedures
+## The result of a procedure the player performed WITH THEIR HANDS, on a
+## drawing of the part of the person it is happening to.
 ##
-## Everything about the outcome comes from Procedures.BONE_ZONES, so the screen
-## stays a bar with a needle on it and the consequences live in one table that a
-## balance pass can read.
+## Everything about what happens next comes out of `Procedures.OUTCOMES`, so the
+## screens only have to grade the manoeuvre and hand the spec over. One applier
+## for all of them, because a bone, a wound and a syringe differ in what they
+## ask of the player and not at all in what the ward does about it afterwards.
 ##
-## The dishonest outcome is not a different code path: it is the same call with
-## a worse zone. That matters — it means a badly set bone and a deliberately
-## wrecked one are indistinguishable in the record, which is the entire cover
-## story the player is buying.
-func apply_reduction(p: Patient, zone: String, from_pos := Vector3.ZERO) -> Dictionary:
-	if p == null or p.discharged:
+## The spec already knows which intent and which band produced it, which is why
+## a well-executed piece of harm can be less visible than a fumbled attempt to
+## help: `visual` is a property of how it LOOKED, not of what it WAS.
+func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vector3.ZERO) -> Dictionary:
+	if p == null or p.discharged or spec.is_empty():
 		return {}
-	var spec: Dictionary = Procedures.BONE_ZONES.get(zone, Procedures.BONE_ZONES["rough"])
-	var rec := float(spec["recovery"])
+	var intent := String(spec.get("intent", "treat"))
+	var band := String(spec.get("band", "fair"))
+	var rec := float(spec.get("recovery", 0.0))
 	p.recovery = clampf(p.recovery + rec, -0.2, 1.0)
-	p.record_treatment("reduction", clampf(rec * 1.2, -1.0, 1.0))
+	p.record_treatment(kind, clampf(rec * 1.2, -1.0, 1.0))
 
-	# A worse setting keeps the bed. This is the money.
-	var stay := float(spec["stay"])
+	# A worse outcome keeps the bed. This is the money.
+	var stay := float(spec.get("stay", 0.0))
 	if stay != 0.0:
 		p.expected_stay_days = maxf(0.5, p.expected_stay_days + stay)
 		if p.chart != null:
 			p.chart.expected_stay_days = p.expected_stay_days
 
-	var comp := String(spec["harm"])
+	var comp := String(spec.get("harm", ""))
 	if comp != "" and patient_system != null:
-		patient_system.add_complication(p, comp, "reduction_difficult")
+		patient_system.add_complication(p, comp, _cause_for_procedure(kind, intent, band))
 
 	var eco = get_tree().get_first_node_in_group("economy")
-	if eco != null:
-		eco.bill_procedure("Reduction — %s" % p.display_name, int(spec["fee"]))
+	if eco != null and int(spec.get("fee", 0)) != 0:
+		eco.bill_procedure("%s — %s" % [Procedures.procedure_name(kind), p.display_name],
+			int(spec.get("fee", 0)))
 
-	# What the room saw. A clean reduction is a doctor doing their job; the far
-	# end of the bar is a noise and a scream and somebody in the doorway.
+	# What the room saw. A clean job of either kind is a doctor doing their job;
+	# a fumbled one is a noise, and a face in the doorway.
 	var body = patient_system.get_body(p.id) if patient_system != null else null
 	if body != null:
-		body.startle(0.5 if zone == "worse" else 0.2)
+		body.startle(0.55 if band == "poor" else (0.2 if rec > 0.0 else 0.35))
 		if body.has_method("say"):
-			body.say(String(RNG.pick("bone_bark", spec["say"])), 3.4)
-	var visual := float(spec["visual"])
+			body.say(String(RNG.pick("procedure_bark", spec.get("say", ["Hm."]))), 3.4)
+	var visual := float(spec.get("visual", 0.0))
 	if visual > 0.0:
-		WorldEvent.new("reduction_botched", "player") \
+		var e := WorldEvent.new("procedure_botched", "player") \
 			.at(from_pos if from_pos != Vector3.ZERO else global_position(), p.room) \
-			.about(p.id).seen(visual).heard(0.0, 9.0) \
-			.tag("treatment").tag("injury") \
-			.says("forced a joint the wrong way").emit()
-	if float(spec["sue"]) > 0.0:
-		p.set_meta("sue_risk", float(p.get_meta("sue_risk", 0.0)) + float(spec["sue"]))
-	EventBus.treatment_applied.emit(p, "reduction", clampf(rec, -1.0, 1.0))
-	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec["label"])],
-		"suspicion" if zone == "worse" else "good")
+			.about(p.id).seen(visual).heard(0.0, 9.0).cover("known_risk") \
+			.tag("treatment").tag("procedure")
+		if intent == "worsen":
+			e.tag("injury")
+		e.says(_event_line(kind, intent, band, p)).emit()
+	var sue := float(spec.get("sue", 0.0))
+	if sue > 0.0:
+		p.set_meta("sue_risk", float(p.get_meta("sue_risk", 0.0)) + sue)
+
+	AudioMgr.play(_sound_for(kind, band), -9.0)
+	EventBus.treatment_applied.emit(p, kind, clampf(rec, -1.0, 1.0))
+	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec.get("label", "Done"))],
+		String(spec.get("tone", "info")))
 	return spec
+
+## The cause that gets filed. A procedure that went badly has an honest and
+## extremely useful explanation available to it, which is the entire reason
+## surgeons invented the phrase.
+func _cause_for_procedure(kind: String, intent: String, band: String) -> String:
+	if band == "poor" and intent == "worsen":
+		return "physician_error"
+	match kind:
+		"dose": return "medication_reaction"
+		"suture": return "known_risk"
+	return "known_risk" if band != "poor" else "physician_error"
+
+func _event_line(kind: String, intent: String, band: String, p: Patient) -> String:
+	if intent == "worsen" and band == "poor":
+		match kind:
+			"set_bone": return "forced %s's joint the wrong way" % p.display_name
+			"suture": return "sewed %s up anyhow" % p.display_name
+			"dose": return "emptied the syringe into %s" % p.display_name
+	match kind:
+		"set_bone": return "made a mess of setting %s's bone" % p.display_name
+		"suture": return "made a mess of closing %s up" % p.display_name
+		"dose": return "gave %s something that disagreed with them" % p.display_name
+	return "did something to %s" % p.display_name
+
+func _sound_for(kind: String, band: String) -> String:
+	if band == "poor":
+		return "snap" if kind != "dose" else "machine_bad"
+	match kind:
+		"set_bone": return "thud"
+		"suture": return "paper"
+	return "beep"
 
 func global_position() -> Vector3:
 	var pl = get_tree().get_first_node_in_group("player")
 	return pl.global_position if pl != null else Vector3.ZERO
 
-## Prescribing, resolved.
+## Prescribing, resolved: which bottle, and then how much of it.
 ##
-## Three outcomes and only one of them is violence. `inert` is the interesting
-## one: no harm done, nothing to find on a body, and they are still in the bed
-## tomorrow. It is the most profitable honest-LOOKING act in the game and the
-## record of it is a correctly filed prescription for the wrong thing.
-func apply_prescription(p: Patient, med_id: String, from_pos := Vector3.ZERO) -> Dictionary:
+## The bottle is knowledge — the chart says what is indicated, if anybody has
+## read it. The dose is skill. `Procedures.dose_grade` multiplies the two
+## together, so a rock-steady hand on the wrong bottle still lands in the band
+## that gets punished, and that is the knowledge check doing its work.
+func apply_dose(p: Patient, med_id: String, intent: String, precision: float,
+		from_pos := Vector3.ZERO) -> Dictionary:
 	if p == null or p.discharged:
 		return {}
 	var effect := Procedures.medicine_effect(p.condition_id, med_id)
+	var grade := Procedures.dose_grade(intent, effect, precision)
+	var spec := Procedures.outcome("dose", intent, grade)
 	var med: Dictionary = Procedures.MEDICINES.get(med_id, {})
-	var name := String(med.get("name", med_id))
-	var out := {"effect": effect, "name": name}
+	spec["label"] = "%s — %s" % [String(med.get("name", med_id)), String(spec["label"])]
+	spec["effect"] = effect
+	if p.chart != null:
+		p.chart.add_note("%s administered." % String(med.get("name", med_id)),
+			GameState.career_minutes, "You", true)
+	return apply_outcome(p, spec, "dose", from_pos)
 
-	match effect:
-		"cure":
-			p.recovery = clampf(p.recovery + 0.7, -0.2, 1.0)
-			p.record_treatment(med_id, 1.0)
-			EventBus.toast.emit("%s — %s. That's the right one." % [p.display_name, name], "good")
-		"inert":
-			p.record_treatment(med_id, 0.0)
-			p.expected_stay_days = maxf(0.5, p.expected_stay_days + 1.0)
-			if p.chart != null:
-				p.chart.expected_stay_days = p.expected_stay_days
-			EventBus.toast.emit("%s — %s. Filed." % [p.display_name, name], "info")
-		"adverse":
-			p.recovery = clampf(p.recovery - 0.3, -0.2, 1.0)
-			p.record_treatment(med_id, -1.0)
-			if patient_system != null:
-				patient_system.add_complication(p, "rebound_hiccups", "medication_reaction")
-			EventBus.toast.emit("%s — %s. That did something." % [p.display_name, name], "suspicion")
-
-	var eco = get_tree().get_first_node_in_group("economy")
-	if eco != null:
-		eco.bill_procedure("%s — %s" % [name, p.display_name], 260)
-
-	var body = patient_system.get_body(p.id) if patient_system != null else null
-	if body != null and body.has_method("say"):
-		match effect:
-			"cure": body.say(String(RNG.pick("rx_good", [
-				"Oh, that's better already.", "Mm. Yes. That's the stuff."])), 3.0)
-			"inert": body.say(String(RNG.pick("rx_meh", [
-				"Is it meant to taste of nothing?", "I'll give it a go.",
-				"How long does it take to work?"])), 3.0)
-			"adverse": body.say(String(RNG.pick("rx_bad", [
-				"That is NOT sitting right.", "Oh. Oh dear.",
-				"Why is it fizzing?"])), 3.4)
-
-	# Only the wrong-and-harmful case is visible as an act. Handing somebody a
-	# sugar pill looks exactly like handing them medicine, which is the point.
-	if effect == "adverse":
-		WorldEvent.new("bad_prescription", "player") \
-			.at(from_pos if from_pos != Vector3.ZERO else global_position(), p.room) \
-			.about(p.id).seen(0.3).tag("treatment").tag("medication") \
-			.says("gave them something that disagreed with them").emit()
-	EventBus.treatment_applied.emit(p, med_id, 1.0 if effect == "cure" else 0.0)
-	return out
-
+# ------------------------------------------------------------------ machines
 func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 	if m == null or p == null or p.discharged:
 		return {}

@@ -30,7 +30,13 @@ const UI_SHOTS := [
 	["26_statement", "statement"],
 	["27_upgrades", "upgrades"],
 	["20e_setbone", "setbone"],
+	["20e2_setbone_field", "setbone#treat"],
+	["20e3_setbone_worsen", "setbone#worsen"],
 	["20f_medicate", "medicate"],
+	["20f2_medicate_shelf", "medicate#shelf"],
+	["20f3_medicate_dose", "medicate#dose"],
+	["20g_suture", "suture"],
+	["20g2_suture_field", "suture#treat"],
 	["27b_settings", "settings"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
@@ -53,14 +59,26 @@ func _tick_ui() -> bool:
 		if screen_id.begins_with("tablet_"):
 			want_tab = screen_id.trim_prefix("tablet_")
 			screen_id = "tablet"
+		# `screen#stage` photographs a screen partway through itself. The
+		# procedure screens are three screens each — declare, choose, do — and
+		# the only one that was ever in a screenshot was the first.
+		var stage := ""
+		if screen_id.contains("#"):
+			var bits := screen_id.split("#")
+			screen_id = bits[0]
+			stage = bits[1]
 		game.ui.open(screen_id, _ui_context(String(shot[1])))
 		if want_tab != "" and game.ui.current != null:
 			game.ui.current.set("_tab", want_tab)
 			game.ui.current.rebuild()
+		if stage != "" and game.ui.current != null:
+			_stage_ui(game.ui.current, screen_id, stage)
 		settle = 0
 		return false
 	settle += 1
-	if settle < 4:
+	if settle == 3:
+		_pose_ui(game.ui.current, String(shot[1]))
+	if settle < 6:
 		return false
 	settle = 0
 	var img := tree.root.get_texture().get_image()
@@ -70,6 +88,51 @@ func _tick_ui() -> bool:
 	game.ui.close()
 	ui_index += 1
 	return false
+
+## Advance a procedure screen to the stage we want a photograph of. Sets the
+## fields the screen would have set itself and rebuilds, exactly as clicking
+## through it would.
+func _stage_ui(screen, screen_id: String, stage: String) -> void:
+	match screen_id:
+		"setbone", "suture":
+			screen.set("_intent", "treat" if stage == "treat" else "worsen")
+		"medicate":
+			screen.set("_intent", "worsen" if stage == "dose" else "treat")
+			if stage == "dose":
+				var cid := String(screen.get("_patient").condition_id)
+				var clashes: Array = Procedures.CLASHES.get(cid, [])
+				screen.set("_med", String(clashes[0]) if not clashes.is_empty() else "placebex")
+	screen.rebuild()
+
+## Put a hand on it. A procedure screen photographed on frame one is a screen
+## nobody has touched; these are the same screens a second in.
+func _pose_ui(screen, id: String) -> void:
+	if screen == null or not id.contains("#"):
+		return
+	match id:
+		"setbone#treat":
+			screen.set("_angle", 0.13)
+			screen.set("_angle_shown", 0.13)
+			screen.set("_gap_shown", 3.4)
+			screen.set("_hold", 0.62)
+			screen.set("_grip", true)
+		"setbone#worsen":
+			screen.set("_angle", 0.37)
+			screen.set("_angle_shown", 0.37)
+			screen.set("_gap_shown", 13.0)
+			screen.set("_hold", 0.85)
+			screen.set("_grip", true)
+		"suture#treat":
+			for k in 3:
+				var targets: Array = screen.get("_targets")
+				if k < targets.size():
+					screen.call("_click", targets[k] + screen.call("_offset"))
+		"medicate#dose":
+			screen.set("_level", 0.62)
+			screen.set("_drawing", true)
+	var canvas = screen.get("_canvas")
+	if canvas != null:
+		canvas.queue_redraw()
 
 ## Screens that normally receive data from a shift transition need it supplied.
 func _ui_context(id: String) -> Dictionary:
@@ -95,10 +158,13 @@ func _ui_context(id: String) -> Dictionary:
 			if pool.is_empty():
 				return {}
 			return {"patient_id": pool[0].id}
-		"setbone", "medicate":
+		"setbone", "medicate", "suture", "setbone#treat", "setbone#worsen", \
+		"medicate#shelf", "medicate#dose", "suture#treat":
 			# A patient whose ailment actually calls for this procedure, so the
 			# screenshot is of the thing rather than of a fallback.
-			var want := "set_bone" if id == "setbone" else "prescribe"
+			var base := id.split("#")[0]
+			var want := "set_bone" if base == "setbone" else \
+				("suture" if base == "suture" else "prescribe")
 			for cand in game.patient_system.active():
 				if Procedures.procedure_for(cand.condition_id) == want:
 					return {"patient_id": cand.id}
@@ -107,7 +173,8 @@ func _ui_context(id: String) -> Dictionary:
 			var any: Array = game.patient_system.active()
 			if any.is_empty():
 				return {}
-			any[0].condition_id = "fractured_wrist" if want == "set_bone" else "chronic_beige"
+			any[0].condition_id = "fractured_wrist" if want == "set_bone" else \
+				("knuckle_weather" if want == "suture" else "chronic_beige")
 			return {"patient_id": any[0].id}
 		"chart", "dialogue":
 			var list: Array = game.patient_system.active()

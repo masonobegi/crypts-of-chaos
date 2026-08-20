@@ -696,6 +696,12 @@ const COMPLICATIONS := {
 		"color": Color(0.85, 0.7, 0.35),
 		"causes": ["equipment_variance", "underlying"],
 	},
+	"wound_dehiscence": {
+		"name": "Wound Dehiscence", "days": 2.0, "rec": -0.08, "sev": 0.5,
+		"symptom": "The closure has opened again, quietly, overnight.",
+		"color": Color(0.85, 0.42, 0.40),
+		"causes": ["known_risk", "underlying", "patient_noncompliance"],
+	},
 	"secondary_beige": {
 		"name": "Secondary Beige", "days": 2.0, "rec": -0.1, "sev": 0.35,
 		"symptom": "A second, worse beige.",

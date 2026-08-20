@@ -482,6 +482,15 @@ func test_no_complication_is_unreachable() -> void:
 		var c := Items.substance_complication(String(k))
 		if c != "":
 			reachable[c] = true
+	# Hand-procedures produce their own. Walked rather than listed, so adding a
+	# band to a procedure cannot quietly point at a complication that is not in
+	# the catalogue — which is exactly how wound_dehiscence got caught.
+	for kind in Procedures.OUTCOMES:
+		for intent in Procedures.OUTCOMES[kind]:
+			for band in Procedures.OUTCOMES[kind][intent]:
+				var harm := String(Procedures.OUTCOMES[kind][intent][band].get("harm", ""))
+				if harm != "":
+					reachable[harm] = true
 
 	for cid in DB.COMPLICATIONS:
 		t.ok(reachable.has(String(cid)),

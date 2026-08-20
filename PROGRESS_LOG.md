@@ -2675,3 +2675,85 @@ of it is a correctly filed prescription for the wrong thing.
 The tradeoff is the same shape everywhere because it is the thesis: treat them
 well and you get a fee and your bed back; treat them badly and the bed keeps
 paying until somebody sues.
+
+### Procedures you perform on a body, having said what you meant to do
+
+*"Make the minigames show the body part you are treating, it should be med
+themed, not just some reaction test."* Correct. A needle on a coloured bar and
+six numbered buttons tested the same reflex whatever was wrong with the patient,
+and nothing on either screen was the patient.
+
+**Anatomy** draws people out of one primitive — a tapered capsule — so a forearm
+is a forearm with a radius and an ulna in it and a hand on the end, an ankle has
+a foot, a ribcage has ribs, a brow has a skull behind it. Nine rigs, each with a
+fixed half, a half that moves, the bones inside both, and the line a laceration
+would run along. A group of capsules is drawn *grown-dark-first and then filled*,
+so the outlines of overlapping pieces are covered by their neighbours' fill and
+a hand reads as one object with a line round it rather than five sausages in a
+bag.
+
+**And you say what you are about to do, before you do it.** Treat them, or make
+it worse — and then you are graded on how well you did *the thing you said you
+would do*. That is the whole design:
+
+| | done well | done badly |
+|---|---|---|
+| **treat** | they improve, they go home, you bill it | malpractice, in front of witnesses |
+| **worsen** | the bed keeps paying and it looks like bad luck | everybody in the room watched you |
+
+There is no coasting and no free crime. Intending harm and fumbling it is the
+worst square on the board, which is the correct amount of respect to have for
+it. The declaration screen is the one place in the game the player is allowed to
+be honest, because it is the only place nobody else can hear them.
+
+- **Setting a bone**: hold the distal fragment in the marked position until it
+  seats, against a tremor and against muscle that spasms every three seconds.
+  The target for harm is a *specific ugly angle* a bone could plausibly find on
+  its own overnight — not the absence of a target.
+- **Suturing**: six bites down a laceration that moves as they breathe and jumps
+  when they flinch. The dishonest version is the shallow wide bites out in the
+  skin, and you can see on the drawing that they do not close it.
+- **Dosing**: which bottle (knowledge, off the chart) multiplied by how much
+  (skill, drawn by hand against the graduations). A rock-steady hand on the
+  wrong bottle still lands in the punished band.
+
+### The other two phases
+
+**End the day in your office.** The desk ends the shift whenever you like, and
+anybody you did not personally see is treated by a nurse — correctly, because
+the nurses are not the ones with the debt. The day stopped being "get through
+the list" and became "which of these five is worth *my* hands". Every dishonest
+shilling now has to come from somebody you chose to see, and every one of those
+is a person who can later say you were the one in the room.
+
+**The envelope.** Anybody holding something against you can be offered money, in
+three sizes. The odds come off who they are and what they saw; a tired nurse is
+not the patient's daughter and neither is an inspector. Refusing costs you no
+money and everything else — they now hold *"tried to pay me off"*, which is
+worth more than whatever they saw and has no cover story. And making the offer
+is an act, in a room, with a visibility on it.
+
+**The letter.** Discharged patients sue. A claim is not suspicion: it is a
+number, served on a day, that has to be answered. Settle for about half, or
+fight it. What makes a claim strong is not what you did but what can be *shown*
+— imaging you ordered weeks ago cannot be edited and arrives exactly as taken,
+witnesses you had a quiet word with do not attend, and your own note is read
+out. Four lawyers, ascending in price and descending in scruple. Ignore it and
+it goes against you in default for the whole amount.
+
+**The evening.** A street from above: you, somebody walking home, cones of
+vision that sweep, and lamps that turn a shape into a description. The ward's
+stealth game with the furniture removed. Reach them unseen and they are on your
+list in the morning with an injury that matches the place. Get seen and they are
+*still* on your list — in one of your five beds, all week, trying to place your
+face.
+
+### The inside was bare
+
+Nine metres of room with everything against one wall. Every room now carries
+wall and ceiling work that has no collision and takes no navigation footprint,
+so none of it can ever be the reason a nurse gets stuck: privacy curtains, gas
+outlet panels, sharps bins, noticeboards, posters, framed art, handrails,
+coloured guide lines on the floor, hanging signs, plants, vents, sprinklers,
+bedside cabinets, over-bed tables, stools, laundry hampers, door mats, wall
+screens, vending machines, water coolers and whiteboards.

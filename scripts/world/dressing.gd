@@ -497,3 +497,14 @@ static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 
 			Vector3(-0.10 + float(i) * 0.12, -tall * 0.5 - 0.01, 0.08),
 			Vector3(0, 0, PI * 0.5)))
 	return _add(h, root, pos, rot_y)
+
+## A bay of different-coloured flooring, with a border. Hospitals mark out the
+## bit of the room the bed lives in, and a floor with a zone on it is a floor
+## somebody planned rather than a coloured plane.
+static func floor_zone(h: Node3D, centre: Vector3, size: Vector2, tint: Color) -> Node3D:
+	var root := Node3D.new()
+	root.add_child(Build.box_mi(Vector3(size.x, 0.012, size.y), tint,
+		Vector3.ZERO, 0.85, 0.0))
+	root.add_child(Build.box_mi(Vector3(size.x - 0.14, 0.014, size.y - 0.14),
+		tint.lightened(0.10), Vector3(0, 0.003, 0), 0.85, 0.0))
+	return _add(h, root, Vector3(centre.x, 0.008, centre.z))

@@ -56,7 +56,13 @@ func _ready() -> void:
 				v.add_child(UIKit.label(Meta.perk_desc(Meta.selected_perk), 12, UIKit.INK_DIM,
 					HORIZONTAL_ALIGNMENT_LEFT, true))
 
-	v.add_child(UIKit.button("Settings", func(): _open_settings()))
+	var opts := UIKit.hbox(8)
+	for entry in [["Settings", "settings"], ["Controls", "controls"], ["Credits", "credits"]]:
+		var screen_id := String(entry[1])
+		var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
+		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		opts.add_child(b2)
+	v.add_child(opts)
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.label("Run seed (optional)", 13, UIKit.INK_DIM))
 	_seed_field = LineEdit.new()
@@ -98,8 +104,8 @@ func _continue() -> void:
 ## the menu builds its own instance of it rather than reaching for one that
 ## does not exist yet — a player should not have to start a career to turn the
 ## volume down.
-func _open_settings() -> void:
+func _open_menu_screen(id: String) -> void:
 	var ui: Node = load("res://scripts/ui/ui_root.gd").new()
 	ui.name = "MenuUI"
 	add_child(ui)
-	ui.open("settings", {})
+	ui.open(id, {})

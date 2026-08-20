@@ -133,6 +133,9 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	Dressing.clock(h, _door_wall(r, 0.72, 2.34), _door_rot(r))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.8, 0, _door_wall_z(r) - toward * 0.9))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, far_z + toward * 0.9), 0.9)
+	# The bed bay, marked out on the floor in the room's own colour.
+	Dressing.floor_zone(h, Vector3(bed.x + 0.2, 0, bed.z + toward * 0.4),
+		Vector2(3.6, 3.2), _ward_tint(r.key).darkened(0.35))
 	# The floor was the problem: a nine-metre room with everything against one
 	# wall reads as a warehouse with a bed in it. These are the things that are
 	# actually beside a hospital bed, and they take footprints where they are

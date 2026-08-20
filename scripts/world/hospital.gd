@@ -278,11 +278,26 @@ func _wall_segment(a: Vector3, b: Vector3) -> void:
 	# from how it was first written and the reason none of it showed: a dark
 	# teal skirting under a teal dado is the same wall with a slightly different
 	# teal at the bottom. What reads is contrast against what it sits on.
+	# ...and a picture rail near the top, and a cornice on the ceiling line.
+	#
+	# Same argument, applied to the other end of the wall. The dado fixed the
+	# bottom two-fifths and left the upper three-fifths as an unbroken cream
+	# plane running the length of the building — which is most of the remaining
+	# "it looks bare" in an interior shot, because it is the surface directly
+	# behind everybody's head.
+	var picture_len := Vector3(size.x, 0.05, WALL_T * 0.5) if horizontal \
+		else Vector3(WALL_T * 0.5, 0.05, size.z)
+	var cornice_len := Vector3(size.x, 0.13, WALL_T * 0.8) if horizontal \
+		else Vector3(WALL_T * 0.8, 0.13, size.z)
 	for side in [1.0, -1.0]:
 		add_child(Build.box_mi(rail_len, Color(0.95, 0.93, 0.86),
 			mid + out * side + Vector3(0, lower_h, 0), 0.55))
 		add_child(Build.box_mi(skirt_len, Color(0.17, 0.22, 0.27),
 			mid + out * side + Vector3(0, 0.08, 0), 0.6))
+		add_child(Build.box_mi(picture_len, Color(0.80, 0.78, 0.70),
+			mid + out * side + Vector3(0, WALL_H - 0.62, 0), 0.6))
+		add_child(Build.box_mi(cornice_len, Color(0.97, 0.96, 0.93),
+			mid + out * side + Vector3(0, WALL_H - 0.07, 0), 0.5))
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)

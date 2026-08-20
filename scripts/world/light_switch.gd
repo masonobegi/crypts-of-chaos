@@ -24,5 +24,8 @@ func interact(_player, _held) -> void:
 	if r == null:
 		return
 	r.set_lights(not r.lights_on, true)
+	# A switch that makes no noise is a switch you are not sure you flicked,
+	# and in this game turning a ward's lights off is a deliberate act.
+	AudioMgr.play_at_var("tick", global_position, -8.0, 0.7)
 	if _plate:
 		_plate.position.y = 0.03 if r.lights_on else -0.03

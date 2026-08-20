@@ -84,6 +84,26 @@ func _build() -> void:
 			Color(0.18, 0.28, 0.34))
 		ex.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		v.add_child(ex)
+		if not _patient.admitted:
+			# Somebody upright, in a chair, who has not cost anybody anything
+			# yet. This is the decision the five-bed ward is built around and it
+			# belongs in the conversation where it happens, not only on the
+			# examination screen.
+			var ps = patient_system()
+			var free: int = ps.free_wards().size() if ps != null else 0
+			var beds := UIKit.label(
+				"%d of 5 rooms free. Admitting them starts the daily rate." % free,
+				13, UIKit.WARN if free <= 1 else UIKit.INK_DIM,
+				HORIZONTAL_ALIGNMENT_LEFT, true)
+			v.add_child(beds)
+			var ad := UIKit.button("Admit them — %s a day" % UIKit.money_str(
+				_patient.daily_revenue()), _admit, Color(0.16, 0.32, 0.30))
+			ad.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			ad.disabled = free <= 0
+			v.add_child(ad)
+			var sh := UIKit.button("Send them home", _send_home, Color(0.24, 0.26, 0.30))
+			sh.alignment = HORIZONTAL_ALIGNMENT_LEFT
+			v.add_child(sh)
 		if _patient.admitted:
 			var op := UIKit.button("Take them to theatre", func():
 				var pid: String = _patient.id
@@ -185,6 +205,24 @@ func _bribe(tier: Dictionary) -> void:
 		EventBus.toast.emit("%s does not take it — and now they have that, too."
 			% _mind.display_name, "suspicion")
 	rebuild()
+
+func _admit() -> void:
+	var ps = patient_system()
+	if ps == null or _patient == null:
+		close()
+		return
+	if not ps.admit(_patient):
+		EventBus.toast.emit("There is nowhere to put them.", "bad")
+		return
+	AudioMgr.play("trolley", -12.0)
+	close()
+
+func _send_home() -> void:
+	var ps = patient_system()
+	if ps != null and _patient != null:
+		ps.send_home(_patient, "cleared")
+	AudioMgr.play("door", -14.0)
+	close()
 
 ## Do it, right there, with your hands in your pockets.
 func _perform(tid: String) -> void:

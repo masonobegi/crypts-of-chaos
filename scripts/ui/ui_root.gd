@@ -141,6 +141,8 @@ func _build_simple(id: String, ctx: Dictionary) -> Control:
 	match id:
 		"pause": return _pause_screen()
 		"settings": return _settings_screen()
+		"controls": return _controls_screen()
+		"credits": return _credits_screen()
 		"tutorial": return _tutorial_screen()
 		"game_over": return _game_over_screen(String(ctx.get("ending", "saint")))
 		"vitals": return _vitals_screen(String(ctx.get("patient_id", "")))
@@ -214,6 +216,11 @@ func _settings_screen() -> Control:
 	v.add_child(UIKit.toggle("Subtitles", Settings.get_value("subtitles"),
 		func(b): Settings.set_value("subtitles", b)))
 
+	v.add_child(UIKit.slider("Stick sensitivity", Settings.get_value("pad_look_sensitivity"),
+		0.2, 3.0, 0.05, func(x): Settings.set_value("pad_look_sensitivity", x),
+		func(x: float) -> String: return "%.2fx" % x))
+	v.add_child(UIKit.button("Key bindings…", func(): open("controls", {})))
+
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("DISPLAY", 13, UIKit.INK_DIM))
 	v.add_child(UIKit.toggle("Fullscreen", Settings.get_value("fullscreen"),
@@ -237,6 +244,123 @@ func _settings_screen() -> Control:
 	outer.add_child(row)
 	return parts[0]
 
+# ---- controls
+##
+## Rebindable keys, which is the single most-cited missing feature in reviews of
+## first-person games that do not have them. Left-hand column is what the action
+## is in the fiction — "read the chart", not "chart" — because an action id is a
+## programmer's name for a thing and nobody else's.
+##
+## Listening is a MODE rather than a dialog: press the row, the row says "press
+## a key", the next key press lands. Escape cancels, and is therefore the one
+## key nobody can bind.
+var _listening_for := ""
+
+func _controls_screen() -> Control:
+	var parts := _shell(660, 720, "Controls")
+	var outer: VBoxContainer = parts[1]
+	var v := UIKit.vbox(4)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var scroller := UIKit.scroll(v)
+	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(scroller)
+
+	v.add_child(UIKit.label("KEYBOARD AND MOUSE", 13, UIKit.INK_DIM))
+	for entry in Settings.BINDABLE:
+		v.add_child(_binding_row(String(entry[0]), String(entry[1])))
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("CONTROLLER", 13, UIKit.INK_DIM))
+	v.add_child(UIKit.label(
+		"A pad works without setting anything up: left stick walks, right stick "
+		+ "looks, A jumps, X uses, right bumper picks up, left bumper throws, "
+		+ "Y is the chart, Back is the tablet.", 13, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_LEFT, true))
+
+	outer.add_child(UIKit.spacer(6))
+	var row := UIKit.hbox(10)
+	var reset := UIKit.button("Reset bindings", func():
+		Settings.reset_bindings()
+		_listening_for = ""
+		close()
+		open("controls", {}), Color(0.28, 0.20, 0.20))
+	reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(reset)
+	var back := UIKit.button("Back", func():
+		_listening_for = ""
+		close())
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(back)
+	outer.add_child(row)
+	return parts[0]
+
+func _binding_row(action: String, label: String) -> Control:
+	var h := UIKit.hbox(8)
+	h.add_child(UIKit.label(label, 15, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT))
+	var listening: bool = _listening_for == action
+	var b := UIKit.button(
+		"press a key…" if listening else Settings.binding_label(action),
+		func(): _start_listening(action),
+		Color(0.32, 0.28, 0.14) if listening else UIKit.PANEL_LIGHT, 190)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_END
+	h.add_child(b)
+	return h
+
+func _start_listening(action: String) -> void:
+	_listening_for = action
+	set_process_input(true)
+	close()
+	open("controls", {})
+
+func _input(event: InputEvent) -> void:
+	if _listening_for == "" or current_id != "controls":
+		return
+	var usable: bool = (event is InputEventKey and event.pressed and not event.echo) \
+		or (event is InputEventMouseButton and event.pressed)
+	if not usable:
+		return
+	get_viewport().set_input_as_handled()
+	var action := _listening_for
+	_listening_for = ""
+	if event is InputEventKey and event.keycode == KEY_ESCAPE:
+		AudioMgr.play("error", -16.0)
+	elif Settings.rebind(action, event):
+		AudioMgr.play("ding", -14.0)
+	close()
+	open("controls", {})
+
+# ---- credits
+func _credits_screen() -> Control:
+	var parts := _shell(680, 660, "Chronic Care")
+	var v: VBoxContainer = parts[1]
+	v.add_child(UIKit.label(
+		"A hospital management game about the gap between what happened, what "
+		+ "you wrote down, and what everybody thinks.", 15, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_CENTER, true))
+	v.add_child(UIKit.rule())
+	var creds := [
+		["Design and code", "Built as one long conversation."],
+		["Art", "There isn't any. Every shape in this building is assembled from "
+			+ "boxes and cylinders at load time."],
+		["Audio", "There isn't any of that either. Every sound is a waveform "
+			+ "synthesised the first time you hear it."],
+		["Engine", "Godot 4.3, and a great deal of patience with its loader."],
+		["Medicine", "Entirely invented. Chronic Beige is not a condition. "
+			+ "Please do not attempt any procedure in this game."],
+		["With thanks to", "Everybody who said \"this looks like blocky junk\" "
+			+ "and meant it kindly."],
+	]
+	for c in creds:
+		var box := UIKit.panel(UIKit.PANEL_LIGHT, 6)
+		var bv := UIKit.vbox(2)
+		bv.add_child(UIKit.label(String(c[0]), 15, UIKit.ACCENT))
+		bv.add_child(UIKit.label(String(c[1]), 13, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		box.add_child(bv)
+		v.add_child(box)
+	v.add_child(UIKit.spacer(6))
+	v.add_child(UIKit.button("Back", close))
+	return parts[0]
+
 # ---- pause
 func _pause_screen() -> Control:
 	var parts := _shell(400, 430, "Paused")
@@ -249,6 +373,7 @@ func _pause_screen() -> Control:
 		EventBus.toast.emit("Saved.", "good")))
 	v.add_child(UIKit.button("Tablet", func(): open("tablet", {})))
 	v.add_child(UIKit.button("Settings", func(): open("settings", {})))
+	v.add_child(UIKit.button("Controls", func(): open("controls", {})))
 	v.add_child(UIKit.spacer(8))
 	v.add_child(UIKit.button("Quit to Menu", func():
 		get_tree().paused = false

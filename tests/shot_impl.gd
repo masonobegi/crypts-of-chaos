@@ -43,6 +43,8 @@ const UI_SHOTS := [
 	["31_night_choose", "night"],
 	["31b_night_street", "night#street"],
 	["27b_settings", "settings"],
+	["27c_controls", "controls"],
+	["27d_credits", "credits"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
 ]

@@ -84,6 +84,13 @@ static func button(text: String, cb: Callable, color := PANEL_LIGHT, min_w := 0.
 	b.add_theme_color_override("font_disabled_color", INK_DIM)
 	if min_w > 0.0:
 		b.custom_minimum_size.x = min_w
+	# Every button in the game makes a noise now, and a different one under the
+	# cursor. Asked for by name after the second playtest — "sound effects for
+	# all the things I can do" — and it is the single cheapest piece of game
+	# feel available: a menu with no click is a menu you are not sure you
+	# pressed.
+	b.pressed.connect(func(): AudioMgr.play("beep", -20.0, 1.18))
+	b.mouse_entered.connect(func(): AudioMgr.play("tick", -30.0, 1.45))
 	if cb.is_valid():
 		b.pressed.connect(cb)
 	return b

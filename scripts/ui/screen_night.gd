@@ -251,55 +251,103 @@ func _unhandled_input(event: InputEvent) -> void:
 # ------------------------------------------------------------------ drawing
 func _draw_street() -> void:
 	var ci := _canvas
-	ci.draw_rect(Rect2(Vector2.ZERO, FIELD), Color(0.07, 0.08, 0.12))
-	# Pavement, kerb and road: three bands, so the space reads as a street
-	# rather than as a dark rectangle with dots in it.
-	ci.draw_rect(Rect2(Vector2(0, FIELD.y * 0.34), Vector2(FIELD.x, FIELD.y * 0.30)),
+	var font := ThemeDB.fallback_font
+	ci.draw_rect(Rect2(Vector2.ZERO, FIELD), Color(0.06, 0.07, 0.10))
+
+	# Buildings along both edges, with a few windows still on. Without them the
+	# field is a dark rectangle with dots in it; with them it is a street, and
+	# the road in the middle is somewhere you are exposed.
+	_draw_terrace(ci, 0.0, FIELD.y * 0.30, true)
+	_draw_terrace(ci, FIELD.y * 0.68, FIELD.y * 0.32, false)
+
+	# Pavement, kerb, road.
+	ci.draw_rect(Rect2(Vector2(0, FIELD.y * 0.30), Vector2(FIELD.x, FIELD.y * 0.38)),
 		Color(0.11, 0.12, 0.16))
+	for i in 13:
+		var x: float = FIELD.x * (0.02 + 0.078 * float(i))
+		ci.draw_line(Vector2(x, FIELD.y * 0.30), Vector2(x, FIELD.y * 0.375),
+			Color(0.16, 0.17, 0.21), 1.5)
+		ci.draw_line(Vector2(x, FIELD.y * 0.615), Vector2(x, FIELD.y * 0.68),
+			Color(0.16, 0.17, 0.21), 1.5)
+	ci.draw_rect(Rect2(Vector2(0, FIELD.y * 0.375), Vector2(FIELD.x, FIELD.y * 0.24)),
+		Color(0.09, 0.09, 0.12))
 	for i in 9:
-		ci.draw_rect(Rect2(Vector2(FIELD.x * (0.04 + 0.11 * float(i)), FIELD.y * 0.485),
-			Vector2(34, 4)), Color(0.32, 0.32, 0.28, 0.55))
-	ci.draw_line(Vector2(0, FIELD.y * 0.34), Vector2(FIELD.x, FIELD.y * 0.34),
-		Color(0.20, 0.21, 0.25), 3.0)
-	ci.draw_line(Vector2(0, FIELD.y * 0.64), Vector2(FIELD.x, FIELD.y * 0.64),
-		Color(0.20, 0.21, 0.25), 3.0)
+		ci.draw_rect(Rect2(Vector2(FIELD.x * (0.04 + 0.11 * float(i)), FIELD.y * 0.487),
+			Vector2(34, 4)), Color(0.34, 0.34, 0.29, 0.55))
 
 	for l in _lamps:
-		for i in range(5, 0, -1):
-			ci.draw_circle(l, 24.0 * float(i), Color(1.0, 0.90, 0.62, 0.030))
-		ci.draw_circle(l, 6.0, Color(1.0, 0.94, 0.72))
+		for i in range(6, 0, -1):
+			ci.draw_circle(l, 22.0 * float(i), Color(1.0, 0.90, 0.62, 0.026))
+		ci.draw_line(l, l + Vector2(0, -26), Color(0.30, 0.32, 0.36), 3.0)
+		ci.draw_circle(l, 7.0, Color(1.0, 0.94, 0.72))
 
 	for w in _watchers:
 		_draw_cone(ci, w)
 	for w2 in _watchers:
-		var at: Vector2 = Vector2(w2["at"])
-		ci.draw_circle(at, 11.0, Color(0.30, 0.33, 0.40))
-		ci.draw_arc(at, 11.0, 0.0, TAU, 18, Color(0.10, 0.10, 0.14), 2.5, true)
-		ci.draw_circle(at + Vector2.from_angle(_watcher_facing(w2)) * 7.0, 3.5,
-			Color(0.86, 0.88, 0.92))
+		_draw_person(ci, Vector2(w2["at"]), 13.0, Color(0.44, 0.47, 0.55),
+			_watcher_facing(w2))
 
-	# Them. Ringed, so there is never a question which shape matters.
+	# Them. Ringed and named, so there is never a question which shape matters.
 	var near: bool = _me.distance_to(_mark) <= REACH
 	ci.draw_arc(_mark, REACH, 0.0, TAU, 26,
-		Color(0.55, 0.90, 0.82, 0.75 if near else 0.30), 2.0, true)
-	ci.draw_circle(_mark, 12.0, Color(0.72, 0.62, 0.48))
-	ci.draw_arc(_mark, 12.0, 0.0, TAU, 18, Color(0.10, 0.10, 0.14), 2.5, true)
+		Color(0.55, 0.94, 0.84, 0.85 if near else 0.34), 2.5, true)
+	_draw_person(ci, _mark, 14.0, Color(0.84, 0.70, 0.50), _mark_heading())
+	ci.draw_string(font, _mark + Vector2(-46, 34), _mark_name,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.86, 0.82, 0.74, 0.85))
 
-	# You. Tinted by how visible you currently are, which is the only readout
-	# that matters and it is on your own body rather than in a bar.
-	var me_col: Color = Color(0.40, 0.72, 0.66).lerp(Color(0.92, 0.36, 0.32), _exposure)
-	ci.draw_circle(_me, 13.0, me_col)
-	ci.draw_arc(_me, 13.0, 0.0, TAU, 18, Color(0.06, 0.06, 0.09), 3.0, true)
+	# You. The dot stays yours; how visible you are is a halo around it, because
+	# tinting the marker itself made it the same muddy colour as everybody else
+	# at exactly the moment it mattered most.
+	if _exposure > 0.02:
+		ci.draw_arc(_me, 20.0 + _exposure * 12.0, 0.0, TAU, 26,
+			Color(0.94, 0.34, 0.30, 0.30 + _exposure * 0.6), 2.0 + _exposure * 3.0, true)
 	if _lit > 0.05:
-		ci.draw_arc(_me, 17.0 + _lit * 5.0, 0.0, TAU, 22,
-			Color(1.0, 0.92, 0.66, _lit * 0.8), 2.0, true)
+		ci.draw_circle(_me, 24.0, Color(1.0, 0.92, 0.66, _lit * 0.10))
+	_draw_person(ci, _me, 14.0, Color(0.36, 0.80, 0.72), (_mark - _me).angle(), true)
 
-	var font := ThemeDB.fallback_font
 	ci.draw_string(font, Vector2(18, 26), String(_place["name"]).to_upper(),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color(0.62, 0.66, 0.74, 0.8))
 	if near:
-		ci.draw_string(font, _mark + Vector2(-38, -26), "[Space]",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(0.72, 0.96, 0.88))
+		ci.draw_string(font, _mark + Vector2(-34, -30), "[Space]",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.72, 0.98, 0.88))
+
+## A person from above: shoulders, a head, and which way they are pointing.
+static func _draw_person(ci: CanvasItem, at: Vector2, r: float, tint: Color,
+		facing: float, is_you := false) -> void:
+	ci.draw_circle(at, r + 2.5, Color(0.04, 0.05, 0.07))
+	ci.draw_circle(at, r, tint)
+	ci.draw_circle(at, r * 0.52, tint.lightened(0.30))
+	var nose: Vector2 = at + Vector2.from_angle(facing) * (r * 0.72)
+	ci.draw_circle(nose, r * 0.30, Color(0.96, 0.96, 0.94))
+	if is_you:
+		ci.draw_arc(at, r + 4.5, 0.0, TAU, 24, Color(0.86, 0.98, 0.94, 0.9), 2.0, true)
+
+func _mark_heading() -> float:
+	var ahead := _point_on_route(clampf(_mark_t + 0.02, 0.0, 1.0))
+	var d := ahead - _mark
+	return d.angle() if d.length() > 0.5 else 0.0
+
+## Two rows of buildings with the odd window still lit. Cheap, and it is the
+## difference between "a street at night" and "a dark rectangle".
+func _draw_terrace(ci: CanvasItem, top: float, tall: float, upper: bool) -> void:
+	var n := 9
+	for i in n:
+		var w: float = FIELD.x / float(n)
+		var x: float = float(i) * w
+		var h: float = tall * (0.72 + 0.28 * fposmod(sin(float(i) * 12.9898) * 43758.5, 1.0))
+		var y: float = top if upper else top + (tall - h)
+		ci.draw_rect(Rect2(Vector2(x + 2, y), Vector2(w - 4, h)), Color(0.10, 0.10, 0.14))
+		ci.draw_rect(Rect2(Vector2(x + 2, y), Vector2(w - 4, h)),
+			Color(0.16, 0.17, 0.22), false, 2.0)
+		for row in 2:
+			for col in 3:
+				if (i + row * 3 + col) % 4 == 1:
+					continue
+				var lit: bool = (i * 7 + row * 3 + col) % 5 < 2
+				ci.draw_rect(Rect2(
+					Vector2(x + 10 + float(col) * (w - 22) / 3.0, y + 12 + float(row) * (h * 0.42)),
+					Vector2(12, 14)),
+					Color(0.98, 0.86, 0.52, 0.55) if lit else Color(0.13, 0.14, 0.18))
 
 func _draw_cone(ci: CanvasItem, w: Dictionary) -> void:
 	var at: Vector2 = Vector2(w["at"])

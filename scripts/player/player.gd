@@ -65,7 +65,32 @@ func _unhandled_input(event: InputEvent) -> void:
 		rotation.y = _yaw
 		head.rotation.x = _pitch
 
+## The right stick, if there is one.
+##
+## Read every frame rather than driven by events, because a held stick generates
+## no events — the same reason a mouse and a pad cannot share a code path. The
+## curve is squared so small movements are fine control and the outer edge is
+## fast, which is what every first-person game on a controller does and what
+## makes one playable at all.
+const PAD_LOOK_SPEED := 3.1
+const PAD_DEADZONE := 0.16
+
+func _handle_pad_look(delta: float) -> void:
+	var look := Vector2(
+		Input.get_joy_axis(0, JOY_AXIS_RIGHT_X),
+		Input.get_joy_axis(0, JOY_AXIS_RIGHT_Y))
+	if look.length() < PAD_DEADZONE or not can_look:
+		return
+	var shaped := look.normalized() * pow((look.length() - PAD_DEADZONE) / (1.0 - PAD_DEADZONE), 2.0)
+	var sens: float = PAD_LOOK_SPEED * float(Settings.get_value("pad_look_sensitivity"))
+	var pitch_dir := 1.0 if not bool(Settings.get_value("invert_y")) else -1.0
+	_yaw -= shaped.x * sens * delta
+	_pitch = clampf(_pitch - shaped.y * sens * pitch_dir * delta, -1.45, 1.45)
+	rotation.y = _yaw
+	head.rotation.x = _pitch
+
 func _physics_process(delta: float) -> void:
+	_handle_pad_look(delta)
 	_handle_crouch(delta)
 	_handle_movement(delta)
 	_handle_bob(delta)

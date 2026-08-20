@@ -60,4 +60,5 @@ func interact(_player, _held) -> void:
 	var p = _patient()
 	if p == null:
 		return
+	AudioMgr.play_at_var("monitor", global_position, -14.0)
 	EventBus.request_ui.emit("vitals", {"patient_id": p.id})

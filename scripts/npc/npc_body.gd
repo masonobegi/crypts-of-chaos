@@ -55,6 +55,13 @@ var _intended_speed := 0.0
 ## invisible in a screenshot and fatal to the simulation.
 var _stuck_time := 0.0
 var _last_progress_pos: Vector3 = Vector3.ZERO
+## Idle motion. `_idle_offset` is per-character so a corridor of people does not
+## breathe in unison, which reads as a machine rather than as a crowd.
+var _knees: Array[Node3D] = []
+var _idle_phase := 0.0
+var _idle_offset := 0.0
+var _blink_t := 2.0
+var _blink_close := 0.0
 ## Set while physically startled — drives the flail animation.
 var _startle := 0.0
 ## Whether this character is rostered on right now. See set_on_duty().
@@ -99,6 +106,12 @@ func _build_body() -> void:
 	cs.shape = cap
 	cs.position = Vector3(0, cap.height * 0.5, 0)
 	add_child(cs)
+
+	# Every character gets its own place in the breath cycle, from its own name.
+	# Deterministic, so a seeded run looks the same twice, and not from an RNG
+	# stream, so adding characters cannot shift anybody else's dice.
+	_idle_offset = float(absi(hash(npc_id + display)) % 1000) * 0.00628
+	_blink_t = 1.0 + float(absi(hash(display)) % 500) * 0.01
 
 	var root := Node3D.new()
 	root.name = "Body"
@@ -233,16 +246,29 @@ func _build_body() -> void:
 			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))
 		_arms.append(arm)
 
+		# Thigh, then a KNEE, then shin and shoe.
+		#
+		# One rigid leg can only ever stick straight out, which is what the first
+		# sitting pose looked like: a patient in the waiting row with both legs
+		# horizontal and their feet in the air. A knee costs one more node per
+		# leg and buys a real sit — thigh forward, shin down, foot on the floor —
+		# as well as a bend on the back-swing of the walk.
 		var leg := Node3D.new()
 		leg.position = Vector3(sx * 0.145, 0.68, 0)
 		root.add_child(leg)
-		# One trouser leg, tapering to the ankle, and a shoe with a toe on it.
-		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.19, 0.19), Vector2(0.27, 0.25), 0.66, 0.085),
+		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.20, 0.20), Vector2(0.27, 0.25), 0.34, 0.085),
 			Build.mat(outfit.darkened(0.34), 0.85, 0.0, Color(0, 0, 0), LINE),
-			Vector3(0, -0.31, 0)))
-		leg.add_child(Build.mi(Build.rbox_mesh(Vector3(0.19, 0.115, 0.35), 0.055),
+			Vector3(0, -0.17, 0)))
+		var knee := Node3D.new()
+		knee.position = Vector3(0, -0.34, 0)
+		leg.add_child(knee)
+		knee.add_child(Build.mi(Build.taper_mesh(Vector2(0.17, 0.17), Vector2(0.20, 0.20), 0.32, 0.075),
+			Build.mat(outfit.darkened(0.42), 0.85, 0.0, Color(0, 0, 0), LINE),
+			Vector3(0, -0.16, 0)))
+		knee.add_child(Build.mi(Build.rbox_mesh(Vector3(0.19, 0.115, 0.35), 0.055),
 			Build.mat(Color(0.19, 0.21, 0.27), 0.6, 0.0, Color(0, 0, 0), LINE),
-			Vector3(0, -0.63, 0.075)))
+			Vector3(0, -0.29, 0.075)))
+		_knees.append(knee)
 		_legs.append(leg)
 
 	_nametag = Build.label3d(display, 0.095, Color(0.99, 0.99, 0.96))
@@ -345,6 +371,33 @@ const NOTE_TIME := 2.4
 
 ## Open or shut. Used by sleep, and available to anything else that wants a
 ## face to stop looking at the player.
+## Blinking.
+##
+## The eyes are two unshaded white ovals that never once closed unless the
+## character was asleep, which at conversation distance is the single most
+## unsettling thing about them. A blink every few seconds costs one boolean.
+##
+## Deliberately skipped while asleep: set_asleep already holds the lids shut,
+## and a sleeping patient blinking is a bug that looks like a twitch.
+func _tick_blink(delta: float) -> void:
+	if _eyes_shut.is_empty() or _lids_held:
+		return
+	if _blink_close > 0.0:
+		_blink_close -= delta
+		if _blink_close <= 0.0:
+			set_eyes_open(true)
+		return
+	_blink_t -= delta
+	if _blink_t > 0.0:
+		return
+	# Uneven on purpose. A metronome blink is worse than none.
+	_blink_t = randf_range(2.4, 6.5)
+	_blink_close = 0.11
+	set_eyes_open(false)
+
+## Held shut by something other than a blink — sleep, mostly.
+var _lids_held := false
+
 func set_eyes_open(open: bool) -> void:
 	for m in _eyes_open:
 		m.visible = open
@@ -511,17 +564,56 @@ func _animate(delta: float) -> void:
 		return
 	var planar := Vector2(velocity.x, velocity.z).length()
 	_walk_phase += delta * (2.0 + planar * 3.4)
+	_idle_phase += delta
+
+	# Standing still used to mean standing PERFECTLY still. Every character in
+	# the building was a statue between waypoints, which is the cheapest tell
+	# there is that nothing behind them is alive — and most of the time, in a
+	# game about watching people, most of them are standing still.
+	#
+	# Three signals, all tiny, none of which needs a rig: a breath, a slow shift
+	# of weight from one foot to the other, and a blink. The first two fade out
+	# as the character starts moving, because a walk already carries them.
+	if _seated:
+		# Seated: breathe and blink, but do not walk. Without this the legs
+		# swing back to vertical on the first frame of the idle cycle and the
+		# character stands up through the chair.
+		_idle_phase += 0.0
+		if _torso:
+			_torso.position.y = -0.26 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
+		_tick_blink(delta)
+		return
+	var still: float = clampf(1.0 - planar * 1.6, 0.0, 1.0)
+	var breath: float = sin(_idle_phase * 1.35 + _idle_offset) * 0.010 * still
+	var sway: float = sin(_idle_phase * 0.55 + _idle_offset * 1.7) * 0.045 * still
+
 	var swing := sin(_walk_phase) * clampf(planar * 0.35, 0.02, 0.6)
 	if _legs.size() >= 2:
 		_legs[0].rotation.x = swing
 		_legs[1].rotation.x = -swing
+		# The trailing leg bends. A pair of straight legs scissoring is a
+		# mannequin on a turntable; one knee folding is a walk.
+		if _knees.size() >= 2:
+			_knees[0].rotation.x = maxf(0.0, -swing) * 1.5
+			_knees[1].rotation.x = maxf(0.0, swing) * 1.5
 	if _arms.size() >= 2:
 		# Flailing when startled is the entire visual payoff of throwing a tray.
 		var flail := _startle * sin(_walk_phase * 9.0) * 1.4
-		_arms[0].rotation.x = -swing * 0.8 + flail
-		_arms[1].rotation.x = swing * 0.8 - flail
+		# Arms hang slightly away from the body and drift with the breath, so
+		# the silhouette is never two perfectly vertical lines.
+		_arms[0].rotation.x = -swing * 0.8 + flail + breath * 1.4
+		_arms[1].rotation.x = swing * 0.8 - flail + breath * 1.4
+		_arms[0].rotation.z = 0.06 + sway * 0.5
+		_arms[1].rotation.z = -0.06 + sway * 0.5
 	if _torso:
-		_torso.position.y = 0.95 + absf(sin(_walk_phase)) * clampf(planar * 0.02, 0.0, 0.03)
+		_torso.position.y = 0.95 + absf(sin(_walk_phase)) * clampf(planar * 0.02, 0.0, 0.03) \
+			+ breath
+		_torso.rotation.z = sway * 0.35
+		# The chest actually expands. Two hundredths of a metre, and it is the
+		# difference between a person waiting and a prop of a person.
+		_torso.scale = Vector3(1.0 + breath * 0.8, 1.0, 1.0 + breath * 1.2)
+
+	_tick_blink(delta)
 	if _head and _has_look:
 		var to := _look_at - _head.global_position
 		var local := to.normalized() * global_transform.basis
@@ -698,6 +790,40 @@ func set_on_duty(v: bool) -> void:
 			if back == "" or not h.is_room_open(back):
 				back = "corridor"
 			global_position = h.point_in(back, "duty_return")
+
+## Sit down.
+##
+## Waiting patients and visitors are sent to chairs and then STOOD in them,
+## which is the sort of thing that is invisible in a wide shot and impossible to
+## unsee at three metres. There is no knee in this rig, so the whole leg rotates
+## forward at the hip and the torso drops to seat height: at this level of
+## stylisation that reads as sitting, and it costs two rotations.
+func set_seated(on: bool) -> void:
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	_seated = on
+	var b: Node3D = body
+	b.position = Vector3(0, -0.26, 0) if on else Vector3.ZERO
+	for leg in _legs:
+		leg.rotation.x = -1.45 if on else 0.0
+	# Thigh forward, shin back down, foot on the floor.
+	for knee in _knees:
+		knee.rotation.x = 1.45 if on else 0.0
+	if _arms.size() >= 2 and on:
+		# Hands on knees, roughly. Anything is better than two arms hanging
+		# through the seat of a chair.
+		_arms[0].rotation.x = -0.55
+		_arms[1].rotation.x = -0.55
+	if _nametag:
+		_nametag.position.y = (1.62 if on else 1.92) * height_scale
+	if _speech:
+		_speech.position.y = (1.86 if on else 2.12) * height_scale
+
+func is_seated() -> bool:
+	return _seated
+
+var _seated := false
 
 func set_reclined(on: bool) -> void:
 	var body := get_node_or_null("Body")

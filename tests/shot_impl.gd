@@ -177,6 +177,9 @@ const SHOTS := [
 	["04c_cycle", Vector3(5.6, 1.5, 8.2), Vector3(3.4, 1.15, 9.9), "cycle"],
 	["04b_bedside", Vector3(5.1, 1.68, 8.8), Vector3(3.05, 1.14, 9.9)],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
+	# The waiting row, with somebody in it. A walk-in patient sitting down is the
+	# first thing that class of character is ever seen doing.
+	["06b_waiting", Vector3(23.6, 1.30, -6.0), Vector3(20.2, 0.92, -6.0), "walkin"],
 	["06_treatment_bay", Vector3(24.0, 1.7, -2.0), Vector3(24.0, 1.3, -9.0)],
 	["07_supply", Vector3(32.0, 1.7, -2.0), Vector3(31.0, 1.3, -8.0)],
 	["08_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.2, -8.5)],
@@ -246,6 +249,18 @@ func _buy_everything() -> void:
 	_unlock_departments()
 	if game != null and game.hospital != null:
 		game.hospital.refresh_fittings()
+
+## Put somebody in the waiting row so it can be photographed with a person in
+## it. Idempotent — every beat re-runs until its settle counter is up.
+var _seated_walkin := false
+
+func _seat_a_walkin() -> void:
+	if _seated_walkin or game.patient_system == null:
+		return
+	_seated_walkin = true
+	var p = game.patient_system.book_walkin()
+	if p != null:
+		game.patient_system.arrive_walkin(p)
 
 ## Fire a machine cycle in Room 101 and hold it open.
 ##
@@ -326,6 +341,8 @@ func tick() -> bool:
 	var shot: Array = SHOTS[index]
 	if shot.size() > 3 and String(shot[3]) == "unlock":
 		_unlock_departments()
+	if shot.size() > 3 and String(shot[3]) == "walkin":
+		_seat_a_walkin()
 	if shot.size() > 3 and String(shot[3]) == "cycle":
 		_start_a_cycle()
 	if shot.size() > 3 and String(shot[3]) == "kitted":
@@ -419,4 +436,9 @@ func _frame_a_person(cam: Camera3D, dist: float) -> void:
 	var to_cam: Vector3 = cam.global_position - who.global_position
 	who.rotation.y = atan2(to_cam.x, to_cam.z)
 	who.look_toward(cam.global_position)
+	# Eyes open. Characters blink now, and a portrait is a one-in-eight chance
+	# of photographing somebody mid-blink — which looks like a broken model
+	# rather than like a working one.
+	who.set_eyes_open(true)
+	who._blink_t = 9.0
 	cam.look_at(aim, Vector3.UP)

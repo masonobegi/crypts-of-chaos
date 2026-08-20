@@ -2549,3 +2549,42 @@ One test lesson: the first version asserted a shake magnitude of `> 0.6` and
 went red the moment the shake was tuned down. That is a test measuring a tuning
 value rather than the behaviour it exists for. It compares a bad cycle against a
 correct one now.
+
+## Towards Steam — 3: people who are alive when they are not walking
+
+Everybody in the building was a statue between waypoints. In a game about
+watching people, that is most of the time, and it is the cheapest possible tell
+that nothing behind them is running.
+
+Three signals, none of which needs a rig. A **breath** — the torso rises and the
+chest actually widens by two hundredths of a metre, which is the whole
+difference between a person waiting and a prop of a person. A **weight shift**,
+a slow lean from one foot to the other. And a **blink**: the eyes are two
+unshaded white ovals that had never once closed unless the character was asleep,
+which at conversation distance is the most unsettling thing about them. The
+first two fade out as the character starts moving, because a walk already
+carries them.
+
+Each character's place in the breath cycle comes from a hash of its own name —
+deterministic, so a seeded run looks the same twice, and NOT from an RNG stream,
+so adding characters cannot shift anybody else's dice. Without it a corridor of
+people rises and falls in unison, which reads as a machine rather than a crowd.
+
+**Legs have knees now.** One rigid leg can only ever stick straight out, which
+is exactly what the first sitting pose looked like: a patient in the waiting row
+with both legs horizontal and their feet in the air. A knee costs one node per
+leg and buys a real sit — thigh forward, shin down, foot on the floor — plus a
+fold on the back-swing of the walk, because a pair of straight legs scissoring
+is a mannequin on a turntable.
+
+`SITTING` was a state with no pose at all: walk-in patients were sent to a chair
+in the treatment bay and left standing in it, facing sideways across the seat.
+They sit, and they face the way the chair does.
+
+Two harness notes. Sleeping now HOLDS the lids shut, or the blink timer reopens
+a sleeping patient's eyes every few seconds all night. And the portrait shots
+force the eyes open and push the blink timer out, because a portrait is
+otherwise a one-in-eight chance of photographing somebody mid-blink, which reads
+as a broken model rather than a working one.
+
+Verified: 1,609 assertions · 126 smoke · 26 live · boot check · 46 screenshots.

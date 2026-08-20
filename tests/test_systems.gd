@@ -1074,3 +1074,50 @@ func test_the_patient_is_in_the_room_for_it() -> void:
 		"a badly-set cycle shakes them meaningfully harder than a correct one")
 	b.free()
 	gentle.free()
+
+# --------------------------------------------------------------- idle motion
+#
+# Everybody in this building was a statue between waypoints, which in a game
+# about watching people is most of the time.
+
+func test_a_standing_character_is_not_a_statue() -> void:
+	var n := NurseNPC.new()
+	n.npc_id = "idle_test"
+	n.display = "Test"
+	n._ready()
+	var y0: float = n._torso.position.y
+	n._animate(0.4)
+	n._animate(0.4)
+	var y1: float = n._torso.position.y
+	t.ok(absf(y1 - y0) > 0.0005, "a character standing still still breathes")
+	n.free()
+
+func test_two_characters_do_not_breathe_in_unison() -> void:
+	# A corridor of people rising and falling together reads as a machine.
+	var a := NurseNPC.new()
+	a.npc_id = "alpha"
+	a.display = "Alpha"
+	a._ready()
+	var b := NurseNPC.new()
+	b.npc_id = "beta"
+	b.display = "Beta Someone Else"
+	b._ready()
+	t.ok(absf(a._idle_offset - b._idle_offset) > 0.01,
+		"two characters start at different points in the breath cycle")
+	a.free()
+	b.free()
+
+func test_sitting_folds_the_knee() -> void:
+	# One rigid leg can only stick straight out, which is what the first sitting
+	# pose was: a patient in the waiting row with their feet in the air.
+	var p := PatientNPC.new()
+	p._ready()
+	t.ok(not p.is_seated(), "characters start on their feet")
+	p.set_seated(true)
+	t.ok(p.is_seated(), "and can be sat down")
+	t.ok(p._knees.size() >= 2, "a leg has a knee in it")
+	t.lt(p._legs[0].rotation.x, -1.0, "the thigh comes forward")
+	t.gt(p._knees[0].rotation.x, 1.0, "and the shin goes back down under it")
+	p.set_seated(false)
+	t.near(p._knees[0].rotation.x, 0.0, 0.001, "standing up straightens them again")
+	p.free()

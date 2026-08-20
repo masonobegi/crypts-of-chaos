@@ -274,6 +274,11 @@ func arrive_walkin(p: Patient) -> Patient:
 			if body != null:
 				taken.append(body.global_position)
 		npc.global_position = hospital.clinic_seat(taken)
+		# ...and faces the way the chair does. The waiting row is built with
+		# `_chair(..., PI / 2)`, so a sitter faces +X, into the room. Without
+		# this they sat sideways across the seat looking at the next chair
+		# along, which is not a thing a person waiting to be seen does.
+		npc.rotation.y = PI / 2
 	else:
 		npc.global_position = Vector3.ZERO
 	npc.state = PatientNPC.State.SITTING

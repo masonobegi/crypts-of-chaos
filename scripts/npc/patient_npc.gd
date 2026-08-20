@@ -52,6 +52,13 @@ func _physics_process(delta: float) -> void:
 ## While in bed the patient is pinned to the bed's mount point — which means
 ## wheeling the bed wheels the patient, exactly as it should.
 func _hold_bed_pose(_delta: float) -> void:
+	# SITTING was a state with no pose. Patients waiting to be seen were sent to
+	# a chair in the treatment bay and left STANDING in it — invisible in a wide
+	# shot, impossible to unsee at three metres, and the waiting row is the
+	# first thing a walk-in patient is ever seen doing.
+	var wants_seat := state == State.SITTING
+	if wants_seat != is_seated():
+		set_seated(wants_seat)
 	var in_bed := state == State.IN_BED and bed != null and is_instance_valid(bed)
 	if in_bed != _reclined:
 		_reclined = in_bed
@@ -140,6 +147,9 @@ func set_asleep(v: bool) -> void:
 	if asleep == v:
 		return
 	asleep = v
+	# Held, so the blink timer cannot open a sleeping patient's eyes again a
+	# few seconds later — which it otherwise would, every few seconds, all night.
+	_lids_held = v
 	set_eyes_open(not v)
 	if perception != null:
 		# Attention is the multiplier on every notice roll, so zero means a

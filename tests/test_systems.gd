@@ -1176,3 +1176,78 @@ func test_an_unknown_shift_still_gets_a_score() -> void:
 	# to write it a mood.
 	var odd := AudioMgr._build_music("graveyard_double")
 	t.gt(float(odd.data.size()), 0.0, "an unlisted shift falls back rather than failing")
+
+# ------------------------------------------------- the two playtest blockers
+#
+# Both of these came out of the first ten minutes a human ever spent with this
+# game, and neither could have been found by any harness in the project.
+
+func test_the_hud_cannot_eat_mouse_look() -> void:
+	# "I was just walking forward but couldn't look left or right."
+	#
+	# Player look lives in _unhandled_input, which only runs for events no
+	# Control consumed. Almost every Control defaults to MOUSE_FILTER_STOP, and
+	# a captured mouse still reports a screen position — so the crosshair, a
+	# bare Control anchored dead centre, swallowed every look event in the game.
+	var hud: Node = load("res://scripts/ui/hud.gd").new()
+	hud._ready()
+	var stack: Array[Node] = [hud]
+	var offenders: Array[String] = []
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Control and (n as Control).mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			offenders.append(n.get_class())
+		for c in n.get_children():
+			stack.append(c)
+	t.eq(offenders.size(), 0,
+		"nothing in the HUD blocks the mouse (%s)" % ", ".join(offenders))
+	hud.free()
+
+func test_a_bed_does_not_fight_its_own_passenger() -> void:
+	# "I released the bed brake and the bed glitched out and flew everywhere."
+	#
+	# The patient is pinned INSIDE the bed's collision box and the bed's mask
+	# includes the NPC layer, so unfreezing resolved that overlap against a
+	# 42 kg rigid body.
+	var bed := PatientBed.new()
+	bed.build()
+	var npc := PatientNPC.new()
+	var p := Patient.new("bedtest")
+	p.display_name = "Test Patient"
+	npc.bind(p, bed)
+	t.ok(bed.get_collision_exceptions().has(npc),
+		"a bed excepts the person lying on it")
+	# ...and still collides with everybody else, because shoving a bed down a
+	# corridor into somebody is a thing the game is allowed to do.
+	var bystander := NurseNPC.new()
+	t.ok(not bed.get_collision_exceptions().has(bystander),
+		"but not with anybody else")
+	npc.free()
+	bystander.free()
+	bed.free()
+
+func test_the_score_actually_reaches_the_speakers() -> void:
+	# "There's no background music." It was playing, at about -27 dBFS.
+	#
+	# This asserts the whole gain chain rather than the buffer alone: source
+	# peak, player gain, and the default slider positions together have to land
+	# somewhere audible. -30 would be inaudible; anything above -6 would drown
+	# the game.
+	AudioMgr.master_volume = float(Settings.DEFAULTS["master_volume"])
+	AudioMgr.music_volume = float(Settings.DEFAULTS["music_volume"])
+	var st: AudioStreamWAV = AudioMgr._build_music("day")
+	var d: PackedByteArray = st.data
+	var peak := 0
+	var i := 0
+	while i < int(d.size() / 2):
+		var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		peak = maxi(peak, absi(v))
+		i += 7
+	var source_db: float = linear_to_db(maxf(float(peak) / 32767.0, 0.0001))
+	var player_db: float = -4.0 + linear_to_db(
+		AudioMgr.master_volume * AudioMgr.music_volume)
+	var total: float = source_db + player_db
+	t.gt(total, -22.0, "the score is audible at default settings (%.1f dBFS)" % total)
+	t.lt(total, -6.0, "and is not louder than the game (%.1f dBFS)" % total)

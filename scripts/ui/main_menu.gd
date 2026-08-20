@@ -7,6 +7,9 @@ var _seed_field: LineEdit = null
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	# The title screen had no sound at all, which is the first thing anybody
+	# hears of this game and it was nothing.
+	AudioMgr.play_music("evening")
 	var bg := ColorRect.new()
 	bg.color = Color(0.07, 0.09, 0.11)
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

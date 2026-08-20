@@ -68,6 +68,70 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	_ensure_voices()
 
+## Stop everything before the tree comes down.
+##
+## A looping AudioStreamPlayer that is still playing when the process exits
+## makes Godot report "ObjectDB instances leaked at exit" — which boot_check.sh
+## correctly treats as a failure, because it is exactly the class of thing a
+## shipped build should not print on the way out. Adding the score to the main
+## menu turned that check red immediately, which is what it is for.
+## Closing the window is the case a player actually hits, and it fires while
+## everything is still alive — unlike _exit_tree, which runs as the audio server
+## is already coming down. Stopping here is what makes a real quit clean.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		stop_music()
+		if _hum_player != null and is_instance_valid(_hum_player):
+			_hum_player.stop()
+			_hum_player.stream = null
+
+func _exit_tree() -> void:
+	stop_music()
+	if _hum_player != null and is_instance_valid(_hum_player):
+		_hum_player.stop()
+	for p in _players:
+		if is_instance_valid(p):
+			p.stop()
+	for p in _players3d:
+		if is_instance_valid(p):
+			p.stop()
+	# Stopping is not enough: the player still HOLDS its stream, and the stream
+	# holds a live playback. Both have to be let go, and the synthesis cache
+	# with them, or the two survive the tree and are reported as leaked.
+	if _music_player != null and is_instance_valid(_music_player):
+		_music_player.stream = null
+	if _hum_player != null and is_instance_valid(_hum_player):
+		_hum_player.stream = null
+	for p in _players:
+		if is_instance_valid(p):
+			p.stream = null
+	for p in _players3d:
+		if is_instance_valid(p):
+			p.stream = null
+	# ...and free the players outright. Clearing the stream reference is not
+	# enough on its own: a LOOPING stream's playback is held on the audio
+	# server's side, and a player that is merely stopped keeps it alive past the
+	# tree teardown. Freeing the node is what actually releases it.
+	if _music_player != null and is_instance_valid(_music_player):
+		_music_player.free()
+		_music_player = null
+	if _hum_player != null and is_instance_valid(_hum_player):
+		_hum_player.free()
+		_hum_player = null
+	# The one-shot voices too. Any of the forty-eight of them can be mid-sound
+	# when the window closes, and a stopped-but-not-freed player holds its
+	# playback exactly the same way the music one did — which is why fixing
+	# only the music made this pass once and then fail three times running.
+	for p in _players:
+		if is_instance_valid(p):
+			p.free()
+	for p in _players3d:
+		if is_instance_valid(p):
+			p.free()
+	_players.clear()
+	_players3d.clear()
+	_cache.clear()
+
 ## Built lazily rather than only in _ready(): headless tooling drives the game
 ## from a SceneTree script, whose _initialize() runs BEFORE any node's _ready(),
 ## so anything that plays a sound during setup would otherwise index an empty
@@ -309,8 +373,15 @@ func stop_music() -> void:
 func refresh_music_volume() -> void:
 	if _music_player == null:
 		return
+	# -4, not -13.
+	#
+	# The chain matters and I got it wrong by about thirteen decibels. Source
+	# peaks at roughly half full scale (-5.7 dB); at -13 dB of player gain and a
+	# default 0.55 ambience slider under a 0.7 master, the score reached the
+	# speakers at about -27 dBFS. The first playtester's report was "there's no
+	# background music", and they were effectively right.
 	var g: float = maxf(master_volume * music_volume, 0.0001)
-	_music_player.volume_db = -13.0 + linear_to_db(g)
+	_music_player.volume_db = -4.0 + linear_to_db(g)
 
 func start_ambience(volume_db := -30.0) -> void:
 	_ensure_voices()

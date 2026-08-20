@@ -138,6 +138,10 @@ func _build_environment() -> void:
 	# The score follows the shift, for the same reason the light does: three
 	# shifts that differ only in a spreadsheet are not three choices.
 	EventBus.shift_started.connect(func(_d): AudioMgr.play_music(GameState.shift_kind))
+	# ...and start it NOW rather than waiting for a shift to begin. The briefing,
+	# the shift-select screen and the whole first minute of a run happen before
+	# shift_started fires, and all of it was silent.
+	AudioMgr.play_music(GameState.shift_kind)
 	apply_shift_look()
 
 ## What time of day it is, in light.

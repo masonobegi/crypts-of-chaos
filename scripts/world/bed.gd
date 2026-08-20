@@ -83,6 +83,23 @@ func _apply_brake() -> void:
 		linear_velocity = Vector3.ZERO
 		angular_velocity = Vector3.ZERO
 
+## A bed rolls. A bed does not launch.
+##
+## Belt and braces on top of the collision exception: whatever a solver decides
+## about some overlap nobody predicted, the worst it can produce is a bed moving
+## at a brisk walking pace. The first playtest had one leave the ward.
+const MAX_SPEED := 3.2
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	var v := state.linear_velocity
+	var flat := Vector2(v.x, v.z)
+	if flat.length() > MAX_SPEED:
+		flat = flat.normalized() * MAX_SPEED
+		state.linear_velocity = Vector3(flat.x, clampf(v.y, -6.0, 1.0), flat.y)
+	elif v.y > 1.0:
+		# Beds do not take off, either.
+		state.linear_velocity = Vector3(v.x, 1.0, v.z)
+
 func toggle_brake() -> void:
 	brake_on = not brake_on
 	_apply_brake()

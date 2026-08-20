@@ -17,7 +17,7 @@ const PATH := "user://settings.cfg"
 const DEFAULTS := {
 	"master_volume": 0.7,
 	"sfx_volume": 1.0,
-	"music_volume": 0.55,
+	"music_volume": 0.75,
 	"mouse_sensitivity": 1.0,     ## multiplier on Player.MOUSE_SENS
 	"invert_y": false,
 	"fov": 78.0,

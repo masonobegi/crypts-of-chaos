@@ -39,6 +39,18 @@ func bind(p: Patient, p_bed: PatientBed) -> void:
 	if p_bed:
 		p_bed.patient_id = p.id
 		p_bed.occupant = self
+		# A bed does not collide with its own passenger.
+		#
+		# The patient is pinned to the bed's origin, which puts their capsule
+		# INSIDE its 1.0 x 0.7 x 2.1 collision box, and the bed's mask includes
+		# the NPC layer. Frozen, nothing happens. Release the brake and the
+		# solver resolves that overlap against a 42 kg rigid body — which in the
+		# first playtest sent the bed across the room and out of the building.
+		#
+		# An exception rather than dropping layer 8 from the bed's mask: a bed
+		# shoved down a corridor should still shove people out of the way. It
+		# just should not fight the person lying on it.
+		p_bed.add_collision_exception_with(self)
 
 func _physics_process(delta: float) -> void:
 	_tick_cycle(delta)

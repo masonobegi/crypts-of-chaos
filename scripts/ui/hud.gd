@@ -142,6 +142,8 @@ func _build() -> void:
 	_crosshair = Control.new()
 	_crosshair.set_anchors_preset(Control.PRESET_CENTER)
 	add_child(_crosshair)
+	# See _make_everything_click_through() at the end of _ready(). The crosshair
+	# in particular sits exactly where a captured cursor reports its position.
 	var dot := ColorRect.new()
 	dot.color = Color(1, 1, 1, 0.55)
 	dot.size = Vector2(3, 3)
@@ -182,6 +184,39 @@ func _build() -> void:
 	help.add_theme_constant_override("shadow_offset_y", 1)
 	UIKit.place(help, Control.PRESET_BOTTOM_RIGHT, -478, -32, 460, 22)
 	add_child(help)
+
+	_make_everything_click_through()
+
+## THE HUD MUST NOT EAT MOUSE INPUT. This is the fix for the worst bug in the
+## first playtest: "I was just walking forward but couldn't look left or right."
+##
+## Setting mouse_filter = IGNORE on the HUD root does NOT propagate to its
+## children, and almost every Control in Godot defaults to STOP — PanelContainer,
+## ColorRect, Label, Control itself. While the mouse is CAPTURED, motion events
+## still carry a screen position, and any STOP control under that position
+## consumes them before `_unhandled_input` ever runs. Player look lives in
+## `_unhandled_input`.
+##
+## The crosshair is the killer: a bare Control anchored to PRESET_CENTER, with a
+## ColorRect inside it, sitting exactly where a captured cursor reports itself.
+## It swallowed every look event in the game.
+##
+## Nothing in this HUD is interactive — it is entirely readout — so the whole
+## subtree is forced to IGNORE rather than each new panel having to remember.
+## Add a clickable HUD element one day and it will need exempting here, which is
+## a much better failure mode than silently disabling the mouse.
+##
+## No harness could have found this: the scripted player presses actions through
+## Input.parse_input_event and never generates mouse motion at all. It took a
+## person with a mouse about ninety seconds.
+func _make_everything_click_through() -> void:
+	var stack: Array[Node] = [self]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is Control:
+			(n as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for c in n.get_children():
+			stack.append(c)
 
 func _process(delta: float) -> void:
 	if _subtitle_timer > 0.0:
@@ -399,6 +434,10 @@ func _show_toast(text: String, kind: String) -> void:
 	l.custom_minimum_size.x = 370
 	p.add_child(l)
 	_toasts.add_child(p)
+	# Created long after _ready, so it misses the sweep that makes the rest of
+	# the HUD click-through — and a toast panel is 410px wide at the bottom left.
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_last_toast_label = l
 	if kind == "money":
 		AudioMgr.play("money", -14.0)

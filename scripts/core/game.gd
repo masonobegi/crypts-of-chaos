@@ -278,8 +278,17 @@ func _spawn_player() -> void:
 	cam.add_child(inter)
 
 	add_child(player)
-	player.global_position = hospital.point_in("lobby", "player_spawn") + Vector3(0, 0.2, 0)
-	player.face(Vector3(hospital.point_in("corridor").x, 0, 2.0))
+	# Authored, not random.
+	#
+	# This used to be a random point in the lobby facing a random x somewhere
+	# along a sixty-two metre corridor, which means the first frame of the game
+	# — the one image every player sees before they have touched anything — was
+	# a dice roll between "a waiting room" and "a blank wall". It is now a fixed
+	# spot behind reception looking at the way out: chairs on the right, the
+	# desk on the left, the corridor doorway dead ahead and the objective
+	# through it.
+	player.global_position = hospital.lobby_spawn() + Vector3(0, 0.2, 0)
+	player.face(Vector3(5.5, 0, 4.0))
 
 ## Seed who talks to whom. Gossip weights by affinity, so which two nurses
 ## happen to get on decides how fast something you did travels.

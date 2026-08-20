@@ -615,6 +615,14 @@ func point_in(key: String, stream := "nav") -> Vector3:
 		return Vector3.ZERO
 	return nav.random_point_in(r.rect.grow(-1.0), stream)
 
+## Where a shift starts. Authored so the first frame of a run is composed
+## rather than rolled — see the note at Game._spawn_player.
+func lobby_spawn() -> Vector3:
+	var r: Room = rooms.get("lobby", null)
+	if r == null:
+		return Vector3.ZERO
+	return Vector3(r.rect.position.x + 6.2, 0.0, r.rect.position.y + 2.4)
+
 func bed_position(ward_key: String) -> Vector3:
 	var r: Room = rooms.get(ward_key, null)
 	if r == null:

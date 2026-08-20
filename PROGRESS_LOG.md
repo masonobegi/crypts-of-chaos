@@ -2201,3 +2201,16 @@ within five, something you were holding breaking, an investigation opening, a
 sanction landing. Two frequencies so it reads as a jolt rather than a wobble,
 laid on top of the head bob instead of replacing it, and clamped so a pile-up
 cannot black out the screen.
+
+## The first frame of a run was a dice roll
+
+`_spawn_player` put you at a random point in the lobby facing a random x
+somewhere along a sixty-two metre corridor. The one image every player sees
+before they have touched anything was therefore a coin flip between "a hospital
+waiting room" and "a blank wall two metres from your face".
+
+It is authored now: a fixed spot behind reception, chairs to the left, the
+out-of-order vending machine and a parked wheelchair to the right, and the
+corridor doorway dead ahead with the objective through it. `screenshots.sh`
+takes `00_first_frame` from the player's own camera, where the game actually
+puts it, so this can never silently drift again.

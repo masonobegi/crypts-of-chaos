@@ -149,6 +149,9 @@ func _set_ceilings_visible(v: bool) -> void:
 				(c as MeshInstance3D).visible = v
 
 const SHOTS := [
+	# The literal first frame of a run: the player's own camera, where the game
+	# puts them, before they have touched anything.
+	["00_first_frame", "player_spawn"],
 	# Looking SOUTH, into the room. This shot used to face the corridor doorway
 	# with reception, every chair and the vending machine behind the camera, so
 	# the lobby photographed as a blank wall and was assumed to be one.
@@ -247,8 +250,12 @@ func tick() -> bool:
 		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
 		game.apply_shift_look()
 	var cam: Camera3D = game.player.camera
-	cam.global_position = shot[1]
-	cam.look_at(shot[2], Vector3.UP)
+	if shot.size() == 2 and String(shot[1]) == "player_spawn":
+		# Leave the camera exactly where the game put it.
+		pass
+	else:
+		cam.global_position = shot[1]
+		cam.look_at(shot[2], Vector3.UP)
 	# The overview is shot from above, so the ceilings have to come off.
 	var overview := index == SHOTS.size() - 1
 	cam.fov = 60.0 if overview else 78.0

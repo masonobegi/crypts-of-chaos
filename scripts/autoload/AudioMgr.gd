@@ -47,6 +47,12 @@ const RECIPES := {
 	"drop":      {"w": "sine",  "f": 300.0, "d": 0.1,  "dec": 18.0, "n": 0.15, "sw": -0.4,  "vib": 0.0},
 	"door":      {"w": "saw",   "f": 180.0, "d": 0.35, "dec": 7.0,  "n": 0.2,  "sw": -0.3,  "vib": 3.0},
 	"tick":      {"w": "noise", "f": 1800.0,"d": 0.04, "dec": 40.0, "n": 1.0,  "sw": 0.0,   "vib": 0.0},
+	# Voice blips. Not words — a pitched click per few letters, which is what
+	# every game that does readable character dialogue without voice acting uses.
+	"mumble":   {"w": "sine",  "f": 420.0, "d": 0.055,"dec": 46.0, "n": 0.10, "sw": -0.1,  "vib": 0.0},
+	"mumble_lo":{"w": "saw",   "f": 250.0, "d": 0.060,"dec": 42.0, "n": 0.14, "sw": -0.12, "vib": 0.0},
+	"mumble_hi":{"w": "sine",  "f": 640.0, "d": 0.048,"dec": 52.0, "n": 0.08, "sw": -0.08, "vib": 0.0},
+	"page":     {"w": "noise", "f": 2200.0,"d": 0.10, "dec": 22.0, "n": 1.0,  "sw": 0.3,   "vib": 0.0},
 	"cough":     {"w": "noise", "f": 420.0, "d": 0.22, "dec": 13.0, "n": 1.0,  "sw": -0.5,  "vib": 0.0},
 	"monitor":   {"w": "sine",  "f": 1180.0,"d": 0.09, "dec": 16.0, "n": 0.0,  "sw": 0.0,   "vib": 0.0},
 	"trolley":   {"w": "noise", "f": 260.0, "d": 0.5,  "dec": 5.0,  "n": 1.0,  "sw": 0.1,   "vib": 7.0},
@@ -424,6 +430,19 @@ func play_at(name: String, pos: Vector3, volume_db: float = -4.0, pitch: float =
 	p.play()
 
 ## Slight random pitch keeps repeated sounds from sounding like a machine gun.
+## One blip of somebody talking.
+##
+## `voice` is any stable string — an npc_id — so the same character always
+## sounds like themselves. Three base timbres and a pitch offset off the hash is
+## enough that a ward full of people is a ward full of different voices.
+func mumble(voice: String, volume_db := -20.0) -> void:
+	var h := absi(hash(voice))
+	var bank: String = ["mumble", "mumble_lo", "mumble_hi"][h % 3]
+	# A fifth of an octave either side, plus a small per-syllable wobble so a
+	# line is not a monotone.
+	var base := 0.82 + float(h % 40) * 0.011
+	play(bank, volume_db, base + randf_range(-0.06, 0.06))
+
 func play_var(name: String, volume_db: float = -6.0, spread: float = 0.12) -> void:
 	play(name, volume_db, 1.0 + randf_range(-spread, spread))
 

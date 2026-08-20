@@ -172,6 +172,12 @@ const SHOTS := [
 	# Down the bed from the foot the headboard is between the camera and the
 	# patient (it is 1.06 x 0.5 and sits at z -1.05), and off to one side you
 	# get the back of a head behind an IV stand.
+	# The objective marker: the fix for "I got lost". Down the corridor from the
+	# west end, with the marker over the clinic board at the far end of it.
+	["00b_objective", Vector3(2.0, 1.7, 2.0), Vector3(40.0, 1.6, 2.0), "objective"],
+	# ...and the edge arrow, which is what you get the rest of the time — facing
+	# the wrong way, which in a sixty-two metre corridor is most of the time.
+	["00c_objective_arrow", Vector3(30.0, 1.7, 2.0), Vector3(46.0, 1.6, 2.0), "objective"],
 	# The machine mid-cycle, dialled well past the prescribed setting: the one
 	# act the whole game is about, which nothing had ever photographed.
 	["04c_cycle", Vector3(5.6, 1.5, 8.2), Vector3(3.4, 1.15, 9.9), "cycle"],
@@ -249,6 +255,18 @@ func _buy_everything() -> void:
 	_unlock_departments()
 	if game != null and game.hospital != null:
 		game.hospital.refresh_fittings()
+
+## Point the objective marker at the clinic board.
+##
+## This harness never starts a shift, so the tutorial never activates and there
+## is no objective to photograph — which is why the first attempt at this shot
+## was a picture of an empty room.
+func _aim_the_objective() -> void:
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is ClinicBoard:
+			EventBus.objective_target_changed.emit(
+				(f as Node3D).global_position + Vector3(0, 1.1, 0), "Clinic Board")
+			return
 
 ## Put somebody in the waiting row so it can be photographed with a person in
 ## it. Idempotent — every beat re-runs until its settle counter is up.
@@ -341,6 +359,8 @@ func tick() -> bool:
 	var shot: Array = SHOTS[index]
 	if shot.size() > 3 and String(shot[3]) == "unlock":
 		_unlock_departments()
+	if shot.size() > 3 and String(shot[3]) == "objective":
+		_aim_the_objective()
 	if shot.size() > 3 and String(shot[3]) == "walkin":
 		_seat_a_walkin()
 	if shot.size() > 3 and String(shot[3]) == "cycle":

@@ -4,6 +4,11 @@ extends Prop
 
 var patient_id := ""
 
+func _ready() -> void:
+	super._ready()
+	# So the objective marker can find "a chart" without knowing which one.
+	add_to_group("chart_prop")
+
 func get_patient_id() -> String:
 	return patient_id
 

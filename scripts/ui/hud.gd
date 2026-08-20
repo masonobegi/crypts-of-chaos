@@ -23,6 +23,7 @@ var _subtitle: Label
 var _subtitle_panel: PanelContainer
 var _today: Label
 var _toasts: VBoxContainer
+var _arrow: Label
 var _toast_queue: Array = []
 var _toast_gap := 0.0
 var _last_toast_text := ""
@@ -185,6 +186,13 @@ func _build() -> void:
 	UIKit.place(help, Control.PRESET_BOTTOM_RIGHT, -478, -32, 460, 22)
 	add_child(help)
 
+	# ---- off-screen objective arrow
+	_arrow = UIKit.label("", 26, Color(0.42, 0.90, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
+	_arrow.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.8))
+	_arrow.add_theme_constant_override("shadow_offset_y", 2)
+	_arrow.visible = false
+	add_child(_arrow)
+
 	_make_everything_click_through()
 
 ## THE HUD MUST NOT EAT MOUSE INPUT. This is the fix for the worst bug in the
@@ -225,6 +233,52 @@ func _process(delta: float) -> void:
 			_subtitle_panel.visible = false
 	_drain_toasts(delta)
 	_refresh_watchers()
+	_refresh_objective_arrow()
+
+## An arrow at the edge of the screen when the objective is behind you.
+##
+## A world marker solves "where is it" only while you are facing roughly the
+## right way. The rest of the time — which, in a sixty-two metre corridor with
+## rooms off both sides, is most of the time — it is invisible and the player is
+## exactly as lost as before. This pins it to the edge of the screen instead.
+func _refresh_objective_arrow() -> void:
+	if _arrow == null:
+		return
+	var marker = get_tree().get_first_node_in_group("objective_marker")
+	var cam: Camera3D = null
+	var p = get_tree().get_first_node_in_group("player")
+	if p != null:
+		cam = p.camera
+	if marker == null or cam == null or not marker.target.is_finite():
+		_arrow.visible = false
+		return
+
+	var target: Vector3 = marker.target
+	var behind: bool = cam.is_position_behind(target)
+	var screen: Vector2 = cam.unproject_position(target)
+	var rect: Vector2 = get_viewport_rect().size
+	var margin := 46.0
+	var on_screen: bool = not behind \
+		and screen.x > margin and screen.x < rect.x - margin \
+		and screen.y > margin and screen.y < rect.y - margin
+	if on_screen:
+		_arrow.visible = false
+		return
+
+	# unproject_position mirrors what is behind the camera, so a target directly
+	# over your shoulder reads as being in front and on the wrong side. Flip it.
+	if behind:
+		screen = rect - screen
+	var centre: Vector2 = rect * 0.5
+	var dir: Vector2 = (screen - centre)
+	if dir.length() < 1.0:
+		dir = Vector2(0, -1)
+	dir = dir.normalized()
+	var edge: Vector2 = centre + dir * (minf(rect.x, rect.y) * 0.5 - margin)
+	_arrow.position = edge - Vector2(14, 18)
+	_arrow.rotation = dir.angle() + PI * 0.5
+	_arrow.text = "\u25B2"
+	_arrow.visible = true
 
 ## "Eyes on you" — the readable version of the whole perception system. It never
 ## tells you what they think, only that they can currently see you.

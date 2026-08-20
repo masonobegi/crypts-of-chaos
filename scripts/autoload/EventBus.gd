@@ -79,6 +79,9 @@ signal request_ui(id: String, context: Dictionary)
 signal ui_opened(id: String)
 signal close_ui(id: String)
 signal objective_changed(text: String)
+## Where that objective is, in the world. Vector3.INF means "nowhere in
+## particular" — a step that is about a screen rather than a place.
+signal objective_target_changed(pos, text)     ## Vector3, String
 
 # ---------------------------------------------------------------- meta
 signal random_event_fired(id: String, title: String, body: String)

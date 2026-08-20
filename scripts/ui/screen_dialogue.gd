@@ -6,6 +6,7 @@ extends ScreenBase
 var _mind: Mind = null
 var _patient = null
 var _reply := ""
+var _typer: Typewriter = null
 
 func _build() -> void:
 	var sus = suspicion()
@@ -44,9 +45,20 @@ func _build() -> void:
 			UIKit.WARN if _patient.is_overdue() else UIKit.INK))
 
 	if _reply != "":
+		# Typed out, in their voice, rather than appearing complete.
+		#
+		# A reply used to arrive as finished text in a box, which is why talking
+		# to somebody "goes so quick": nothing to read AT, no pace, no sense that
+		# a person is saying it. It arrives at the speed of speech now, with a
+		# blip per syllable pitched off their own id, and a click hurries it.
 		var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.9), 6)
-		rp.add_child(UIKit.label("\"%s\"" % _reply, 16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
+		var rl := UIKit.label("", 16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
+		rl.custom_minimum_size.y = 52
+		rp.add_child(rl)
 		v.add_child(rp)
+		_typer = Typewriter.new()
+		add_child(_typer)
+		_typer.speak(rl, "\"%s\"" % _reply, _mind.id)
 
 	v.add_child(UIKit.rule())
 	# The clinical action, kept out of the conversation list because it is not a
@@ -175,3 +187,19 @@ func _choose(o) -> void:
 	else:
 		EventBus.toast.emit("%s did not buy it." % _mind.display_name, "bad")
 	rebuild()
+
+
+## Click (or E) anywhere to hurry the line along.
+##
+## The screen is modal and the tree is paused, so this is the only input that
+## reaches it — and "let me read that at my own pace" is the first thing anybody
+## wants from dialogue.
+func _unhandled_input(event: InputEvent) -> void:
+	if _typer == null or not _typer.is_running():
+		return
+	var pressed: bool = (event is InputEventMouseButton and event.pressed) \
+		or (event is InputEventKey and event.pressed and not event.echo)
+	if pressed:
+		_typer.hurry()
+		AudioMgr.play("page", -22.0)
+		get_viewport().set_input_as_handled()

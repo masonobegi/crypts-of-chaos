@@ -31,6 +31,12 @@ func _ready() -> void:
 	_spawn_player()
 	_spawn_staff()
 	_spawn_ui()
+	# Where the objective IS, not just what it says. The first playtester got
+	# lost inside two minutes with nothing but a line of text naming a room in
+	# a building they had never been in.
+	var marker := ObjectiveMarker.new()
+	marker.name = "ObjectiveMarker"
+	add_child(marker)
 	_register_saves()
 	EventBus.game_over.connect(_on_game_over)
 	_start()

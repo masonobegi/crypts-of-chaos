@@ -505,16 +505,34 @@ func _follow_path(delta: float) -> void:
 	velocity.z = lerpf(velocity.z, dir.z * _speed, 1.0 - exp(-9.0 * delta))
 	_intended_speed = _speed
 
+## Which way a character is pointing.
+##
+## Two bugs lived here, and together they produced "when people are walking
+## backwards I can still see their face".
+##
+## The sign was wrong. This model's eyes are on its local +Z, so the yaw that
+## faces a direction d is atan2(d.x, d.z) — `atan2(-d.x, -d.z)` is a hundred and
+## eighty degrees out, and every character in the building walked backwards down
+## the corridor looking straight at you. (The doors had the identical bug; it is
+## a very easy sign to get wrong when +Z is forward.)
+##
+## And a look target outranked movement, so anybody who noticed you turned to
+## face you and then MOONWALKED wherever they were going. The body follows
+## where it is walking; the head, separately, follows what it is looking at.
+## That is how people work and it is the whole tell the suspicion system needs:
+## a nurse walking past while watching you should be walking past, watching you.
 func _face(delta: float) -> void:
+	var moving := Vector3(velocity.x, 0.0, velocity.z)
 	var face_dir := Vector3.ZERO
-	if _has_look:
+	if moving.length_squared() > 0.04:
+		face_dir = moving
+	elif _has_look:
+		# Standing still: turn to whatever has your attention.
 		face_dir = _look_at - global_position
-	elif is_moving():
-		face_dir = Vector3(velocity.x, 0, velocity.z)
 	face_dir.y = 0.0
 	if face_dir.length_squared() < 0.001:
 		return
-	var want := atan2(-face_dir.x, -face_dir.z)
+	var want := atan2(face_dir.x, face_dir.z)
 	rotation.y = lerp_angle(rotation.y, want, 1.0 - exp(-TURN_SPEED * delta))
 
 ## Footsteps.
@@ -618,6 +636,14 @@ func _animate(delta: float) -> void:
 		var to := _look_at - _head.global_position
 		var local := to.normalized() * global_transform.basis
 		_head.rotation.x = clampf(asin(clampf(local.y, -1.0, 1.0)) * 0.6, -0.5, 0.5)
+		# ...and turn the head on its own axis, clamped to something a neck can
+		# do. This is what lets somebody walk one way while watching another —
+		# which is the single most important thing a witness can be seen doing.
+		var yaw := atan2(local.x, local.z)
+		_head.rotation.y = lerp_angle(_head.rotation.y,
+			clampf(yaw, -1.15, 1.15), 1.0 - exp(-7.0 * delta))
+	elif _head:
+		_head.rotation.y = lerp_angle(_head.rotation.y, 0.0, 1.0 - exp(-4.0 * delta))
 
 func _check_stuck(delta: float) -> void:
 	if _intended_speed < 0.15:
@@ -707,7 +733,14 @@ func _door_of(body: Object) -> SwingDoor:
 # ------------------------------------------------------------------ speech
 const SUBTITLE_RANGE := 14.0
 
+## Barks hold longer than they did.
+##
+## 3.2 seconds for a full sentence is under the time it takes to notice somebody
+## has spoken, look at them, and read it — the first playtester's words were
+## "the subtitles go so quick". Scaled by length, with a floor, so "Mm." does
+## not sit on screen for six seconds and a paragraph is readable.
 func say(text: String, seconds := 3.2) -> void:
+	seconds = maxf(seconds, 2.2 + float(text.length()) * 0.055)
 	if _speech == null:
 		return
 	_speech.text = text

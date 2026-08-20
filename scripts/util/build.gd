@@ -8,8 +8,9 @@ static var _mat_cache: Dictionary = {}
 static var _mesh_cache: Dictionary = {}
 
 # ------------------------------------------------------------------ materials
-static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 0, 0)) -> StandardMaterial3D:
-	var key := "%s|%.2f|%.2f|%s" % [color.to_html(), rough, metal, emission.to_html()]
+static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 0, 0),
+		line := 0.016) -> StandardMaterial3D:
+	var key := "%s|%.2f|%.2f|%s|%.4f" % [color.to_html(), rough, metal, emission.to_html(), line]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	var m := StandardMaterial3D.new()
@@ -27,6 +28,35 @@ static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 
 		m.emission_enabled = true
 		m.emission = emission
 		m.emission_energy_multiplier = 1.6
+	if line > 0.0:
+		m.next_pass = outline(line)
+	_mat_cache[key] = m
+	return m
+
+## The dark line around everything.
+##
+## A single shared inverted-hull pass: the same mesh drawn again, grown along
+## its own normals, with front faces culled so only the sliver that sticks out
+## past the silhouette survives. It is the cheapest cartoon outline there is and
+## it is most of the difference between "primitives" and "a style".
+##
+## It only works on geometry with SMOOTH normals. A BoxMesh has three separate
+## normals at every corner, so growing along them tears the hull into three
+## detached slabs and the outline breaks at exactly the place the eye is
+## looking. That is why everything below is built from rounded boxes instead:
+## the outline is the reason for the geometry, not a coat of paint over it.
+static func outline(width := 0.016, shade := Color(0.09, 0.10, 0.14)) -> StandardMaterial3D:
+	var key := "outline|%.4f|%s" % [width, shade.to_html()]
+	if _mat_cache.has(key):
+		return _mat_cache[key]
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_color = shade
+	m.cull_mode = BaseMaterial3D.CULL_FRONT
+	m.grow = true
+	m.grow_amount = width
+	m.disable_receive_shadows = true
+	m.no_depth_test = false
 	_mat_cache[key] = m
 	return m
 
@@ -49,6 +79,101 @@ static func box_mesh(size: Vector3) -> BoxMesh:
 	b.size = size
 	_mesh_cache[key] = b
 	return b
+
+## A box with its edges rounded off.
+##
+## Built as a Minkowski sum: take a sphere of the corner radius and push each of
+## its vertices out to the nearest corner of the box's inner core, by the sign of
+## its own normal. Everything in one octant lands on the same corner, so the
+## sphere's octants become the eight rounded corners and the rings between them
+## stretch into the flat faces — one mesh, smooth normals throughout, and no
+## seams for the outline pass to break on.
+##
+## Radius is clamped to half the smallest dimension, so a thin panel becomes a
+## rounded slab rather than turning inside out.
+static func rbox_mesh(size: Vector3, radius := 0.05, segments := 8) -> ArrayMesh:
+	var r: float = minf(radius, minf(size.x, minf(size.y, size.z)) * 0.49)
+	var key := "rbox%s_%.4f_%d" % [size, r, segments]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var core := Vector3(
+		maxf(size.x * 0.5 - r, 0.0),
+		maxf(size.y * 0.5 - r, 0.0),
+		maxf(size.z * 0.5 - r, 0.0))
+	var src := SphereMesh.new()
+	src.radius = r
+	src.height = r * 2.0
+	src.radial_segments = segments
+	src.rings = maxi(3, segments / 2)
+	var arr: Array = src.get_mesh_arrays()
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var out := PackedVector3Array()
+	out.resize(verts.size())
+	for i in verts.size():
+		var n: Vector3 = norms[i]
+		out[i] = verts[i] + Vector3(
+			signf(n.x) * core.x, signf(n.y) * core.y, signf(n.z) * core.z)
+	arr[Mesh.ARRAY_VERTEX] = out
+	# UVs came off a sphere and are meaningless once it has been stretched into
+	# a box. Nothing in this project textures anything, and leaving them in is a
+	# tangent-space warning per surface.
+	arr[Mesh.ARRAY_TEX_UV] = null
+	arr[Mesh.ARRAY_TANGENT] = null
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	_mesh_cache[key] = am
+	return am
+
+## A rounded box that is a different width at the top than at the bottom.
+##
+## Same Minkowski trick as rbox_mesh, but the core half-extents are interpolated
+## by the vertex's FINAL height rather than being constant — so one mesh gives a
+## torso that is broad at the shoulders and narrow at the waist.
+##
+## This exists because of the outline pass. A body assembled from three stacked
+## slabs gets three outlines, and every seam between them draws a hard black
+## band across the chest: the first render of the restyled character was a
+## person made of pillows. One shape, one line.
+static func taper_mesh(bottom: Vector2, top: Vector2, height: float,
+		radius := 0.08, segments := 8) -> ArrayMesh:
+	var r: float = minf(radius, minf(height, minf(bottom.x, minf(bottom.y,
+		minf(top.x, top.y)))) * 0.49)
+	var key := "taper%s_%s_%.3f_%.4f_%d" % [bottom, top, height, r, segments]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var core_y: float = maxf(height * 0.5 - r, 0.0)
+	var src := SphereMesh.new()
+	src.radius = r
+	src.height = r * 2.0
+	src.radial_segments = segments
+	src.rings = maxi(3, segments / 2)
+	var arr: Array = src.get_mesh_arrays()
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var out := PackedVector3Array()
+	out.resize(verts.size())
+	for i in verts.size():
+		var n: Vector3 = norms[i]
+		var fy: float = verts[i].y + signf(n.y) * core_y
+		var t: float = clampf((fy + height * 0.5) / maxf(height, 0.0001), 0.0, 1.0)
+		var hw: float = lerpf(bottom.x, top.x, t) * 0.5
+		var hd: float = lerpf(bottom.y, top.y, t) * 0.5
+		out[i] = Vector3(
+			verts[i].x + signf(n.x) * maxf(hw - r, 0.0),
+			fy,
+			verts[i].z + signf(n.z) * maxf(hd - r, 0.0))
+	arr[Mesh.ARRAY_VERTEX] = out
+	arr[Mesh.ARRAY_TEX_UV] = null
+	arr[Mesh.ARRAY_TANGENT] = null
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	# Normals are still the sphere's, which on a taper leaves the side faces
+	# shaded as though they were vertical. At this scale, with this lighting,
+	# that reads as a soft roll rather than as an error, and recomputing them
+	# would cost the smooth normals the outline pass depends on.
+	_mesh_cache[key] = am
+	return am
 
 static func cyl_mesh(radius: float, height: float, sides := 12) -> CylinderMesh:
 	var key := "cyl%.3f_%.3f_%d" % [radius, height, sides]
@@ -97,15 +222,33 @@ static func mi(mesh: Mesh, material: Material, pos := Vector3.ZERO, rot := Vecto
 	m.scale = scl
 	return m
 
-static func box_mi(size: Vector3, color: Color, pos := Vector3.ZERO, rough := 0.85) -> MeshInstance3D:
-	return mi(box_mesh(size), mat(color, rough), pos)
+## Every "box" in the game is a rounded box now. The corner radius scales with
+## the object so a syringe is not rounded off as hard as a wall, and is capped so
+## a big flat panel keeps a crisp face.
+static func box_mi(size: Vector3, color: Color, pos := Vector3.ZERO, rough := 0.85,
+		line := 0.016) -> MeshInstance3D:
+	return mi(rbox_mesh(size, corner_for(size)), mat(color, rough, 0.0, Color(0, 0, 0), line), pos)
+
+## How hard to round something of this size. Small objects get a proportionally
+## generous radius (it is what makes a prop read as moulded plastic rather than
+## a cube); large ones get a fixed small chamfer so walls stay walls.
+static func corner_for(size: Vector3) -> float:
+	var smallest: float = minf(size.x, minf(size.y, size.z))
+	return clampf(smallest * 0.34, 0.006, 0.075)
 
 static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 12) -> MeshInstance3D:
 	return mi(cyl_mesh(radius, height, sides), mat(color), pos)
 
 # ------------------------------------------------------------------ static geo
 ## A solid, collidable box — walls, floors, counters, anything you bump into.
-static func wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
+## `line` is the outline width; pass 0.0 for architecture.
+##
+## Floors, ceilings and wall runs are the largest surfaces on screen and they
+## are the ones that gain least from an outline — a room already has an edge
+## where its own walls meet. Drawing them a second time, full-screen, doubled
+## the fill cost of every frame for a line nobody was going to look at.
+static func wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0,
+		line := 0.016) -> StaticBody3D:
 	var b := StaticBody3D.new()
 	b.position = pos
 	b.rotation.y = rot_y
@@ -116,12 +259,13 @@ static func wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> Sta
 	shape.size = size
 	cs.shape = shape
 	b.add_child(cs)
-	b.add_child(box_mi(size, color))
+	b.add_child(box_mi(size, color, Vector3.ZERO, 0.85, line))
 	return b
 
 ## Same, but flagged so NPC vision cannot see through it.
-static func opaque_wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0) -> StaticBody3D:
-	var w := wall(size, color, pos, rot_y)
+static func opaque_wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0,
+		line := 0.016) -> StaticBody3D:
+	var w := wall(size, color, pos, rot_y, line)
 	w.collision_layer = 1 | 32   # world | vision_blocker
 	return w
 

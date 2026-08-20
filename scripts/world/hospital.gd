@@ -94,13 +94,16 @@ func _build_rooms() -> void:
 func _build_floor_and_ceiling(r: Room) -> void:
 	var size := Vector3(r.rect.size.x, 0.2, r.rect.size.y)
 	var tint := _floor_colour(r.kind)
-	var f := Build.wall(size, tint, Vector3(0, -0.1, 0))
+	# No outline on floors, ceilings or wall runs: they are the biggest surfaces
+	# on screen, a room already has an edge where its own walls meet, and the
+	# outline pass draws every one of them a second time at full screen size.
+	var f := Build.wall(size, tint, Vector3(0, -0.1, 0), 0.0, 0.0)
 	f.name = "Floor"
 	r.add_child(f)
 	# Ceiling is visual only — no collision, so thrown objects leave the room and
 	# the player can never get stuck against it.
 	var c := Build.box_mi(Vector3(r.rect.size.x, 0.1, r.rect.size.y), Build.CEILING,
-		Vector3(0, WALL_H, 0))
+		Vector3(0, WALL_H, 0), 0.85, 0.0)
 	r.add_child(c)
 
 ## A different, bright floor per room kind. These are how you know which room
@@ -224,8 +227,8 @@ func _wall_segment(a: Vector3, b: Vector3) -> void:
 	var lower_h := 1.1
 	var lower := Vector3(size.x, lower_h, size.z)
 	var upper := Vector3(size.x, WALL_H - lower_h, size.z)
-	add_child(Build.opaque_wall(lower, Build.WALL_LOWER, mid + Vector3(0, lower_h * 0.5, 0)))
-	add_child(Build.opaque_wall(upper, Build.WALL_UPPER, mid + Vector3(0, lower_h + upper.y * 0.5, 0)))
+	add_child(Build.opaque_wall(lower, Build.WALL_LOWER, mid + Vector3(0, lower_h * 0.5, 0), 0.0, 0.0))
+	add_child(Build.opaque_wall(upper, Build.WALL_UPPER, mid + Vector3(0, lower_h + upper.y * 0.5, 0), 0.0, 0.0))
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)
@@ -235,7 +238,7 @@ func _lintel(a: Vector3, b: Vector3) -> void:
 	var horizontal := absf(b.x - a.x) > absf(b.z - a.z)
 	var h := WALL_H - 2.1
 	var size := Vector3(length, h, WALL_T) if horizontal else Vector3(WALL_T, h, length)
-	add_child(Build.opaque_wall(size, Build.WALL_UPPER, mid + Vector3(0, 2.1 + h * 0.5, 0)))
+	add_child(Build.opaque_wall(size, Build.WALL_UPPER, mid + Vector3(0, 2.1 + h * 0.5, 0), 0.0, 0.0))
 
 # ------------------------------------------------------------------ doors
 func _build_doors() -> void:

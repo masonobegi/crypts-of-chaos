@@ -105,79 +105,144 @@ func _build_body() -> void:
 	root.scale = Vector3.ONE * height_scale
 	add_child(root)
 
-	# Chunky on purpose. These were built to realistic human proportions — a
-	# 0.155m head on a 0.22m torso with 0.062m arms — and at the distance you
-	# actually see people in this game, across a sixty-two metre corridor, that
-	# reads as a set of grey sticks. A stylised character is roughly a third
-	# heavier everywhere and carries a head about a fifth too big for it, which
-	# is what makes a silhouette legible at forty metres and a face legible at
-	# four.
+	# Chunky on purpose, and TAPERED, and as few separate solids as possible.
+	#
+	# These were built to realistic human proportions — a 0.155m head on a
+	# 0.22m torso with 0.062m arms — and at the distance you actually see
+	# people in this game, across a sixty-two metre corridor, that reads as a
+	# set of grey sticks. Made chunky, they read at distance and looked like a
+	# stack of capsules up close.
+	#
+	# Two things fix that, and the second is not obvious. The first is
+	# SILHOUETTE: shoulders wider than the waist, a head a fifth too big, hands
+	# and feet that stick out past the limbs, no two parts the same width.
+	#
+	# The second is PART COUNT, because of the outline pass. The outline is a
+	# second copy of each mesh grown along its normals, so a torso built from
+	# three stacked slabs draws three outlines and every seam becomes a hard
+	# black band across the chest — the first render of this was a person made
+	# of pillows. Each limb and the trunk are now single tapered solids, and the
+	# only interior details that carry a line of their own are the ones that
+	# should read as separate objects: the collar, the cuffs, the hair.
+	const LINE := 0.009
 	_torso = Node3D.new()
-	_torso.position = Vector3(0, 0.92, 0)
+	_torso.position = Vector3(0, 0.95, 0)
 	root.add_child(_torso)
-	_torso.add_child(Build.mi(Build.capsule_mesh(0.29, 0.66), Build.mat(outfit)))
-	# Shoulders read as a person from a distance far better than a bare capsule.
-	_torso.add_child(Build.mi(Build.box_mesh(Vector3(0.66, 0.16, 0.32)), Build.mat(outfit),
-		Vector3(0, 0.26, 0)))
-	# A collar in a lighter shade of the same outfit — one band of contrast at
-	# the top of the body, which is what the eye lands on first.
-	_torso.add_child(Build.mi(Build.box_mesh(Vector3(0.50, 0.07, 0.30)),
-		Build.mat(outfit.lightened(0.32)), Vector3(0, 0.34, 0)))
+	# One solid, hip to shoulder, broad at the top.
+	_torso.add_child(Build.mi(
+		Build.taper_mesh(Vector2(0.44, 0.30), Vector2(0.70, 0.36), 0.74, 0.13),
+		Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, 0.06, 0)))
+	# A collar, deliberately proud of the shoulders so it DOES take a line of
+	# its own — one band of contrast at the top of the body, which is what the
+	# eye lands on first.
+	_torso.add_child(Build.mi(
+		Build.taper_mesh(Vector2(0.42, 0.34), Vector2(0.34, 0.28), 0.09, 0.035),
+		Build.mat(outfit.lightened(0.30), 0.85, 0.0, Color(0, 0, 0), LINE),
+		Vector3(0, 0.385, 0.005)))
+	# ...and a neck inside it, so the head is attached to something instead of
+	# hovering over a collar. No line: it is never the silhouette.
+	_torso.add_child(Build.mi(Build.capsule_mesh(0.082, 0.22),
+		Build.mat(skin.darkened(0.10), 0.85, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, 0.46, 0)))
 
 	_head = Node3D.new()
-	_head.position = Vector3(0, 1.44, 0)
+	_head.position = Vector3(0, 1.50, 0)
 	root.add_child(_head)
-	_head.add_child(Build.mi(Build.sphere_mesh(0.20), Build.mat(skin)))
+	# An egg, not a ball: taller than wide, flattened at the back, the volume
+	# carried high, and the jaw taken out of the same solid by squashing rather
+	# than bolted on as a second box.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.215),
+		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Vector3(0, -0.01, 0), Vector3.ZERO, Vector3(0.98, 1.14, 0.92)))
+	# Ears and a nose. Four centimetres of geometry each, and between them the
+	# difference between a face and a balloon with eyes drawn on it. Lined,
+	# because both of them break the head's silhouette.
+	for ex in [-1.0, 1.0]:
+		_head.add_child(Build.mi(Build.sphere_mesh(0.052),
+			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+			Vector3(ex * 0.198, -0.015, -0.02), Vector3.ZERO, Vector3(0.45, 1.05, 0.75)))
+	_head.add_child(Build.mi(Build.sphere_mesh(0.040),
+		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Vector3(0, -0.022, 0.188), Vector3.ZERO, Vector3(0.78, 0.70, 1.15)))
+	# A mouth. One dark bar, and the face stops being a nose between two eyes.
+	# It is also where every future expression goes, if there is ever one.
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.085, 0.022, 0.03), 0.010),
+		Build.mat(Color(0.42, 0.24, 0.24), 0.9, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, -0.100, 0.180)))
+	# A chin, so the jaw has a bottom to it. Lined, because it is the profile.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
+		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Vector3(0, -0.150, 0.075), Vector3.ZERO, Vector3(1.05, 0.72, 0.95)))
 	# A cap on the crown, set BACK from the face and narrower than the skull.
 	# The first pass made it 0.37 wide on a 0.40 head and centred it, which is
 	# a helmet — and a patient lying in a bed is rotated ninety degrees, so the
 	# first rendered close-up was a brown block where a face should be with two
-	# eyes peering over the top of it.
-	# A squashed SPHERE, not a box. A slab reads as hair only from straight on;
-	# a patient lying in bed is rotated ninety degrees and seen from the side at
-	# a metre and a half, and from there the box was a dark plank stuck to the
-	# side of somebody's face. Scaling a sphere keeps it a rounded skull cap
-	# from every angle the game can actually be looked at from, which for the
-	# closest thing to a character model in this project is worth the extra
-	# fifty triangles.
-	_head.add_child(Build.mi(Build.sphere_mesh(0.203), Build.mat(hair),
-		Vector3(0, 0.052, -0.028), Vector3.ZERO, Vector3(1.0, 0.72, 1.0)))
+	# eyes peering over the top of it. A squashed SPHERE, not a box: a slab
+	# reads as hair from straight on only, and from the side it was a dark plank
+	# stuck to somebody's cheek.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.224),
+		Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), LINE),
+		Vector3(0, 0.078, -0.030), Vector3.ZERO, Vector3(0.99, 0.70, 1.0)))
+	# ...and a forelock, so there is a hairLINE. Hair with no edge on the
+	# forehead reads as a swimming cap — but a straight BAR across the forehead
+	# reads as a headband, which is what the first attempt at this was. A second
+	# squashed sphere set forward and low follows the skull instead.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.185),
+		Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, 0.082, 0.055), Vector3.ZERO, Vector3(1.02, 0.52, 0.86)))
 	# Eyes: the cheapest possible way to make "is this person looking at me"
 	# legible across a corridor, which the whole suspicion system depends on.
 	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
-	# a dot on a white oval is an eye.
+	# a dot on a white oval is an eye. Unshaded and unlined: a black ring round
+	# an eyeball at this scale is just a bigger pupil.
 	for sx in [-1.0, 1.0]:
-		var white := Build.mi(Build.sphere_mesh(0.052), Build.unshaded(Color(0.99, 0.99, 1.0)),
-			Vector3(sx * 0.072, 0.012, 0.166))
-		var pupil := Build.mi(Build.sphere_mesh(0.027), Build.unshaded(Color(0.10, 0.11, 0.16)),
-			Vector3(sx * 0.072, 0.012, 0.196))
+		var white := Build.mi(Build.sphere_mesh(0.056), Build.unshaded(Color(0.99, 0.99, 1.0)),
+			Vector3(sx * 0.080, 0.012, 0.166), Vector3.ZERO, Vector3(0.92, 1.18, 0.78))
+		var pupil := Build.mi(Build.sphere_mesh(0.030), Build.unshaded(Color(0.10, 0.11, 0.16)),
+			Vector3(sx * 0.080, 0.008, 0.196))
 		_head.add_child(white)
 		_head.add_child(pupil)
 		_eyes_open.append(white)
 		_eyes_open.append(pupil)
+		# A brow above each eye, in the hair colour. Two small dark bars are the
+		# whole of this model's expression budget and they are worth every
+		# triangle: without them the face is permanently, blankly surprised.
+		_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.098, 0.020, 0.026), 0.009),
+			Build.mat(hair.lightened(0.10), 0.9, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.082, 0.068, 0.192)))
 		# A closed lid, hidden until it is needed. Hiding the eyes alone leaves
 		# a blank face, which reads as a missing texture rather than as sleep.
-		var lid := Build.mi(Build.box_mesh(Vector3(0.085, 0.014, 0.02)),
-			Build.unshaded(Color(0.32, 0.24, 0.22)), Vector3(sx * 0.072, 0.012, 0.190))
+		var lid := Build.mi(Build.rbox_mesh(Vector3(0.095, 0.017, 0.024), 0.008),
+			Build.unshaded(Color(0.36, 0.27, 0.24)), Vector3(sx * 0.080, 0.012, 0.192))
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)
 
 	for sx in [-1.0, 1.0]:
 		var arm := Node3D.new()
-		arm.position = Vector3(sx * 0.35, 1.16, 0)
+		arm.position = Vector3(sx * 0.395, 1.24, 0)
 		root.add_child(arm)
-		arm.add_child(Build.mi(Build.capsule_mesh(0.088, 0.5), Build.mat(outfit), Vector3(0, -0.22, 0)))
-		arm.add_child(Build.mi(Build.sphere_mesh(0.098), Build.mat(skin), Vector3(0, -0.48, 0)))
+		# One sleeve, one cuff, one mitten. The hand is WIDER than the wrist:
+		# limbs that taper to nothing read as tentacles, and what sells a hand
+		# is being the widest thing at the end of the arm.
+		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15, 0.15), Vector2(0.20, 0.20), 0.56, 0.075),
+			Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.26, 0)))
+		arm.add_child(Build.mi(Build.capsule_mesh(0.082, 0.13),
+			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
+		arm.add_child(Build.mi(Build.rbox_mesh(Vector3(0.15, 0.17, 0.10), 0.048),
+			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))
 		_arms.append(arm)
 
 		var leg := Node3D.new()
-		leg.position = Vector3(sx * 0.135, 0.64, 0)
+		leg.position = Vector3(sx * 0.145, 0.68, 0)
 		root.add_child(leg)
-		leg.add_child(Build.mi(Build.capsule_mesh(0.115, 0.60), Build.mat(outfit.darkened(0.32)),
-			Vector3(0, -0.29, 0)))
-		leg.add_child(Build.mi(Build.box_mesh(Vector3(0.20, 0.11, 0.32)), Build.mat(Color(0.22, 0.24, 0.30)),
-			Vector3(0, -0.60, 0.06)))
+		# One trouser leg, tapering to the ankle, and a shoe with a toe on it.
+		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.19, 0.19), Vector2(0.27, 0.25), 0.66, 0.085),
+			Build.mat(outfit.darkened(0.34), 0.85, 0.0, Color(0, 0, 0), LINE),
+			Vector3(0, -0.31, 0)))
+		leg.add_child(Build.mi(Build.rbox_mesh(Vector3(0.19, 0.115, 0.35), 0.055),
+			Build.mat(Color(0.19, 0.21, 0.27), 0.6, 0.0, Color(0, 0, 0), LINE),
+			Vector3(0, -0.63, 0.075)))
 		_legs.append(leg)
 
 	_nametag = Build.label3d(display, 0.095, Color(0.99, 0.99, 0.96))

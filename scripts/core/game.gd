@@ -62,7 +62,7 @@ func _build_environment() -> void:
 	# visible act — which it has to be, because it is a mechanic. The room lamps
 	# were raised to match, so the on/off delta is bigger than it was even at
 	# this much higher floor.
-	env.ambient_light_energy = 0.34
+	env.ambient_light_energy = 0.30
 
 	# No fog. Distance haze is what makes a corridor look grim, and this one is
 	# sixty-two metres long — it was the single biggest reason the far end of
@@ -75,25 +75,37 @@ func _build_environment() -> void:
 	# render of this restyle was a photograph of a lightbulb. Filmic rolls the
 	# top off, which is what lets everything below it be bright.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.92
-	env.tonemap_white = 3.2
+	# Pulled down from 0.92/3.2. With rounded geometry and an outline pass the
+	# scene stopped needing to be quite so bright to read, and the far end of a
+	# sixty-two metre corridor was clipping to flat white — every sign, door and
+	# person past about thirty metres dissolved into it.
+	env.tonemap_exposure = 0.78
+	env.tonemap_white = 2.6
 
 	# One global knob for "more cartoon". Everything else in the restyle is a
 	# colour choice somewhere; this is the finish over the top of all of them.
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.16
-	env.adjustment_contrast = 1.04
+	env.adjustment_saturation = 1.24
+	env.adjustment_contrast = 1.08
 	env.adjustment_brightness = 1.0
 
 	# Soft bloom on the lamps and the signage, which is most of what makes a
 	# stylised interior feel lit rather than merely visible.
 	env.glow_enabled = true
-	env.glow_intensity = 0.32
-	env.glow_bloom = 0.06
+	env.glow_intensity = 0.22
+	env.glow_bloom = 0.03
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	env.glow_hdr_threshold = 1.15
+	env.glow_hdr_threshold = 1.35
 
-	env.ssao_enabled = false
+	# Contact shading. Rounded geometry with an outline round it still floats
+	# without something darkening where two things meet — this is what puts the
+	# chairs on the floor rather than in front of it. Forward+ only; the
+	# screenshot harness runs Compatibility and will not show it.
+	env.ssao_enabled = true
+	env.ssao_radius = 0.9
+	env.ssao_intensity = 1.35
+	env.ssao_power = 1.6
+	env.ssao_light_affect = 0.25
 	we.environment = env
 	add_child(we)
 	_env = env
@@ -341,7 +353,9 @@ func _spawn_doctor(arch: String, index: int) -> void:
 	d.npc_id = "doctor_%d" % index
 	d.archetype = arch
 	d.display = "Dr %s" % RNG.pick("doc_name", DB.LAST_NAMES)
-	d.set_colours(_random_skin(), Color(0.90, 0.91, 0.93), Color(0.18, 0.14, 0.11))
+	# A coat, not a light source. At 0.90 the white clipped against every wall
+	# in the building and the only thing defining the shape was the outline.
+	d.set_colours(_random_skin(), Color(0.80, 0.83, 0.87), Color(0.18, 0.14, 0.11))
 	add_child(d)
 	d.global_position = hospital.point_in("corridor", "doc_spawn")
 	var mind := DB.make_mind(d.npc_id, d.display, "doctor", arch)

@@ -184,6 +184,9 @@ const SHOTS := [
 	["12_radiology", Vector3(-12.0, 1.7, -0.8), Vector3(-11.2, 1.3, -9.0)],
 	["13_day_room", Vector3(-4.0, 1.7, -1.4), Vector3(-4.0, 1.3, -8.5)],
 	# ---- the same building with the whole catalogue bought.
+	# The model itself: a face at a metre, and a whole person at four.
+	["13x_face", "portrait", 0.95],
+	["13y_person", "portrait", 3.2],
 	["13b_kitted_corridor", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.6, 2.0), "kitted"],
 	["13c_kitted_ward", Vector3(4.5, 1.7, 5.5), Vector3(4.0, 1.2, 11.0)],
 	["13d_kitted_office", Vector3(43.0, 1.7, -2.5), Vector3(43.0, 1.5, -9.5)],
@@ -254,7 +257,19 @@ func tick() -> bool:
 		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
 		game.apply_shift_look()
 	var cam: Camera3D = game.player.camera
-	if shot.size() == 2 and String(shot[1]) == "player_spawn":
+	# typeof, not String(): shot[1] is a Vector3 for an ordinary shot, and
+	# String(Vector3) is not a constructor Godot 4 has. It errors every frame
+	# without advancing, so the harness spins forever on the first shot.
+	if shot.size() >= 2 and typeof(shot[1]) == TYPE_STRING and shot[1] == "portrait":
+		_frame_a_person(cam, float(shot[2]) if shot.size() > 2 else 2.4)
+		settle += 1
+		if settle < 4:
+			return false
+		settle = 0
+		_save(String(shot[0]))
+		index += 1
+		return false
+	if shot.size() == 2 and typeof(shot[1]) == TYPE_STRING and shot[1] == "player_spawn":
 		# Leave the camera exactly where the game put it.
 		pass
 	else:
@@ -269,9 +284,55 @@ func tick() -> bool:
 	if settle < 4:
 		return false
 	settle = 0
-	var img := tree.root.get_texture().get_image()
-	var path := "%s/%s.png" % [out_dir, String(shot[0])]
-	img.save_png(path)
-	print("  shot: ", ProjectSettings.globalize_path(path))
+	_save(String(shot[0]))
 	index += 1
 	return false
+
+func _save(name: String) -> void:
+	var img := tree.root.get_texture().get_image()
+	var path := "%s/%s.png" % [out_dir, name]
+	img.save_png(path)
+	print("  shot: ", ProjectSettings.globalize_path(path))
+
+## Stand in front of somebody and look them in the face.
+##
+## Characters are the only thing in this game that has to read at four metres
+## AND at forty, and every other shot is framed for a room — so the model was
+## being judged from whatever happened to wander through the back of a corridor
+## photograph. The staff are picked by npc_id so the same person is photographed
+## every run.
+func _frame_a_person(cam: Camera3D, dist: float) -> void:
+	var who = null
+	var best := ""
+	for n in tree.get_nodes_in_group("staff"):
+		var id := String(n.npc_id)
+		if best == "" or id < best:
+			best = id
+			who = n
+	if who == null:
+		return
+	who.stop_moving()
+	who.set("state", 0)
+	who.velocity = Vector3.ZERO
+	# Somewhere with room to stand back in: the corridor, mid-run, clear of the
+	# doors. Framing them where they happened to be walking put the camera
+	# inside a supply room wall.
+	# The corridor is only four metres deep, so the standoff has to run mostly
+	# along it. Backing off across it put the camera inside Room 103.
+	who.global_position = Vector3(19.0, 0.0, 3.0)
+	var head: Vector3 = who.global_position + Vector3(0, 1.50, 0)
+	# Three-quarter view. A portrait aims at the FACE; a full-length aims at
+	# the middle of the body, or the feet fall out of the bottom of the frame.
+	var aim: Vector3 = head if dist < 1.5 else who.global_position + Vector3(0, 0.95, 0)
+	var dir := Vector3(0.88, 0.0, -0.48).normalized()
+	cam.global_position = aim + dir * dist + Vector3(0, dist * 0.08, 0)
+	# Turn them to face the camera outright. look_toward only leans the head,
+	# and the body faces wherever the AI last walked — every portrait so far has
+	# been the back of somebody's head.
+	#
+	# atan2(dx, dz) and not the usual atan2(-dx, -dz): this model's eyes are on
+	# its local +Z, so +Z is its front.
+	var to_cam: Vector3 = cam.global_position - who.global_position
+	who.rotation.y = atan2(to_cam.x, to_cam.z)
+	who.look_toward(cam.global_position)
+	cam.look_at(aim, Vector3.UP)

@@ -27,6 +27,7 @@ var _rooms_visited: Dictionary = {}
 var _seen_in_the_open := -1
 var _seen_through_wall := -1
 var _witness_suspicion := 0.0
+var _witness_took_a_note := -1
 var _investigator_moved := false
 var _investigator_seen := false
 ## instance id -> where we first saw it. Tracked per body because an
@@ -143,6 +144,12 @@ func _test_perception() -> void:
 	# b) Same nurse, same act, same sort of distance, nothing in the way.
 	_seen_in_the_open = _witnessed(nurse, Vector3(1.5, 0.0, 9.5), act, "open_probe_act")
 	_witness_suspicion = nurse.mind.suspicion(GameState.career_minutes)
+	# ...and did she visibly do anything about it? The game's only read on what
+	# a witness thinks used to be a colour on their name tag, which is a meter
+	# wearing a diegetic hat. Somebody stopping and writing it down is the same
+	# information as a fact you can watch, and this asserts the animation is
+	# driven by the memory rather than decorating it.
+	_witness_took_a_note = 1 if nurse._note_time > 0.0 else 0
 
 ## Stand the witness somewhere, point them at the act, fire it, and report how
 ## many fresh memories of it they came away with.
@@ -350,6 +357,8 @@ func _finish() -> void:
 		"a witness in the room recorded a blatant act (%d)" % _seen_in_the_open)
 	_ok(_seen_through_wall == 0,
 		"a ward wall stopped that same act being seen (%d)" % _seen_through_wall)
+	_ok(_witness_took_a_note == 1,
+		"and she stopped and wrote it down where the player could see her do it")
 	_ok(_witness_suspicion > 0.0,
 		"witnessing it moved that character's suspicion (%.2f)" % _witness_suspicion)
 

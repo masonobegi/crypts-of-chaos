@@ -235,6 +235,13 @@ func _react(id: String, mind: Mind, ev: Evidence) -> void:
 			])), 2.6)
 		AudioMgr.play_at_var("tick", body.global_position, -20.0)
 
+	# Anything they saw with their own eyes and thought worth keeping, they write
+	# down where you can see them do it. Deliberately gated on WITNESSED: a thing
+	# somebody was told in a corridor is not something they stop and minute.
+	if ev.source == Evidence.Source.WITNESSED and ev.base_weight >= 0.18 \
+			and body.has_method("make_a_note"):
+		body.make_a_note()
+
 	var tier := mind.tier(GameState.career_minutes, GameState.active_covers)
 	if tier <= mind.reacted_tier or tier < 1:
 		return
@@ -297,7 +304,21 @@ func _gossip_pass() -> void:
 			retold.corroborators.append(id)
 			listener.add_evidence(retold)
 			EventBus.rumor_spread.emit(id, other_id, retold)
+			# Make it a scene rather than a line of dialogue with nobody in it.
+			#
+			# Gossip is how a thing one person half-saw becomes a thing four
+			# people are certain of, and it was completely invisible: one NPC
+			# said a line into the air and a number moved inside another one.
+			# Now they turn to each other, and then the listener looks straight
+			# at the player — which is the entire content of the moment and needs
+			# no words at all.
+			body.look_toward(listener_body.global_position)
+			listener_body.look_toward(body.global_position)
 			body.say(Dialogue.gossip_line(speaker, worst), 3.0)
+			var p = get_tree().get_first_node_in_group("player")
+			if p != null and listener_body.perception != null \
+					and listener_body.perception.can_see(p.global_position):
+				listener_body.look_toward(p.global_position)
 			break
 
 func _decay_pass() -> void:

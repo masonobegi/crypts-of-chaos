@@ -1852,3 +1852,56 @@ see a face. Characters are the one thing in this game that has to read at four
 metres *and* at forty, and every other shot was framed for the room.
 
 **1,568 assertions · 106 smoke · 21 live · boot check · 33 screenshots.**
+
+---
+
+## Session 4 (cont.) — Phase 5: what a witness thinks, as something you can watch
+
+The game's only read on what somebody thought of you was **a colour on their
+name tag**. That is a meter wearing a diegetic hat, and the brief is explicit:
+behaviour, not meters.
+
+### They write it down
+
+`NPCBody.make_a_note()` — the character stops where they are, takes out a
+clipboard, and writes on it for two and a half seconds, with a distinct arm pose
+and no walk cycle. Nothing is announced, no number moves, and there is no text.
+The player draws the conclusion, which is the only version of this that is ever
+tense:
+
+> She was standing there. She saw it. She stopped, and she has written it down.
+
+It is honest, too — it fires when a mind genuinely records something it saw with
+its **own eyes** (`Evidence.Source.WITNESSED`, weight ≥ 0.18), so what the
+animation says is exactly what the simulation did. A thing somebody was told in
+a corridor is not something they stop and minute.
+
+It also fires on the three places a nurse's round files evidence: finding an
+undocumented complication, spotting that somebody has picked up several separate
+injuries on this ward, and noticing that a patient has been on a trolley in
+Intake most of a shift. So the round became visible: **you watch a nurse walk
+into Room 103, stand at the bed, and minute something.** That is the entire game
+in a five-second observation.
+
+Nobody stops to write while investigating a noise, following you, or on their
+way over to speak to you. Standing still for two and a half seconds is a real
+cost to a character mid-errand, and it made the "does a noise pull anybody off
+station" check intermittent — a nurse who froze to write something up on the way
+to the supply room had, from the outside, simply ignored it.
+
+### Gossip is a scene now
+
+It was a line of dialogue with nobody in it: one NPC said something into the air
+and a number moved inside another one. Gossip is how a thing one person
+half-saw becomes a thing four people are certain of, and none of it was visible.
+
+Now they turn to face each other, the speaker says their line — and then **the
+listener looks straight at the player**, if they can see them. That is the
+entire content of the moment and it needs no words at all.
+
+A new live check asserts the note is driven by the memory rather than decorating
+it: the same probe that fires a blatant act in front of a forced-observance
+nurse now also asserts she stopped and wrote it down.
+
+**1,568 assertions · 106 smoke · 22 live · boot check. Three consecutive clean
+full runs.**

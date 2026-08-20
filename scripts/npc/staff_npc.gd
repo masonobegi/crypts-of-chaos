@@ -71,6 +71,14 @@ func _enter(s: State) -> void:
 		State.APPROACH:
 			_timer = 25.0
 
+## Not while they are on their way somewhere that matters. Standing still for
+## two and a half seconds is a real cost to a character who is mid-errand, and
+## it made the "does a noise pull anybody off station" check intermittent — a
+## nurse who froze to write something up on the way to the supply room had, from
+## the outside, simply ignored the noise.
+func can_stop_to_write() -> bool:
+	return state not in [State.INVESTIGATE, State.FOLLOW, State.APPROACH]
+
 func _tick_state(delta: float) -> void:
 	var player = get_tree().get_first_node_in_group("player")
 
@@ -209,6 +217,7 @@ func _note_injury_pattern(p) -> void:
 	ev.summary = "%s has picked up %d separate injuries on this ward" % [
 		p.display_name, acquired.size()]
 	mind.add_evidence(ev)
+	make_a_note()
 
 ## Somebody still on a trolley in Intake most of a shift later is not an
 ## emergency any more, it is a decision somebody made. The act of ramping them
@@ -239,6 +248,7 @@ func _note_if_left_in_the_corridor(p) -> void:
 	ev.cover_tag = "bed_shortage"
 	ev.summary = "%s left on a trolley in Intake for %.0f hours" % [p.display_name, hours]
 	mind.add_evidence(ev)
+	make_a_note()
 
 func _do_round() -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
@@ -268,6 +278,11 @@ func _do_round() -> void:
 			"Doctor? You'll want to see this.",
 			"That's new, that is.",
 		])), 3.4)
+		# She stops at the bed and writes it down. This is the round made
+		# visible: the player watches a nurse walk into Room 103, stand there,
+		# and minute something — and that is the entire game in a five-second
+		# observation, with nothing announced and no number on screen.
+		make_a_note()
 		# Finding something undocumented on your ward is not proof of anything,
 		# but it is exactly the kind of thing that accumulates.
 		if c.documented_cause == "":

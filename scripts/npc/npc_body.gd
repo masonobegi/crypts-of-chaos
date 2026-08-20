@@ -62,6 +62,9 @@ var _off_duty_at := Vector3.ZERO
 ## Set while getting out of somebody's way. See step_aside().
 var _yield_time := 0.0
 var _yield_dir := Vector3.ZERO
+## Set while standing still writing something down. See make_a_note().
+var _note_time := 0.0
+var _note_pad: Node3D = null
 
 func _ready() -> void:
 	add_to_group("npc")
@@ -229,6 +232,40 @@ func step_aside(from: Vector3) -> void:
 func can_step_aside() -> bool:
 	return true
 
+## Stop, take out a clipboard, and write something down.
+##
+## The game's read on what somebody thinks of you was a colour on their name
+## tag: a meter, wearing a diegetic hat. This is the fact underneath it, and it
+## is a fact you can watch happen — she was standing there, she saw it, she
+## stopped, and she has written it down. Nothing is announced and no number
+## moves on screen; the player draws the conclusion, which is the only version
+## of this that is ever tense.
+##
+## It is also honest. It fires when a mind genuinely records something it saw
+## with its own eyes, so what the animation says is exactly what the simulation
+## did.
+const NOTE_TIME := 2.4
+
+## Overridden by anybody who has something more urgent on. Nobody stops to
+## minute something while they are running toward a bang.
+func can_stop_to_write() -> bool:
+	return true
+
+func make_a_note() -> void:
+	if _note_time > 0.0 or _arms.is_empty() or not can_stop_to_write():
+		return
+	_note_time = NOTE_TIME
+	if _note_pad == null:
+		_note_pad = Node3D.new()
+		_arms[0].add_child(_note_pad)
+		_note_pad.position = Vector3(0, -0.52, 0.10)
+		_note_pad.add_child(Build.mi(Build.box_mesh(Vector3(0.22, 0.02, 0.28)),
+			Build.mat(Build.PAPER)))
+		_note_pad.add_child(Build.mi(Build.box_mesh(Vector3(0.24, 0.015, 0.04)),
+			Build.mat(Color(0.30, 0.33, 0.38)), Vector3(0, 0.015, -0.13)))
+	_note_pad.visible = true
+	AudioMgr.play_at_var("tick", global_position, -21.0, 0.25)
+
 func look_toward(pos: Vector3) -> void:
 	_look_at = pos
 	_has_look = true
@@ -243,7 +280,14 @@ func _physics_process(delta: float) -> void:
 		velocity.y -= 14.0 * delta
 	else:
 		velocity.y = 0.0
-	if _yield_time > 0.0:
+	if _note_time > 0.0:
+		_note_time -= delta
+		velocity.x = 0.0
+		velocity.z = 0.0
+		_intended_speed = 0.0
+		if _note_time <= 0.0 and _note_pad != null:
+			_note_pad.visible = false
+	elif _yield_time > 0.0:
 		_yield_time -= delta
 		velocity.x = _yield_dir.x * YIELD_SPEED
 		velocity.z = _yield_dir.z * YIELD_SPEED
@@ -326,6 +370,15 @@ func _footsteps(delta: float) -> void:
 	AudioMgr.play_at_var("step", global_position, -24.0, 0.22)
 
 func _animate(delta: float) -> void:
+	# Writing overrides the walk cycle: one arm holds the pad flat, the other
+	# scribbles. Cheap, and unmistakable from across a ward.
+	if _note_time > 0.0 and _arms.size() >= 2:
+		_walk_phase += delta * 14.0
+		_arms[0].rotation.x = -1.15
+		_arms[1].rotation.x = -1.0 + sin(_walk_phase) * 0.16
+		for leg in _legs:
+			leg.rotation.x = 0.0
+		return
 	var planar := Vector2(velocity.x, velocity.z).length()
 	_walk_phase += delta * (2.0 + planar * 3.4)
 	var swing := sin(_walk_phase) * clampf(planar * 0.35, 0.02, 0.6)

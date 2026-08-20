@@ -96,6 +96,8 @@ func _build_environment() -> void:
 	env.ssao_enabled = false
 	we.environment = env
 	add_child(we)
+	_env = env
+	_sky_mat = sky_mat
 
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-52, -38, 0)
@@ -118,6 +120,70 @@ func _build_environment() -> void:
 	fill.shadow_enabled = false
 	fill.light_specular = 0.0
 	add_child(fill)
+	_sun = sun
+	_fill = fill
+	EventBus.shift_started.connect(func(_d): apply_shift_look())
+	apply_shift_look()
+
+## What time of day it is, in light.
+##
+## The three shifts differed in pay, staffing, appointment count, admissions and
+## scrutiny — five real numbers — and the building looked identical in all three.
+## A player picking "Night" got a different spreadsheet and the same room, which
+## is the least persuasive way to offer a choice.
+##
+## Nothing here is decorative. Night is genuinely darker, so the same act is
+## genuinely harder to see; the shift screen already promises "Nobody is
+## watching", and now that is a thing the player can see rather than a claim.
+const SHIFT_LOOK := {
+	"night": {
+		"sky_top": Color(0.03, 0.05, 0.13), "sky_horizon": Color(0.10, 0.14, 0.26),
+		"ambient": Color(0.30, 0.38, 0.58), "ambient_energy": 0.16,
+		"sun": Color(0.60, 0.70, 1.00), "sun_energy": 0.16,
+		"fill": Color(0.40, 0.50, 0.80), "fill_energy": 0.08,
+		"lamp": Color(1.00, 0.94, 0.80), "lamp_energy": 1.35,
+	},
+	"day": {
+		"sky_top": Color(0.24, 0.60, 0.95), "sky_horizon": Color(0.62, 0.80, 0.96),
+		"ambient": Color(0.72, 0.82, 0.92), "ambient_energy": 0.34,
+		"sun": Color(1.00, 0.98, 0.93), "sun_energy": 0.85,
+		"fill": Color(0.74, 0.86, 1.00), "fill_energy": 0.22,
+		"lamp": Color(1.00, 0.97, 0.90), "lamp_energy": 1.05,
+	},
+	"evening": {
+		"sky_top": Color(0.20, 0.34, 0.66), "sky_horizon": Color(0.98, 0.66, 0.40),
+		"ambient": Color(0.78, 0.66, 0.62), "ambient_energy": 0.26,
+		"sun": Color(1.00, 0.80, 0.58), "sun_energy": 0.52,
+		"fill": Color(0.62, 0.70, 0.96), "fill_energy": 0.16,
+		"lamp": Color(1.00, 0.95, 0.84), "lamp_energy": 1.20,
+	},
+}
+
+var _env: Environment = null
+var _sky_mat: ProceduralSkyMaterial = null
+var _sun: DirectionalLight3D = null
+var _fill: DirectionalLight3D = null
+
+func apply_shift_look() -> void:
+	var look: Dictionary = SHIFT_LOOK.get(GameState.shift_kind, SHIFT_LOOK["day"])
+	if _sky_mat != null:
+		_sky_mat.sky_top_color = look["sky_top"]
+		_sky_mat.sky_horizon_color = look["sky_horizon"]
+		_sky_mat.ground_horizon_color = look["sky_horizon"]
+	if _env != null:
+		_env.ambient_light_color = look["ambient"]
+		_env.ambient_light_energy = float(look["ambient_energy"])
+	if _sun != null:
+		_sun.light_color = look["sun"]
+		_sun.light_energy = float(look["sun_energy"])
+		# The sun is low and orange in the evening and behind the world at night.
+		_sun.rotation_degrees = Vector3(
+			-14.0 if GameState.shift_kind == "evening" else -52.0, -38, 0)
+	if _fill != null:
+		_fill.light_color = look["fill"]
+		_fill.light_energy = float(look["fill_energy"])
+	if hospital != null:
+		hospital.set_lamp_look(look["lamp"], float(look["lamp_energy"]))
 
 func _build_world() -> void:
 	hospital = Hospital.new()

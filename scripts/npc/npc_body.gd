@@ -39,6 +39,8 @@ var _speech_timer := 0.0
 var _nametag: Label3D = null
 var _head: Node3D = null
 var _legs: Array[Node3D] = []
+var _eyes_open: Array[MeshInstance3D] = []
+var _eyes_shut: Array[MeshInstance3D] = []
 var _arms: Array[Node3D] = []
 var _torso: Node3D = null
 var _react_cooldown := 0.0
@@ -126,10 +128,21 @@ func _build_body() -> void:
 	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
 	# a dot on a white oval is an eye.
 	for sx in [-1.0, 1.0]:
-		_head.add_child(Build.mi(Build.sphere_mesh(0.052), Build.unshaded(Color(0.99, 0.99, 1.0)),
-			Vector3(sx * 0.072, 0.012, 0.166)))
-		_head.add_child(Build.mi(Build.sphere_mesh(0.027), Build.unshaded(Color(0.10, 0.11, 0.16)),
-			Vector3(sx * 0.072, 0.012, 0.196)))
+		var white := Build.mi(Build.sphere_mesh(0.052), Build.unshaded(Color(0.99, 0.99, 1.0)),
+			Vector3(sx * 0.072, 0.012, 0.166))
+		var pupil := Build.mi(Build.sphere_mesh(0.027), Build.unshaded(Color(0.10, 0.11, 0.16)),
+			Vector3(sx * 0.072, 0.012, 0.196))
+		_head.add_child(white)
+		_head.add_child(pupil)
+		_eyes_open.append(white)
+		_eyes_open.append(pupil)
+		# A closed lid, hidden until it is needed. Hiding the eyes alone leaves
+		# a blank face, which reads as a missing texture rather than as sleep.
+		var lid := Build.mi(Build.box_mesh(Vector3(0.085, 0.014, 0.02)),
+			Build.unshaded(Color(0.32, 0.24, 0.22)), Vector3(sx * 0.072, 0.012, 0.190))
+		lid.visible = false
+		_head.add_child(lid)
+		_eyes_shut.append(lid)
 
 	for sx in [-1.0, 1.0]:
 		var arm := Node3D.new()
@@ -245,6 +258,14 @@ func can_step_aside() -> bool:
 ## with its own eyes, so what the animation says is exactly what the simulation
 ## did.
 const NOTE_TIME := 2.4
+
+## Open or shut. Used by sleep, and available to anything else that wants a
+## face to stop looking at the player.
+func set_eyes_open(open: bool) -> void:
+	for m in _eyes_open:
+		m.visible = open
+	for m in _eyes_shut:
+		m.visible = not open
 
 ## Overridden by anybody who has something more urgent on. Nobody stops to
 ## minute something while they are running toward a bang.

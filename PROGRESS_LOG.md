@@ -1956,3 +1956,69 @@ which is the patient the save/load round-trip authors a theatre record on and
 then asserts the exact contents of. It uses the last patient on the ward now.
 
 **1,569 assertions · 111 smoke · 22 live · boot check.**
+
+---
+
+## Session 4 (cont.) — Phase 16: three shifts that are three different places
+
+The shifts differed in pay, staffing, appointment count, admissions and scrutiny
+— five real numbers — and the building looked identical in all three. A player
+picking "Night" got a different spreadsheet and the same room, which is the
+least persuasive way to offer a choice.
+
+### The building has a time of day now
+
+`Game.SHIFT_LOOK` re-tints the sky, the ambient term, the key light, the fill
+and every ceiling lamp in the hospital when a shift starts.
+
+| | sky | ambient | key | lamps |
+|---|---|---|---|---|
+| **day** | blue | 0.34 cool white | 0.85 white, high | 1.05 warm |
+| **evening** | orange horizon | 0.26 warm | 0.52 amber, low in the sky | 1.20 |
+| **night** | near-black blue | **0.16** cold blue | 0.16 moonlight | 1.35 warm |
+
+Nothing there is decorative. Night is genuinely darker, so the same act is
+genuinely harder to see. The shift select screen has always promised *"Skeleton
+crew. Nobody is watching."* — it is now a thing the player can look at rather
+than a claim.
+
+### And the ward is asleep
+
+`PatientNPC.SLEEP_CHANCE` — 85% on nights, 30% evenings, 6% days. A sleeping
+patient has `perception.attention = 0.0`, so they genuinely witness nothing
+rather than merely appearing not to, and their eyes are shut, which is
+unmistakable from the doorway. This is the difference that changes what the
+player *does*: the five people who would normally be lying there watching you
+work are, on nights, five people who are not.
+
+It is not free. **They wake to a bang** — so the distraction you used to move
+the nurse also wakes the man in the next bed, and a shift you chose because
+nobody was watching becomes one where everybody is, because you made a noise.
+Treating somebody wakes them too, so night is a trade rather than a free pass.
+
+Three new world screenshots — the same corridor on all three shifts — because
+this is precisely the class of change that only a picture can confirm.
+
+### Three flaky live checks, and why
+
+Adding a sleep roll consumes RNG at a new point, which re-rolls an entire seeded
+simulation. That did not break anything; it exposed three assertions that were
+passing on luck:
+
+- **"the floor is still navigable"** pathed lobby → ward_105 and called that
+  "the floor". Blocking a doorway with a trolley is a *mechanic*, so a prop
+  coming to rest in one doorway during eight hours of physics failed a test
+  about the whole building. It now asks the obstruction monitor which doorways
+  are deliberately blocked and asserts every *other* room is reachable.
+- **"a noise pulls somebody off station"** read the INVESTIGATE state at one
+  instant, several hundred frames after the noise. INVESTIGATE is a state people
+  pass *through* — they hear it, walk over, look at the mess, go back — so the
+  check caught whoever happened to still be mid-errand and missed everybody who
+  had already arrived. Sampled across the whole window now.
+- **"the corridor can see into a ward through an open door"** posed the door,
+  waited forty frames, and queried — by which time the nurse had walked 1.6m and
+  the sightline being measured was no longer the one that was set up.
+
+Five consecutive clean live runs and three clean full runs after.
+
+**1,569 assertions · 116 smoke · 23 live · boot check · 36 screenshots.**

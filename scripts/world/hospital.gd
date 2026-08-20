@@ -132,6 +132,23 @@ func _build_room_lights(r: Room) -> void:
 			lamp.set_meta("is_light", true)
 			r.add_child(lamp)
 
+## Re-tint every ceiling lamp in the building. Called when a shift starts, so
+## the same corridor is a different place at midnight than it is at nine.
+func set_lamp_look(colour: Color, energy: float) -> void:
+	for r in _room_list:
+		for c in r.get_children():
+			if not (c is Node3D) or not c.has_meta("is_light"):
+				continue
+			for l in (c as Node3D).get_children():
+				if l is OmniLight3D:
+					(l as OmniLight3D).light_color = colour
+					(l as OmniLight3D).light_energy = energy
+				elif l is MeshInstance3D:
+					# The visible fitting matches the light coming out of it.
+					var m := (l as MeshInstance3D).material_override as StandardMaterial3D
+					if m != null:
+						(l as MeshInstance3D).material_override = Build.unshaded(colour)
+
 # ------------------------------------------------------------------ shell
 func _build_shell() -> void:
 	var north_gaps := _gaps_for(["intake",

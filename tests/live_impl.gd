@@ -68,6 +68,8 @@ func tick() -> bool:
 		_seed_conditions()
 	if frames == FRAMES - 1800:
 		_make_a_noise()
+	if frames > FRAMES - 1800 and frames <= FRAMES - 1000 and frames % 10 == 0:
+		_poll_distraction()
 	if frames == FRAMES - 1000:
 		_check_distraction()
 	if frames == FRAMES - 900:
@@ -228,6 +230,19 @@ func _make_a_noise() -> void:
 		if _distraction_from.has(n.get_instance_id()) and int(n.get("state")) == 2:
 			_investigating += 1
 
+## Sampled every ten frames across the whole window, not read at two instants.
+##
+## INVESTIGATE is a state somebody passes THROUGH — they hear it, they walk
+## over, they look at the mess, they go back to what they were doing — so
+## checking for it once, several hundred frames later, catches whoever happens
+## to still be mid-errand and misses everybody who already arrived.
+var _went_to_look := {}
+
+func _poll_distraction() -> void:
+	for n in tree.get_nodes_in_group("staff"):
+		if _distraction_from.has(n.get_instance_id()) and int(n.get("state")) == 2:
+			_went_to_look[n.get_instance_id()] = true
+
 func _check_distraction() -> void:
 	var where: Vector3 = game.hospital.point_in("supply")
 	var came := 0
@@ -241,9 +256,7 @@ func _check_distraction() -> void:
 		if before - now > 2.0:
 			came += 1
 			best = maxf(best, before - now)
-	for n in tree.get_nodes_in_group("staff"):
-		if _distraction_from.has(n.get_instance_id()) and int(n.get("state")) == 2:
-			_investigating += 1
+	_investigating = _went_to_look.size()
 	_distraction_worked = 1 if (came > 0 or _investigating > 0) else 0
 	notes.append("noise: %d of %d staff in earshot went to look, %d had closed on it (up to %.1fm)" % [
 		_investigating, _distraction_from.size(), came, best])
@@ -288,6 +301,7 @@ func _check_doorway_cleared() -> void:
 var _probe_door = null
 var _probe_watcher = null
 var _probe_at := Vector3.ZERO
+var _probe_stand := Vector3.ZERO
 
 func _door_probe_setup() -> void:
 	var h = game.hospital
@@ -307,7 +321,9 @@ func _door_probe_setup() -> void:
 	# and that sightline clips the frame, so a failure there would say something
 	# about furniture placement rather than about the door.
 	_probe_at = _probe_door.opening_centre() + Vector3(0, 1.0, 1.5)
-	_probe_watcher.global_position = _probe_door.opening_centre() + Vector3(0, 0, -1.6)
+	_probe_stand = _probe_door.opening_centre() + Vector3(0, 0, -1.6)
+	_probe_watcher.stop_moving()
+	_probe_watcher.global_position = _probe_stand
 	_probe_watcher.look_toward(_probe_at)
 	# Nothing else may move the leaf while it is posed — the passive closer
 	# would ease it shut underneath the measurement.
@@ -323,6 +339,14 @@ func _door_probe_pose(a: float) -> void:
 func _door_probe_look() -> int:
 	if _probe_watcher == null or _probe_door == null:
 		return -1
+	# Put them back on the spot. stop_moving() clears the path, but the state
+	# machine picks a new destination within a second or two and forty frames is
+	# long enough to walk 1.6m — at which point the sightline being probed is no
+	# longer the one that was set up, and the answer is about where the nurse
+	# wandered to rather than about the door.
+	_probe_watcher.stop_moving()
+	_probe_watcher.global_position = _probe_stand
+	_probe_watcher.force_update_transform()
 	return 1 if _probe_watcher.perception.has_line_of_sight(_probe_at) else 0
 
 func _door_probe_finish() -> void:
@@ -365,8 +389,26 @@ func _finish() -> void:
 	# The player must not have fallen through the floor or got stuck in geometry.
 	_ok(game.player.global_position.y > -2.0, "player is still on the floor")
 	# Navigation must still be intact after all the physics.
+	#
+	# Every room EXCEPT the ones something is deliberately parked across —
+	# blocking a doorway is a mechanic, not a bug, so a route failing into a
+	# blocked room is the game working. This used to path lobby → ward_105 and
+	# call it "the floor", which meant a trolley coming to rest in one doorway
+	# during eight hours of physics failed a test about the whole building.
+	var obstruction = tree.get_first_node_in_group("obstruction")
+	var blocked: Array = obstruction.blocked_doorways() if obstruction != null else []
+	var unreachable: Array[String] = []
+	var from: Vector3 = game.hospital.point_in("corridor")
+	for key in game.hospital.open_room_keys():
+		if blocked.has(String(key)):
+			continue
+		if game.hospital.nav.find_path(from, game.hospital.point_in(String(key))).is_empty():
+			unreachable.append(String(key))
+	_ok(unreachable.is_empty(),
+		"every room nobody has parked anything across is still reachable%s" % (
+			"" if unreachable.is_empty() else ": " + ", ".join(unreachable)))
 	var path = game.hospital.nav.find_path(
-		game.hospital.point_in("lobby"), game.hospital.point_in("ward_105"))
+		game.hospital.point_in("lobby"), game.hospital.point_in("corridor"))
 	_ok(path.size() > 0, "the floor is still navigable after a live shift")
 	_ok(_distraction_worked != 0,
 		"a noise at the far end of the floor pulls somebody off station")

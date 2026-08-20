@@ -174,6 +174,13 @@ const SHOTS := [
 	["12_radiology", Vector3(-12.0, 1.7, -0.8), Vector3(-11.2, 1.3, -9.0)],
 	["13_day_room", Vector3(-4.0, 1.7, -1.4), Vector3(-4.0, 1.3, -8.5)],
 	["14_overview", Vector3(15.0, 33.0, 33.0), Vector3(15.0, 0.0, 1.0)],
+	# The same corridor on all three shifts. The shifts differ in five numbers
+	# on a selection screen and, until now, in nothing a player could see — so
+	# this is the shot that says whether "Skeleton crew. Nobody is watching."
+	# is a claim or a fact.
+	["15_shift_day", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.5, 2.0), "shift:day"],
+	["16_shift_evening", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.5, 2.0), "shift:evening"],
+	["17_shift_night", Vector3(3.0, 1.7, 2.0), Vector3(40.0, 1.5, 2.0), "shift:night"],
 ]
 
 ## Buy the whole annexe, so the departments can be photographed. Deliberately
@@ -215,6 +222,9 @@ func tick() -> bool:
 	var shot: Array = SHOTS[index]
 	if shot.size() > 3 and String(shot[3]) == "unlock":
 		_unlock_departments()
+	if shot.size() > 3 and String(shot[3]).begins_with("shift:"):
+		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
+		game.apply_shift_look()
 	var cam: Camera3D = game.player.camera
 	cam.global_position = shot[1]
 	cam.look_at(shot[2], Vector3.UP)

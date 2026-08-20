@@ -16,6 +16,7 @@ var _shiver := 0.0
 var _reclined := false
 
 func _ready() -> void:
+	EventBus.shift_started.connect(_on_shift_started)
 	role = "patient"
 	outfit = Color(0.72, 0.78, 0.82)     # gown
 	super._ready()
@@ -65,6 +66,49 @@ func _hold_bed_pose(_delta: float) -> void:
 ## twitch and snap back.
 func can_step_aside() -> bool:
 	return state == State.WANDERING
+
+## Asleep.
+##
+## The three shifts differed by five numbers and were otherwise the same eight
+## hours. This is the one that changes what the player DOES: at night most of
+## the ward is asleep, and a sleeping patient sees nothing — so the five people
+## who would normally be lying there watching you work are, on nights, five
+## people who are not.
+##
+## It is not free. They wake to a bang, so the distraction you used to move the
+## nurse also wakes the man in the next bed, and a shift you chose because
+## nobody was watching becomes one where everybody is, because you made a noise.
+const SLEEP_CHANCE := {"night": 0.85, "evening": 0.30, "day": 0.06}
+
+var asleep := false
+
+func _on_shift_started(_day: int) -> void:
+	if data == null or data.discharged or state != State.IN_BED:
+		return
+	set_asleep(RNG.chance("patient_sleep", float(
+		SLEEP_CHANCE.get(GameState.shift_kind, 0.06))))
+
+func set_asleep(v: bool) -> void:
+	if asleep == v:
+		return
+	asleep = v
+	set_eyes_open(not v)
+	if perception != null:
+		# Attention is the multiplier on every notice roll, so zero means a
+		# sleeping patient genuinely witnesses nothing rather than merely
+		# looking as though they do not.
+		perception.attention = 0.0 if v else 1.0
+
+func wake_up(why := "") -> void:
+	if not asleep:
+		return
+	set_asleep(false)
+	if why != "" and _bark_timer <= 0.0:
+		_bark_timer = 5.0
+		say(String(RNG.pick("wake_bark", [
+			"...what? What is it?", "Is it morning?", "Hello? Who's there?",
+			"I was asleep.", "...that woke me up.",
+		])), 2.8)
 
 ## Surgical site marking, which is a thing real theatres do for exactly the
 ## reason it is here: so that the answer to "which side" exists on the patient
@@ -132,7 +176,7 @@ func _tick_state(_delta: float) -> void:
 			pass
 
 func _maybe_bark() -> void:
-	if _bark_timer > 0.0 or data == null:
+	if _bark_timer > 0.0 or data == null or asleep:
 		return
 	_bark_timer = 6.0
 	var r = _room_node()
@@ -160,7 +204,7 @@ func _maybe_bark() -> void:
 ## Patients wander. A confused one wanders more; an escaped patient in the
 ## corridor is a first-class distraction that you did not have to cause.
 func _maybe_wander() -> void:
-	if data == null:
+	if data == null or asleep:
 		return
 	var urge := 0.06
 	if data.archetype == "confused":
@@ -256,6 +300,9 @@ func _tick_symptoms(delta: float) -> void:
 ## Patients react to chaos, which is most of the reason chaos is worth causing.
 ## Perception calls this on anything within hearing range.
 func on_heard_noise(evt: WorldEvent) -> void:
+	if asleep:
+		wake_up("noise")
+		return
 	if data == null or data.discharged:
 		return
 	var dist := global_position.distance_to(evt.pos)
@@ -371,6 +418,9 @@ func _treatment_for_item(held) -> String:
 func interact(player, held) -> void:
 	if data == null:
 		return
+	# Doing anything to somebody wakes them. Treating a sleeping patient without
+	# waking them would make night a free pass rather than a trade.
+	wake_up("touched")
 	if held != null:
 		var tid := _treatment_for_item(held)
 		if tid != "":

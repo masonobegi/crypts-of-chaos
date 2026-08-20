@@ -45,6 +45,7 @@ func tick() -> bool:
 			_check_the_morning_only_happens_once()
 			_check_every_indicated_treatment_can_be_given()
 			_check_a_wrong_site_can_be_revised()
+			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
 			game.shift.end_shift()
 			_check_the_day_can_still_end()
@@ -469,6 +470,41 @@ func _check_the_morning_only_happens_once() -> void:
 ## punishment. A surgeon who realises mid-list does the indicated procedure as
 ## well: a second operation, a second set of risks, and a theatre record with
 ## two sites on it that no auditor reads charitably.
+## The three shifts have to be different in something the player DOES, not only
+## in five numbers on a selection screen.
+##
+## At night most of the ward is asleep and a sleeping patient witnesses nothing,
+## so the five people who would normally be lying there watching you work are
+## five people who are not. It is not free: they wake to a bang, so the
+## distraction that moved the nurse also wakes the man in the next bed.
+func _check_the_ward_sleeps_at_night() -> void:
+	var pool: Array = game.patient_system.active()
+	if pool.is_empty():
+		return
+	var body = game.patient_system.get_body(pool[0].id)
+	if body == null:
+		_ok(false, "there is a patient body to put to sleep")
+		return
+	body.set_asleep(true)
+	_ok(body.asleep, "a patient can be asleep")
+	_ok(body.perception != null and body.perception.attention == 0.0,
+		"and an asleep patient's attention is genuinely zero, not merely dimmed")
+
+	# A noise in the room wakes them, which is what stops night being a free pass.
+	body.on_heard_noise(WorldEvent.new("test_clatter", "").at(
+		body.global_position, pool[0].room).heard(0.0, 20.0))
+	_ok(not body.asleep, "and a noise nearby wakes them")
+	_ok(body.perception.attention > 0.0, "with their attention back")
+
+	# Every shift has to declare a sleep rate, or a new shift silently gets the
+	# day-time one and nobody notices for a year.
+	var missing: Array[String] = []
+	for kind in DB.SHIFT_ORDER:
+		if not PatientNPC.SLEEP_CHANCE.has(String(kind)):
+			missing.append(String(kind))
+	_ok(missing.is_empty(), "every shift says how much of the ward is asleep%s" % (
+		"" if missing.is_empty() else ": " + ", ".join(missing)))
+
 func _check_a_wrong_site_can_be_revised() -> void:
 	var pool: Array = game.patient_system.active()
 	if pool.is_empty():

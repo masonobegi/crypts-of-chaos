@@ -323,7 +323,16 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 	lamp.shadow_enabled = false
 	lamp.light_specular = 0.15
 	root.add_child(lamp)
-	root.add_child(mi(box_mesh(Vector3(1.1, 0.06, 0.35)), unshaded(color), Vector3(0, 0.06, 0)))
+	# A fitting, not a floating slab. A dark housing with a lit panel recessed
+	# into it: the housing gives the ceiling — which is otherwise a single
+	# unbroken plane across the top third of every interior shot — something to
+	# be interrupted by, and the recess is what makes the panel read as a light
+	# rather than as a white rectangle somebody left up there.
+	var housing := mi(rbox_mesh(Vector3(1.26, 0.10, 0.48), 0.035),
+		mat(Color(0.86, 0.87, 0.85), 0.5, 0.0, Color(0, 0, 0), 0.012), Vector3(0, 0.055, 0))
+	root.add_child(housing)
+	root.add_child(mi(rbox_mesh(Vector3(1.08, 0.05, 0.33), 0.02), unshaded(color),
+		Vector3(0, 0.015, 0)))
 	return root
 
 # ------------------------------------------------------------------ palette
@@ -341,7 +350,7 @@ const FLOOR_A := Color(0.72, 0.80, 0.74)
 const FLOOR_B := Color(0.66, 0.75, 0.72)
 const WALL_LOWER := Color(0.22, 0.62, 0.60)
 const WALL_UPPER := Color(0.94, 0.90, 0.78)
-const CEILING := Color(0.84, 0.84, 0.80)
+const CEILING := Color(0.76, 0.77, 0.75)
 const TRIM := Color(0.13, 0.50, 0.54)
 const BED_FRAME := Color(0.90, 0.92, 0.95)
 const LINEN := Color(0.96, 0.97, 0.99)

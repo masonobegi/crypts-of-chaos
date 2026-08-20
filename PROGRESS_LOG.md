@@ -2332,3 +2332,73 @@ rather than printing `@StaticBody3D@727`, which identifies nothing: walls,
 counters and chairs are all auto-named static bodies, and the answer here was
 entirely in "under an anonymous Node3D at (12, 0, 4)" — the shape of a
 `Furniture._chair`.
+
+## "This looks like blocky junk" — the visual pass
+
+Fair. Everything was axis-aligned boxes with a rim light on them. Five changes,
+in rough order of how much each was worth:
+
+**1. An outline pass.** `Build.outline()` is a shared inverted hull: the same
+mesh drawn again, grown along its own normals, front faces culled so only the
+sliver past the silhouette survives. It is the cheapest cartoon outline there is
+and it is most of the difference between "primitives" and "a style". It is
+attached as `next_pass` on every material `Build.mat()` hands out, and turned
+off explicitly for floors, ceilings and wall runs — they are the largest
+surfaces on screen, a room already has an edge where its own walls meet, and
+drawing them a second time full-screen doubled the fill cost for a line nobody
+was going to look at.
+
+**2. Rounded geometry, because the outline demands it.** A `BoxMesh` has three
+separate normals at every corner, so growing along them tears the hull into
+three detached slabs and the line breaks at exactly the corner the eye is drawn
+to. `Build.rbox_mesh()` builds a rounded box as a Minkowski sum — take a sphere
+of the corner radius and push each vertex out to the nearest corner of the box's
+inner core by the sign of its own normal, so the sphere's octants become the
+eight corners and the rings between them stretch into the flat faces. One mesh,
+smooth normals throughout, nothing for the outline to break on. `box_mi()` uses
+it for everything, with the radius scaled to the object so a syringe is not
+rounded as hard as a wall.
+
+**3. Characters that are people rather than stacks.** `Build.taper_mesh()` is
+the same trick with the core interpolated by height, so a torso can be broad at
+the shoulders and narrow at the waist in ONE solid. That mattered more than it
+sounds: the outline draws round every part, so a torso built from three stacked
+slabs draws three outlines and every seam becomes a hard black band across the
+chest — the first render of the restyle was a person made of pillows. Each limb
+and the trunk are single tapered solids now, and only the details that should
+read as separate objects carry a line of their own. The face got a nose, a
+mouth, brows, a chin, ears and a hairline; the hands are mittens wider than the
+wrists, because a limb that tapers to nothing reads as a tentacle.
+
+**4. Trim.** A pale dado rail on the seam between the two wall tones and a dark
+skirting at the floor, both proud of the wall and both outlined; an inlaid
+border a foot in from the walls of every room; three painted wayfinding stripes
+down the corridor. All of it cheap, and out of all proportion to what it cost —
+a flat two-tone wall is a gradient with a line across it, and the same wall with
+a rail and a skirting has EDGES. Edges are what the eye uses to decide whether a
+room was built or generated. Written the wrong way round first: a dark rail
+under a teal dado is the same wall with a slightly different teal at the bottom.
+What reads is contrast against what it sits on.
+
+**5. Values.** Exposure 0.92 → 0.78 and white 3.2 → 2.6, because the far end of a
+sixty-two metre corridor was clipping to flat white and every sign, door and
+person past thirty metres dissolved into it. Floors are about a fifth darker
+across the board — they are the largest surface in shot and should be the
+DARKEST of the three planes, not the brightest, so props read against them.
+Ceiling lamps are a housing with a lit panel recessed into it rather than a
+floating white slab. SSAO on (Forward+ only; the screenshot harness runs
+Compatibility and will not show it).
+
+The harness got two portrait shots — a face at a metre and a whole person at
+three — because characters are the only thing in this game that has to read at
+four metres AND at forty, every other shot is framed for a room, and the model
+was being judged from whatever happened to wander through the back of a corridor
+photograph. Three separate framing bugs surfaced doing it: the camera ended up
+inside Room 103 (the corridor is only four metres deep, so the standoff has to
+run along it), the subject faced away every time (`look_toward` leans the head;
+the body needed its yaw set outright), and `String(shot[1])` on a Vector3 is not
+a constructor Godot 4 has — it errored every frame without advancing, so the
+harness span forever on the first shot.
+
+Verified: 1,585 assertions · 126 smoke · 26 live · boot check · 43 screenshots,
+and the frame is unchanged at 2.58 ms mean despite roughly 800 more nodes.

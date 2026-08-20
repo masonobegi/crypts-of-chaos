@@ -251,6 +251,23 @@ static func _corridor(h: Hospital, r: Room) -> void:
 	_prop(h, "wheelchair", Vector3(9.5, 0.55, z + 1.2), 0.4)
 	_prop(h, "wheelchair", Vector3(30.5, 0.55, z - 1.2), -1.1)
 	_iv_stand(h, Vector3(17.0, 0, z + 1.3))
+	# Wayfinding stripes down the floor.
+	#
+	# Three painted lines along the south side of the corridor, which is exactly
+	# what a real hospital does and exactly what this floor was missing: sixty-two
+	# metres of unbroken pale blue with nothing on it to measure your own
+	# progress against. They also give the eye something to follow towards the
+	# far end, which had been reading as a white void.
+	var stripes := [
+		[0.72, Color(0.16, 0.62, 0.66)],
+		[0.88, Color(0.94, 0.68, 0.24)],
+		[1.04, Color(0.84, 0.36, 0.44)],
+	]
+	for st in stripes:
+		var strip := Build.box_mi(Vector3(61.0, 0.012, 0.09), st[1],
+			Vector3(15.0, 0.008, float(st[0])), 0.5, 0.0)
+		h.add_child(strip)
+
 	# Benches along the corridor wall, clear of every doorway.
 	#
 	# The pair used to sit at 11.0 and 12.4, and ward 102's opening starts at

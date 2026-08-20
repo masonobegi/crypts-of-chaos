@@ -106,23 +106,50 @@ func _build_floor_and_ceiling(r: Room) -> void:
 		Vector3(0, WALL_H, 0), 0.85, 0.0)
 	r.add_child(c)
 
+	# An inlaid border a foot in from the walls, in a darker shade of the room's
+	# own floor. Four thin strips per room, and it is the difference between a
+	# floor and a coloured plane: a border tells you where the room ENDS, gives
+	# the eye a scale to measure the space against, and makes the middle of the
+	# room read as somewhere deliberately left clear rather than as somewhere
+	# nothing was put.
+	var band := tint.darkened(0.34)
+	var inset := 0.45
+	var w: float = r.rect.size.x - inset * 2.0
+	var d: float = r.rect.size.y - inset * 2.0
+	if w > 1.0 and d > 1.0:
+		for edge in [Vector3(0, 0, -d * 0.5), Vector3(0, 0, d * 0.5)]:
+			r.add_child(Build.box_mi(Vector3(w, 0.014, 0.09), band,
+				edge + Vector3(0, 0.008, 0), 0.6, 0.0))
+		for edge2 in [Vector3(-w * 0.5, 0, 0), Vector3(w * 0.5, 0, 0)]:
+			r.add_child(Build.box_mi(Vector3(0.09, 0.014, d), band,
+				edge2 + Vector3(0, 0.008, 0), 0.6, 0.0))
+
 ## A different, bright floor per room kind. These are how you know which room
 ## you are in from the doorway, so they are proper colours rather than eleven
 ## shades of the same grey — which is what they were, and it is why the whole
 ## floor plan read as one continuous corridor.
+## Roughly a fifth darker than the first pass across the board.
+##
+## Every one of these was chosen against a flat grey scene and then the lighting
+## was raised to make the building bright — so by the time there was an ambient
+## term, a key, a fill and a ceiling lamp every five metres, a ward floor at
+## 0.74 was clipping to white and everything standing on it lost its footing.
+## Floors are the largest surface in shot and they should be the DARKEST of the
+## three planes, not the brightest: props read against them, characters cast
+## onto them, and the walls above them get to be the bright thing.
 func _floor_colour(kind: String) -> Color:
 	match kind:
-		"corridor": return Color(0.66, 0.75, 0.78)
-		"ward": return Color(0.74, 0.81, 0.72)
-		"lobby": return Color(0.78, 0.72, 0.60)
-		"station": return Color(0.58, 0.74, 0.80)
-		"treatment": return Color(0.64, 0.76, 0.84)
-		"supply": return Color(0.74, 0.68, 0.56)
-		"bathroom": return Color(0.70, 0.80, 0.86)
-		"office": return Color(0.72, 0.56, 0.44)
-		"intake": return Color(0.84, 0.71, 0.60)
-		"radiology": return Color(0.60, 0.68, 0.84)
-		"day_room": return Color(0.80, 0.72, 0.50)
+		"corridor": return Color(0.52, 0.62, 0.68)
+		"ward": return Color(0.56, 0.66, 0.57)
+		"lobby": return Color(0.62, 0.56, 0.45)
+		"station": return Color(0.44, 0.60, 0.68)
+		"treatment": return Color(0.48, 0.62, 0.72)
+		"supply": return Color(0.58, 0.52, 0.42)
+		"bathroom": return Color(0.54, 0.66, 0.74)
+		"office": return Color(0.56, 0.41, 0.31)
+		"intake": return Color(0.70, 0.56, 0.46)
+		"radiology": return Color(0.45, 0.53, 0.70)
+		"day_room": return Color(0.66, 0.58, 0.38)
 	return Build.FLOOR_A
 
 func _build_room_lights(r: Room) -> void:
@@ -229,6 +256,30 @@ func _wall_segment(a: Vector3, b: Vector3) -> void:
 	var upper := Vector3(size.x, WALL_H - lower_h, size.z)
 	add_child(Build.opaque_wall(lower, Build.WALL_LOWER, mid + Vector3(0, lower_h * 0.5, 0), 0.0, 0.0))
 	add_child(Build.opaque_wall(upper, Build.WALL_UPPER, mid + Vector3(0, lower_h + upper.y * 0.5, 0), 0.0, 0.0))
+
+	# A skirting board and a dado rail, both proud of the wall by three
+	# centimetres and both outlined.
+	#
+	# Cheap, and out of all proportion to what they cost. A flat two-tone wall
+	# is a gradient with a line across it; the same wall with a rail on the seam
+	# and a skirting at the floor has EDGES, and edges are what the eye uses to
+	# decide whether a room was built or generated. They also stop the floor and
+	# the wall meeting in a single ambiguous corner, which was most of why the
+	# rooms read as empty boxes.
+	var out := Vector3(0.0, 0.0, WALL_T * 0.45) if horizontal else Vector3(WALL_T * 0.45, 0.0, 0.0)
+	var rail_len := Vector3(size.x, 0.075, WALL_T * 0.55) if horizontal \
+		else Vector3(WALL_T * 0.55, 0.075, size.z)
+	var skirt_len := Vector3(size.x, 0.16, WALL_T * 0.7) if horizontal \
+		else Vector3(WALL_T * 0.7, 0.16, size.z)
+	# The rail is PALE and the skirting is DARK, which is the wrong way round
+	# from how it was first written and the reason none of it showed: a dark
+	# teal skirting under a teal dado is the same wall with a slightly different
+	# teal at the bottom. What reads is contrast against what it sits on.
+	for side in [1.0, -1.0]:
+		add_child(Build.box_mi(rail_len, Color(0.95, 0.93, 0.86),
+			mid + out * side + Vector3(0, lower_h, 0), 0.55))
+		add_child(Build.box_mi(skirt_len, Color(0.17, 0.22, 0.27),
+			mid + out * side + Vector3(0, 0.08, 0), 0.6))
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)

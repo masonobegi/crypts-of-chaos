@@ -57,6 +57,7 @@ func tick() -> bool:
 			var report: Dictionary = game.shift.clock_out()
 			_check_report(report)
 			_check_phase_is_not_a_dead_end("statement")
+			_check_the_evening_and_the_post_lead_somewhere()
 			stage = "nextday"
 		"nextday":
 			game.shift.next_day()
@@ -538,6 +539,53 @@ func _check_the_day_can_still_end() -> void:
 ## review's case by its own second button. Each one ended the career silently:
 ## a running game, a stopped clock, and no input anywhere that could advance
 ## the day.
+## The join between the three phases must always lead somewhere.
+##
+## `after_statement()` is the only thing standing between the end of a day and
+## the beginning of the next one, and it has three exits: a claim to answer, an
+## evening to spend, or tomorrow. A career that fell into it and stopped would
+## be unrecoverable and completely silent, which is the worst class of bug this
+## game can have — so both branches are walked here, on a real career, with the
+## real screens.
+func _check_the_evening_and_the_post_lead_somewhere() -> void:
+	var legal = game.get("legal")
+	var night = game.get("night")
+	if legal == null or night == null:
+		_fail("the legal and night systems did not spawn")
+		return
+
+	# Branch one: a letter. File a claim on somebody real and check the court
+	# screen is what comes up.
+	var pool: Array = game.patient_system.active()
+	if not pool.is_empty():
+		var claim: Dictionary = legal.file_claim(pool[0], "premature_discharge")
+		claim["day_filed"] = GameState.day
+		_ok(legal.due_claims().size() > 0, "a served claim is due to be answered")
+		if game.ui != null:
+			game.ui.close()
+		game.shift.after_statement()
+		_ok(game.ui != null and game.ui.current_id == "court",
+			"a served claim opens the courtroom rather than being skipped")
+		# Answering it must clear it out of the way.
+		legal.settle(claim)
+		_ok(legal.due_claims().is_empty(), "and settling it takes it off the list")
+		if game.ui != null:
+			game.ui.close()
+
+	# Branch two: no letters, so the evening is offered.
+	night.used_tonight = false
+	game.shift.after_statement()
+	_ok(game.ui != null and game.ui.current_id == "night",
+		"with nothing to answer, the evening is offered")
+	if game.ui != null:
+		game.ui.close()
+
+	# Branch three: an evening already spent falls through to tomorrow. Checked
+	# by state rather than by calling next_day(), which the harness does itself
+	# one stage later.
+	night.used_tonight = true
+	_ok(not night.available(), "an evening already spent is not offered twice")
+
 func _check_phase_is_not_a_dead_end(want: String) -> void:
 	if game.ui == null:
 		return

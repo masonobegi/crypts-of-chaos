@@ -726,6 +726,18 @@ func tick() -> bool:
 		return false
 	settle = 0
 	_save(String(shot[0]))
+	# AND PUT THE FIGHT DOWN AGAIN.
+	#
+	# `_square_up()` starts a real brawl and nothing ended it, so every world
+	# shot after 04d_fight — about forty of them — was photographed with the
+	# fight's guard prompt across the top of the HUD and the patient it staged
+	# standing in the middle of their room instead of sitting in the chair. The
+	# screenshots are the only thing that looks at this game; a pose left switched
+	# on in the first ward quietly falsifies every frame that follows it.
+	if shot.size() > 3 and String(shot[3]) == "fight":
+		var bs = game.get("brawl")
+		if bs != null and bs.has_method("cancel"):
+			bs.cancel()
 	index += 1
 	return false
 

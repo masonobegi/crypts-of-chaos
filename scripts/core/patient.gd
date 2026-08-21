@@ -88,6 +88,10 @@ var corridor_minutes: float = 0.0
 ## Set once they have formally complained about their care. One patient files
 ## one complaint; being hated by the same person twice is not twice the problem.
 var complained: bool = false
+## Who asked. A colleague's name, or YOU — and the difference matters at
+## clock-out: an ignored colleague files it as evidence, whereas changing your
+## own mind about a scan is nobody's business but yours.
+const YOU := "You"
 var imaging_requested_by: String = ""
 var imaging_requested_day: int = -1
 

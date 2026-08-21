@@ -762,3 +762,34 @@ func test_the_catalogue_and_the_check_agree_on_which_ids_exist() -> void:
 	for id in Achievements.earned_now():
 		t.ok(known.has(String(id)),
 			"'%s' is awarded and is in the catalogue" % id)
+
+## YOU CAN ASK FOR A SCAN YOURSELF, AND NOBODY MINDS IF YOU DO NOT USE IT.
+##
+## The bench worked the outstanding-request list and nothing else, so Radiology
+## — which the player pays for — could only ever answer somebody else's
+## question. Imaging is the one act that produces truth: it clears you in court,
+## and it writes what you did into a document you cannot edit. A player has to
+## be allowed to decide whether they want to know.
+func test_you_can_order_your_own_scan_and_change_your_mind() -> void:
+	var p := Patient.new("img1")
+	p.display_name = "Mr Test"
+	p.condition_id = "fractured_wrist"
+	p.admitted = true
+	t.ok(not p.imaging_requested(), "nobody has asked for a scan yet")
+
+	p.imaging_requested_by = Patient.YOU
+	p.imaging_requested_day = GameState.day
+	t.ok(p.imaging_requested(), "and you can put them on the list yourself")
+	t.eq(p.imaging_requested_by, Patient.YOU, "under your own name, not a colleague's")
+
+	# It has to survive a save like any other booking.
+	var reloaded := Patient.from_dict(p.to_dict())
+	t.eq(reloaded.imaging_requested_by, Patient.YOU, "the order survives a save")
+	t.eq(reloaded.imaging_requested_day, GameState.day, "with the day it was made")
+
+	# And a colleague's request is a different thing, which is the whole point:
+	# ignoring theirs is evidence, ignoring your own is a change of mind.
+	p.clear_imaging_request()
+	p.imaging_requested_by = "Dr Someone"
+	t.ok(p.imaging_requested_by != Patient.YOU,
+		"a colleague asking is distinguishable from you asking")

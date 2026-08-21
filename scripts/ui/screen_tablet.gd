@@ -124,8 +124,22 @@ func _build_ward(c: VBoxContainer) -> void:
 		# not as a warning: what happens if you ignore it is for the player to
 		# find out at clock-out.
 		if p.imaging_requested():
-			bv.add_child(UIKit.row("Requested", "imaging, day %d" % p.imaging_requested_day,
-				UIKit.WARN))
+			bv.add_child(UIKit.row(
+				"Ordered" if p.imaging_requested_by == Patient.YOU else "Requested",
+				"imaging, day %d" % p.imaging_requested_day, UIKit.WARN))
+		elif _radiology_is_open() and not p.chart.imaging_done:
+			# ORDERING ONE YOURSELF, which was not possible at all.
+			#
+			# The bench worked the outstanding-request list and nothing else, so
+			# Radiology — which the player pays for — could only ever be used to
+			# answer somebody else's question. Imaging is the one act in the game
+			# that produces TRUTH: it can clear you in court, and it can put the
+			# thing you did into a document you cannot edit. "Do I want to know,
+			# and do I want it written down?" is the decision, and until now the
+			# player was not allowed to have it.
+			var who: String = p.id
+			bv.add_child(UIKit.button("Order a scan", func(): _order_a_scan(who),
+				UIKit.INK_DIM))
 		for comp in p.active_complications():
 			bv.add_child(UIKit.row("  " + comp.display_name,
 				DB.cause_name(comp.documented_cause) if comp.documented_cause != "" else "NO CAUSE FILED",
@@ -310,3 +324,23 @@ func _build_codex(c: VBoxContainer) -> void:
 	c.add_child(UIKit.rule())
 	c.add_child(UIKit.row("Standing", GameState.SANCTIONS[GameState.sanction_level],
 		UIKit.GOOD if GameState.sanction_level == 0 else UIKit.BAD))
+
+## Book yourself a scan. The bench in Radiology works the outstanding list, so
+## this is the whole of it — no cost, no confirmation, and no warning about what
+## imaging tends to find, because the game does not tell the player what a thing
+## will do to them before they do it.
+func _order_a_scan(patient_id: String) -> void:
+	var ps = patient_system()
+	if ps == null:
+		return
+	var p = ps.get_patient(patient_id)
+	if p == null or p.imaging_requested():
+		return
+	p.imaging_requested_by = Patient.YOU
+	p.imaging_requested_day = GameState.day
+	EventBus.toast.emit("%s is on the list for Radiology." % p.display_name, "info")
+	rebuild()
+
+func _radiology_is_open() -> bool:
+	var h = get_tree().get_first_node_in_group("hospital")
+	return h != null and h.has_method("is_room_open") and h.is_room_open("radiology")

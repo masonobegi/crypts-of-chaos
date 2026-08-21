@@ -518,6 +518,13 @@ func _settle_imaging_requests() -> void:
 		if p.imaging_requested_day >= GameState.day:
 			# Asked today, still time tomorrow. Only an ignored request counts.
 			continue
+		# A scan you booked for yourself and then thought better of is not a
+		# request you ignored. mind_of("You") happens to return null today, so
+		# this changes nothing yet — but it is the reason it changes nothing,
+		# and the day the player gets a Mind of their own it stops being luck.
+		if p.imaging_requested_by == Patient.YOU:
+			p.clear_imaging_request()
+			continue
 		var asker = sus.mind_of(p.imaging_requested_by)
 		p.clear_imaging_request()
 		if asker == null:

@@ -61,6 +61,20 @@ change — five real bugs have been caught only by looking at the game.
     the player, so the entire stealth game switched itself off partway through
     every shift and nothing failed loudly.
 
+12. **A treatment recorded under one id and charted under another produces
+    BOTH fraud findings at once.** `Patient.record_treatment(id)` and
+    `Chart.log_treatment(id)` are matched by string in `Chart.audit()`: an id
+    in one and not the other is "billed with no record of it being performed"
+    (weight 0.55) *plus* "administered but never charted". Every hand-procedure
+    got this wrong on the way in, so performing one honestly generated the two
+    findings the game reserves for fraud. If you add a verb, use ONE id for
+    both sides of it, and give it a name in `DB.OFF_MENU_TREATMENTS`.
+13. **One wall-mounting offset does not fit a poster and a sharps bin.** A 3cm
+    poster sits fine 9cm proud of the plaster; a 20cm-deep box mounted the same
+    way is half inside it. `Dressing._add()` takes the piece's own depth and
+    pushes it out by half of it. This was most of the reported "things phasing
+    through each other".
+
 ## Design rules that are load-bearing
 
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no
@@ -75,6 +89,27 @@ change — five real bugs have been caught only by looking at the game.
 - **`EconomySystem.ADMISSION_COST` is the most load-bearing constant.** Without
   it, turnover beats duration on a five-bed ward and the premise inverts. There
   is a balance check for this.
+- **A day has three phases and they are separate systems.** The ward
+  (`ShiftSystem`, ends at the office desk), the evening (`NightSystem`, a
+  street with cones of vision on it), and the post (`LegalSystem`, a claim to
+  settle or fight). `ShiftSystem.after_statement()` is the join: each screen
+  calls back into it when it closes, so the sequence is driven by the player
+  finishing with one rather than by a timer.
+- **Every hand-procedure declares intent first and is graded against it.**
+  `Procedures.OUTCOMES[kind][intent][band]`. Doing either job well is rewarded
+  and doing either badly is punished — there is no safe option and no free
+  crime, and intending harm and fumbling it is the worst square on the board.
+  Add a procedure by adding a `kind` to that table and a screen that grades a
+  manoeuvre 0..1; `TreatmentSystem.apply_outcome()` does the rest.
+- **The minigames are performed on a drawing of the actual body part.**
+  `Anatomy` builds nine rigs out of one primitive (a tapered capsule), drawn
+  grown-dark-first and then filled so a hand reads as one object. A new part is
+  a `_rig_*()` returning `prox`/`dist`/`pbone`/`dbone`/`pivot`/`axis`/`wound`.
+- **Decoration has no collision and no navigation footprint.** Everything in
+  `Dressing` is scenery; if it needs to be usable it belongs in `Furniture`
+  with an `_occupy()`. That rule is what lets there be a lot of it.
+- **Achievements are a pure read over `GameState.stats` and flags.** A system
+  that has to remember to award one is a system with an achievement bug in it.
 - Content lives in data (`DB`, `Items`, `Upgrades`, `Meta.PERKS`). Adding a
   condition, item, complication, event or perk should not require touching a
   system. Tests walk all of it and assert referential integrity.
@@ -90,6 +125,7 @@ change — five real bugs have been caught only by looking at the game.
 | `live_run.gd` | anything that only breaks with real frames — it found that every ward door was welded shut and no member of staff could enter any patient room |
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
+| overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
 
 `live_run.gd` must use `--fixed-fps`, or a frame is however long the host took
 and the result is flaky.

@@ -43,12 +43,9 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**1,585 assertions · 124 smoke · 26 live · boot check · 21/21 balance design
-checks · 40 screenshots.** Windows and Linux both export, and the exported Linux
-build boots and exits cleanly.
-
-Measured frame cost, simulation only, reported by the live run: **mean 2.88 ms,
-p50 2.73, p99 5.03, 4,730 nodes** with fifteen characters live.
+**2,088 assertions · smoke (incl. an object-overlap audit) · live · boot check ·
+21/21 balance design checks · 55 screenshots.** Windows and Linux both export,
+and the exported Linux build boots and exits cleanly.
 
 `play.sh` takes 30-45 real minutes under this container's software GL — it is
 rendering-bound, not simulation-bound. Use `playfast.sh` for the quick loop and
@@ -66,67 +63,41 @@ prints the exact command to fetch them if they are missing.
 
 ## What has been done this session
 
-See the Session 4 sections of `PROGRESS_LOG.md`. Headlines:
+See the Session 5 sections of `PROGRESS_LOG.md`. Headlines:
 
-- Day one now opens on an inherited ward with two people fit for discharge; the
-  9am and 10am slots are their discharges.
-- Shift deadline + live appointment countdown on the HUD.
-- Staff step aside instead of body-blocking the corridor; props actually shove.
-- Economy rebalanced: reckless play no longer pays best (it paid 3x careful).
-- Length of stay is measured against the CHART, not the projection.
-- Noise events not caused by the player were being discarded, so throwing
-  something to distract a nurse had never worked.
-- The treatment dial turns both ways and reports only where it stops.
-- Ward door cards; corridor flag signs.
+- **The minigames happen on a body.** `Anatomy` draws nine rigs (forearm,
+  wrist, hand, ankle, knee, shoulder, ribs, brow, flank) out of one primitive.
+  Setting a bone is holding a fragment steady against tremor and spasm;
+  suturing is six bites down a laceration that moves as they breathe; dosing is
+  which bottle times how much, drawn against graduations into a real arm.
+- **You declare intent first and are graded against it.** Treat them or make it
+  worse — doing either well is rewarded, doing either badly is punished, and
+  intending harm and fumbling it is the worst square on the board.
+- **The day ends at your office desk.** Anybody you did not see personally is
+  treated correctly by a nurse, so the day is "which of these five is worth MY
+  hands" rather than "get through the list".
+- **The envelope**: any witness can be offered money in three sizes, with the
+  odds off who they are and what they saw. Refusal costs no money and leaves
+  behind something worse than what they saw.
+- **The letter**: discharged patients sue. Settle for about half, or fight it
+  with one of four lawyers ascending in price and descending in scruple.
+  Imaging you ordered weeks ago cannot be edited and turns up in court.
+- **The evening**: a street from above with cones of vision and lamps. Reach
+  somebody unseen and they are on your list in the morning.
+- Rebindable keys, gamepad support, controls/credits/achievements screens,
+  twenty-five achievements, click and hover sounds on every button.
+- Every room dressed — curtains, gas panels, sharps bins, noticeboards,
+  handrails, floor guide lines, bedside cabinets, vending machines.
+- The balance simulation is **fully green for the first time**.
 
 ## Immediately next
 
-The parallel audit (`chronic-care-audit` workflow) produced **28 verified
-findings, 26 refuted**. **All 28 are now fixed.** Full detail in
-`PROGRESS_LOG.md` — the headline ones were: no door in the building had ever
-closed anything; three separate ways to end a career by pressing Escape;
-throwing something to distract a nurse had never worked; the tutorial could
-never get past step 1 of 6; calibration sabotage and log-wiping had no way in;
-and substituting a syringe's contents was completely free.
+Nothing is known-broken. The open questions are all playtest ones:
 
-Brief phases not yet started: **7 (emergent chaos), 12 (content), 15
-(streamability)**.
-
-Done since the last rewrite of this file: **8** (three events set a flag nothing
-ever read — the family row, the press, and Vinnie all change strategy now, and
-day-scoped NPCs finally go home instead of accumulating for a whole career),
-**11** (`Hospital.refresh_fittings` — cameras, curtains, bed rails, the shred
-bin, the VIP rug, framed things on the office wall), **19** (frame cost measured
-and a fifth of it given back), **6 and part of 12** (every bark pool roughly
-doubled), **14** (a camera kick on the moments that deserve one).
-
-Done since: 5 (NPC behavioural tells — they stop and write things down, gossip
-is a scene), 9 (a wrong site is a revisable situation, and the site is marked on
-the patient), 13 (the shift report says what the shift was), 16 (three shifts
-that look and play differently — the ward sleeps at night), 20 (export), plus a
-bright/cartoony visual pass across the whole game.
-
-Phase 20 (export) is DONE — `export.sh` builds both presets and launches the
-Linux one. The only cosmetic outstanding is that the .exe carries no icon or
-version block, which needs `rcedit` and cannot be done from this container.
-
-Two things worth knowing before picking anything up:
-
-- **ward_102 approached laterally from the hinge side** is the only door of
-  eleven that still fails `play.sh doors`.
-- The play harness's `_press` sends real InputEvents now, **on transitions
-  only**. Firing one every frame floods the input queue and wedges the player
-  into a wall; `Input.action_press()` alone never reaches `_unhandled_input`,
-  which is where [Q] and [Esc] live.
-- Across all four playstyle runs, **the player's money never moves during a
-  shift**. The crime pays only at clock-out, so the HUD money ticker has
-  nothing to show while you are actually playing.
-
-## Standing constraints from the brief
-
-- Priority order: fun > comprehension > meaningful decisions > tension > comedy
-  > emergent stories > replayability > polish > content > technical complexity.
-- **Do not confuse more content with more fun.**
-- Nothing in the UI is ever labelled "questionable". No suspicion number.
-- Suspicion is derived, never stored.
-- Don't ask questions; use judgement and keep building.
+- Is the night phase's difficulty right? It has never been played by a person.
+- The courtroom hearing is three exchanges; it may want to be five, and it may
+  want the claimant's counsel to react to what was said rather than reading a
+  fixed line.
+- Walk-ins arrive as appointment slots. If the redesign wants more upright
+  patients than bedbound ones, that ratio lives in
+  `AppointmentSystem._make()`.

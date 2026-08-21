@@ -92,7 +92,7 @@ static func dot(x: float, y: float, r: float, slot := "bone") -> Dictionary:
 static func _slot_colour(slot: String, tone: Color) -> Color:
 	match slot:
 		"bone": return BONE
-		"nail": return NAIL
+		"nail": return tone.lightened(0.34)
 		"shade": return tone.darkened(0.18)
 		"pale": return tone.lightened(0.14)
 	return tone
@@ -187,9 +187,11 @@ static func _fingers(base: Vector2, dir: Vector2, span: float, length: float,
 		var l: float = length * (0.80 + 0.24 * sin((float(i) + 0.6) * 1.1))
 		var a: Vector2 = base + n * t
 		var b: Vector2 = a + dir * l + n * t * 0.22
-		out.append(cap(a.x, a.y, b.x, b.y, 0.023, 0.020, slot))
-		var tip: Vector2 = b + dir * 0.006
-		out.append(cap(tip.x, tip.y, tip.x, tip.y, 0.013, 0.013, "nail"))
+		out.append(cap(a.x, a.y, b.x, b.y, 0.025, 0.022, slot))
+		# The nail sits IN the fingertip, not past it. A dot beyond the end of
+		# the finger reads as a claw, which is not the register this game wants.
+		var tip: Vector2 = b - dir * 0.006
+		out.append(cap(tip.x, tip.y, tip.x, tip.y, 0.010, 0.010, "nail"))
 	return out
 
 ## Elbow on the left, hand on the right. `brk` is how far along the fracture

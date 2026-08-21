@@ -1,14 +1,14 @@
 class_name Room
 extends Node3D
 ## A room's runtime state. Rooms are not scenery: temperature, light, noise and
-## cleanliness feed directly into patient recovery, which is what makes
-## "open the window and walk away" a viable strategy with a real paper trail.
+## cleanliness feed directly into patient recovery, and they are what a person
+## standing in the doorway would notice about the place you have put somebody.
 
 const IDEAL_TEMP := 21.0
 
 @export var key := ""
 @export var display := "Room"
-@export var kind := "ward"          ## ward|corridor|lobby|station|supply|office|treatment|bathroom|break
+@export var kind := "ward"          ## ward|corridor|station|office
 @export var rect := Rect2()
 
 var temperature := 21.0
@@ -22,8 +22,6 @@ var occupant_ids: Array[String] = []
 ## facilities ticket BEFORE the complication lands is the clean version of
 ## freezing someone for an extra day.
 var facilities_ticket_filed := false
-## Thermostat setting, if the ward has one. -1 means "leave it to the HVAC".
-var target_override := -1.0
 
 var _drift_accum := 0.0
 
@@ -38,8 +36,6 @@ func _drift_temperature(seconds: float) -> void:
 	# An open window pulls hard toward outside; otherwise the HVAC creeps back
 	# toward comfortable, slowly enough that you have time to leave the ward.
 	var target := IDEAL_TEMP
-	if target_override > 0.0:
-		target = target_override
 	if window_open:
 		target = 8.0
 	if not lights_on:
@@ -77,41 +73,11 @@ func complaints() -> Array[String]:
 func has_plausible_fault() -> bool:
 	return window_open or not lights_on or cleanliness < 0.5
 
-func set_window(open: bool, by_player: bool) -> void:
-	if window_open == open:
-		return
-	window_open = open
-	AudioMgr.play_at("door", global_position, -14.0, 0.7)
-	if by_player:
-		# Opening a window is barely suspicious on its own. It becomes evidence
-		# only once a patient in this room develops a cold-related complication.
-		WorldEvent.new("window_opened" if open else "window_closed", "player") \
-			.at(global_position, key).seen(0.18 if open else 0.02) \
-			.tag("environment").cover("facilities") \
-			.says("%s the window in %s" % ["opened" if open else "closed", display]).emit()
-
-func set_lights(on: bool, by_player: bool) -> void:
-	if lights_on == on:
-		return
-	lights_on = on
-	# Hide the whole fitting, not just the OmniLight3D inside it.
-	#
-	# Build.ceiling_light() puts an UNSHADED emissive panel next to the lamp, so
-	# recursing for the light alone left every fitting in the room glowing at
-	# full brightness with the lights "off". Turning a ward's lights out — one of
-	# the few purely environmental levers in the game — looked like nothing had
-	# happened at all.
-	for c in get_children():
-		if c is OmniLight3D:
-			(c as OmniLight3D).visible = on
-		elif c.has_meta("is_light"):
-			(c as Node3D).visible = on
-	AudioMgr.play_at("beep_low", global_position, -18.0)
-	if by_player:
-		WorldEvent.new("lights_off" if not on else "lights_on", "player") \
-			.at(global_position, key).seen(0.15 if not on else 0.0) \
-			.tag("environment").cover("facilities") \
-			.says("turned the lights %s in %s" % ["off" if not on else "on", display]).emit()
+# The window unit, the light switch and the thermostat that used to drive all
+# of this were deleted with the rest of the ward's fittings, so nothing in the
+# building sets these any more: they are read-only weather now. What is left is
+# what a person standing in the room would notice, which is still what NPCs
+# comment on and still what feeds a patient's recovery.
 
 func add_noise(amount: float) -> void:
 	noise = clampf(noise + amount, 0.0, 3.0)
@@ -132,7 +98,6 @@ func to_dict() -> Dictionary:
 	return {
 		"temp": temperature, "lights": lights_on, "win": window_open,
 		"clean": cleanliness, "ticket": facilities_ticket_filed,
-		"target": target_override,
 	}
 
 func from_dict(d: Dictionary) -> void:
@@ -141,4 +106,3 @@ func from_dict(d: Dictionary) -> void:
 	window_open = bool(d.get("win", false))
 	cleanliness = float(d.get("clean", 1.0))
 	facilities_ticket_filed = bool(d.get("ticket", false))
-	target_override = float(d.get("target", -1.0))

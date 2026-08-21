@@ -31,7 +31,7 @@ func _ready() -> void:
 	_timer = RNG.randf_range_s("ambience", MIN_GAP, MAX_GAP)
 
 func _process(delta: float) -> void:
-	if GameState.phase != GameState.Phase.SHIFT:
+	if not GameState.clock_running:
 		return
 	_timer -= delta
 	if _timer > 0.0:

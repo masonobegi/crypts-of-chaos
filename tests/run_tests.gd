@@ -9,15 +9,8 @@ extends SceneTree
 
 const SUITES := [
 	"res://tests/test_compile.gd",
-	"res://tests/test_core.gd",
 	"res://tests/test_suspicion.gd",
-	"res://tests/test_sim.gd",
-	"res://tests/test_systems.gd",
-	"res://tests/test_shifts.gd",
-	"res://tests/test_injuries.gd",
-	"res://tests/test_appointments.gd",
-	"res://tests/test_procedures.gd",
-	"res://tests/test_phases.gd",
+	"res://tests/test_ward.gd",
 ]
 
 var passed := 0

@@ -130,34 +130,7 @@ func test_mind_roundtrip() -> void:
 	t.eq(int(back.burned_covers.get("paperwork", 0)), 1, "burned covers roundtrip")
 	t.near(back.suspicion(0), m.suspicion(0), 0.0001, "suspicion identical after roundtrip")
 
-func test_bedside_manner_is_never_a_gamble() -> void:
-	# Ordinary politeness must not be rolled. Showing a failure chance against
-	# "how are you feeling?" teaches the player to distrust the confidence band
-	# everywhere it actually matters.
-	var m := DB.make_mind("p", "Greg", "patient", "confrontational")
-	m.trust = 0.1
-	var opt = Dialogue.Option.new("How are you feeling?", "small_talk", "", 0.0, "trust")
-	t.near(Dialogue.success_chance(m, opt), 1.0, 0.0001, "small talk always lands")
-	var before := m.trust
-	var res: Dictionary = Dialogue.resolve(m, opt, null)
-	t.ok(bool(res.get("success", false)), "and always succeeds")
-	t.gt(m.trust, before, "and buys a little trust")
-	t.eq(m.evidence.size(), 0, "and never creates evidence")
 
-func test_a_real_excuse_is_still_a_gamble() -> void:
-	var m := DB.make_mind("n", "Nurse", "nurse", "suspicious")
-	m.trust = 0.1
-	var e := Evidence.new()
-	e.kind = "machine_extreme_dial"
-	e.source = Evidence.Source.WITNESSED
-	e.base_weight = 0.7
-	e.certainty = 1.0
-	m.add_evidence(e)
-	var opt = Dialogue.Option.new("That's a known equipment fault.", "deflect",
-		"equipment_variance", 0.4)
-	t.lt(Dialogue.success_chance(m, opt), 0.5,
-		"a suspicious nurse holding strong evidence is hard to talk around")
-	t.gt(Dialogue.success_chance(m, opt), 0.0, "but never impossible")
 
 func test_gossip_prefers_people_who_get_on() -> void:
 	# Affinity was serialised and never consulted, so who told whom was purely
@@ -210,25 +183,6 @@ func test_a_watching_npc_is_harder_to_distract() -> void:
 	calm.queue_free()
 	alert.queue_free()
 
-func test_a_patient_who_is_not_counting_does_not_mind_waiting() -> void:
-	var counting := Patient.new("c")
-	counting.expected_stay_days = 2.0
-	counting.days_admitted = 5.0
-	counting.satisfaction = 0.8
-	counting.knows_expected_date = true
-	counting.tick(1.0)
-
-	var oblivious := Patient.new("o")
-	oblivious.expected_stay_days = 2.0
-	oblivious.days_admitted = 5.0
-	oblivious.satisfaction = 0.8
-	oblivious.knows_expected_date = false
-	oblivious.tick(1.0)
-
-	t.lt(counting.satisfaction, oblivious.satisfaction,
-		"somebody counting the days minds the overrun")
-	t.near(oblivious.satisfaction, 0.8, 0.0001,
-		"somebody who has lost the thread does not")
 
 func test_how_blatant_an_act_is_dominates_whether_it_is_noticed() -> void:
 	# This was missing entirely: the chance depended only on observance and
@@ -298,34 +252,3 @@ func test_a_departed_npc_does_not_switch_off_everyone_elses_senses() -> void:
 	sus.free()
 	witness.free()
 
-## Leaving somebody on a trolley is the counterweight to being allowed to put
-## them there. The act of ramping is witnessed as it happens; this is the half
-## that keeps costing you afterwards.
-func test_leaving_somebody_on_a_trolley_stops_being_free() -> void:
-	var nurse := NurseNPC.new()
-	t.root.add_child(nurse)
-	nurse.mind = DB.make_mind("n_corridor", "Nurse Corridor", "nurse", "gossip")
-	nurse.mind.observance = 1.0
-	var p := Patient.new("corr1")
-	p.display_name = "Mr Trolley"
-	p.room = "intake"
-
-	p.corridor_minutes = 60.0
-	nurse._note_if_left_in_the_corridor(p)
-	t.eq(nurse.mind.evidence.size(), 0, "an hour on a trolley is just a busy morning")
-
-	p.corridor_minutes = 60.0 * 9.0
-	nurse._note_if_left_in_the_corridor(p)
-	t.eq(nurse.mind.evidence.size(), 1, "most of a shift is a decision somebody made")
-	t.gt(nurse.mind.evidence[0].base_weight, 0.4,
-		"and the longer they are out there the worse it looks")
-	# It is deniable on a day the ward genuinely had no beds, and only then.
-	t.eq(nurse.mind.evidence[0].cover_tag, "bed_shortage",
-		"a real bed shortage is a real defence")
-
-	# A patient who is actually in a ward is nobody's business.
-	p.room = "ward_101"
-	p.corridor_minutes = 0.0
-	nurse._note_if_left_in_the_corridor(p)
-	t.eq(nurse.mind.evidence.size(), 1, "somebody in a bed is not a grievance")
-	nurse.queue_free()

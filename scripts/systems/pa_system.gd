@@ -62,7 +62,7 @@ func _schedule(gap := 0) -> void:
 	_next_at = GameState.career_minutes + gap
 
 func _on_tick(_minute: int) -> void:
-	if GameState.phase != GameState.Phase.SHIFT:
+	if not GameState.clock_running:
 		return
 	if _next_at == 0:
 		_schedule()

@@ -94,7 +94,16 @@ func _reconciliation(f, records: Records) -> String:
 		"conflicting_observations":
 			var a = records.by_id(f.entries[0])
 			var b = records.by_id(f.entries[1])
-			if a != null and b != null and absi(a.stated_minute - b.stated_minute) >= 15:
+			if a == null or b == null:
+				return ""
+			# NOT against a machine. "It came and went" explains two people
+			# disagreeing; it does not explain a test that went looking twenty
+			# minutes later and found nothing, and letting it do so handed the
+			# player back the very answer that ordering the test was supposed to
+			# have cost them.
+			if a.author == ChartEntry.Author.MACHINE or b.author == ChartEntry.Author.MACHINE:
+				return ""
+			if absi(a.stated_minute - b.stated_minute) >= 25:
 				return "It came and went. That is what transient means."
 		"justification_undermined":
 			for e in list:

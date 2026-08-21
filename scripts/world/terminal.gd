@@ -41,7 +41,9 @@ func prompt(_player) -> Array:
 ## something first" is a real errand with a real way back — and it puts the last
 ## act of the day in the room where the records are, which is where it belongs.
 func _going_home() -> bool:
-	return GameState.phase == GameState.Phase.CHART_REVIEW and mode == "admin"
+	# There is no separate chart-review phase any more; the review is a
+	# conversation the next morning. A terminal is a terminal all day.
+	return false
 
 ## Ending the day is a walk to your office rather than a clock running out.
 ##

@@ -123,8 +123,10 @@ func _light() -> void:
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.10, 0.13, 0.16)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	# The menu has no sky, so ambient has to come off the colour — see the note
-	# in NightSystem._set_night_look for the half-day this cost the first time.
+	# The menu has no sky, so ambient has to come off the colour: with the
+	# default sky contribution a world with no sky in it lights nothing at all,
+	# and the room renders as a set of silhouettes. (The longer note about this
+	# lived in NightSystem, which went with the evening.)
 	env.ambient_light_sky_contribution = 0.0
 	env.ambient_light_color = Color(0.74, 0.84, 0.92)
 	env.ambient_light_energy = 1.05

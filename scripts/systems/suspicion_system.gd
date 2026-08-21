@@ -144,7 +144,10 @@ func _on_world_event(evt) -> void:
 
 	# Private rooms genuinely reduce how much a witness can make out through a
 	# closed door and a curtain.
-	var witness_scale := Upgrades.witness_scale()
+	# Private rooms were an upgrade that halved who could see you. There are no
+	# upgrades now; the only thing that changes who can see you is where you
+	# stand and whether the door is shut.
+	var witness_scale := 1.0
 
 	# Pass one: who perceived it, and how well.
 	var witnesses: Array = []
@@ -157,7 +160,6 @@ func _on_world_event(evt) -> void:
 			continue
 		witnesses.append({"id": id, "res": res})
 
-	_record_on_camera(e)
 
 	if witnesses.is_empty():
 		return
@@ -182,31 +184,10 @@ func _on_world_event(evt) -> void:
 				ev.corroborators.append(other)
 		var stored := mind.add_evidence(ev)
 		EventBus.evidence_recorded.emit(_body(id), stored)
-		if e.visual_weight > 0.25:
-			GameState.stats.witnessed_acts += 1
 		_react(id, mind, stored)
 
 	EventBus.suspicion_changed.emit(ids[0], suspicion_of(ids[0]))
 
-## Cameras do not have personalities, do not forget, and cannot be talked to.
-## Buying them raises hospital reputation AND creates a permanent record of
-## anything you do in a covered room — the cleanest example of an upgrade that
-## makes you richer and more visible at the same time.
-func _record_on_camera(e: WorldEvent) -> void:
-	if e.visual_weight < 0.2:
-		return
-	if not Upgrades.camera_rooms().has(e.room):
-		return
-	var inst: Mind = minds.get("admin", null)
-	if inst == null:
-		return
-	var ev := Evidence.from_world_event(e, Evidence.Source.RECORD,
-		e.visual_weight * 0.85, 1.0)
-	ev.summary = "on camera: %s" % (e.summary if e.summary != "" else e.kind.replace("_", " "))
-	ev.tags.append("camera")
-	inst.add_evidence(ev)
-
-## Immediate on-the-spot reaction: a line of dialogue and a hard stare.
 func _react(id: String, mind: Mind, ev: Evidence) -> void:
 	var body = _body(id)
 	if body == null:
@@ -246,7 +227,7 @@ func _react(id: String, mind: Mind, ev: Evidence) -> void:
 	if tier <= mind.reacted_tier or tier < 1:
 		return
 	mind.reacted_tier = tier
-	var line := Dialogue.witness_line(mind, ev, tier)
+	var line := witness_line(tier)
 	if line != "":
 		body.say(line, 3.4)
 	if tier >= 2:
@@ -314,7 +295,7 @@ func _gossip_pass() -> void:
 			# no words at all.
 			body.look_toward(listener_body.global_position)
 			listener_body.look_toward(body.global_position)
-			body.say(Dialogue.gossip_line(speaker, worst), 3.0)
+			body.say(gossip_line(), 3.0)
 			var p = get_tree().get_first_node_in_group("player")
 			if p != null and listener_body.perception != null \
 					and listener_body.perception.can_see(p.global_position):
@@ -338,10 +319,49 @@ func _consider_complaint(id: String, mind: Mind) -> void:
 	var sev := mind.suspicion(GameState.career_minutes, GameState.active_covers)
 	file_complaint(id, sev)
 
+## What one of them says to another when they think you cannot hear it. The
+## player learns that a belief has SPREAD by overhearing it, which is the reason
+## the nurses' station is a place you can stand near rather than a menu.
+const GOSSIP_LINES := [
+	"...no, I know. I'm just saying it's the third one this week.",
+	"...she asked me to look at it and I looked at it. That's all I'll say.",
+	"...well, somebody wrote it. It didn't write itself.",
+]
+
+static func gossip_line() -> String:
+	return String(RNG.pick("gossip_line", GOSSIP_LINES))
+
+## THE ONLY WAY THE PLAYER IS EVER TOLD THAT SOMEBODY IS UNEASY.
+##
+## There is no suspicion meter, no standing word in the corner and no personality
+## label on the tablet. What there is, is a person who says something slightly
+## different from what they said this morning. Whether that means anything is the
+## player's problem, which is the entire point of removing the number.
+const WITNESS_LINES := {
+	1: [
+		"Sorry — were you looking for something?",
+		"Oh. I didn't see you come in.",
+		"Everything all right, doctor?",
+	],
+	2: [
+		"That's the second time you've been in there.",
+		"I'll just make a note of the time, if that's all right.",
+		"You're writing that up now? At this hour?",
+	],
+	3: [
+		"I read the notes. I'd like to talk about the notes.",
+		"I've asked Sister to have a look at that chart.",
+		"No, I heard you. I'm asking what you meant.",
+	],
+}
+
+static func witness_line(tier: int) -> String:
+	var pool: Array = WITNESS_LINES.get(clampi(tier, 1, 3), [])
+	return String(RNG.pick("witness_line", pool)) if not pool.is_empty() else ""
+
 func file_complaint(from_id: String, severity: float) -> void:
 	var m: Mind = minds.get(from_id, null)
 	var who: String = m.display_name if m else from_id
-	GameState.stats.complaints += 1
 
 	# A reporter in the lobby does not make the ward any more watchful. What it
 	# changes is where a complaint ENDS UP: on a press day the same grumble from
@@ -351,12 +371,8 @@ func file_complaint(from_id: String, severity: float) -> void:
 	# now the day you either keep your head down or accept that everything costs
 	# roughly three times as much.
 	var press := bool(GameState.flag("press_present", false))
-	GameState.add_heat(severity * (0.42 if press else 0.16),
-		"complaint by %s%s" % [who, " (press present)" if press else ""])
-	GameState.adjust_rep("patient_sat", -0.03)
 	EventBus.complaint_filed.emit("player", from_id, severity)
 	if press:
-		GameState.adjust_rep("hospital", -0.05)
 		GameState.adjust_rep("gov_scrutiny", severity * 0.10)
 		GameState.set_flag("press_story", true)
 		EventBus.toast.emit(

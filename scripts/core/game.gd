@@ -6,24 +6,16 @@ extends Node3D
 ## The whole roster, not the number on the floor. Who is actually rostered on
 ## any given shift comes from DB.ROTA — the rest are at home, and their memories
 ## come back with them tomorrow.
-const NURSE_COUNT := 5
-const DOCTOR_COUNT := 3
+## One nurse on the floor. A five-bed ward does not need a rota, and every
+## extra body is another pair of eyes that has to mean something.
+const NURSE_COUNT := 1
+const DOCTOR_COUNT := 0
 
 var hospital: Hospital
 var player: Player
 var suspicion: SuspicionSystem
 var patient_system: PatientSystem
-var treatment: TreatmentSystem
-var economy: EconomySystem
-var records: RecordsSystem
-var investigations: InvestigationSystem
-var events: RandomEventSystem
-var appointments: AppointmentSystem
-var shift: ShiftSystem
-var legal: LegalSystem
-var night: NightSystem
-var brawl: BrawlSystem
-var codex: Codex
+var ward: WardDay
 var ui: Node
 
 func _ready() -> void:
@@ -166,55 +158,27 @@ func _build_environment() -> void:
 ## Nothing here is decorative. Night is genuinely darker, so the same act is
 ## genuinely harder to see; the shift screen already promises "Nobody is
 ## watching", and now that is a thing the player can see rather than a claim.
-const SHIFT_LOOK := {
-	"night": {
-		"sky_top": Color(0.03, 0.05, 0.13), "sky_horizon": Color(0.10, 0.14, 0.26),
-		"ambient": Color(0.30, 0.38, 0.58), "ambient_energy": 0.16,
-		"sun": Color(0.60, 0.70, 1.00), "sun_energy": 0.16,
-		"fill": Color(0.40, 0.50, 0.80), "fill_energy": 0.08,
-		"lamp": Color(1.00, 0.94, 0.80), "lamp_energy": 1.35,
-	},
-	"day": {
-		"sky_top": Color(0.24, 0.60, 0.95), "sky_horizon": Color(0.62, 0.80, 0.96),
-		"ambient": Color(0.72, 0.82, 0.92), "ambient_energy": 0.34,
-		"sun": Color(1.00, 0.98, 0.93), "sun_energy": 0.85,
-		"fill": Color(0.74, 0.86, 1.00), "fill_energy": 0.22,
-		"lamp": Color(1.00, 0.97, 0.90), "lamp_energy": 1.05,
-	},
-	"evening": {
-		"sky_top": Color(0.20, 0.34, 0.66), "sky_horizon": Color(0.98, 0.66, 0.40),
-		"ambient": Color(0.78, 0.66, 0.62), "ambient_energy": 0.26,
-		"sun": Color(1.00, 0.80, 0.58), "sun_energy": 0.52,
-		"fill": Color(0.62, 0.70, 0.96), "fill_energy": 0.16,
-		"lamp": Color(1.00, 0.95, 0.84), "lamp_energy": 1.20,
-	},
-}
-
+## One look, because there is one shift. The three-way branch on shift_kind went
+## with the shift types; a day that runs eight to eight only needs the light to
+## move once, and it does that on the clock rather than on a mode.
 var _env: Environment = null
 var _sky_mat: ProceduralSkyMaterial = null
 var _sun: DirectionalLight3D = null
 var _fill: DirectionalLight3D = null
 
 func apply_shift_look() -> void:
-	var look: Dictionary = SHIFT_LOOK.get(GameState.shift_kind, SHIFT_LOOK["day"])
-	if _sky_mat != null:
-		_sky_mat.sky_top_color = look["sky_top"]
-		_sky_mat.sky_horizon_color = look["sky_horizon"]
-		_sky_mat.ground_horizon_color = look["sky_horizon"]
-	if _env != null:
-		_env.ambient_light_color = look["ambient"]
-		_env.ambient_light_energy = float(look["ambient_energy"])
-	if _sun != null:
-		_sun.light_color = look["sun"]
-		_sun.light_energy = float(look["sun_energy"])
-		# The sun is low and orange in the evening and behind the world at night.
-		_sun.rotation_degrees = Vector3(
-			-14.0 if GameState.shift_kind == "evening" else -52.0, -38, 0)
-	if _fill != null:
-		_fill.light_color = look["fill"]
-		_fill.light_energy = float(look["fill_energy"])
-	if hospital != null:
-		hospital.set_lamp_look(look["lamp"], float(look["lamp_energy"]))
+	if _env == null or _sun == null:
+		return
+	# Late afternoon by six, dark by eight. The evening arriving is the pressure.
+	var t: float = clampf(float(GameState.minute_of_day - 8 * 60) / float(12 * 60), 0.0, 1.0)
+	var warmth: float = smoothstep(0.55, 1.0, t)
+	_sun.light_energy = lerpf(1.05, 0.22, warmth)
+	_sun.light_color = Color(1.0, 0.97, 0.92).lerp(Color(1.0, 0.72, 0.48), warmth)
+	_sun.rotation_degrees = Vector3(lerpf(-58.0, -12.0, warmth), -38, 0)
+	if _fill:
+		_fill.light_energy = lerpf(0.35, 0.16, warmth)
+	if _sky_mat:
+		_sky_mat.sky_horizon_color = Color(0.72, 0.80, 0.86).lerp(Color(0.30, 0.28, 0.40), warmth)
 
 func _build_world() -> void:
 	hospital = Hospital.new()
@@ -232,77 +196,25 @@ func _spawn_systems() -> void:
 	patient_system.name = "PatientSystem"
 	add_child(patient_system)
 
-	treatment = TreatmentSystem.new()
-	treatment.name = "TreatmentSystem"
-	add_child(treatment)
-
-	economy = EconomySystem.new()
-	economy.name = "EconomySystem"
-	add_child(economy)
-
-	records = RecordsSystem.new()
-	records.name = "RecordsSystem"
-	add_child(records)
-
-	investigations = InvestigationSystem.new()
-	investigations.name = "InvestigationSystem"
-	add_child(investigations)
-
-	events = RandomEventSystem.new()
-	events.name = "RandomEventSystem"
-	add_child(events)
-
-	codex = Codex.new()
-	codex.name = "Codex"
-	add_child(codex)
-
 	var pa := PASystem.new()
 	pa.name = "PASystem"
 	add_child(pa)
-
-	var tutorial := TutorialSystem.new()
-	tutorial.name = "TutorialSystem"
-	add_child(tutorial)
-
-	var obstruction := ObstructionMonitor.new()
-	obstruction.name = "ObstructionMonitor"
-	add_child(obstruction)
 
 	var ambience := AmbienceSystem.new()
 	ambience.name = "AmbienceSystem"
 	add_child(ambience)
 
-	appointments = AppointmentSystem.new()
-	appointments.name = "AppointmentSystem"
-	add_child(appointments)
+	var tutorial := TutorialSystem.new()
+	tutorial.name = "TutorialSystem"
+	add_child(tutorial)
 
-	# The two phases either side of the ward. Both are added before ShiftSystem
-	# because it looks them up by group at the end of every day.
-	legal = LegalSystem.new()
-	legal.name = "LegalSystem"
-	add_child(legal)
-
-	night = NightSystem.new()
-	night.name = "NightSystem"
-	add_child(night)
-
-	# The fight happens in the room, so it is a system on the floor rather than
-	# a screen over it.
-	brawl = BrawlSystem.new()
-	brawl.name = "BrawlSystem"
-	brawl.patient_system = patient_system
-	brawl.treatment_system = treatment
-	add_child(brawl)
-
-	# Added last, and it listens rather than being called. Everything above it
-	# emits; this writes down what any of it would look like in a story.
-	var chron := Chronicle.new()
-	chron.name = "Chronicle"
-	add_child(chron)
-
-	shift = ShiftSystem.new()
-	shift.name = "ShiftSystem"
-	add_child(shift)
+	# The day. Everything the player does to a chart goes through this, and the
+	# ward sister reads what it kept. It replaces ShiftSystem, TreatmentSystem,
+	# EconomySystem, RecordsSystem, InvestigationSystem, AppointmentSystem,
+	# LegalSystem, NightSystem and BrawlSystem, all of which are gone.
+	ward = WardDay.new()
+	ward.name = "WardDay"
+	add_child(ward)
 
 func _spawn_player() -> void:
 	player = Player.new()
@@ -344,7 +256,9 @@ func _spawn_player() -> void:
 	# through it.
 	# Whatever the player set the last time they were here.
 	cam.fov = float(Settings.get_value("fov"))
-	player.global_position = hospital.lobby_spawn() + Vector3(0, 0.2, 0)
+	# You start in the corridor, outside the ward, because the first thing this
+	# game asks you to do is walk in and look at somebody.
+	player.global_position = hospital.point_in("corridor") + Vector3(0, 0.2, 0)
 	player.face(Vector3(5.5, 0, 4.0))
 
 ## Seed who talks to whom. Gossip weights by affinity, so which two nurses
@@ -361,50 +275,29 @@ func _seed_social_graph() -> void:
 				continue
 			a.affinity[b.id] = RNG.randf_range_s("affinity", 0.15, 1.0)
 
+## One nurse, and she is not random. Adeyemi is a named person the player will
+## argue with about a written discharge plan, so she is authored like the
+## patients are rather than rolled out of an archetype table.
 func _spawn_staff() -> void:
-	var nurse_archetypes: Array = ["gossip", "suspicious", "lazy", "loyal",
-		"rule_follower", "corrupt", "incompetent"]
-	var used: Array = []
-	for i in NURSE_COUNT:
-		var arch := String(RNG.pick("nurse_arch", nurse_archetypes))
-		var guard := 0
-		while used.has(arch) and guard < 12:
-			arch = String(RNG.pick("nurse_arch", nurse_archetypes))
-			guard += 1
-		used.append(arch)
-		_spawn_nurse(arch, i)
-	for i in DOCTOR_COUNT:
-		_spawn_doctor(String(RNG.pick("doc_arch",
-			["competitive", "oblivious", "ethical", "arrogant", "investigator", "corrupt_doc"])), i)
+	_spawn_nurse("rule_follower", 0)
 	_seed_social_graph()
 
 func _spawn_nurse(arch: String, index: int) -> void:
 	var n := NurseNPC.new()
 	n.npc_id = "nurse_%d" % index
 	n.archetype = arch
-	n.display = "Nurse %s" % RNG.pick("nurse_name", DB.STAFF_FIRST)
+	n.display = "Nurse %s" % DB.WARD_NURSE
 	n.set_colours(_random_skin(), Build.SCRUB_BLUE if arch != "corrupt" else Build.SCRUB_GREEN,
 		Color(0.2, 0.15, 0.11))
 	add_child(n)
 	n.global_position = hospital.point_in("station", "nurse_spawn")
 	var mind := DB.make_mind(n.npc_id, n.display, "nurse", arch)
-	if GameState.flag("perk_loyal_ward", false):
-		mind.trust = clampf(mind.trust + 0.25, 0.0, 1.0)
-		mind.talkativeness = maxf(0.05, mind.talkativeness - 0.3)
 	suspicion.register(mind, n)
 
-func _spawn_doctor(arch: String, index: int) -> void:
-	var d := DoctorNPC.new()
-	d.npc_id = "doctor_%d" % index
-	d.archetype = arch
-	d.display = "Dr %s" % RNG.pick("doc_name", DB.LAST_NAMES)
-	# A coat, not a light source. At 0.90 the white clipped against every wall
-	# in the building and the only thing defining the shape was the outline.
-	d.set_colours(_random_skin(), Color(0.80, 0.83, 0.87), Color(0.18, 0.14, 0.11))
-	add_child(d)
-	d.global_position = hospital.point_in("corridor", "doc_spawn")
-	var mind := DB.make_mind(d.npc_id, d.display, "doctor", arch)
-	suspicion.register(mind, d)
+## There is no second doctor. The only other clinician on this ward is the
+## sister who reads the folder in the morning, and she does not need a body on
+## the floor to do that — she needs the chart, which is where she gets her
+## questions from.
 
 func _random_skin() -> Color:
 	return RNG.pick("staff_skin", [
@@ -424,90 +317,26 @@ func _spawn_ui() -> void:
 # ------------------------------------------------------------------ lifecycle
 func _register_saves() -> void:
 	SaveSystem.register("suspicion", suspicion.to_dict, suspicion.from_dict)
-	SaveSystem.register("patients", patient_system.to_dict, patient_system.from_dict)
-	SaveSystem.register("economy", economy.to_dict, economy.from_dict)
-	SaveSystem.register("investigations", investigations.to_dict, investigations.from_dict)
-	SaveSystem.register("events", events.to_dict, events.from_dict)
-	SaveSystem.register("appointments", appointments.to_dict, appointments.from_dict)
-	SaveSystem.register("legal", legal.to_dict, legal.from_dict)
-	SaveSystem.register("night", night.to_dict, night.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
-	SaveSystem.register("codex", codex.to_dict, codex.from_dict)
-	SaveSystem.register("devices", _save_devices, _load_devices)
+	SaveSystem.register("records", ward.records.to_dict, ward.records.from_dict)
 
-## Every device that keeps a log has to be saved, because those logs ARE
-## evidence — losing a thermostat's history on load would quietly delete a paper
-## trail the player deliberately created.
-func _save_devices() -> Dictionary:
-	var out := {}
-	var m := 0
-	var t := 0
-	for f in get_tree().get_nodes_in_group("fixture"):
-		if f is TreatmentMachine:
-			out["m%d" % m] = f.to_dict()
-			m += 1
-		elif f is Thermostat:
-			out["t%d" % t] = f.to_dict()
-			t += 1
-	return out
-
-func _load_devices(d: Dictionary) -> void:
-	var m := 0
-	var t := 0
-	for f in get_tree().get_nodes_in_group("fixture"):
-		if f is TreatmentMachine:
-			if d.has("m%d" % m):
-				f.from_dict(d["m%d" % m])
-			m += 1
-		elif f is Thermostat:
-			if d.has("t%d" % t):
-				f.from_dict(d["t%d" % t])
-			t += 1
+## Nothing on this ward keeps a device log any more — the machines, the
+## thermostats and the window units all went with the redesign. What is evidence
+## now is the chart, and the chart is saved with the records above.
 
 func _start() -> void:
+	patient_system.populate()
+	ward.start()
 	if GameState.flag("headless_sim", false):
-		shift.begin_day()
 		return
-	if GameState.flag("continue_save", false):
-		GameState.set_flag("continue_save", false)
-		SaveSystem.load_game(SaveSystem.AUTOSAVE)
-		_resume_where_the_save_left_off()
-		return
-	shift.begin_day()
-	if not GameState.flag("tutorial_done", false):
-		EventBus.request_ui.emit("tutorial", {})
-
-## Put the player back where the save was taken, rather than at the top of the
-## morning regardless.
-##
-## The autosave is written inside clock_out(), with the day just worked still
-## current — so "load, then begin_day()" restarted a day that had already
-## happened. Debts were settled twice, the morning's events rolled twice, and
-## the appointment list was rebuilt for a shift that was over. A save taken from
-## the pause menu mid-shift was worse: it put the player back at 8am with the
-## ward as it stood at 2pm.
-func _resume_where_the_save_left_off() -> void:
-	match GameState.phase:
-		GameState.Phase.SHIFT:
-			# Straight back onto the floor, clock running, nothing re-rolled.
-			GameState.set_phase(GameState.Phase.SHIFT)
-			EventBus.objective_changed.emit("Get through the shift.")
-		GameState.Phase.CHART_REVIEW:
-			if not shift.last_review.is_empty():
-				EventBus.request_ui.emit("review", shift.last_review)
-			else:
-				shift.end_shift()
-		GameState.Phase.POST_SHIFT:
-			# The commonest case by far: the autosave is written at clock-out.
-			shift.next_day()
-		_:
-			shift.begin_day()
+	GameState.start_day()
+	EventBus.request_ui.emit("morning", {})
 
 func _physics_process(_delta: float) -> void:
 	if player and suspicion:
 		suspicion.refresh_tells(player.global_position)
 
-func _on_game_over(ending_id: String) -> void:
-	GameState.set_phase(GameState.Phase.GAME_OVER)
-	Meta.record_ending(ending_id)
-	EventBus.request_ui.emit("game_over", {"ending": ending_id})
+## The slice has no endings table. A day closes at the handover and that screen
+## says what happened; anything past it belongs to a game that has more days.
+func _on_game_over(_reason: String) -> void:
+	EventBus.request_ui.emit("review", {})

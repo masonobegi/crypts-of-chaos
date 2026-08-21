@@ -1,201 +1,59 @@
 class_name TutorialSystem
 extends Node
-## First-shift guidance.
+## What a stranger is told, and what they are deliberately not told.
 ##
-## Deliberately teaches only the LEGITIMATE job: read a chart, look at a
-## patient, treat them, file the paperwork, go home. It never mentions the other
-## thing. The player is told what a good doctor does, handed a debt schedule that
-## a good doctor cannot service, and left to draw their own conclusions.
+## The old tutorial had eight steps and taught somebody to be a competent honest
+## doctor. It never mentioned the arithmetic that the game is actually about, so
+## a player finished it having never encountered the premise on the store page.
+##
+## This one has three lines. It teaches where the chart is, that entries carry
+## the time they were written, and that there is a number owed at eight o'clock.
+## It does not suggest what to do about any of that. The first two minutes of
+## this game should raise a question, not answer one.
 
-## `where` names the thing the step is about, so the marker can point at it.
-## Resolved at run time by _target_for(), because none of it exists until the
-## hospital has been built.
 const STEPS := [
-	{"id": "list", "where": "board",
-		"text": "Check your list. It's on the board by the treatment bay, and on your tablet [Q]."},
-	{"id": "chart", "where": "chart",
-		"text": "Pick up a patient's chart and read it. [LMB] to grab, [E] to read."},
-	{"id": "examine", "where": "patient",
-		"text": "Go and see them. Talk to them, then examine them — firm enough to find something."},
-	{"id": "vitals", "where": "vitals",
-		"text": "Check their vitals at the bedside monitor."},
-	# Points at the patient, not at a box beside them. The ward's treatment
-	# machines are gone — a bedside dial was a second interface between the
-	# player and the person they came to see — so "treat" is now something you
-	# do to somebody, and the marker has to sit on the somebody.
-	{"id": "treat", "where": "patient",
-		"text": "Treat them. The chart lists what's indicated; the supply room has the kit."},
-	{"id": "records", "where": "terminal",
-		"text": "Log it at a terminal. The nurses' station has one; so does your office."},
-	{"id": "procedure", "where": "patient",
-		"text": "Some ailments need your hands. Talk to a patient whose chart names a "
-			+ "procedure and do it — you say what you mean to do first, and you are "
-			+ "marked on how well you do it."},
-	{"id": "shift", "where": "office",
-		"text": "When you have seen who is worth seeing, end the day at the desk in "
-			+ "your office. Anybody you did not get to is seen by nursing."},
+	{
+		"id": "read", "line": "Five beds. Read somebody's chart before you decide anything.",
+		"done": "chart_opened",
+	},
+	{
+		"id": "clock", "line": "Every note records when it was written, as well as when it happened.",
+		"done": "entry_written",
+	},
+	{
+		"id": "owed", "line": "Vinnie wants three thousand two hundred by eight. You have nine hundred.",
+		"done": "disposition_set",
+	},
 ]
 
-## The second and third phases teach themselves, because each one opens on a
-## screen with nothing else on it. What they need is a sentence beforehand, so
-## the first time an evening or a letter arrives it is a thing the game told you
-## about rather than a thing that happened to you.
-const PHASE_NOTES := {
-	"night": "The evening is yours. What happens in it turns up on your list in "
-		+ "the morning.",
-	"court": "Somebody you discharged has instructed a solicitor. Settle it, or "
-		+ "answer it.",
-}
-
-## Short label for the marker floating over the target. The objective line says
-## what to do; this says what you are looking at.
-const WHERE_LABEL := {
-	"board": "Clinic Board",
-	"chart": "Patient Chart",
-	"patient": "Your Patient",
-	"vitals": "Vitals Monitor",
-	"terminal": "Records Terminal",
-	"office": "Your Office",
-}
-
 var _index := 0
-var _active := false
-## Steps already satisfied, whenever they happened. See complete().
-var _done: Dictionary = {}
+var _active := true
 
 func _ready() -> void:
 	add_to_group("tutorial")
-	EventBus.shift_started.connect(_on_shift_started)
-	# ui_opened, not request_ui: the tablet is opened straight from the input
-	# handler and from the pause menu without ever going through the bus, so
-	# step 1 of 6 — "check your list" — could never complete and the tutorial
-	# could never advance past it.
-	EventBus.ui_opened.connect(func(id): _on_ui(id, {}))
-	# `treatment_applied` carries the PROCEDURE KIND for anything graded by
-	# Procedures.apply_outcome(), so the credited set is read off that table
-	# rather than written out here. The hand-written list said set_bone, suture
-	# and dose and predates "manipulate" existing: a player who reduced a
-	# dislocated shoulder — one of the four things on day one's ward that needs
-	# hands — did the step and was still being asked to go and do it. Any kind
-	# added to OUTCOMES from now on is credited the day it is added.
-	EventBus.treatment_applied.connect(func(_p, tid, _q):
-		complete("treat")
-		if Procedures.OUTCOMES.has(String(tid)):
-			complete("procedure"))
-	EventBus.shift_ended.connect(func(_d): complete("shift"))
-	# The examination step completes on the act, not on opening the screen —
-	# looking at the dial is not the same as using it, and the whole point of
-	# the step is that the player has now touched the one control the rest of
-	# the game is built on.
-	EventBus.world_event.connect(func(e):
-		if e.kind == "examination":
-			complete("examine"))
-
-func _on_shift_started(day: int) -> void:
-	if day > 1 or GameState.flag("tutorial_complete", false):
+	if GameState.flag("tutorial_done", false):
+		_active = false
 		return
-	_active = true
-	_index = 0
-	_done.clear()
-	_show()
+	EventBus.request_ui.connect(_on_ui)
+	call_deferred("_say")
 
-func _on_ui(id: String, _ctx: Dictionary) -> void:
-	match id:
-		"tablet": complete("list")
-		"chart": complete("chart")
-		"vitals": complete("vitals")
-		"records": complete("records")
-
-## Credit is given for the act whenever it happens, not only when the objective
-## is currently asking for it.
-##
-## This used to drop anything out of order outright, which is the wrong shape
-## for a game whose whole pitch is a sandbox: a player who walks into a room,
-## examines somebody and treats them before they think to pick up the chart had
-## done four of the seven steps and been credited with none of them, and the
-## objective line sat there asking for something they had already done twice.
-func complete(step_id: String) -> void:
+func _say() -> void:
 	if not _active or _index >= STEPS.size():
 		return
-	if _done.has(step_id):
+	EventBus.toast.emit(String(STEPS[_index]["line"]), "info")
+
+func note(what: String) -> void:
+	if not _active or _index >= STEPS.size():
 		return
-	_done[step_id] = true
-	var was := _index
-	while _index < STEPS.size() and _done.has(String(STEPS[_index]["id"])):
-		_index += 1
-	if _index == was:
-		return             # credited, but the objective has not moved on yet
-	AudioMgr.play("ding", -14.0)
+	if String(STEPS[_index]["done"]) != what:
+		return
+	_index += 1
 	if _index >= STEPS.size():
 		_active = false
-		GameState.set_flag("tutorial_complete", true)
-		EventBus.objective_changed.emit("")
-		EventBus.objective_target_changed.emit(Vector3.INF, "")
-		EventBus.toast.emit("That's the job. The rest is up to you.", "info")
+		GameState.set_flag("tutorial_done", true)
 		return
-	_show()
+	_say()
 
-func _show() -> void:
-	EventBus.objective_changed.emit(String(STEPS[_index]["text"]))
-	_point_at(String(STEPS[_index].get("where", "")))
-
-## Put the marker on whatever this step is about.
-##
-## Everything is looked up live rather than cached: the chart the step wants is
-## whichever chart exists now, the patient is whoever is actually in a bed, and
-## a step can be reached on day one or after four discharges.
-func _point_at(where: String) -> void:
-	var pos := _target_for(where)
-	EventBus.objective_target_changed.emit(pos, String(WHERE_LABEL.get(where, "")))
-
-func _target_for(where: String) -> Vector3:
-	var tree := get_tree()
-	if tree == null or where == "":
-		return Vector3.INF
-	var h = tree.get_first_node_in_group("hospital")
-	match where:
-		"board":
-			for f in tree.get_nodes_in_group("fixture"):
-				if f is ClinicBoard:
-					return (f as Node3D).global_position + Vector3(0, 1.1, 0)
-		"chart":
-			for c in tree.get_nodes_in_group("chart_prop"):
-				return (c as Node3D).global_position + Vector3(0, 0.4, 0)
-		"patient", "vitals":
-			var ps = tree.get_first_node_in_group("patient_system")
-			if ps == null:
-				return Vector3.INF
-			# The first patient who is actually in the ward — the one both of
-			# these steps are about.
-			#
-			# There used to be a third case here, "machine", which hunted the
-			# TreatmentMachine in the patient's room and fell back to the
-			# patient's head when it found none. The only machine left in the
-			# building is the imaging bench in Radiology, so every ward fell
-			# through that fallback and the marker sat over a seated patient
-			# captioned "Treatment Machine". A fallback that is always taken is
-			# not a fallback, it is the behaviour — so the step points at the
-			# patient outright and says so.
-			for p in ps.active():
-				var body = ps.get_body(p.id)
-				if body == null:
-					continue
-				if where == "patient":
-					return body.global_position + Vector3(0, 1.7, 0)
-				for f in tree.get_nodes_in_group("fixture"):
-					if String(f.get("room_key")) != String(p.room):
-						continue
-					if f is VitalsConsole:
-						return (f as Node3D).global_position + Vector3(0, 0.9, 0)
-				return body.global_position + Vector3(0, 1.7, 0)
-		"terminal":
-			for f in tree.get_nodes_in_group("fixture"):
-				if f is RecordsTerminal:
-					return (f as Node3D).global_position + Vector3(0, 1.3, 0)
-		"office":
-			if h != null and h.room("office") != null:
-				return h.room("office").center() + Vector3(0, 1.6, 0)
-	return Vector3.INF
-
-func is_active() -> bool:
-	return _active
+func _on_ui(id: String, _ctx: Dictionary) -> void:
+	if id == "chart":
+		note("chart_opened")

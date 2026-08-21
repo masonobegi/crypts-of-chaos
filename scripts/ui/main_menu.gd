@@ -39,31 +39,14 @@ func _ready() -> void:
 				label = "Continue — Day %d, %s" % [int(s["day"]), UIKit.money_str(int(s["money"]))]
 		v.add_child(UIKit.button(label, _continue))
 
-	if Meta.runs_completed > 0:
-		v.add_child(UIKit.rule())
-		v.add_child(UIKit.row("Careers finished", str(Meta.runs_completed)))
-		v.add_child(UIKit.row("Endings found", "%d of %d" % [
-			Meta.endings_found(), Endings.ENDINGS.size()], UIKit.ACCENT))
-		v.add_child(UIKit.row("Best earnings", UIKit.money_str(Meta.best_earnings), UIKit.MONEY))
-		var unlocked := Meta.unlocked_perks()
-		if not unlocked.is_empty():
-			v.add_child(UIKit.label("STARTING PERK", 13, UIKit.INK_DIM))
-			var none_btn := UIKit.button("None", func(): _pick_perk(""),
-				UIKit.PANEL_LIGHT if Meta.selected_perk != "" else Color(0.20, 0.35, 0.38))
-			v.add_child(none_btn)
-			for id in unlocked:
-				var perk_id := id
-				var b := UIKit.button(Meta.perk_name(perk_id), func(): _pick_perk(perk_id),
-					UIKit.PANEL_LIGHT if Meta.selected_perk != perk_id else Color(0.20, 0.35, 0.38))
-				b.tooltip_text = Meta.perk_desc(perk_id)
-				v.add_child(b)
-			if Meta.selected_perk != "":
-				v.add_child(UIKit.label(Meta.perk_desc(Meta.selected_perk), 12, UIKit.INK_DIM,
-					HORIZONTAL_ALIGNMENT_LEFT, true))
+	# A career tally, a list of endings found and a rack of unlockable starting
+	# perks used to sit here. They were all reads over Meta, which was the save
+	# file for a game made of many runs; this one is a ward, five people and a
+	# day, and it does not keep score across them.
 
 	var opts := UIKit.hbox(8)
 	for entry in [["Settings", "settings"], ["Controls", "controls"],
-			["Record", "achievements"], ["Credits", "credits"]]:
+			["Credits", "credits"]]:
 		var screen_id := String(entry[1])
 		var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
 		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -79,7 +62,7 @@ func _ready() -> void:
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label(
-		"WASD move · E use · LMB grab · RMB throw · Q tablet · Esc pause",
+		"WASD move · E use · LMB grab · RMB throw · Esc pause",
 		13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label(
 		"Everything in this game is fictional and extremely stupid on purpose.",
@@ -195,15 +178,8 @@ func _new_career() -> void:
 		var txt := _seed_field.text.strip_edges()
 		s = int(txt) if txt.is_valid_int() else hash(txt)
 	GameState.start_new_career(s)
-	Meta.apply_perk()
 	SaveSystem.delete_save(SaveSystem.AUTOSAVE)
 	get_tree().change_scene_to_file("res://scenes/Game.tscn")
-
-func _pick_perk(id: String) -> void:
-	Meta.select_perk(id)
-	for c in get_children():
-		c.queue_free()
-	call_deferred("_ready")
 
 func _continue() -> void:
 	GameState.set_flag("continue_save", true)

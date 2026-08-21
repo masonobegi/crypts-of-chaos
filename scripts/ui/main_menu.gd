@@ -25,14 +25,10 @@ func _ready() -> void:
 		16, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.rule())
 
+	# UIKit.button flips its text to paper-on-ink for a dark background, which
+	# is what makes this the one emphatic control on a page of pale ones.
 	var go := UIKit.button("New Career", _new_career, Color(0.11, 0.30, 0.29))
 	go.add_theme_font_size_override("font_size", 20)
-	# The one dark button on a page of pale ones needs its own text colour, or
-	# it is ink on ink and the most important control on the screen is the least
-	# readable one.
-	for state in ["font_color", "font_hover_color", "font_pressed_color",
-			"font_focus_color"]:
-		go.add_theme_color_override(state, Color(0.92, 0.98, 0.96))
 	v.add_child(go)
 	if SaveSystem.has_save(SaveSystem.AUTOSAVE):
 		var info := SaveSystem.list_saves()

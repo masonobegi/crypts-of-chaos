@@ -14,6 +14,8 @@ var _personal: Label
 var _hospital: Label
 var _census: Label
 var _objective: Label
+var _exposure_bar: ProgressBar = null
+var _exposure_fill: StyleBoxFlat = null
 var _prompt: Label
 var _prompt_sub: Label
 var _prompt_panel: PanelContainer
@@ -126,6 +128,29 @@ func _build() -> void:
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc.add_child(_objective)
 
+	# ---- how seen you are, out on the street.
+	#
+	# A word in the objective line is not a stealth readout. The evening asks you
+	# to route around three cones of vision and a lamp, and a decision you make
+	# forty times a minute needs something you can take in without reading — this
+	# is a bar that fills while somebody has you and drains while nobody does.
+	# It exists only during the evening; the ward has its own, different tell.
+	_exposure_bar = ProgressBar.new()
+	_exposure_bar.max_value = 1.0
+	_exposure_bar.step = 0.001
+	_exposure_bar.show_percentage = false
+	_exposure_bar.custom_minimum_size.y = 8
+	_exposure_bar.visible = false
+	var back := StyleBoxFlat.new()
+	back.bg_color = Color(0.10, 0.13, 0.17, 0.80)
+	back.set_corner_radius_all(3)
+	_exposure_bar.add_theme_stylebox_override("background", back)
+	_exposure_fill = StyleBoxFlat.new()
+	_exposure_fill.bg_color = UIKit.HUD_ACCENT
+	_exposure_fill.set_corner_radius_all(3)
+	_exposure_bar.add_theme_stylebox_override("fill", _exposure_fill)
+	tc.add_child(_exposure_bar)
+
 
 	# Neutral by default and restyled per tier in _refresh_watchers. It used to
 	# be hardcoded alarm-red, and it shows for anybody with line of sight
@@ -234,6 +259,23 @@ func _process(delta: float) -> void:
 	_drain_toasts(delta)
 	_refresh_watchers()
 	_refresh_objective_arrow()
+	_refresh_exposure()
+
+## The evening's readout. Teal while nobody has you, through amber, to red when
+## somebody has had you long enough for it to matter.
+func _refresh_exposure() -> void:
+	if _exposure_bar == null:
+		return
+	var night = get_tree().get_first_node_in_group("night_system")
+	var out: bool = night != null and bool(night.active)
+	_exposure_bar.visible = out
+	if not out:
+		return
+	var e := float(night.exposure)
+	_exposure_bar.value = e
+	_exposure_fill.bg_color = UIKit.HUD_ACCENT.lerp(
+		Color(0.98, 0.74, 0.22), clampf(e / 0.55, 0.0, 1.0)).lerp(
+		Color(0.98, 0.30, 0.26), clampf((e - 0.55) / 0.45, 0.0, 1.0))
 
 ## An arrow at the edge of the screen when the objective is behind you.
 ##

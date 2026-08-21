@@ -215,9 +215,8 @@ func _physics_process(delta: float) -> void:
 			AudioMgr.play("tick", -26.0, 1.3)
 	else:
 		exposure = maxf(0.0, exposure - delta * 0.04)
-	EventBus.objective_changed.emit("%s  ·  %s" % [
-		"Get next to %s. [hold E]  ·  back the way you came to go home"
-			% _mark_name, exposure_word()])
+	EventBus.objective_changed.emit("Get next to %s. [hold E]  ·  %s" % [
+		_mark_name, exposure_word()])
 
 	# They get home eventually, and then the evening is over whatever you did.
 	if mark != null and is_instance_valid(mark) and mark.home():
@@ -431,6 +430,7 @@ func enter(place_id: String) -> void:
 		"Get next to %s without being seen. [hold E]" % _mark_name)
 	EventBus.toast.emit("%s. %s" % [String(_place["name"]), String(_place["blurb"])],
 		"info")
+	EventBus.toast.emit("Walk back the way you came if you change your mind.", "info")
 	AudioMgr.play("door", -12.0)
 
 func _spawn_people() -> void:

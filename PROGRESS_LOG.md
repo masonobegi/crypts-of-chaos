@@ -2906,3 +2906,28 @@ screen has no business paying for that before you have pressed anything.
 
 Also: the courtroom's replies are the buttons now, rather than a heading with a
 "Say it" underneath it — the same fix the patient card got, for the same reason.
+
+### Things that were only wrong when you looked at them
+
+A pass over every screen in the shot harness, which is what that harness is for.
+
+- **The evening has a meter now.** A word in the objective line is not a stealth
+  readout. The street asks you to route around three cones and a lamp forty
+  times a minute, and a decision made that often needs something you take in
+  without reading — a bar under the objective that fills while somebody has you
+  and drains while nobody does, teal through amber to red. It exists only while
+  you are out; the ward has its own, different tell.
+- **A dark button now has pale text.** `UIKit.button` defaults to ink on paper,
+  which is right for the pale buttons the theme is made of — but a caller who
+  hands in a dark colour is asking for the one emphatic button on the page, and
+  ink on dark teal made the most important control on the screen the least
+  readable one. "New Career" and "Go home" were both doing this.
+- **`UIKit.row` can shout.** It is used for two different things: a label and
+  its value, where the label is the quiet half, and a heading with a price on
+  the end, where the heading is the loud half. The upgrade shop was the second
+  and was styled as the first, so every item name was the faintest text in its
+  own box.
+- **The run summary fits.** The ending screen cut its list off mid-row, at a row
+  labelled "Sent home on the wrong thing". That list is the reward for the whole
+  career.
+- **The courtroom's replies are the buttons.** Same fix as the patient card.

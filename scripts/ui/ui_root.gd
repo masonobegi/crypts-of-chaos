@@ -490,7 +490,10 @@ Nothing in this game will ever be labelled 'suspicious'. Work it out.""" % [Game
 # ---- game over
 func _game_over_screen(ending_id: String) -> Control:
 	var spec := Endings.spec(ending_id)
-	var parts := _shell(760, 620, String(spec["title"]))
+	# Tall. This is the last screen of a run and its list of what you did is the
+	# reward for the whole thing; the old height cut it off mid-row, at a row
+	# whose label was "Sent home on the wrong thing".
+	var parts := _shell(760, 840, String(spec["title"]))
 	var v: VBoxContainer = parts[1]
 	v.add_child(UIKit.label(String(spec["line"]), 17, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.label(String(spec["epitaph"]), 14, UIKit.INK_DIM))

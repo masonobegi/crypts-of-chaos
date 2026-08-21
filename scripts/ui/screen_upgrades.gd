@@ -23,7 +23,7 @@ func _build() -> void:
 		var bv := UIKit.vbox(4)
 		bv.add_child(UIKit.row(String(spec["name"]),
 			UIKit.money_str(int(spec["cost"])),
-			UIKit.MONEY if Upgrades.can_afford(id) else UIKit.BAD, 17))
+			UIKit.MONEY if Upgrades.can_afford(id) else UIKit.BAD, 17, UIKit.INK))
 		bv.add_child(UIKit.label(String(spec["desc"]), 14, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 		bv.add_child(UIKit.label(String(spec["note"]), 13, UIKit.WARN, HORIZONTAL_ALIGNMENT_LEFT, true))
 		var upgrade_id := id

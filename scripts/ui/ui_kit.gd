@@ -110,8 +110,16 @@ static func button(text: String, cb: Callable, color := PANEL_LIGHT, min_w := 0.
 	var b := Button.new()
 	b.text = text
 	b.add_theme_font_size_override("font_size", 16)
-	b.add_theme_color_override("font_color", INK)
-	b.add_theme_color_override("font_hover_color", ACCENT)
+	# Ink on paper is the default and is right for the pale buttons the paper
+	# theme is made of. A caller who hands in a DARK colour is asking for the
+	# one emphatic button on the page, and ink on dark teal is the least
+	# readable control on a screen full of readable ones — so the text flips.
+	var dark: bool = color.get_luminance() < 0.42
+	var ink: Color = Color(0.95, 0.99, 0.97) if dark else INK
+	b.add_theme_color_override("font_color", ink)
+	b.add_theme_color_override("font_hover_color", Color(1, 1, 1) if dark else ACCENT)
+	b.add_theme_color_override("font_pressed_color", ink)
+	b.add_theme_color_override("font_focus_color", ink)
 	b.add_theme_stylebox_override("normal", _slip(color, ACCENT, 4))
 	b.add_theme_stylebox_override("hover", _slip(color.lightened(0.06), ACCENT, 8))
 	b.add_theme_stylebox_override("pressed", _slip(color.darkened(0.10), ACCENT, 8))
@@ -221,9 +229,14 @@ static func rule(color := Color(INK.r, INK.g, INK.b, 0.22)) -> ColorRect:
 	return r
 
 ## A label/value row — the workhorse of every panel in the game.
-static func row(key: String, value: String, value_color := INK, size := 15) -> HBoxContainer:
+## `key_color` exists because this is used for two different things: a label and
+## its value ("Shifts worked ... 0"), where the label is the quiet half, and a
+## heading with a price on the end of it, where the heading is the loud half and
+## a dim one made the most important word on the row the faintest.
+static func row(key: String, value: String, value_color := INK, size := 15,
+		key_color := INK_DIM) -> HBoxContainer:
 	var h := hbox(8)
-	var k := label(key, size, INK_DIM)
+	var k := label(key, size, key_color)
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var v := label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT)
 	h.add_child(k)

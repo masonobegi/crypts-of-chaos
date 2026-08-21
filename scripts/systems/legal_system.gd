@@ -281,6 +281,8 @@ func settle(claim: Dictionary) -> Dictionary:
 	# reads the ledger.
 	GameState.add_heat(0.04, "a settlement")
 	GameState.adjust_rep("patient_sat", -0.02)
+	Chronicle.note("court", 0.85, "You paid %s to make %s's claim go away."
+		% [UIKit.money_str(cost), String(claim["patient"])])
 	claim_resolved.emit(claim)
 	Meta.check_achievements()
 	return {"paid": cost, "outcome": "settled"}
@@ -324,6 +326,9 @@ func verdict(claim: Dictionary, lawyer_id: String, score: float) -> Dictionary:
 		GameState.add_heat(0.10, "questions about your representation")
 		out["exposed"] = true
 	claim["lawyer"] = lawyer_id
+	Chronicle.note("court", 1.0, ("You beat %s in court, with %s." if won
+		else "%s beat you in court, and %s could not stop it.") % [
+			String(claim["patient"]), String(l["name"])])
 	claim_resolved.emit(claim)
 	Meta.check_achievements()
 	return out

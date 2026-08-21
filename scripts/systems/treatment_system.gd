@@ -495,6 +495,15 @@ func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vecto
 			GameState.set_flag("ach_textbook", true)
 		elif kind == "dose":
 			GameState.set_flag("ach_plausible_reaction", true)
+	# The extremes only. A career of competent, unremarkable procedures is not a
+	# story, and a chronicle that records all of them is a logfile.
+	if band == "good" or band == "poor":
+		Chronicle.note("procedure", 0.65 if band == "good" else 0.9, "%s %s %s." % [
+			"You made a textbook job of" if band == "good" and intent == "treat"
+				else ("You did a clean, quiet piece of harm to" if band == "good"
+					else "Everybody in the room watched you make a mess of"),
+			p.display_name + "'s",
+			Procedures.site_name(p.condition_id)])
 	AudioMgr.play(_sound_for(kind, band), -9.0)
 	EventBus.treatment_applied.emit(p, kind, clampf(rec, -1.0, 1.0))
 	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec.get("label", "Done"))],
@@ -554,6 +563,9 @@ func apply_brawl(p: Patient, won: bool, from_pos := Vector3.ZERO) -> Dictionary:
 	if sue > 0.0:
 		p.set_meta("sue_risk", float(p.get_meta("sue_risk", 0.0)) + sue)
 	GameState.add_heat(0.05 if won else 0.02)
+	Chronicle.note("violence", 1.0, ("You put %s on the floor of their own room."
+		if won else "%s put YOU on the floor, in front of the ward.")
+		% p.display_name)
 	AudioMgr.play("thud", -6.0)
 	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec["label"])],
 		"warn" if won else "bad")

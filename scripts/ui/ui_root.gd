@@ -494,7 +494,7 @@ func _game_over_screen(ending_id: String) -> Control:
 	# Tall. This is the last screen of a run and its list of what you did is the
 	# reward for the whole thing; the old height cut it off mid-row, at a row
 	# whose label was "Sent home on the wrong thing".
-	var parts := _shell(760, 840, String(spec["title"]))
+	var parts := _shell(820, 900, String(spec["title"]))
 	var v: VBoxContainer = parts[1]
 	v.add_child(UIKit.label(String(spec["line"]), 17, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.label(String(spec["epitaph"]), 14, UIKit.INK_DIM))
@@ -520,6 +520,30 @@ func _game_over_screen(ending_id: String) -> Control:
 			hv.add_child(UIKit.label("Beaten by %s." % UIKit.money_str(diff), 15, UIKit.GOOD))
 	haul.add_child(hv)
 	v.add_child(haul)
+	# What actually happened, before the counters.
+	#
+	# The run used to end on a table of numbers — "complications caused: 71" —
+	# and the numbers are the receipt, not the story. This is the story: nine
+	# dated sentences about named people, picked for how much of the career they
+	# are rather than for how recent they were. It is the one artefact this game
+	# produces that somebody would send to a friend.
+	var told: Array = Chronicle.story(9)
+	if not told.is_empty():
+		v.add_child(UIKit.label("WHAT ACTUALLY HAPPENED", 13, UIKit.INK_DIM))
+		var story_box := UIKit.vbox(2)
+		for entry in told:
+			var line := UIKit.hbox(10)
+			var d := UIKit.label(Chronicle.stamp(entry), 14, UIKit.ACCENT)
+			d.custom_minimum_size.x = 62
+			line.add_child(d)
+			var body := UIKit.label(String(entry["text"]), 15, UIKit.INK,
+				HORIZONTAL_ALIGNMENT_LEFT, true)
+			body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			line.add_child(body)
+			story_box.add_child(line)
+		v.add_child(story_box)
+		v.add_child(UIKit.rule())
+
 	var stats_box := UIKit.vbox(3)
 	stats_box.add_child(UIKit.row("Shifts worked", str(s.shifts_worked)))
 	stats_box.add_child(UIKit.row("Patients admitted", str(s.patients_admitted)))

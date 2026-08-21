@@ -130,6 +130,8 @@ static func attempt(mind: Mind, tier: Dictionary, at: Vector3, room := "") -> Di
 		GameState.stats.bribes_paid = int(GameState.stats.get("bribes_paid", 0)) + 1
 		GameState.add_heat(0.02, "an arrangement")
 		AudioMgr.play("money", -12.0)
+		Chronicle.note("envelope", 0.9, "%s took %s and stopped noticing things."
+			% [mind.display_name, UIKit.money_str(cost)])
 		return {"ok": true, "cost": cost, "odds": odds,
 			"reply": String(RNG.pick("bribe_yes", [
 				"...I didn't see anything. I was on my break.",
@@ -138,6 +140,8 @@ static func attempt(mind: Mind, tier: Dictionary, at: Vector3, room := "") -> Di
 				"You never gave me this. I never took it."]))}
 
 	# Refused. The money stays in your pocket and everything else gets worse.
+	Chronicle.note("envelope", 0.95,
+		"You offered %s money. They did not take it." % mind.display_name)
 	mind.deal_state = "refused"
 	mind.adjust_trust(-0.45)
 	mind.escalation = clampf(mind.escalation + 0.45, 0.0, 1.0)

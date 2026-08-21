@@ -417,6 +417,9 @@ func take_night_admissions() -> Array[Dictionary]:
 		p.presenting_complaint = "%s — brought in from %s" % [
 			DB.condition_name(p.condition_id), String(r.get("place", "the street"))]
 		p.chart.presenting_complaint = p.presenting_complaint
+		# So the chronicle can tell "somebody the morning brought in" from
+		# "somebody you fetched", which are very different sentences.
+		p.set_meta("from_the_street", true)
 		if not admit(p):
 			continue
 		var outcome := String(r.get("outcome", "clean"))

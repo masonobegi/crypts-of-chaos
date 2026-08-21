@@ -291,6 +291,12 @@ func _spawn_systems() -> void:
 	brawl.treatment_system = treatment
 	add_child(brawl)
 
+	# Added last, and it listens rather than being called. Everything above it
+	# emits; this writes down what any of it would look like in a story.
+	var chron := Chronicle.new()
+	chron.name = "Chronicle"
+	add_child(chron)
+
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"
 	add_child(shift)

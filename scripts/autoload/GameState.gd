@@ -83,6 +83,10 @@ var flags: Dictionary = {}
 var codex_unlocked: Array[String] = []
 
 # ------------------------------------------------------------------ career stats
+## What actually happened, in order, as sentences. Written by Chronicle, which
+## listens to EventBus rather than being called — see the note in that file.
+var chronicle: Array[Dictionary] = []
+
 var stats := {
 	"patients_admitted": 0, "patients_discharged": 0, "patients_cured": 0,
 	"days_billed": 0, "complications_caused": 0, "complications_clean": 0,
@@ -270,6 +274,7 @@ func start_new_career(run_seed: int = 0) -> void:
 	active_covers.clear()
 	flags.clear()
 	codex_unlocked.clear()
+	chronicle.clear()
 	reputation = {
 		"hospital": 0.45, "doctor": 0.5, "staff_trust": 0.5,
 		"patient_sat": 0.6, "insurer_trust": 0.6, "gov_scrutiny": 0.05,
@@ -293,7 +298,7 @@ func to_dict() -> Dictionary:
 		"debts": debts, "rep": reputation, "heat": heat, "sanc": sanction_level,
 		"shift_kind": shift_kind, "ups": owned_upgrades, "depts": unlocked_departments,
 		"covers": active_covers, "flags": flags, "codex": codex_unlocked,
-		"stats": stats, "rng": RNG.save_state(),
+		"stats": stats, "chronicle": chronicle, "rng": RNG.save_state(),
 		# The phase, and which day's morning has already been run.
 		#
 		# Neither was persisted, so a loaded save had no idea where in the day
@@ -335,4 +340,7 @@ func from_dict(d: Dictionary) -> void:
 	for c in d.get("codex", []):
 		codex_unlocked.append(String(c))
 	stats = d.get("stats", stats)
+	chronicle.clear()
+	for e in Array(d.get("chronicle", [])):
+		chronicle.append(Dictionary(e))
 	RNG.load_state(d.get("rng", {}))

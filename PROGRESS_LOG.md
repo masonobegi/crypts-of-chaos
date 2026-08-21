@@ -3157,3 +3157,35 @@ go. The skill is releasing early by an amount you have learned rather than
 stopping on the line. The best possible piece of harm no longer out-scores the
 best possible cure. The bone hold is longer and both tolerances are tighter; the
 stitch radius is down a third; the arc is narrower and faster.
+
+## The Chronicle
+
+The run used to end on a table of counters — *complications caused: 71* — and a
+counter is a receipt, not a story. What actually happened was that you met
+Ruthven Pike on Ossory Street on the sixth, he was in bed 2 by Tuesday, and he
+spent nine days trying to place your face.
+
+`Chronicle` writes that down while it happens, and the ending screen tells it
+back in nine dated sentences before it shows you the numbers. It is the one
+artefact this game produces that somebody would send to a friend, and the game
+was throwing every one of them away.
+
+**It is a listener, not an API** — the same rule the achievements follow, for
+the same reason: a system that has to remember to write its own history is a
+system with a hole in its history. It connects to `EventBus` and writes its own
+entries. Four beats carry context no signal has and call `note()` directly: the
+street, the courtroom, the envelope, and a fight.
+
+Two things it has to get right and does:
+
+- **Selection is by weight, not recency**, with at most two of any one kind on
+  the first pass, so a career of nothing but botched sutures still reads as a
+  story rather than the same sentence nine times. If the varied material runs
+  out it tops up rather than handing back four lines.
+- **Pruning drops the least storyish entry, not the oldest.** A career's first
+  day is often its best material, and a cap that eats the beginning would throw
+  away the reason the rest happened.
+
+Nothing in it holds a node. Names and strings only — a log that keeps references
+to patients is a log that hits the freed-object-abort trap on the first
+discharge, silently, exactly as CLAUDE.md warns.

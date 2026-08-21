@@ -496,6 +496,63 @@ func test_a_fight_is_a_read_and_not_a_twitch() -> void:
 	t.ok(Brawl.FEINT_AT > 0.2 and Brawl.FEINT_AT < 0.9,
 		"the switch happens inside the wind-up, where you can still react to it")
 
+# ============================================================== the chronicle
+## The story of a career, which is the only artefact this game makes that
+## somebody would send to a friend.
+func test_the_chronicle_keeps_the_story_and_not_the_logfile() -> void:
+	GameState.chronicle.clear()
+	# Forty routine admissions and three things that actually happened.
+	for i in 40:
+		Chronicle.note("admitted", Chronicle.W_SCENE, "Somebody %d came in." % i)
+	Chronicle.note("sanction", Chronicle.W_STORY, "A written warning.")
+	Chronicle.note("violence", Chronicle.W_STORY, "There was an altercation.")
+	Chronicle.note("court", Chronicle.W_STORY, "You lost in court.")
+
+	var told: Array = Chronicle.story(9)
+	t.eq(told.size(), 9, "it tells nine things")
+	# The cap is on the FIRST pass. Once the varied material runs out it tops up
+	# rather than handing back four lines, so a career that only ever did one
+	# kind of thing still gets a full page.
+	var kinds := {}
+	for e in told:
+		kinds[String(e["kind"])] = int(kinds.get(String(e["kind"]), 0)) + 1
+	t.gt(float(kinds.size()), 3.0, "and it reaches for variety first (%d kinds)" % kinds.size())
+	# The three that mattered are in it, despite being outnumbered thirteen to one.
+	var text := ""
+	for e in told:
+		text += String(e["text"])
+	for must in ["warning", "altercation", "court"]:
+		t.ok(text.findn(must) >= 0, "the %s survived forty routine admissions" % must)
+
+func test_the_chronicle_is_chronological_even_though_it_is_picked_by_weight() -> void:
+	GameState.chronicle.clear()
+	var was := GameState.day
+	for d in [7, 2, 9, 4]:
+		GameState.day = d
+		Chronicle.note("court", Chronicle.W_STORY, "Something on day %d." % d)
+	GameState.day = was
+	var told: Array = Chronicle.story(9, 9)
+	var last := -1
+	for e in told:
+		t.ok(int(e["day"]) >= last, "day %d does not come before day %d" % [e["day"], last])
+		last = int(e["day"])
+
+func test_the_chronicle_never_grows_without_bound() -> void:
+	GameState.chronicle.clear()
+	Chronicle.note("court", Chronicle.W_STORY, "The one that matters.")
+	for i in Chronicle.CAP + 60:
+		Chronicle.note("admitted", Chronicle.W_SCENE, "Routine %d." % i)
+	t.ok(GameState.chronicle.size() <= Chronicle.CAP,
+		"a thirty-day career does not bloat the save (%d)" % GameState.chronicle.size())
+	# And it drops the least storyish thing rather than the oldest, because a
+	# career's first day is often its best material.
+	var kept := false
+	for e in GameState.chronicle:
+		if String(e["text"]) == "The one that matters.":
+			kept = true
+	t.ok(kept, "the thing that mattered survived the pruning")
+	GameState.chronicle.clear()
+
 # ============================================================== achievements
 func test_every_achievement_is_reachable_and_named() -> void:
 	# A catalogue is only worth having if every entry can be earned and every

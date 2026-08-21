@@ -813,10 +813,29 @@ func resolve(place_id: String, mark: String, exposure: float, reached: bool,
 	else:
 		res["line"] += " There is nowhere to put them; they go across town."
 
+	Chronicle.note("street", 0.95, _story_line(res, spec))
 	last_result = res
 	night_resolved.emit(res)
 	Meta.check_achievements()
 	return res
+
+## One sentence about the evening, for the record that gets read back at the
+## end of the career. No signal carries enough of this: only here knows the
+## street, the name, the act and how badly it went, all at once.
+func _story_line(res: Dictionary, spec: Dictionary) -> String:
+	var who := String(res.get("mark", "somebody"))
+	var where := String(spec.get("name", "a street"))
+	var hurt := String(res.get("injury", "something"))
+	match String(res["outcome"]):
+		"clean":
+			return "You found %s at %s. Nobody looked up." % [who, where]
+		"seen":
+			return "You found %s at %s, and somebody in a window saw enough to describe a coat." \
+				% [who, where]
+		"caught":
+			return "Somebody watched you do it to %s at %s, and did not look away." \
+				% [who, where]
+	return "You went as far as %s and came home." % where
 
 ## Being watched doing it is a claim, not a rumour.
 ##

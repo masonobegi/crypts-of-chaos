@@ -55,6 +55,7 @@ func _build_choose() -> void:
 	var free: int = ns.beds_free() if ns != null else 0
 	var v := shell(840, 760, "The evening",
 		"Day %d · %d bed%s free" % [GameState.day, free, "" if free == 1 else "s"])
+	first_time_note(v, "night")
 	v.add_child(UIKit.label(
 		"You could go home. The ward fills up on its own eventually, and "
 		+ "eventually is the problem.", 15, UIKit.INK_DIM,

@@ -37,6 +37,7 @@ func _build_letter() -> void:
 	var v := shell(820, 720, "A letter before action",
 		"%s · %s" % [String(_claim["patient"]), String(_claim["condition"])])
 
+	first_time_note(v, "court")
 	var box := UIKit.panel(Color(0.20, 0.14, 0.14, 0.9), 6, 1, UIKit.BAD)
 	var bv := UIKit.vbox(4)
 	bv.add_child(UIKit.label(String(_claim["summary"]), 16, Color(1, 0.88, 0.86),

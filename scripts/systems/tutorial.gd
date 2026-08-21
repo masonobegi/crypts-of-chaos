@@ -23,9 +23,25 @@ const STEPS := [
 		"text": "Treat them. The chart lists what's indicated; the supply room has the kit."},
 	{"id": "records", "where": "terminal",
 		"text": "Log it at a terminal. The nurses' station has one; so does your office."},
+	{"id": "procedure", "where": "patient",
+		"text": "Some ailments need your hands. Talk to a patient whose chart names a "
+			+ "procedure and do it — you say what you mean to do first, and you are "
+			+ "marked on how well you do it."},
 	{"id": "shift", "where": "office",
-		"text": "See out the shift, then review your charts before you go."},
+		"text": "When you have seen who is worth seeing, end the day at the desk in "
+			+ "your office. Anybody you did not get to is seen by nursing."},
 ]
+
+## The second and third phases teach themselves, because each one opens on a
+## screen with nothing else on it. What they need is a sentence beforehand, so
+## the first time an evening or a letter arrives it is a thing the game told you
+## about rather than a thing that happened to you.
+const PHASE_NOTES := {
+	"night": "The evening is yours. What happens in it turns up on your list in "
+		+ "the morning.",
+	"court": "Somebody you discharged has instructed a solicitor. Settle it, or "
+		+ "answer it.",
+}
 
 ## Short label for the marker floating over the target. The objective line says
 ## what to do; this says what you are looking at.
@@ -52,7 +68,10 @@ func _ready() -> void:
 	# step 1 of 6 — "check your list" — could never complete and the tutorial
 	# could never advance past it.
 	EventBus.ui_opened.connect(func(id): _on_ui(id, {}))
-	EventBus.treatment_applied.connect(func(_p, _t, _q): complete("treat"))
+	EventBus.treatment_applied.connect(func(_p, tid, _q):
+		complete("treat")
+		if String(tid) in ["set_bone", "suture", "dose"]:
+			complete("procedure"))
 	EventBus.shift_ended.connect(func(_d): complete("shift"))
 	# The examination step completes on the act, not on opening the screen —
 	# looking at the dial is not the same as using it, and the whole point of

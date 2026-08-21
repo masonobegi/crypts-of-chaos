@@ -973,8 +973,9 @@ func test_the_tutorial_credits_you_for_what_you_actually_did() -> void:
 	t.eq(t9._index, 0, "none of that satisfies step one, which is a different act")
 	t9.complete("list")             # step 1, finally
 	t.eq(t9._index, 5, "and doing step one now credits everything already done")
-	t.ok(t9.is_active(), "with two steps still to go")
+	t.ok(t9.is_active(), "with the rest still to go")
 	t9.complete("records")
+	t9.complete("procedure")
 	t9.complete("shift")
 	t.ok(not t9.is_active(), "and the last of them finishes it")
 	GameState.start_new_career(1)

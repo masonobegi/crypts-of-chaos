@@ -85,6 +85,24 @@ func _intent_option(intent: String, note: String, tint: Color, cb: Callable) -> 
 	p.add_child(bv)
 	return p
 
+## A sentence the first time a phase of the game happens to you, and never
+## again. Kept here rather than in the tutorial system because the tutorial runs
+## on day one and these can arrive on day nine — what matters is that the first
+## letter and the first evening are things the game told you about rather than
+## things that happened to you.
+func first_time_note(v: VBoxContainer, key: String) -> void:
+	var flag := "seen_phase_" + key
+	if GameState.flag(flag, false):
+		return
+	GameState.set_flag(flag, true)
+	var text := String(TutorialSystem.PHASE_NOTES.get(key, ""))
+	if text == "":
+		return
+	var box := UIKit.panel(Color(0.12, 0.20, 0.24, 0.92), 6, 1, UIKit.ACCENT)
+	box.add_child(UIKit.label(text, 15, Color(0.84, 0.95, 0.96),
+		HORIZONTAL_ALIGNMENT_LEFT, true))
+	v.add_child(box)
+
 ## Rebuild the whole screen in place — simpler and less bug-prone than trying to
 ## patch individual widgets after an action changes the underlying data.
 func rebuild() -> void:

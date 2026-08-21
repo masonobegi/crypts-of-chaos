@@ -59,6 +59,7 @@ const STREET_SHOTS := [
 	["32_street", Vector3(-26.0, 1.7, 6.0), Vector3(14.0, 1.5, 4.0)],
 	["32b_street_lamp", Vector3(6.0, 1.7, -6.0), Vector3(-10.0, 2.4, 6.0)],
 	["32c_street_mark", Vector3(20.0, 1.7, 6.6), Vector3(-12.0, 1.5, 5.0)],
+	["32d_street_cone", Vector3(-14.0, 1.7, 7.4), Vector3(18.0, 1.2, 3.0)],
 ]
 var street_index := 0
 var street_ready := false
@@ -85,9 +86,11 @@ func _tick_street() -> bool:
 			SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size(),
 			ProjectSettings.globalize_path(out_dir)])
 		return true
+	# Street coordinates are written as if the street were at the origin; it is
+	# not (see Street.ORIGIN), so both ends of every shot carry the offset.
 	var shot: Array = STREET_SHOTS[street_index]
-	game.player.camera.global_position = shot[1]
-	game.player.camera.look_at(shot[2], Vector3.UP)
+	game.player.camera.global_position = Street.ORIGIN + Vector3(shot[1])
+	game.player.camera.look_at(Street.ORIGIN + Vector3(shot[2]), Vector3.UP)
 	if settle < 9:
 		return false
 	var img := tree.root.get_texture().get_image()

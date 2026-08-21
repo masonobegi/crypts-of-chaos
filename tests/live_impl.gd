@@ -224,7 +224,14 @@ func _night_check() -> void:
 	_ok(night.mark != null and is_instance_valid(night.mark),
 		"with somebody walking home ahead of you")
 	_ok(night.watchers.size() > 0, "and other people about")
-	_ok(game.player.global_position.y > -2.0, "and the street has a floor")
+	# Relative to the street's own origin, not the world's: the street is built
+	# four hundred metres under the hospital so the two do not share colliders.
+	_ok(game.player.global_position.y > Street.ORIGIN.y - 2.0,
+		"and the street has a floor")
+	# The street being somewhere else is the whole reason the hospital's walls
+	# stop blocking sight-lines the player cannot see.
+	_ok(absf(game.player.global_position.y - Street.ORIGIN.y) < 40.0,
+		"and it is not built on top of the hospital")
 	# Exposure has to be a live reading rather than a constant.
 	_ok(night.exposure >= 0.0 and night.exposure <= 1.0,
 		"being seen is measured while you walk (%.2f)" % night.exposure)

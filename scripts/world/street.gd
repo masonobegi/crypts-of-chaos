@@ -13,6 +13,15 @@ extends Node3D
 ## that make a pool of light you can stand outside of, and enough parked things
 ## to hide behind. Built from primitives at load time like everything else.
 
+## The street is built four hundred metres under the hospital, not on top of it.
+##
+## Hiding the hospital hides its *meshes*; every wall it has still has a
+## collider, and the street is laid out across exactly the same patch of world.
+## Standing in the road meant standing inside ward 103 — invisible walls to walk
+## into, and worse, invisible walls for a watcher's sight-line raycast to stop
+## against, so half the cones in the street silently did not work. Somewhere
+## else entirely is the only honest fix, and it costs nothing.
+const ORIGIN := Vector3(0.0, -400.0, 0.0)
 const LENGTH := 74.0
 const ROAD_HALF := 4.0
 const PAVE := 4.2
@@ -32,6 +41,7 @@ var place_id := ""
 
 func build(spec: Dictionary) -> void:
 	place_id = String(spec.get("id", "street"))
+	position = ORIGIN
 	_ground()
 	# Half the building's depth, not all of it: the house's FRONT has to land on
 	# the far edge of the pavement. The first version put its centre there and
@@ -178,20 +188,23 @@ func _lamps(count: int) -> void:
 		light.shadow_enabled = false
 		light.position = head + Vector3(0, -0.2, 0)
 		post.add_child(light)
-		lamps.append(post.position + head)
+		lamps.append(ORIGIN + post.position + head)
 
 # ------------------------------------------------------------------ people
 ## Where everybody starts, and where the mark is walking. Deliberately laid out
 ## so the mark's route passes through at least one pool of lamplight: the
 ## decision the street is asking is "do I take them here, or wait".
 func _layout_people(watchers: int) -> void:
-	player_start = Vector3(-LENGTH * 0.44, 1.0, ROAD_HALF + 1.6)
+	# Everything below is handed straight to global_position, so it carries the
+	# offset. The geometry above does not: it is built around a local zero and
+	# the node itself is what moves.
+	player_start = ORIGIN + Vector3(-LENGTH * 0.44, 1.0, ROAD_HALF + 1.6)
 	mark_route = PackedVector3Array([
-		Vector3(LENGTH * 0.46, 0.4, ROAD_HALF + 1.8),
-		Vector3(LENGTH * 0.10, 0.4, ROAD_HALF + 1.8),
-		Vector3(-LENGTH * 0.06, 0.4, ROAD_HALF + 2.6),
-		Vector3(-LENGTH * 0.30, 0.4, ROAD_HALF + 2.2),
-		Vector3(-LENGTH * 0.47, 0.4, ROAD_HALF + 2.0),
+		ORIGIN + Vector3(LENGTH * 0.46, 0.4, ROAD_HALF + 1.8),
+		ORIGIN + Vector3(LENGTH * 0.10, 0.4, ROAD_HALF + 1.8),
+		ORIGIN + Vector3(-LENGTH * 0.06, 0.4, ROAD_HALF + 2.6),
+		ORIGIN + Vector3(-LENGTH * 0.30, 0.4, ROAD_HALF + 2.2),
+		ORIGIN + Vector3(-LENGTH * 0.47, 0.4, ROAD_HALF + 2.0),
 	])
 	watcher_spots.clear()
 	for i in maxi(watchers, 0):
@@ -200,7 +213,7 @@ func _layout_people(watchers: int) -> void:
 		var far: bool = i % 2 == 1
 		var z: float = (-ROAD_HALF - 2.0) if far else (ROAD_HALF + 3.1)
 		watcher_spots.append({
-			"pos": Vector3(x, 0.4, z),
+			"pos": ORIGIN + Vector3(x, 0.4, z),
 			"facing": (PI * 0.5 if far else -PI * 0.5) + sin(float(i) * 2.3) * 0.8,
 		})
-	hazard_spot = Vector3(LENGTH * 0.18, 0.4, -ROAD_HALF - 2.4)
+	hazard_spot = ORIGIN + Vector3(LENGTH * 0.18, 0.4, -ROAD_HALF - 2.4)

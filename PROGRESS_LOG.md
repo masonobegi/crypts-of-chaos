@@ -2828,3 +2828,26 @@ now comments in the source because they will happen again:
   `promised_discharge_day`, a date you put in writing, and quietly moving it
   every time a procedure adds a day would erase the gap the whole ward is built
   on.
+
+### Cones you can see, and a street that is somewhere else
+
+Two follow-ups the first street render made obvious.
+
+**The watchers now cast their vision onto the pavement.** A faint teal fan per
+watcher, turning red on whoever it is currently reading, updated every physics
+frame from the same facing the perception code uses — so it is the actual cone,
+not a drawing of one. Deliberately *cool*, because the street already has warm
+sodium pools on the ground and a second warm shape down there would read as
+more of them; the whole phase is choosing which one you are standing in, and
+those two have to be distinguishable at a glance.
+
+**The street is built four hundred metres under the hospital.** Hiding the
+hospital hides its meshes and nothing else: every wall it owns still had a
+collider, and the street was laid out across the same patch of world. So the
+road ran through ward 103 — invisible walls to walk into, and much worse,
+invisible walls for a watcher's sight-line raycast to stop against, which meant
+several cones in the street silently did not work at all. And the ward's own
+staff are not children of the building, so hiding it left a consultant in a
+white coat with his name over his head walking home down a street eleven miles
+from work. Both are fixed by putting the street somewhere else and taking
+everybody in group `npc` off screen while you are out.

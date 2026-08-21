@@ -111,6 +111,10 @@ const MESSY := 0.62
 var street: Street = null
 var mark: NightMark = null
 var watchers: Array = []
+## One flat fan on the pavement per watcher, showing exactly where they are
+## looking. Not decoration: the street asks you to route around three cones and
+## a lamp, and a cone you cannot see is not a decision, it is a coin toss.
+var cones: Array = []
 var active := false
 var exposure := 0.0
 var _place: Dictionary = {}
@@ -120,6 +124,8 @@ var _hospital_was := true
 var _elapsed := 0.0
 var _hazard_node: Node3D = null
 var _hz_face := 0.0
+var _hz_cone: MeshInstance3D = null
+var _hidden: Array = []
 var _tram := -1.0
 
 ## How far a person can see you, and how wide their attention is. Narrower and
@@ -128,6 +134,13 @@ var _tram := -1.0
 const SIGHT := 17.0
 const CONE := 0.62
 const EXPOSURE_RATE := 0.42
+## Cool for "looking somewhere", hot for "looking at you". Deliberately NOT the
+## sodium of the lamps: the street already has warm pools on the ground and a
+## second warm shape on the ground would read as more of them. A cone has to be
+## something a person can tell apart from a puddle of light at a glance, because
+## the whole phase is deciding which one you are standing in.
+const CONE_CLEAR := Color(0.42, 0.88, 0.86, 0.22)
+const CONE_HOT := Color(1.0, 0.26, 0.22, 0.46)
 
 var patient_system: PatientSystem = null
 var legal = null
@@ -170,9 +183,16 @@ func _physics_process(delta: float) -> void:
 			+ sin(_elapsed * 0.7 + float(w.get_meta("phase", 0.0))) \
 				* float(w.get_meta("sweep", 0.6))
 		w.rotation.y = face
-		seen = maxf(seen, _looks_at(w.global_position + Vector3(0, 1.5, 0), face,
-			CONE, SIGHT, eye))
-	seen = maxf(seen, _hazard_sees(eye, delta))
+		var mine := _looks_at(w.global_position + Vector3(0, 1.5, 0), face,
+			CONE, SIGHT, eye)
+		seen = maxf(seen, mine)
+		if i < cones.size():
+			_aim_cone(cones[i], w.global_position, face, mine)
+	var hz_seen := _hazard_sees(eye, delta)
+	seen = maxf(seen, hz_seen)
+	if _hz_cone != null and _hazard_node != null and is_instance_valid(_hazard_node):
+		_aim_cone(_hz_cone, _hazard_node.global_position,
+			_hazard_node.rotation.y, hz_seen)
 
 	var light := _light_on(player.global_position)
 	if seen > 0.0:
@@ -299,9 +319,15 @@ func leave() -> void:
 	var hospital = get_tree().get_first_node_in_group("hospital")
 	if hospital != null:
 		hospital.visible = _hospital_was
+	for n in _hidden:
+		if is_instance_valid(n):
+			n.visible = true
+	_hidden.clear()
 	watchers.clear()
+	cones.clear()
 	mark = null
 	_hazard_node = null
+	_hz_cone = null
 	if street != null and is_instance_valid(street):
 		street.queue_free()
 	street = null
@@ -333,6 +359,14 @@ func enter(place_id: String) -> void:
 	if hospital != null:
 		_hospital_was = hospital.visible
 		hospital.visible = false
+	# And everybody in it. Staff and patients are not children of the building,
+	# so hiding the building left a consultant in a white coat with his name
+	# over his head walking down a street eleven miles from work.
+	_hidden.clear()
+	for n in get_tree().get_nodes_in_group("npc"):
+		if n is Node3D and n.visible:
+			_hidden.append(n)
+			n.visible = false
 	_player_was = player.global_transform
 	player.global_position = street.player_start
 	player.velocity = Vector3.ZERO
@@ -360,6 +394,7 @@ func _spawn_people() -> void:
 	mark.start(street.mark_route)
 
 	watchers.clear()
+	cones.clear()
 	for spot in street.watcher_spots:
 		var w := NPCBody.new()
 		w.display = ""
@@ -372,8 +407,12 @@ func _spawn_people() -> void:
 		w.set_meta("sweep", 0.5 + randf() * 0.5)
 		w.set_meta("phase", randf() * TAU)
 		watchers.append(w)
+		var cone := _cone_node(CONE, SIGHT)
+		street.add_child(cone)
+		cones.append(cone)
 
 	_hazard_node = null
+	_hz_cone = null
 	var hz := String(_place.get("hazard", ""))
 	if hz == "dog" or hz == "drunk":
 		var h := NPCBody.new()
@@ -388,7 +427,7 @@ func _spawn_people() -> void:
 	elif hz == "camera":
 		var cam := Node3D.new()
 		street.add_child(cam)
-		cam.position = street.hazard_spot + Vector3(0, 4.2, 0)
+		cam.global_position = street.hazard_spot + Vector3(0, 4.2, 0)
 		cam.add_child(Build.mi(Build.cyl_mesh(0.07, 4.2, 8),
 			Build.mat(Color(0.18, 0.19, 0.21), 0.6), Vector3(0, -2.1, 0)))
 		cam.add_child(Build.box_mi(Vector3(0.36, 0.26, 0.5), Color(0.30, 0.32, 0.36),
@@ -396,6 +435,58 @@ func _spawn_people() -> void:
 		cam.add_child(Build.mi(Build.sphere_mesh(0.07),
 			Build.unshaded(Color(0.95, 0.24, 0.20)), Vector3(0, 0, 0.28)))
 		_hazard_node = cam
+	if _hazard_node != null and hz != "tram":
+		var spread: float = 0.5 if hz == "camera" else (1.2 if hz == "dog" else 0.7)
+		var reach: float = 26.0 if hz == "camera" else (11.0 if hz == "dog" else 14.0)
+		_hz_cone = _cone_node(spread, reach)
+		street.add_child(_hz_cone)
+
+## A flat fan on the ground, forward along +Z so it can simply take the
+## watcher's own facing. Vertex alpha falls off toward the rim, which is what
+## stops it reading as a slice of cheese lying in the road.
+func _cone_node(half: float, reach: float) -> MeshInstance3D:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var steps := 20
+	for i in steps:
+		var a0: float = -half + 2.0 * half * float(i) / float(steps)
+		var a1: float = -half + 2.0 * half * float(i + 1) / float(steps)
+		st.set_normal(Vector3.UP)
+		st.set_color(Color(1, 1, 1, 1))
+		st.add_vertex(Vector3.ZERO)
+		st.set_normal(Vector3.UP)
+		st.set_color(Color(1, 1, 1, 0.10))
+		st.add_vertex(Vector3(sin(a1), 0.0, cos(a1)) * reach)
+		st.set_normal(Vector3.UP)
+		st.set_color(Color(1, 1, 1, 0.10))
+		st.add_vertex(Vector3(sin(a0), 0.0, cos(a0)) * reach)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	# Cones cross each other constantly and two of them fighting over the same
+	# pixel is worse than either being slightly wrong.
+	m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+	m.vertex_color_use_as_albedo = true
+	m.albedo_color = CONE_CLEAR
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+## Put a cone where its owner is, pointing where they are pointing, and colour
+## it by whether it is currently on you. Warm and faint is "somebody is looking
+## over there"; hot is "somebody is looking at you", and the two have to be
+## distinguishable at a glance from the far end of the street.
+func _aim_cone(cone: MeshInstance3D, at: Vector3, face: float, seen: float) -> void:
+	if cone == null or not is_instance_valid(cone):
+		return
+	cone.global_position = Vector3(at.x, Street.ORIGIN.y + 0.27, at.z)
+	cone.rotation.y = face
+	var m := cone.material_override as StandardMaterial3D
+	if m != null:
+		m.albedo_color = CONE_CLEAR.lerp(CONE_HOT, clampf(seen * 2.2, 0.0, 1.0))
 
 ## Night, from a street. The hospital's own lighting is for a lit interior and
 ## makes a road at eleven at night look like a car park at noon.

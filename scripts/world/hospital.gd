@@ -8,50 +8,40 @@ const WALL_H := 3.2
 const WALL_T := 0.16
 const DOOR_W := 1.4
 
-## Rect2(x, z, width, depth). North wing is z 4..13, corridor z 0..4,
-## south wing z -10..0. Rooms tile exactly so no wall is ever built twice.
+## How many beds stand in the ward. Cases numbers its five people 1..5 and this
+## is the other half of that agreement.
+const BEDS := 5
+
+## Rect2(x, z, width, depth). The ward is z 4..13, the corridor z 0..4, the
+## station and the office z -8..0. Rooms tile exactly so no wall is ever built
+## twice.
 ##
-## The west annexe (x -16..0) is built on day one and SEALED behind roller
-## shutters until the matching department is bought. Rooms you can see but not
-## enter are worth far more than rooms that pop into existence when you can
-## afford them: the shutters are visible from the corridor from the first shift,
-## so the money has somewhere to be going long before there is any.
+## Four rooms, and that is the whole hospital. There used to be eleven — a
+## lobby, a treatment bay, a supply room, a staff WC and a west annexe of
+## departments behind roller shutters you bought your way through. All of it
+## served systems that no longer exist, and a building whose far end you never
+## walk to is worse than a small building. What is left is the four places the
+## day is actually made of: the ward you round on, the station the nurse watches
+## it from, the office with a door you can shut, and the corridor between them.
 const LAYOUT := [
 	{"key": "corridor", "display": "Ward C Corridor", "kind": "corridor",
-		"rect": Rect2(-16, 0, 62, 4), "floor": 0},
-	# ---- north wing: patient rooms
-	{"key": "ward_101", "display": "Room 101", "kind": "ward", "rect": Rect2(0, 4, 9, 9), "door": 4.5},
-	{"key": "ward_102", "display": "Room 102", "kind": "ward", "rect": Rect2(9, 4, 9, 9), "door": 13.5},
-	{"key": "ward_103", "display": "Room 103", "kind": "ward", "rect": Rect2(18, 4, 10, 9), "door": 23.0},
-	{"key": "ward_104", "display": "Room 104", "kind": "ward", "rect": Rect2(28, 4, 9, 9), "door": 32.5},
-	{"key": "ward_105", "display": "Room 105", "kind": "ward", "rect": Rect2(37, 4, 9, 9), "door": 41.5},
-	# ---- south wing: everything else
-	{"key": "lobby", "display": "Lobby & Intake", "kind": "lobby",
-		"rect": Rect2(0, -10, 11, 10), "door": 5.5, "door_w": 2.6},
+		"rect": Rect2(0, 0, 20, 4), "floor": 0},
+	# The five-bed bay. One room, one door, and everyone in it can see the door.
+	{"key": "ward", "display": "Ward C", "kind": "ward",
+		"rect": Rect2(0, 4, 20, 9), "door": 10.0, "door_w": 1.6},
+	# Deliberately a wide opening with no leaf: the station's whole job is that
+	# somebody sitting in it can see who walks past.
 	{"key": "station", "display": "Nurses' Station", "kind": "station",
-		"rect": Rect2(11, -10, 8, 10), "door": 15.0, "door_w": 2.2},
-	{"key": "treatment", "display": "Treatment Bay", "kind": "treatment",
-		"rect": Rect2(19, -10, 10, 10), "door": 24.0, "door_w": 2.2},
-	{"key": "supply", "display": "Supply Room", "kind": "supply", "rect": Rect2(29, -10, 6, 10), "door": 32.0},
-	{"key": "bathroom", "display": "Staff WC", "kind": "bathroom", "rect": Rect2(35, -10, 5, 10), "door": 37.5},
-	{"key": "office", "display": "Your Office", "kind": "office", "rect": Rect2(40, -10, 6, 10), "door": 43.0},
-	# ---- west annexe: departments, shuttered until bought
-	{"key": "intake", "display": "Emergency Intake", "kind": "intake",
-		"rect": Rect2(-16, 4, 16, 9), "door": -8.0, "door_w": 2.6,
-		"locked_by": "dept_emergency"},
-	# Wide openings on purpose: the shutter IS the door, so no leaf is built.
-	{"key": "radiology", "display": "Radiology", "kind": "radiology",
-		"rect": Rect2(-16, -10, 8, 10), "door": -12.0, "door_w": 2.2,
-		"locked_by": "dept_radiology"},
-	{"key": "day_room", "display": "Psych Day Room", "kind": "day_room",
-		"rect": Rect2(-8, -10, 8, 10), "door": -4.0, "door_w": 2.2,
-		"locked_by": "dept_psych"},
+		"rect": Rect2(0, -8, 12, 8), "door": 5.5, "door_w": 2.2},
+	{"key": "office", "display": "Your Office", "kind": "office",
+		"rect": Rect2(12, -8, 8, 8), "door": 16.0},
 ]
 
 var rooms: Dictionary = {}          ## key -> Room
 var nav: NavGrid = null
 var doors: Array = []
-var shutters: Dictionary = {}       ## room key -> RollerShutter (open ones included)
+## The five PatientBeds, in bed order, filled in by Furniture as it places them.
+var beds: Array = []
 var _room_list: Array[Room] = []
 
 func _ready() -> void:
@@ -68,11 +58,6 @@ func build() -> void:
 	# behind the station counter never went anywhere again.
 	var blocked := Furniture.furnish(self)
 	_bake_nav(blocked)
-	_build_shutters()
-	refresh_fittings()
-	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
-	EventBus.game_loaded.connect(refresh_departments)
-	EventBus.game_loaded.connect(refresh_fittings)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
 
 # ------------------------------------------------------------------ rooms
@@ -131,7 +116,6 @@ func _build_floor_and_ceiling(r: Room) -> void:
 ## you are in from the doorway, so they are proper colours rather than eleven
 ## shades of the same grey — which is what they were, and it is why the whole
 ## floor plan read as one continuous corridor.
-## Roughly a fifth darker than the first pass across the board.
 ##
 ## Every one of these was chosen against a flat grey scene and then the lighting
 ## was raised to make the building bright — so by the time there was an ambient
@@ -144,15 +128,8 @@ func _floor_colour(kind: String) -> Color:
 	match kind:
 		"corridor": return Color(0.52, 0.62, 0.68)
 		"ward": return Color(0.56, 0.66, 0.57)
-		"lobby": return Color(0.62, 0.56, 0.45)
 		"station": return Color(0.44, 0.60, 0.68)
-		"treatment": return Color(0.48, 0.62, 0.72)
-		"supply": return Color(0.58, 0.52, 0.42)
-		"bathroom": return Color(0.54, 0.66, 0.74)
 		"office": return Color(0.56, 0.41, 0.31)
-		"intake": return Color(0.70, 0.56, 0.46)
-		"radiology": return Color(0.45, 0.53, 0.70)
-		"day_room": return Color(0.66, 0.58, 0.38)
 	return Build.FLOOR_A
 
 func _build_room_lights(r: Room) -> void:
@@ -167,8 +144,9 @@ func _build_room_lights(r: Room) -> void:
 			lamp.set_meta("is_light", true)
 			r.add_child(lamp)
 
-## Re-tint every ceiling lamp in the building. Called when a shift starts, so
-## the same corridor is a different place at midnight than it is at nine.
+## Re-tint every ceiling lamp in the building. Called when the day starts, so
+## the same corridor is a different place at eight in the evening than it is at
+## eight in the morning.
 func set_lamp_look(colour: Color, energy: float) -> void:
 	for r in _room_list:
 		for c in r.get_children():
@@ -186,30 +164,21 @@ func set_lamp_look(colour: Color, energy: float) -> void:
 
 # ------------------------------------------------------------------ shell
 func _build_shell() -> void:
-	var north_gaps := _gaps_for(["intake",
-		"ward_101", "ward_102", "ward_103", "ward_104", "ward_105"])
-	var south_gaps := _gaps_for(["radiology", "day_room",
-		"lobby", "station", "treatment", "supply", "bathroom", "office"])
+	var north_gaps := _gaps_for(["ward"])
+	var south_gaps := _gaps_for(["station", "office"])
 
 	# Walls running along X.
-	_wall_along_x(13.0, -16.0, 46.0, [])            # north exterior
-	_wall_along_x(4.0, -16.0, 46.0, north_gaps)     # corridor <-> north wing
-	_wall_along_x(0.0, -16.0, 46.0, south_gaps)     # corridor <-> south wing
-	_wall_along_x(-10.0, -16.0, 46.0, [])           # south exterior
+	_wall_along_x(13.0, 0.0, 20.0, [])             # north exterior
+	_wall_along_x(4.0, 0.0, 20.0, north_gaps)      # corridor <-> ward
+	_wall_along_x(0.0, 0.0, 20.0, south_gaps)      # corridor <-> station, office
+	_wall_along_x(-8.0, 0.0, 20.0, [])             # south exterior
 
 	# Walls running along Z.
-	_wall_along_z(-16.0, -10.0, 13.0, [])           # west exterior
-	_wall_along_z(46.0, -10.0, 13.0, [])            # east exterior
-	# x = 0 was the west exterior before the annexe existed. It is now an
-	# interior divider, and it must NOT cross the corridor band (z 0..4) or the
-	# corridor is severed and the annexe is unreachable however many shutters
-	# you open.
-	_wall_along_z(0.0, 4.0, 13.0, [])               # intake <-> Room 101
-	_wall_along_z(0.0, -10.0, 0.0, [])              # day room <-> lobby
-	for x in [9.0, 18.0, 28.0, 37.0]:               # between patient rooms
-		_wall_along_z(x, 4.0, 13.0, [])
-	for x in [-8.0, 11.0, 19.0, 29.0, 35.0, 40.0]:  # between south rooms
-		_wall_along_z(x, -10.0, 0.0, [])
+	_wall_along_z(0.0, -8.0, 13.0, [])             # west exterior
+	_wall_along_z(20.0, -8.0, 13.0, [])            # east exterior
+	# The one interior divider left. It must NOT cross the corridor band
+	# (z 0..4), or the corridor is severed and half the building is unreachable.
+	_wall_along_z(12.0, -8.0, 0.0, [])             # station <-> office
 
 func _gaps_for(keys: Array) -> Array:
 	var out: Array = []
@@ -320,8 +289,8 @@ func _build_doors() -> void:
 		var centre := float(entry["door"])
 		var north := rect.position.y > 0.0
 		var z := 4.0 if north else 0.0
-		# The lobby and treatment bay have wide openings with no leaf — you need
-		# to be able to shove a bed through them.
+		# The station has a wide opening with no leaf. It is the one room whose
+		# whole point is that you can be seen from it.
 		if w > 2.0:
 			continue
 		var d := SwingDoor.new()
@@ -330,261 +299,6 @@ func _build_doors() -> void:
 		d.build(Vector3(centre - w * 0.5, 0, z), Vector3(centre + w * 0.5, 0, z), not north)
 		add_child(d)
 		doors.append(d)
-
-# ------------------------------------------------------------------ shutters
-func _build_shutters() -> void:
-	for entry in LAYOUT:
-		if not entry.has("locked_by"):
-			continue
-		var key := String(entry["key"])
-		var rect: Rect2 = entry["rect"]
-		var w := float(entry.get("door_w", DOOR_W))
-		var centre := float(entry["door"])
-		var z := 4.0 if rect.position.y > 0.0 else 0.0
-		var sh := RollerShutter.new()
-		sh.name = "Shutter_" + key
-		sh.room_key = key
-		sh.upgrade_id = String(entry["locked_by"])
-		add_child(sh)
-		sh.build(Vector3(centre - w * 0.5, 0, z), Vector3(centre + w * 0.5, 0, z),
-			String(entry["display"]))
-		shutters[key] = sh
-	refresh_departments()
-
-func _on_upgrade_purchased(_id: String) -> void:
-	refresh_departments()
-	refresh_fittings()
-
-# ------------------------------------------------------------------ fittings
-## What the money BOUGHT, standing in the building.
-##
-## Eighteen upgrades, and the only one of them you could see was a department
-## shutter rolling up. Everything else — cameras watching the corridor, curtains
-## round every bed, the confidential-waste bin, a seat on the board — was a
-## boolean read by a system and never by the player, so a career's worth of
-## reinvestment left the ward looking exactly as it did on the first morning.
-## Half of these change how you have to play; you should be able to walk down
-## the corridor and see which half you bought.
-##
-## Rebuilt wholesale rather than diffed: it runs on build, on purchase and on
-## load, and a career restored from disk must find its fittings there.
-var _fittings: Node3D = null
-
-func refresh_fittings() -> void:
-	if _fittings != null and is_instance_valid(_fittings):
-		# remove_child BEFORE freeing. queue_free() is deferred, so the old node
-		# is still a child holding the name "Fittings" when the new one is added
-		# — Godot renames the newcomer to "Fittings2", get_node("Fittings")
-		# returns the corpse, and every refresh quietly adds another whole set of
-		# cameras and curtains on top of the last.
-		remove_child(_fittings)
-		_fittings.queue_free()
-	_fittings = Node3D.new()
-	_fittings.name = "Fittings"
-	add_child(_fittings)
-
-	if GameState.has_upgrade("security_cameras"):
-		_fit_cameras()
-	if GameState.has_upgrade("private_rooms"):
-		_fit_curtains()
-	if GameState.has_upgrade("better_beds"):
-		_fit_bed_rails()
-	if GameState.has_upgrade("shred_bin"):
-		_fit_shred_bin()
-	if GameState.has_upgrade("vip_suite"):
-		_fit_vip()
-	if GameState.has_upgrade("board_appointment") or GameState.has_upgrade("legal_retainer"):
-		_fit_office_wall()
-	if GameState.has_upgrade("coffee_machine"):
-		_fit_coffee()
-
-## One per covered room, mounted high and angled down the corridor. The lens is
-## unshaded red so it reads from the far end — which is the point, because
-## camera_rooms() is a list of places it is now a much worse idea to be seen in.
-func _fit_cameras() -> void:
-	var mounts := {
-		# Picked to sit BETWEEN the ward door signs rather than on top of them —
-		# the doors are at 4.5, 13.5, 23, 32.5 and 41.5, and each carries a flag
-		# sign at door + half a doorway + 0.28.
-		"corridor": [Vector3(9.5, 2.72, 3.66), Vector3(19.5, 2.72, 3.66),
-			Vector3(29.0, 2.72, 3.66), Vector3(-6.0, 2.72, 3.66)],
-		"lobby": [Vector3(9.9, 2.72, -1.4)],
-	}
-	for key in mounts:
-		if not Upgrades.camera_rooms().has(key):
-			continue
-		for pos in mounts[key]:
-			var body := Build.box_mi(Vector3(0.34, 0.24, 0.46), Color(0.93, 0.94, 0.96), pos)
-			_fittings.add_child(body)
-			var arm := Build.box_mi(Vector3(0.07, 0.36, 0.07),
-				Color(0.50, 0.53, 0.58), pos + Vector3(0, 0.28, 0.18))
-			_fittings.add_child(arm)
-			var lens := Build.cyl_mi(0.085, 0.14, Color(0.10, 0.11, 0.13),
-				pos + Vector3(0, -0.04, -0.28))
-			lens.rotation.x = PI * 0.5
-			_fittings.add_child(lens)
-			var led := Build.mi(Build.sphere_mesh(0.035),
-				Build.unshaded(Color(1.0, 0.20, 0.22)), pos + Vector3(0.12, 0.08, -0.23))
-			_fittings.add_child(led)
-
-## A rail and a drawn-back curtain beside every bed. Private rooms are the
-## single biggest reduction in witnesses in the game; this is what that bought.
-func _fit_curtains() -> void:
-	for r in wards():
-		var b := bed_position(r.key)
-		# The rail runs along X, across the front of the chair — a cylinder
-		# stands up by default, so it is rotation.z that lays it down the right
-		# way. It used to be described as running "along the bed"; the bed is a
-		# chair now and has no long axis, but the rail is still a rail across
-		# the front of the space you screen off, so the geometry survived the
-		# change even though the reason for it did not.
-		var rail := Build.cyl_mi(0.028, 3.0, Color(0.80, 0.82, 0.86),
-			b + Vector3(0.1, 2.16, -0.55), 8)
-		rail.rotation.z = PI * 0.5
-		_fittings.add_child(rail)
-		# Droppers from the ceiling down to the rail, not stubs poking up off it.
-		for hook in 2:
-			_fittings.add_child(Build.cyl_mi(0.02, 1.02, Color(0.80, 0.82, 0.86),
-				b + Vector3(-1.3 + float(hook) * 2.8, 2.67, -0.55), 6))
-		# Drawn back and bunched at the foot end, the way a curtain in a room
-		# somebody is currently in actually sits.
-		# Bunched at the end of the rail AWAY from the vitals console, which is
-		# the one thing in the room you need to be able to see and reach.
-		var drape := Build.box_mi(Vector3(0.34, 1.72, 0.42), Color(0.40, 0.72, 0.74),
-			b + Vector3(-1.32, 1.22, -0.55))
-		_fittings.add_child(drape)
-
-## The comfort upgrade gets a footrest and a control pendant.
-##
-## This used to add a raised head section and a pendant floating beside it, both
-## positioned against the old rigid-body bed: a mattress-height slab half a
-## metre in front of the frame was the head end of something you lie on. The
-## bed is a chair now — origin on the floor, seat top at 0.48, back at local
-## -z, and every ward chair yawed by PI so it faces the door at low z — so
-## those two boxes were left hanging in mid-air a good 70cm in FRONT of the
-## seated patient's knees, supported by nothing, which is the single most
-## visible thing in the room once you have paid for it.
-##
-## So the fitting is now what a comfortable chair actually gains: a footstool
-## standing on the floor where the feet are, and a pendant resting on the arm
-## where a hand is. Both are still world-axis offsets rather than rotated ones,
-## because every ward's door is on min z and _far_rot is PI for all five of
-## them — the chair's front is world -z in every room in the building.
-func _fit_bed_rails() -> void:
-	for r in wards():
-		var b := bed_position(r.key)
-		_fittings.add_child(Build.box_mi(Vector3(0.62, 0.34, 0.36),
-			Color(0.86, 0.89, 0.94), b + Vector3(0, 0.17, -0.66)))
-		_fittings.add_child(Build.box_mi(Vector3(0.10, 0.14, 0.06),
-			Color(0.30, 0.34, 0.40), b + Vector3(0.43, 0.75, -0.10)))
-
-func _fit_shred_bin() -> void:
-	var o: Room = rooms.get("office", null)
-	if o == null:
-		return
-	var c := o.center()
-	_fittings.add_child(Build.box_mi(Vector3(0.5, 0.9, 0.5),
-		Color(0.20, 0.24, 0.30), Vector3(c.x - 2.1, 0.45, c.z - 1.4)))
-	_fittings.add_child(Build.box_mi(Vector3(0.44, 0.06, 0.10),
-		Color(0.10, 0.11, 0.13), Vector3(c.x - 2.1, 0.92, c.z - 1.4)))
-
-func _fit_vip() -> void:
-	var r: Room = rooms.get("ward_105", null)
-	if r == null:
-		return
-	var c := r.center()
-	# A rug, a lamp and something alive, which is more than anybody else gets.
-	_fittings.add_child(Build.box_mi(Vector3(3.2, 0.03, 2.4),
-		Color(0.46, 0.19, 0.23), Vector3(c.x, 0.02, c.z + 1.2)))
-	_fittings.add_child(Build.cyl_mi(0.22, 0.5, Color(0.55, 0.40, 0.28),
-		Vector3(c.x + 2.6, 0.25, c.z + 2.6), 10))
-	_fittings.add_child(Build.mi(Build.sphere_mesh(0.42),
-		Build.mat(Color(0.24, 0.62, 0.34)), Vector3(c.x + 2.6, 0.85, c.z + 2.6)))
-
-## Two framed things on your office wall, in the order you bought them.
-func _fit_office_wall() -> void:
-	var o: Room = rooms.get("office", null)
-	if o == null:
-		return
-	var c := o.center()
-	var wall_z: float = o.rect.position.y + 0.14
-	# Clear of the desk terminal in the middle of that wall, or the expensive
-	# framed things you bought are behind a monitor.
-	if GameState.has_upgrade("legal_retainer"):
-		_fittings.add_child(Build.box_mi(Vector3(0.5, 0.66, 0.04),
-			Color(0.34, 0.26, 0.18), Vector3(c.x - 2.3, 2.15, wall_z)))
-		_fittings.add_child(Build.box_mi(Vector3(0.42, 0.56, 0.02),
-			Build.PAPER, Vector3(c.x - 2.3, 2.15, wall_z + 0.03)))
-	if GameState.has_upgrade("board_appointment"):
-		_fittings.add_child(Build.box_mi(Vector3(0.72, 0.52, 0.04),
-			Color(0.30, 0.24, 0.16), Vector3(c.x + 2.3, 2.15, wall_z)))
-		_fittings.add_child(Build.box_mi(Vector3(0.62, 0.42, 0.02),
-			Color(0.94, 0.88, 0.62), Vector3(c.x + 2.3, 2.15, wall_z + 0.03)))
-
-## The machine that is, mechanically, a nurse-retention device.
-func _fit_coffee() -> void:
-	var st: Room = rooms.get("station", null)
-	if st == null:
-		return
-	var c := st.center()
-	_fittings.add_child(Build.box_mi(Vector3(0.62, 0.86, 0.52),
-		Color(0.16, 0.18, 0.22), Vector3(c.x + 2.6, 1.18, c.z + 3.2)))
-	_fittings.add_child(Build.box_mi(Vector3(0.5, 0.16, 0.03),
-		Color(0.94, 0.36, 0.24), Vector3(c.x + 2.6, 1.44, c.z + 2.93)))
-
-## Bring the shutters into line with what has actually been bought. Called on
-## build, on every purchase, and after a save is loaded — a career restored from
-## disk must not find its paid-for departments still sealed.
-func refresh_departments() -> void:
-	for key in shutters:
-		var sh: RollerShutter = shutters[key]
-		if sh.is_open:
-			continue
-		if GameState.has_upgrade(sh.upgrade_id):
-			sh.open(nav)
-			EventBus.toast.emit("%s is open." % room(key).display, "good")
-		else:
-			sh.seal_nav(nav, _doorway_rect(key))
-
-## A free seat in the clinic waiting row, or the treatment bay's floor if every
-## chair is taken. Occupancy is checked against who is actually sitting there,
-## so somebody being admitted frees their chair for the next arrival.
-func clinic_seat(taken: Array) -> Vector3:
-	for seat in Furniture.clinic_seats:
-		var free := true
-		for pos in taken:
-			if (pos as Vector3).distance_to(seat) < 0.6:
-				free = false
-				break
-		if free:
-			return seat
-	return point_in("treatment", "walkin_spot")
-
-## Can anyone — player or NPC — currently get into this room?
-func is_room_open(key: String) -> bool:
-	var sh = shutters.get(key, null)
-	return sh == null or sh.is_open
-
-## Every room that is actually reachable right now. Anything picking a room at
-## random must use this: a nurse who chooses a sealed department stands in the
-## corridor waiting for a path that will never exist.
-func open_room_keys() -> Array[String]:
-	var out: Array[String] = []
-	for r in _room_list:
-		if is_room_open(r.key):
-			out.append(r.key)
-	return out
-
-func _doorway_rect(key: String) -> Rect2:
-	for entry in LAYOUT:
-		if String(entry["key"]) != key:
-			continue
-		var rect: Rect2 = entry["rect"]
-		var w := float(entry.get("door_w", DOOR_W))
-		var centre := float(entry["door"])
-		var z := 4.0 if rect.position.y > 0.0 else 0.0
-		return Rect2(centre - w * 0.5, z - 1.1, w, 2.2)
-	return Rect2()
 
 # ------------------------------------------------------------------ signage
 func _build_signage() -> void:
@@ -596,11 +310,10 @@ func _build_signage() -> void:
 	## three overlapped into an unreadable stack. The playtest note was
 	## "signage is still bad" and it was right.
 	##
-	## So they are split by job. A ward's sign is its CARD, which carries the
-	## number, who is behind the door, how long they have been there and a
-	## colour strip you can read from the far end. Everywhere else gets ONE
-	## projecting flag, because those are destinations you navigate towards
-	## rather than doors you check.
+	## The ward door cards went with the five separate patient rooms: there is
+	## one ward now, and who is in it is a question you answer by walking in.
+	## Every door gets ONE projecting flag, because these are destinations you
+	## navigate towards rather than doors you check.
 	for entry in LAYOUT:
 		if String(entry["kind"]) == "corridor":
 			continue
@@ -610,21 +323,11 @@ func _build_signage() -> void:
 		var z := (4.0 - 0.2) if north else (0.0 + 0.2)
 		var w := float(entry.get("door_w", DOOR_W))
 
-		if String(entry["kind"]) == "ward":
-			var card := WardDoorCard.new()
-			card.room_key = String(entry["key"])
-			add_child(card)
-			card.build(_short_name(String(entry["display"])))
-			card.position = Vector3(centre - w * 0.5 - 0.42, 1.52,
-				z + (0.09 if not north else -0.09))
-			card.rotation.y = PI if north else 0.0
-			continue
-
 		# A flag projecting into the corridor at right angles to the wall. Two
 		# labels back to back, each showing only its front face: a single
 		# double-sided Label3D is legible walking one way and MIRRORED walking
 		# the other, and the first screenshot of this read "ǝʞɐʇnI ⅋ ʎqqo˥".
-		var short := _short_name(String(entry["display"]))
+		var short := String(entry["display"])
 		var plate_w := float(short.length()) * 0.105 * 0.62 + 0.14
 		var plate := Build.box_mi(Vector3(0.04, 0.21, plate_w),
 			Color(0.14, 0.20, 0.26), Vector3.ZERO)
@@ -647,11 +350,6 @@ func _build_signage() -> void:
 				z + (0.28 if not north else -0.28))
 			flag.rotation.y = PI * 0.5 + face
 			add_child(flag)
-
-## "Room 101" reads as "101" on a corridor flag; "Nurses' Station" does not
-## shorten and should not.
-func _short_name(display: String) -> String:
-	return display.trim_prefix("Room ") if display.begins_with("Room ") else display
 
 # ------------------------------------------------------------------ nav
 func _bake_nav(blocked: Array[Rect2] = []) -> void:
@@ -700,20 +398,35 @@ func point_in(key: String, stream := "nav") -> Vector3:
 		return Vector3.ZERO
 	return nav.random_point_in(r.rect.grow(-1.0), stream)
 
-## Where a shift starts. Authored so the first frame of a run is composed
-## rather than rolled — see the note at Game._spawn_player.
-func lobby_spawn() -> Vector3:
-	var r: Room = rooms.get("lobby", null)
+## Where the day starts. Authored so the first frame of a run is composed rather
+## than rolled — see the note at Game._spawn_player. The corridor, a few metres
+## east of the ward door, facing the length of the building: you arrive at eight
+## in the morning outside the room you are responsible for.
+##
+## This was lobby_spawn() until the lobby was demolished with the rest of the
+## departments.
+func spawn_point() -> Vector3:
+	var r: Room = rooms.get("corridor", null)
 	if r == null:
 		return Vector3.ZERO
-	return Vector3(r.rect.position.x + 6.2, 0.0, r.rect.position.y + 2.4)
+	return Vector3(r.rect.position.x + 14.0, 0.0, r.rect.position.y + 2.0)
 
-func bed_position(ward_key: String) -> Vector3:
-	var r: Room = rooms.get(ward_key, null)
+## Where bed `index` (1..BEDS) stands: down the ward's far wall, head to the
+## plaster, foot toward the door, evenly spaced across the bay.
+func bed_position(index: int) -> Vector3:
+	var r: Room = rooms.get("ward", null)
 	if r == null:
 		return Vector3.ZERO
-	# Beds sit against the far (exterior) wall of each ward.
-	return Vector3(r.rect.get_center().x - 1.4, 0.0, r.rect.position.y + r.rect.size.y - 2.6)
+	var i := clampi(index - 1, 0, BEDS - 1)
+	var x: float = r.rect.position.x + r.rect.size.x * (float(i) + 0.5) / float(BEDS)
+	return Vector3(x, 0.0, r.rect.position.y + r.rect.size.y - 1.35)
+
+## The bed itself, or null before Furniture has run.
+func bed(index: int) -> PatientBed:
+	var i := index - 1
+	if i < 0 or i >= beds.size():
+		return null
+	return beds[i]
 
 func to_dict() -> Dictionary:
 	var d := {}

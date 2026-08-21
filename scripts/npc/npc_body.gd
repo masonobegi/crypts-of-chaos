@@ -636,24 +636,10 @@ func _animate(delta: float) -> void:
 	# Three signals, all tiny, none of which needs a rig: a breath, a slow shift
 	# of weight from one foot to the other, and a blink. The first two fade out
 	# as the character starts moving, because a walk already carries them.
-	if _fighting:
-		# A fight owns the arms for exactly as long as it is running.
-		#
-		# `pinned` routes a squared-up NPC through here every physics frame, and
-		# the idle pass below writes both arm rotations unconditionally. The
-		# fight sets those same rotations from its own rules clock in
-		# BrawlSystem._physics_process, and the NPC node is added to the tree
-		# after the systems are — so the idle pass ran second and won every
-		# frame. The guard, the wind-up and the feint were all computed and then
-		# overwritten with a breath before anything was drawn, which is to say
-		# the one thing the player has to read in order to block was invisible.
-		# Breathe and blink, because nothing in the fight touches those, and
-		# leave every limb to swing_arm().
-		if _torso:
-			_torso.position.y = 0.95 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
-		_tick_blink(delta)
-		_tick_look(delta)
-		return
+
+	# A fight used to claim the arms here, driven from its own rules clock and
+	# fighting this pass for them every frame. The brawl went with the redesign;
+	# the walk cycle owns every limb again.
 	if _seated:
 		# Seated: breathe and blink, but do not walk. Without this the legs
 		# swing back to vertical on the first frame of the idle cycle and the
@@ -710,13 +696,8 @@ func _animate(delta: float) -> void:
 ##
 ## A seated character never ran it, so a patient in a chair could not turn their
 ## head towards you at all — which is why talking to somebody had to stand them
-## up out of the chair to work, in a game whose wards are chairs. A fighting
-## character never ran it either, so the head froze at whatever offset it held
-## on the last frame before the fight: SuspicionSystem calls look_toward() on
-## anybody who can see you, and a seated person carries that whole offset in
-## their neck, so squaring up to a patient you had walked past left them
-## swinging at you with their head cocked 60 degrees at the wall, in the one
-## scene where the camera is locked and the player cannot look away.
+## up out of the chair to work, in a game whose wards are chairs. Every branch
+## runs it now, whatever else the body is doing.
 func _tick_look(delta: float) -> void:
 	if _head and _has_look:
 		var to := _look_at - _head.global_position
@@ -974,77 +955,10 @@ func set_mood(m: float) -> void:
 	if _head != null:
 		_head.position.y = _head_y + _mood * 0.014 - maxf(0.0, -_mood) * 0.03
 
-## Squaring up: on your feet, fists up, facing whoever this is about.
-##
-## `set_seated(false)` on its own leaves somebody standing to attention, which
-## is not a fight stance. The guard is two arms brought up and in, and a slight
-## turn so one shoulder leads.
-func stand_and_square_up(at: Vector3) -> void:
-	set_seated(false)
-	set_reclined(false)
-	pinned = true
-	stop_moving()
-	_fighting = true
-	var to := at - global_position
-	to.y = 0.0
-	if to.length_squared() > 0.01:
-		rotation.y = atan2(to.x, to.z)
-		# Out of the chair and a step toward you, so they are not standing
-		# inside their own furniture for the whole exchange.
-		global_position += to.normalized() * 0.75
-	set_mood(-0.55)
-	for i in _arms.size():
-		_arms[i].rotation.x = -1.15
-		_arms[i].rotation.z = (0.40 if i == 0 else -0.40)
-
-func stand_down() -> void:
-	_fighting = false
-	pinned = false
-	set_mood(0.0)
-	for i in _arms.size():
-		_arms[i].rotation.x = 0.0
-		_arms[i].rotation.z = 0.0
-
-## One arm, mid-swing. `wind` 0..1 draws it back, `through` 0..1 brings it
-## across. Driven straight off the rules clock, so there is no animation that
-## can fall out of step with what the fight thinks is happening.
-func swing_arm(side: int, wind: float, through: float) -> void:
-	if _arms.size() < 2:
-		return
-	if side == 0:
-		for i in _arms.size():
-			_arms[i].rotation.x = -1.15 if _fighting else 0.0
-			_arms[i].rotation.z = ((0.40 if i == 0 else -0.40) if _fighting else 0.0)
-		return
-	# _arms[0] is their left, which is the player's right when they are facing
-	# you. The side passed in is the PLAYER's side, so it maps straight across.
-	var idx: int = 1 if side < 0 else 0
-	for i in _arms.size():
-		if i == idx:
-			_arms[i].rotation.x = -1.15 - 0.75 * wind + 2.3 * through
-			_arms[i].rotation.z = (1.0 if i == 0 else -1.0) * (0.40 + 0.55 * wind - 0.9 * through)
-		else:
-			_arms[i].rotation.x = -1.15
-			_arms[i].rotation.z = (0.40 if i == 0 else -0.40)
-
-## Folded forward over their own knees. Reads as unconscious from any angle,
-## and needs no geometry that is not already there.
-func set_slumped(on: bool) -> void:
-	var body := get_node_or_null("Body")
-	if body == null:
-		return
-	var b: Node3D = body
-	b.rotation.x = 0.62 if on else (0.07 if _seated else 0.0)
-	for i in _arms.size():
-		_arms[i].rotation.x = 0.30 if on else 0.0
-		_arms[i].rotation.z = 0.0
-	if _head != null:
-		_head.rotation.x = 0.45 if on else 0.0
-
-func is_fighting() -> bool:
-	return _fighting
-
-var _fighting := false
+# Squaring up, throwing a punch, and folding unconscious over your own knees all
+# lived here — stand_and_square_up(), stand_down(), swing_arm() and
+# set_slumped(), driven straight off the fight's rules clock. They went with the
+# fistfight. Nobody in the building swings at anybody any more.
 
 func mood() -> float:
 	return _mood

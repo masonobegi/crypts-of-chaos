@@ -1,8 +1,15 @@
 class_name PatientNPC
 extends NPCBody
 ## The body of an admitted patient. Holds a reference to the Patient data model
-## (the truth layer) and expresses its state physically — symptom tints, shivering
-## in a cold room, wandering into the corridor when nobody is looking.
+## (the truth layer) and expresses its state physically — sitting in the chair in
+## their room, sleeping through a night shift, wandering into the corridor when
+## nobody is looking.
+##
+## Four other expressions used to live here and have gone with the systems that
+## drove them: the complication halo over the head, the pink surgical site mark
+## on the limb about to be operated on, the shudder while a treatment machine ran,
+## and being knocked out cold in a fight. There are no complications, no
+## machines, no procedures and no fights any more.
 
 enum State { IN_BED, SITTING, WANDERING, TALKING, LEAVING }
 
@@ -11,8 +18,6 @@ var bed: PatientBed = null
 var state: State = State.IN_BED
 var _timer := 0.0
 var _bark_timer := 0.0
-var _symptom_mesh: MeshInstance3D = null
-var _shiver := 0.0
 var _reclined := false
 ## Whatever they were doing before you spoke to them, so that a word with
 ## somebody in the corridor puts them back in the corridor and not, with a pop,
@@ -25,11 +30,6 @@ func _ready() -> void:
 	outfit = Color(0.72, 0.78, 0.82)     # gown
 	super._ready()
 	add_to_group("patient_npc")
-	# Sits above the head whichever way up the patient is.
-	_symptom_mesh = Build.mi(Build.sphere_mesh(0.22), Build.unshaded(Color(1, 1, 1, 0.0)),
-		Vector3(0, 1.15, 0))
-	_symptom_mesh.visible = false
-	add_child(_symptom_mesh)
 	_timer = RNG.randf_range_s("patient_idle_t", 8.0, 20.0)
 
 func bind(p: Patient, p_bed: PatientBed) -> void:
@@ -50,13 +50,11 @@ func bind(p: Patient, p_bed: PatientBed) -> void:
 		add_collision_exception_with(p_bed)
 
 func _physics_process(delta: float) -> void:
-	_tick_cycle(delta)
 	_hold_bed_pose(delta)
 	super._physics_process(delta)
 	_timer -= delta
 	_bark_timer = maxf(0.0, _bark_timer - delta)
 	_tick_state(delta)
-	_tick_symptoms(delta)
 
 ## An admitted patient sits in the chair in their room.
 ##
@@ -65,11 +63,6 @@ func _physics_process(delta: float) -> void:
 ## somebody you walked in on — which is what every other system in this game is
 ## built to make interesting.
 func _hold_bed_pose(_delta: float) -> void:
-	# A fight, or being out cold, owns the body. Without this the chair pose is
-	# re-asserted every physics frame and somebody who has just stood up to
-	# swing at you sits back down inside the same tick.
-	if is_fighting() or out_cold:
-		return
 	# SITTING is the waiting-room pose; IN_BED is now the same pose in the
 	# chair in their own room. Both want the same thing from the rig.
 	# TALKING KEEPS THE CHAIR. It did not, and it had to not: _animate returned
@@ -119,66 +112,10 @@ var asleep := false
 func _on_shift_started(_day: int) -> void:
 	if data == null or data.discharged:
 		return
-	# Out cold is "for the rest of the day", and the day has just turned over.
-	# Nothing ever read the out_cold_day stamp, so the flag it was written for
-	# was permanent: bodies live from admission to discharge and are not rebuilt
-	# between shifts, and _hold_bed_pose declines to touch one that is out cold,
-	# so a patient you fought on day three was still folded over their own knees
-	# with their eyes shut, and unwakeable, on day nine. Cleared BEFORE the state
-	# gate below, because a fight is started from the patient card and therefore
-	# leaves them in State.TALKING, which the gate would have turned away.
-	if out_cold and GameState.day > int(data.out_cold_day):
-		_come_round()
 	if state != State.IN_BED:
 		return
 	set_asleep(RNG.chance("patient_sleep", float(
 		SLEEP_CHANCE.get(GameState.shift_kind, 0.06))))
-
-## Being in a machine cycle, from the patient's side.
-##
-## The treatment used to happen entirely on the doctor's side of the room: a
-## button, a noise, a toast. The person it was being done TO did nothing at all,
-## which made the whole act read as operating equipment rather than as treating
-## somebody. They twitch for the length of the cycle now, harder the further the
-## dial is from where it should be, and they say something about it — which is
-## also the honest tell, because a patient noticing is how this gets reported.
-var _cycle_t := 0.0
-var _cycle_strength := 0.0
-
-func undergo_cycle(seconds: float, deviation: int) -> void:
-	_cycle_t = maxf(seconds, 0.3)
-	# Capped low. Startle drives an arm flail, and re-applying it every frame
-	# for two and a half seconds took a patient from "shuddering" to "windmilling
-	# both arms over their head in bed" — which is funny once and looks broken
-	# every time after that.
-	_cycle_strength = clampf(0.14 + float(deviation) * 0.06, 0.14, 0.38)
-	wake_up()
-	startle(minf(0.35 + float(deviation) * 0.18, 1.0))
-	if deviation >= 3:
-		say(String(RNG.pick("cycle_bark_bad", [
-			"That is — that is a LOT.",
-			"Ow. Ow, that's — is it meant to do that?",
-			"Turn it down. Turn it DOWN.",
-			"I can feel that in my back teeth.",
-		])), 3.0)
-	elif deviation >= 1:
-		say(String(RNG.pick("cycle_bark_off", [
-			"Hm. That's warmer than last time.",
-			"Is that the usual setting?",
-			"Oh. That's new.",
-		])), 2.6)
-	elif RNG.chance("cycle_bark_ok", 0.4):
-		say(String(RNG.pick("cycle_bark_ok_line", [
-			"Oh, that's the good one.", "Mm. That's better.", "That's the one, yes.",
-		])), 2.4)
-
-func _tick_cycle(delta: float) -> void:
-	if _cycle_t <= 0.0:
-		return
-	_cycle_t = maxf(0.0, _cycle_t - delta)
-	# Re-applied every frame rather than set once: startle decays, and what this
-	# wants is a sustained shudder for as long as the machine is running.
-	startle(_cycle_strength * delta * 1.6)
 
 func set_asleep(v: bool) -> void:
 	if asleep == v:
@@ -198,75 +135,7 @@ func set_asleep(v: bool) -> void:
 		perception.suppressed = v
 		perception.attention = 0.0 if v else 1.0
 
-## Out cold.
-##
-## Not sleep: sleep ends when somebody drops a tray. This is "they cannot
-## remember you fought them", which in this game means an attention of zero for
-## the rest of the day and a body slumped in a chair that nothing wakes.
-var out_cold := false
-
-func knock_out() -> void:
-	out_cold = true
-	# Not merely not-looking: not hearing either. set_asleep() leaves hearing
-	# open on purpose, because a bang is what ends sleep — but nothing ends
-	# this, so an unconscious patient was still filing what they heard.
-	if perception != null:
-		perception.unrousable = true
-	stand_down()
-	pinned = true
-	stop_moving()
-	# Back into the chair FIRST. stand_and_square_up() stepped them 0.75m clear
-	# of it so they were not throwing punches from inside their own furniture,
-	# and _hold_bed_pose refuses to re-assert the chair pose while out_cold — so
-	# slumping them where they stand leaves somebody folded double, seated on
-	# nothing, a stride in front of an empty chair, visible from the doorway for
-	# the rest of their admission. Only for somebody who has a chair to be in:
-	# a patient fought in the corridor stays where they fell.
-	#
-	# ...and the state to ask about is `_pre_talk`, NOT `state`. Every fight in
-	# the game is started from the patient card, and opening that card runs
-	# _turn_to_talk(), which sets `state = State.TALKING` and stashes what they
-	# were actually doing. So `state` is TALKING at knock-out time, always, and
-	# a test against WANDERING/LEAVING was one that could never fail — meaning a
-	# patient decked in the middle of a corridor was teleported across the ward
-	# into their chair, which is the precise opposite of what this guard says.
-	var doing: State = _pre_talk if state == State.TALKING else state
-	if bed != null and is_instance_valid(bed) \
-			and doing != State.WANDERING and doing != State.LEAVING:
-		global_position = bed.mount_point()
-		rotation.y = bed.rotation.y
-	set_seated(true)
-	set_slumped(true)
-	set_asleep(true)
-	set_mood(-0.4)
-	if data != null:
-		# They also lose the thread of the day. Whatever they were about to
-		# complain about is gone with the rest of it.
-		data.out_cold_day = GameState.day
-
-## The way back out of out_cold, and the only one — wake_up() deliberately
-## refuses to do it, because a tray on the floor does not bring somebody round.
-##
-## The unfolding cannot be left to set_slumped(false) alone: it returns the arms
-## to rotation 0, which is the STANDING pose, not the seated hands-on-thighs one.
-## So the sit is dropped here and _hold_bed_pose is left to notice on the next
-## frame that a patient who wants a chair is not seated, and re-apply the whole
-## pose down the same path everybody else takes into it. Idempotent, so callers
-## that are not sure whether this body was ever knocked out can just call it.
-func _come_round() -> void:
-	out_cold = false
-	if perception != null:
-		perception.unrousable = false
-	pinned = false
-	set_slumped(false)
-	set_seated(false)
-	set_asleep(false)
-	set_mood(0.0)
-
 func wake_up(why := "") -> void:
-	# A tray on the floor does not bring somebody round.
-	if out_cold:
-		return
 	if not asleep:
 		return
 	set_asleep(false)
@@ -276,50 +145,6 @@ func wake_up(why := "") -> void:
 			"...what? What is it?", "Is it morning?", "Hello? Who's there?",
 			"I was asleep.", "...that woke me up.",
 		])), 2.8)
-
-## Surgical site marking, which is a thing real theatres do for exactly the
-## reason it is here: so that the answer to "which side" exists on the patient
-## and not only on a screen somebody has to have read carefully.
-##
-## Opening the wrong part of somebody is catastrophic and stays catastrophic.
-## But a player who did it by misreading one line of a menu had been punished
-## for a UI problem, and the fix is not a confirmation dialog — it is putting
-## the information where the act happens. You can now see, from the doorway,
-## which limb has an arrow on it.
-const SITE_MARKS := {
-	"wrist":    {"limb": "arm", "y": -0.42},
-	"shoulder": {"limb": "arm", "y": -0.02},
-	"knee":     {"limb": "leg", "y": -0.32},
-	"ribs":     {"limb": "torso", "y": 0.06},
-}
-
-var _site_mark: MeshInstance3D = null
-var _marked_site := ""
-
-func refresh_site_mark() -> void:
-	if data == null:
-		return
-	var site: String = TreatmentSystem.indicated_site_for(data)
-	if site == _marked_site:
-		return
-	_marked_site = site
-	if _site_mark != null:
-		_site_mark.queue_free()
-		_site_mark = null
-	if not SITE_MARKS.has(site):
-		return
-	var spec: Dictionary = SITE_MARKS[site]
-	var host: Node3D = null
-	match String(spec["limb"]):
-		"arm": host = _arms[0] if not _arms.is_empty() else null
-		"leg": host = _legs[0] if not _legs.is_empty() else null
-		_: host = _torso
-	if host == null:
-		return
-	# A band, in the one colour nothing else in the building uses.
-	_site_mark = Build.mi(Build.cyl_mesh(0.13, 0.055, 12),
-		Build.unshaded(Color(0.95, 0.25, 0.62)), Vector3(0, float(spec["y"]), 0))
-	host.add_child(_site_mark)
 
 func _tick_state(_delta: float) -> void:
 	if data == null:
@@ -341,7 +166,6 @@ func _tick_state(_delta: float) -> void:
 		return
 	if data.discharged:
 		return
-	refresh_site_mark()
 	match state:
 		State.IN_BED:
 			if _timer <= 0.0:
@@ -351,11 +175,11 @@ func _tick_state(_delta: float) -> void:
 		State.SITTING:
 			# Walk-ins waiting to be seen. They bark and they do NOT wander:
 			# somebody who gets up and walks off has left the queue, and the
-			# player then cannot find the person the appointment board is
-			# telling them to see. Before this, SITTING had no case at all and
-			# fell through to `_: pass` — so the entire waiting room sat in
-			# total silence, which read as a room full of props rather than a
-			# room full of people with somewhere to be.
+			# player then cannot find the person they were told to see. Before
+			# this, SITTING had no case at all and fell through to `_: pass` — so
+			# the entire waiting room sat in total silence, which read as a room
+			# full of props rather than a room full of people with somewhere to
+			# be.
 			if _timer <= 0.0:
 				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
 				_maybe_bark()
@@ -370,48 +194,38 @@ func _tick_state(_delta: float) -> void:
 			# from WANDERING — so pressing E on somebody once took them out of
 			# their chair permanently: _hold_bed_pose stopped wanting a seat and
 			# unpinned them, _maybe_bark() is only called from the IN_BED branch
-			# so they went silent (including the fit-to-go-home line, which is
-			# the most important thing in the building for the player to hear),
-			# and _on_shift_started's IN_BED gate meant they could never be put
-			# to sleep again. Since talking to patients IS the loop, the whole
-			# ward was standing up and mute by the middle of day one.
+			# so they went silent, and _on_shift_started's IN_BED gate meant they
+			# could never be put to sleep again. Since talking to patients IS the
+			# loop, the whole ward was standing up and mute by the middle of day
+			# one.
 			#
 			# The state exists so that look_toward() survives and so the barks
 			# and the wander stop while somebody is talking to them. A few
-			# seconds of facing you is all it needs; the fight owns the body
-			# separately and must be allowed to finish before the chair claims
-			# it back.
-			if _timer <= 0.0 and not is_fighting():
+			# seconds of facing you is all it needs.
+			if _timer <= 0.0:
 				state = _pre_talk if _pre_talk != State.TALKING else State.IN_BED
 				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
 		_:
 			pass
 
+## What a patient says to the room.
+##
+## There were three more lines under this one and they came out of Dialogue: the
+## idle mutter, the "I'm fit to go home" line, and the complaint about the stay
+## running long. Dialogue went with the redesign, and nothing here invents
+## replacements — what the ward has to say now is on the chart.
 func _maybe_bark() -> void:
 	if _bark_timer > 0.0 or data == null or asleep:
 		return
 	_bark_timer = 6.0
 	var r = _room_node()
 	var gripes: Array = r.complaints() if r else []
-	if not gripes.is_empty() and RNG.chance("patient_env_bark", 0.6):
-		say("Sorry — %s." % String(RNG.pick("gripe_p", gripes)), 3.2)
-		# Complaining is not evidence, but it IS a satisfaction hit, and
-		# satisfaction failure is its own way to lose.
-		data.satisfaction = clampf(data.satisfaction - 0.03, 0.0, 1.0)
+	if gripes.is_empty() or not RNG.chance("patient_env_bark", 0.6):
 		return
-	# Said before the overdue line, and said whether or not they are counting.
-	# A patient who is well and has not been discharged is the single most
-	# important thing in the building for the player to notice, and a number on
-	# a tablet they have not opened yet cannot tell them.
-	if data.ready_for_discharge() and not data.is_overdue() \
-			and RNG.chance("patient_ready_bark", 0.75):
-		say(Dialogue.patient_ready(data), 4.0)
-		return
-	if data.is_overdue() and data.knows_expected_date \
-			and RNG.chance("patient_overdue_bark", 0.7):
-		say(Dialogue.patient_overdue(data), 4.0)
-		return
-	say(Dialogue.patient_idle(data), 3.0)
+	say("Sorry — %s." % String(RNG.pick("gripe_p", gripes)), 3.2)
+	# Complaining is not evidence, but it IS a satisfaction hit, and
+	# satisfaction failure is its own way to lose.
+	data.satisfaction = clampf(data.satisfaction - 0.03, 0.0, 1.0)
 
 ## Patients wander. A confused one wanders more; an escaped patient in the
 ## corridor is a first-class distraction that you did not have to cause.
@@ -464,51 +278,6 @@ func _return_to_bed() -> void:
 	if is_instance_valid(self):
 		state = State.IN_BED
 
-## The halo's own material, made once.
-##
-## This used to hand a fresh colour to Build.unshaded() every physics frame,
-## which did two bad things at once. Build.unshaded() caches by colour string,
-## so a pulsing alpha wrote a NEW material into a static dictionary sixty times
-## a second per patient — an unbounded leak that also meant the halo shared its
-## material with anything else that asked for the same colour. And it never
-## rendered as a tint at all: Build.unshaded() leaves transparency at
-## TRANSPARENCY_DISABLED, so the alpha the pulse animates was discarded and the
-## "halo" was an opaque ball sitting on top of the patient.
-var _halo: StandardMaterial3D = null
-
-func _halo_mat() -> StandardMaterial3D:
-	if _halo == null:
-		_halo = (Build.unshaded(Color.WHITE) as StandardMaterial3D).duplicate()
-		_halo.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		_symptom_mesh.material_override = _halo
-	return _halo
-
-func _tick_symptoms(delta: float) -> void:
-	if data == null or _symptom_mesh == null:
-		return
-	var comps := data.active_complications()
-	if comps.is_empty():
-		_symptom_mesh.visible = false
-	else:
-		# The most severe complication tints a halo over the patient, so you can
-		# read "something is wrong in here" from the doorway.
-		var worst: Complication = comps[0]
-		for c in comps:
-			if c.severity > worst.severity:
-				worst = c
-		_symptom_mesh.visible = true
-		var col := worst.symptom_color
-		col.a = 0.35 + 0.15 * sin(float(Time.get_ticks_msec()) * 0.003)
-		_halo_mat().albedo_color = col
-
-	var r = _room_node()
-	if r and r.temperature < 16.0:
-		_shiver = minf(_shiver + delta, 1.0)
-	else:
-		_shiver = maxf(_shiver - delta * 0.5, 0.0)
-	if _shiver > 0.05 and _symptom_mesh:
-		_symptom_mesh.position.x = sin(float(Time.get_ticks_msec()) * 0.04) * 0.02 * _shiver
-
 ## Patients react to chaos, which is most of the reason chaos is worth causing.
 ## Perception calls this on anything within hearing range.
 func on_heard_noise(evt: WorldEvent) -> void:
@@ -560,13 +329,9 @@ func _room_node():
 
 func discharge_and_leave() -> void:
 	state = State.LEAVING
-	# Anybody who was knocked out is still pinned, and a pinned body has its
-	# velocity zeroed before move_and_slide ever runs — so a patient you had
-	# fought would be handed a route to the lobby and not take a single step of
-	# it, which also means is_moving() never goes false and they are never freed.
-	# Cheap to call on everyone: it is idempotent, and it also opens the eyes of
-	# somebody who happened to be asleep when the discharge came through.
-	_come_round()
+	# Somebody asleep when the discharge comes through opens their eyes and walks
+	# out rather than being carried. Cheap to call on everyone: it is idempotent.
+	set_asleep(false)
 	if bed:
 		bed.occupant = null
 	var h = get_tree().get_first_node_in_group("hospital")
@@ -607,61 +372,11 @@ func prompt(_player) -> Array:
 	sub += "  ·  %s a night" % UIKit.money_str(data.daily_revenue())
 	return ["Talk to %s" % data.display_name, sub]
 
-## Holding a treatment tool turns the prompt into the treatment itself.
-func prompt_with_item(_player, held) -> Array:
-	if data == null or held == null:
-		return ["", ""]
-	var tid := _treatment_for_item(held)
-	if tid == "":
-		return ["Talk to %s" % data.display_name, "that isn't a treatment"]
-	return ["%s on %s" % [DB.treatment_name(tid), data.display_name], "[hold E]"]
-
-func use_seconds(_player, held) -> float:
-	if held == null or data == null:
-		return 0.0
-	var tid := _treatment_for_item(held)
-	if tid == "":
-		return 0.0
-	return float(DB.treatment(tid).get("time", 2.0))
-
-func _treatment_for_item(held) -> String:
-	if held == null or not held.has_method("get_item_id"):
-		return ""
-	var item_id := String(held.call("get_item_id"))
-	# A syringe does whatever is actually IN it, not what the label says.
-	if held.contents != "":
-		var as_treatment := Items.substance_effect(held.contents)
-		if as_treatment != "":
-			return as_treatment
-	# One tool can serve several treatments (the wrench detorques a spleen AND
-	# realigns wrist opinions). Prefer whichever is actually indicated for this
-	# patient — otherwise picking up a wrench would silently perform the wrong
-	# procedure depending on dictionary order.
-	#
-	# And when NOTHING it does is indicated, do the least harmful of them —
-	# never "whichever DB.TREATMENTS happens to list first". That was the rule
-	# until three treatments were repointed onto the duster, the compress and
-	# the blanket to get them off machines that no longer exist. Those three
-	# were declared earlier in the table than the comfort treatments that had
-	# owned the same tools, so the fallback silently flipped: putting a blanket
-	# over the wrong patient stopped being `weighted_blanket` (wrong: +0.03, a
-	# blanket) and became `dread_extraction` (wrong: -0.10, plus a 45% roll for
-	# a complication), and the toast said "Ambient Dread Extraction". Nobody
-	# edited a single number to cause that; two entries moved.
-	#
-	# A blanket used on somebody who does not need one is still a blanket.
-	var fallback := ""
-	var kindest := -INF
-	for tid in DB.TREATMENTS:
-		if String(DB.TREATMENTS[tid].get("tool", "")) != item_id:
-			continue
-		if DB.is_correct_treatment(data.condition_id, String(tid)):
-			return String(tid)
-		var harm: float = float(DB.TREATMENTS[tid].get("wrong", 0.0))
-		if harm > kindest:
-			kindest = harm
-			fallback = String(tid)
-	return fallback
+## Holding a tool used to turn this prompt into the treatment itself —
+## prompt_with_item(), use_seconds() and _treatment_for_item() picked a
+## procedure out of DB.TREATMENTS from whatever was in your hand, and what was
+## actually in the syringe. Treatments, substances and the machines that ran them
+## have all gone; a patient is somebody you look at and talk to.
 
 ## How long somebody stays turned towards you after you speak to them. Refreshed
 ## on every interaction, so it is "a few seconds after you last did anything"
@@ -688,26 +403,11 @@ func _turn_to_talk(player) -> void:
 	state = State.TALKING
 	_timer = TALK_SECONDS
 
-func interact(player, held) -> void:
+func interact(player, _held) -> void:
 	if data == null:
 		return
-	# Doing anything to somebody wakes them. Treating a sleeping patient without
-	# waking them would make night a free pass rather than a trade.
+	# Walking up and speaking to somebody wakes them.
 	wake_up("touched")
-	if held != null:
-		var tid := _treatment_for_item(held)
-		if tid != "":
-			var ts = get_tree().get_first_node_in_group("treatment_system")
-			if ts != null:
-				# In the world, unpaused. This used to open a modal that paused
-				# the tree and then did the treatment inside the screen builder,
-				# so the patient could not react to what had just been done to
-				# them until after you had closed the box describing it.
-				ts.apply(data, tid, held, held.global_position)
-				var rs = get_tree().get_first_node_in_group("records_system")
-				if rs:
-					rs.log_real_treatment(data, tid)
-			return
 	_turn_to_talk(player)
 	# A tap admits a waiting patient outright. Everybody already in a bed gets
 	# the card, because there is nothing you would do to them in one keypress.

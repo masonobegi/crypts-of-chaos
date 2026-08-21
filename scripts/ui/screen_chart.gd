@@ -1,146 +1,168 @@
 extends ScreenBase
-## The patient chart. Read-only truth about the record — everything you can
-## CHANGE lives on a terminal, because getting to a terminal is part of the cost.
+## THE CHART. The most important screen in the game, and deliberately the least
+## decorated one.
+##
+## It shows every entry, in order, with who wrote it and when they wrote it. The
+## ward sister will open exactly this in the morning and she will not be shown
+## anything the player was not shown here. If a note was typed two hours after
+## the moment it describes, that is visible now, tonight, while you can still do
+## something about it.
+
+var _pid := ""
+var _writing := false
+var _stated := 0
+var _claim := ChartEntry.Claim.UNWELL
 
 func _build() -> void:
-	var p = patient_system().get_patient(String(ctx.get("patient_id", ""))) if patient_system() else null
-	if p == null:
+	_pid = String(ctx.get("patient_id", ""))
+	var c := Cases.by_id(_pid)
+	if c.is_empty():
 		close()
 		return
-	var v := shell(760, 660, p.display_name,
-		"%d · %s · %s" % [p.age, DB.archetype_name(p.archetype), DB.insurance_name(p.insurance)])
+	var w = ward()
+	var v := card_shell(760, 720, String(c["name"]).to_upper(),
+		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
+			Cases.tier_name(int(c["tier"]))])
 
-	v.add_child(UIKit.row("Recorded condition", DB.condition_name(p.chart.recorded_condition), UIKit.ACCENT))
-	v.add_child(UIKit.row("Presenting sign", String(DB.condition(p.condition_id).get("tell", "—"))))
-	# Somebody inherited from a previous shift was admitted before day one, so
-	# "day -2" is both true and useless. Days-ago is what a chart is read for.
-	var ago: int = GameState.day - p.admitted_on_day
-	v.add_child(UIKit.row("Admitted", "today" if ago <= 0 else
-		("yesterday" if ago == 1 else "%d days ago" % ago)))
-	v.add_child(UIKit.row("Promised discharge", "day %d" % p.chart.promised_discharge_day,
-		UIKit.WARN if p.chart.promised_discharge_day > p.admitted_on_day + int(ceil(p.expected_stay_days)) else UIKit.INK))
-	v.add_child(UIKit.row("Day of stay", "%d of %d projected" % [
-		int(ceil(p.days_admitted)), int(ceil(p.expected_stay_days))],
-		UIKit.WARN if p.is_overdue() else UIKit.INK))
-	v.add_child(UIKit.row("Daily billing", UIKit.money_str(p.daily_revenue()), UIKit.MONEY))
+	# The flag lives here and nowhere else. Nobody tells the player it exists;
+	# they find it by opening the record, which is the only reason it is
+	# interesting that Winifred Blake looks like the easiest hold on the ward.
+	if c.has("audit_flag"):
+		var flag := UIKit.panel(Color(0.32, 0.20, 0.14), 4, 1, UIKit.BAD)
+		var fv := UIKit.vbox(2)
+		fv.add_child(UIKit.label("ON FILE", 11, UIKit.BAD))
+		fv.add_child(UIKit.label(String(c["audit_flag"]), 13, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
+		flag.add_child(fv)
+		v.add_child(flag)
 
-	var vit: Dictionary = p.vitals()
+	v.add_child(UIKit.label(String(c["summary"]), 14, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.rule())
-	v.add_child(UIKit.label("OBSERVATIONS", 13, UIKit.INK_DIM))
-	v.add_child(UIKit.row("Humour balance", "%0.0f" % vit["humour_balance"]))
-	v.add_child(UIKit.row("Spleen torque", "%0.1f" % vit["spleen_torque"]))
-	v.add_child(UIKit.row("Ambient dread", "%0.0f" % vit["ambient_dread"]))
-	v.add_child(UIKit.row("Impression", p.apparent_state()))
 
-	var scroll_box := UIKit.vbox(6)
-	scroll_box.add_child(UIKit.rule())
-	scroll_box.add_child(UIKit.label("INDICATED TREATMENTS", 13, UIKit.INK_DIM))
-	# The treatment rows are built before any of them is added, because the
-	# prescribed-setting row above them is only printed if one of them turns out
-	# to be a machine cycle — and that is only knowable after looking at all of
-	# them.
-	var rows: Array = []
-	var machine_names: Array = []
-	for tid in DB.correct_treatments(p.condition_id):
-		var spec: Dictionary = DB.treatment(String(tid))
-		var tool_id := String(spec.get("tool", ""))
-		# The name of the thing, not its identifier. A chart that says "iv_bag"
-		# is a chart written by a programmer.
-		var tool_label := "no equipment"
-		if tool_id != "":
-			if Items.SPECS.has(tool_id):
-				tool_label = String(Items.SPECS[tool_id]["name"])
-			else:
-				# Anything not in the item catalogue is done on a machine, and
-				# the machine is asked whether it still exists rather than
-				# assumed. This line used to read "at the machine" for every
-				# such treatment, which sent the player looking for a box that
-				# was taken off the wards with the rest of the bedside dials —
-				# all three of Ossified Vibes' indicated treatments pointed at
-				# equipment this hospital does not own.
-				var m = _machine_for(tool_id)
-				if m == null:
-					tool_label = "unavailable here"
-				else:
-					tool_label = String(m.fixture_name)
-					if not machine_names.has(tool_label):
-						machine_names.append(tool_label)
-		rows.append(UIKit.row(String(spec.get("name", tid)), tool_label))
+	var box := UIKit.vbox(6)
+	for e in w.records.for_patient(_pid):
+		box.add_child(_entry_row(e))
+	if w.records.for_patient(_pid).is_empty():
+		box.add_child(UIKit.label("Nothing recorded.", 14, UIKit.INK_DIM))
+	v.add_child(UIKit.scroll(box))
 
-	# The number the whole game turns on, above the treatments rather than under
-	# them. It used to live on the machine and nowhere else, so the one thing a
-	# player needs BEFORE walking into a room could only be learned by walking
-	# into the room — and then it was printed on EVERY chart, including the
-	# lacerations and the prescriptions, which have no setting to be off and
-	# nothing in the room to set. It belongs on the charts of the patients whose
-	# treatment is genuinely a cycle on a machine — which now means a trip to
-	# the imaging bench, and nothing else.
-	# ...and also for anybody a colleague has ASKED to be scanned, which is the
-	# commonest way a player ever ends up at the bench. `machine_names` is built
-	# by walking the condition's indicated treatments, and imaging is indicated
-	# for exactly four conditions — but `DoctorNPC._maybe_request_imaging` books
-	# a scan for any OVERDUE patient regardless of what is wrong with them. So
-	# on the usual route the chart went silent about the aperture, which is the
-	# "you can only learn it by walking into the room" problem this row exists
-	# to remove, reintroduced for the majority case.
-	if machine_names.is_empty() and p.imaging_requested():
-		var bench = _machine_for("machine_imaging")
-		if bench != null:
-			machine_names.append(String(bench.fixture_name))
-	if not machine_names.is_empty():
-		scroll_box.add_child(UIKit.row("Prescribed setting",
-			"%d — %s" % [DB.prescribed_setting(p.condition_id),
-				", ".join(machine_names)], UIKit.ACCENT))
-	for r in rows:
-		scroll_box.add_child(r)
+	v.add_child(UIKit.rule())
+	if _writing:
+		_write_form(v, w)
+	else:
+		var acts := UIKit.hbox(8)
+		acts.add_child(UIKit.button("Write a note", func():
+			_writing = true
+			_stated = w.minute
+			rebuild()))
+		acts.add_child(UIKit.button("Close", close))
+		v.add_child(acts)
 
-	scroll_box.add_child(UIKit.rule())
-	scroll_box.add_child(UIKit.label("COMPLICATIONS", 13, UIKit.INK_DIM))
-	if p.complications.is_empty():
-		scroll_box.add_child(UIKit.label("None recorded.", 14, UIKit.INK_DIM))
-	for c in p.complications:
-		var status := "cause: %s" % DB.cause_name(c.documented_cause)
-		var colour := UIKit.GOOD
-		if c.documented_cause == "":
-			status = "NO CAUSE FILED"
-			colour = UIKit.BAD
-		elif c.is_inconsistent():
-			status = "cause: %s (does not fit)" % DB.cause_name(c.documented_cause)
-			colour = UIKit.BAD
-		scroll_box.add_child(UIKit.row("%s%s" % [c.display_name, "" if not c.resolved else " (resolved)"],
-			status, colour))
-		if c.symptom != "":
-			scroll_box.add_child(UIKit.label("   " + c.symptom, 12, UIKit.INK_DIM))
+## One line of chart, and its metadata underneath in the colour of small print.
+func _entry_row(e: ChartEntry) -> Control:
+	var tint := UIKit.INK
+	if e.supports_stay():
+		tint = UIKit.WARN
+	elif e.supports_discharge():
+		tint = UIKit.GOOD
+	var p := UIKit.panel(UIKit.NOTE, 3)
+	var col := UIKit.vbox(1)
+	col.add_child(UIKit.row("%s  %s" % [ChartEntry._hhmm(e.stated_minute), e.text],
+		e.author_label(), tint, 14))
+	var meta := e.metadata_line()
+	if meta != "":
+		col.add_child(UIKit.label("      " + meta, 11,
+			UIKit.BAD if e.is_backdated() else UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT))
+	p.add_child(col)
+	return p
 
-	scroll_box.add_child(UIKit.rule())
-	scroll_box.add_child(UIKit.label("TREATMENT LOG", 13, UIKit.INK_DIM))
-	if p.chart.logged_treatments.is_empty():
-		scroll_box.add_child(UIKit.label("Nothing logged.", 14, UIKit.INK_DIM))
-	for t in p.chart.logged_treatments:
-		scroll_box.add_child(UIKit.row(DB.treatment_name(String(t["id"])),
-			"day %d" % (int(t["time"]) / GameState.MINUTES_PER_DAY + 1),
-			UIKit.INK if bool(t.get("real", true)) else UIKit.SUS))
+## Writing a note. The two things the player chooses are what it says and WHAT
+## TIME IT SAYS IT HAPPENED — and the second one is the game.
+func _write_form(v: VBoxContainer, w) -> void:
+	v.add_child(UIKit.label("NEW ENTRY", 12, UIKit.INK_DIM))
 
-	if not p.chart.notes.is_empty():
-		scroll_box.add_child(UIKit.rule())
-		scroll_box.add_child(UIKit.label("NOTES", 13, UIKit.INK_DIM))
-		for n in p.chart.notes:
-			scroll_box.add_child(UIKit.label("· %s" % String(n["text"]), 13,
-				UIKit.INK if bool(n.get("truthful", true)) else UIKit.SUS))
+	var kinds := [
+		[ChartEntry.Claim.UNWELL, "Something is wrong", UIKit.WARN],
+		[ChartEntry.Claim.SETTLED, "Comfortable, no concerns", UIKit.GOOD],
+		[ChartEntry.Claim.ADMIN, "Administrative note", UIKit.INK_DIM],
+	]
+	var kb := UIKit.hbox(6)
+	for k in kinds:
+		var claim: int = k[0]
+		kb.add_child(UIKit.button(String(k[1]),
+			func():
+				_claim = claim as ChartEntry.Claim
+				rebuild(),
+			(k[2] as Color).darkened(0.55) if _claim != claim else (k[2] as Color).darkened(0.2)))
+	v.add_child(kb)
 
-	v.add_child(UIKit.scroll(scroll_box))
-	v.add_child(UIKit.label("Changes are made at a terminal.", 12, UIKit.INK_DIM))
-	v.add_child(UIKit.button("Close", close))
+	# The time control. Stepping it backwards is backdating, and the screen says
+	# so out loud rather than hiding it — the player is allowed to know exactly
+	# what they are doing. What they cannot know is who will read it.
+	var t := UIKit.hbox(6)
+	t.add_child(UIKit.button("-15 min", func():
+		_stated = maxi(0, _stated - 15); rebuild()))
+	t.add_child(UIKit.label("observed at %s" % ChartEntry._hhmm(_stated), 16, UIKit.ACCENT))
+	t.add_child(UIKit.button("+15 min", func():
+		_stated = mini(w.minute, _stated + 15); rebuild()))
+	v.add_child(t)
 
-## The machine a treatment is performed on, or null if the building no longer
-## has one. Read live off the tree rather than off a table: which machines exist
-## is a property of what Furniture built this run, and a chart that names a
-## fixture nobody can walk to is worse than a chart that says nothing.
-##
-## Untyped deliberately — a typed local holding a fixture that has since been
-## freed aborts the function on assignment rather than yielding null.
-func _machine_for(tool_id: String):
-	for f in get_tree().get_nodes_in_group("fixture"):
-		if f is TreatmentMachine and String(f.machine_id) == tool_id:
-			return f
-	return null
+	var gap: int = w.minute - _stated
+	if gap > ChartEntry.BACKDATE_TOLERANCE:
+		v.add_child(UIKit.label(
+			"It is %s now. This note will record that you wrote it %d minutes after the fact."
+				% [ChartEntry._hhmm(w.minute), gap], 12, UIKit.BAD,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+	else:
+		v.add_child(UIKit.label("It is %s now." % ChartEntry._hhmm(w.minute), 12, UIKit.INK_DIM))
+
+	var texts := _phrases(_claim)
+	var pb := UIKit.vbox(4)
+	for phrase in texts:
+		var s := String(phrase)
+		pb.add_child(UIKit.button(s, func(): _commit(w, s), UIKit.PANEL_LIGHT))
+	v.add_child(pb)
+	v.add_child(UIKit.button("Never mind", func(): _writing = false; rebuild()))
+
+func _commit(w, text: String) -> void:
+	w.write_entry(_pid, _claim, text, _stated, _terminal())
+	_writing = false
+	rebuild()
+
+## Which machine you are standing at. It goes on the entry, and it is how a
+## witness in that room ends up being a witness to this note.
+func _terminal() -> String:
+	var p = player()
+	if p == null:
+		return WardDay.TERMINAL_WARD
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h == null or not h.has_method("room_at"):
+		return WardDay.TERMINAL_WARD
+	match String(h.room_at(p.global_position)):
+		"station": return WardDay.TERMINAL_STATION
+		"office": return WardDay.TERMINAL_OFFICE
+	return WardDay.TERMINAL_WARD
+
+func _phrases(claim: int) -> Array:
+	match claim:
+		ChartEntry.Claim.UNWELL:
+			return [
+				"Reports transient dizziness on standing.",
+				"Complains of pain at the site this evening.",
+				"Appears unsettled. Not right yet.",
+				"Wound warm to touch. Query early infection.",
+			]
+		ChartEntry.Claim.SETTLED:
+			return [
+				"Comfortable. No concerns.",
+				"Symptoms settled. Positional and transient.",
+				"Reviewed. Nothing further to add.",
+			]
+	return [
+		"Discussed plan with patient.",
+		"Note timed late owing to ward workload.",
+	]
+
+func ward():
+	return get_tree().get_first_node_in_group("ward_day")

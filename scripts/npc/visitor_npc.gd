@@ -1,9 +1,8 @@
 class_name VisitorNPC
 extends NPCBody
 ## Family. Visitors are the most dangerous witness class in the game: they have
-## nothing to do but sit in the room and watch, they compare notes with the
-## patient, and they escalate faster than staff because they are not worried
-## about their job.
+## nothing to do but sit in the room and watch, and they escalate faster than
+## staff because they are not worried about their job.
 
 enum State { ARRIVING, VISITING, ROAMING, LEAVING }
 
@@ -68,45 +67,39 @@ func _physics_process(delta: float) -> void:
 			if not is_moving():
 				queue_free()
 
+## What a visitor says while they sit there.
+##
+## Spotting an unnoticed complication on the patient used to be the first thing
+## this did, and was the whole reason the constantly-visiting archetype was the
+## most dangerous witness class in the game. Complications have gone, and so has
+## Dialogue, which supplied the idle chat underneath. What a family member is
+## left to notice is the one thing they can count on their own fingers: the stay
+## running long.
 func _visit_bark() -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	var p = ps.get_patient(patient_id) if ps else null
-	# Somebody sitting in the room all afternoon sees things. This is why the
-	# constantly-visiting archetype is genuinely dangerous.
-	if p != null and ps != null and mind != null:
-		for c in ps.unnoticed_complications(p):
-			if not RNG.chance("visitor_notice", 0.3 + c.severity * 0.6 + mind.observance * 0.3):
-				continue
-			ps.notice_complication(p, c, npc_id, display)
-			say(String(RNG.pick("visitor_notice_bark", [
-				"What is THAT? That wasn't there this morning.",
-				"Has anybody written this down?",
-				"Right. I want to speak to somebody about this.",
-			])), 4.0)
-			return
-	if p != null and p.is_overdue() and RNG.chance("visitor_overdue", 0.65):
-		say(String(RNG.pick("visitor_overdue_bark", [
-			"They were supposed to be home by now.",
-			"That's not what you told me on Tuesday.",
-			"Why is this taking so long?",
-			"I'd like to see the notes, actually.",
-		])), 4.0)
-		# A family member noticing the overrun is INFERRED evidence — nobody saw
-		# anything, but the dates don't match what they were told.
-		if mind:
-			var ev := Evidence.new()
-			ev.kind = "overdue_noticed_by_family"
-			ev.about_actor = "player"
-			ev.patient_id = patient_id
-			ev.source = Evidence.Source.INFERRED
-			ev.time = GameState.career_minutes
-			ev.base_weight = clampf(p.overdue_days * 0.16, 0.05, 0.6)
-			ev.certainty = 0.7
-			ev.cover_tag = "clinical_caution"
-			ev.summary = "noticed the stay running %d days long" % int(p.overdue_days)
-			mind.add_evidence(ev)
+	if p == null or not p.is_overdue() or not RNG.chance("visitor_overdue", 0.65):
 		return
-	say(Dialogue.family_idle(archetype), 3.5)
+	say(String(RNG.pick("visitor_overdue_bark", [
+		"They were supposed to be home by now.",
+		"That's not what you told me on Tuesday.",
+		"Why is this taking so long?",
+		"I'd like to see the notes, actually.",
+	])), 4.0)
+	# A family member noticing the overrun is INFERRED evidence — nobody saw
+	# anything, but the dates don't match what they were told.
+	if mind:
+		var ev := Evidence.new()
+		ev.kind = "overdue_noticed_by_family"
+		ev.about_actor = "player"
+		ev.patient_id = patient_id
+		ev.source = Evidence.Source.INFERRED
+		ev.time = GameState.career_minutes
+		ev.base_weight = clampf(p.overdue_days * 0.16, 0.05, 0.6)
+		ev.certainty = 0.7
+		ev.cover_tag = "clinical_caution"
+		ev.summary = "noticed the stay running %d days long" % int(p.overdue_days)
+		mind.add_evidence(ev)
 
 func _leave() -> void:
 	state = State.LEAVING
@@ -114,14 +107,8 @@ func _leave() -> void:
 	if h:
 		goto(h.point_in("lobby", "visitor_leave_pt"))
 
-func prompt(_player) -> Array:
-	var sub := DB.archetype_name(archetype)
-	if mind:
-		var tier := mind.tier(GameState.career_minutes, GameState.active_covers)
-		if tier >= 2:
-			sub += "  ·  wants answers"
-	return ["Talk to %s" % display, sub]
-
-func interact(player, _held) -> void:
-	look_toward(player.global_position if player else global_position)
-	EventBus.request_ui.emit("dialogue", {"npc_id": npc_id})
+# A visitor was somebody you could talk to: prompt() offered it and interact()
+# opened the dialogue screen. That screen went with Dialogue, and there is
+# nothing behind the keypress any more — so the prompt goes too, rather than
+# hanging on a door that no longer opens. They sit there and they watch, which
+# was always the dangerous half.

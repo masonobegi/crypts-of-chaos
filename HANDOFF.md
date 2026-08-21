@@ -43,8 +43,8 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**2,119 assertions · 132 smoke checks (incl. an object-overlap audit) · 34 live
-checks over 7,000 frames · boot check · 21/21 balance design checks · 66
+**2,202 assertions · 132 smoke checks (incl. an object-overlap audit) · 45 live
+checks over 7,000 frames · boot check · 21/21 balance design checks · 71
 screenshots.** Windows and Linux both export,
 and the exported Linux build boots and exits cleanly.
 
@@ -83,8 +83,16 @@ See the Session 5 sections of `PROGRESS_LOG.md`. Headlines:
 - **The letter**: discharged patients sue. Settle for about half, or fight it
   with one of four lawyers ascending in price and descending in scruple.
   Imaging you ordered weeks ago cannot be edited and turns up in court.
-- **The evening**: a street from above with cones of vision and lamps. Reach
-  somebody unseen and they are on your list in the morning.
+- **The evening is a street you walk down**, in first person, with the same
+  controls as the ward — not a top-down diagram. Road, pavements, two terraces
+  of lit houses, a van to hide behind, sodium lamps that pool, watchers whose
+  cones of vision are drawn on the pavement, and an exposure bar on the HUD.
+  Reach somebody unseen and they are on your list in the morning; walk back the
+  way you came if you change your mind. It is built four hundred metres UNDER
+  the hospital, because hiding the hospital hides its meshes and not its
+  colliders (`Street.ORIGIN`).
+- **The title screen is a live 3D ward** rendered into a SubViewport behind the
+  panel, with the camera drifting across it.
 - **A fourth verb**: taking a dislocated joint through an arc, which is a
   tracking skill rather than a holding or clicking one.
 - Rebindable keys, gamepad support, controls/credits/achievements screens,
@@ -97,10 +105,18 @@ See the Session 5 sections of `PROGRESS_LOG.md`. Headlines:
 
 Nothing is known-broken. The open questions are all playtest ones:
 
-- Is the night phase's difficulty right? It has never been played by a person.
-- The courtroom hearing is three exchanges; it may want to be five, and it may
-  want the claimant's counsel to react to what was said rather than reading a
-  fixed line.
+- Is the street's difficulty right? Three watchers with a 0.62 rad cone at 17 m
+  over a 74 m street, exposure at 0.42/s scaled by how lit you are. It has
+  never been played by a person, and all of those numbers are guesses.
 - Walk-ins arrive as appointment slots. If the redesign wants more upright
   patients than bedbound ones, that ratio lives in
   `AppointmentSystem._make()`.
+
+Two harmless noises worth knowing about before chasing them:
+
+- ~180 `mesh_get_surface_count: Parameter "m" is null` errors per headless run.
+  They come from Godot's *dummy* renderer, which has no meshes to count. They
+  do not appear in the rendered screenshot runs and they are not a bug in this
+  project.
+- `ObjectDB instances leaked at exit` after a screenshot run. The harness quits
+  from inside a `--script` main loop without tearing the scene down.

@@ -233,7 +233,21 @@ func _layout_people(watchers: int) -> void:
 	# is available to be innocent in. A third of the way down that leg rather
 	# than half, because the Ladder Yard's first watcher stands at very nearly
 	# its midpoint and boards laid in his lap are not a decision either.
-	rig_spot = ORIGIN + Vector3(-LENGTH * 0.14, 0.3, ROAD_HALF + 2.5)
+	#
+	# 0.12 AND NOT 0.14, and the difference is the whole act. The watchers sweep
+	# `base ± sweep` with `sweep` drawn from 0.5..1.0, so what matters is not
+	# whether the spot sits inside a cone at rest — it is how long the cone is
+	# off it, against the 2.2 seconds RigPoint needs. At 0.14 the worst draw
+	# leaves a 2.08s gap, which is SHORTER than the hold: on those evenings the
+	# job could not be done cleanly however well it was played, and the street
+	# gave no sign of it. At 0.12 the worst draw is 4.34s, and the spot is still
+	# inside Ossory's near cone about half of every sweep — so it is a question
+	# about timing rather than either a free pass or an impossibility.
+	#
+	# Going FURTHER west is much worse, not better: past 0.20 the Ladder Yard's
+	# first watcher picks the spot up as Ossory's lets it go, and from 0.20
+	# onward the worst-case gap is zero on one street or the other.
+	rig_spot = ORIGIN + Vector3(-LENGTH * 0.12, 0.3, ROAD_HALF + 2.5)
 
 	watcher_spots.clear()
 	for i in maxi(watchers, 0):

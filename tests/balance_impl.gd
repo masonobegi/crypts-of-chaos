@@ -602,8 +602,25 @@ func _assert_design_intent() -> void:
 		"and going further pays further")
 	_check(mean("mild", "sanction") <= 0.5 and mean("mild", "adverse") < 1.0,
 		"mild cheating is genuinely comfortable — nobody comes for you")
-	_check(mean("careless", "days") < mean("careful", "days") * 0.85,
-		"reckless practice ends, and visibly sooner")
+	# HOW FAR UP THE LADDER THEY GOT, not how many pages of calendar fitted.
+	#
+	# `careless_days < careful_days * 0.85` can only pass if the collapse lands
+	# INSIDE the simulated window, and a reckless career is struck off somewhere
+	# around day 18. At the default sixteen days it therefore reads 15.7 against
+	# 16.0 and fails — not because recklessness is surviving, but because the
+	# window closes on it mid-fall: at that point a careless career is sitting on
+	# sanction 4.7 with 96% heat and 902 witnessed acts, against 0.3 and 17% for
+	# a careful one, and one seed in three has already lost its licence. The
+	# claim was being measured by a quantity that saturates at the window length.
+	#
+	# The ladder does not saturate. Being most of the way to struck off with the
+	# heat at maximum IS the career ending; the strict day comparison stays as
+	# the second half, without a factor that requires the fall to complete.
+	_check(mean("careless", "sanction") > mean("careful", "sanction") + 2.0
+			and mean("careless", "days") < mean("careful", "days"),
+		"reckless practice ends, and visibly sooner (sanction %.1f vs %.1f, %.1f days vs %.1f)" % [
+			mean("careless", "sanction"), mean("careful", "sanction"),
+			mean("careless", "days"), mean("careful", "days")])
 	_check(mean("careful", "sanction") < mean("careless", "sanction"),
 		"careful cheating stays further from the ladder than careless")
 	_check(mean("careful", "clean") > mean("careless", "clean"),

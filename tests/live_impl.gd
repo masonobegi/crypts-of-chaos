@@ -46,6 +46,9 @@ var _investigating := 0
 var _seen_door_open := -1
 var _seen_door_shut := -1
 
+var _walk_from := Vector3.ZERO
+var _walk_worst := 0.0
+var _walk_samples := 0
 var _talked_to := ""
 var _talk_took_them_out_of_the_chair := false
 ## -1 nobody to sample, 1 they stayed seated for every sampled frame, 0 they did not.
@@ -72,6 +75,10 @@ func tick() -> bool:
 			GameState._advance_minute()
 	if frames == 60:
 		_seed_conditions()
+	if frames > 120 and frames < 280:
+		_sample_walking_on_the_flat()
+	if frames == 285:
+		_check_nobody_teleported()
 	if frames == 300:
 		_talk_to_somebody()
 	if frames > 300 and frames < 700 and frames % 20 == 0:
@@ -760,3 +767,37 @@ func _sample_still_sat() -> void:
 		_still_sat_through_it = 1
 	if not b.is_seated():
 		_still_sat_through_it = 0
+
+## WALKING ON FLAT FLOOR IS NOT CLIMBING.
+##
+## `_step_up` exists so a player can get over a kerb without jumping, and it
+## works by lifting the body 34cm, moving it, and dropping it again — a teleport,
+## deliberately, because that is what a step is. It fires when the body moved a
+## small fraction of what it asked for, i.e. when something is in the way. It was
+## comparing what it moved against the TARGET speed rather than against the
+## velocity `move_and_slide` was actually handed, and ACCEL only commands 18% of
+## the target on the first frame of a walk and 33% on the second — so every
+## standing start on open floor looked blocked, found free air 34cm up with floor
+## under it (which is exactly what a kerb looks like), and lurched the player
+## forward. Framerate-dependent, invisible in a screenshot, and nothing measured
+## per-frame displacement anywhere.
+func _sample_walking_on_the_flat() -> void:
+	var p = game.player
+	if p == null or not p.is_inside_tree():
+		return
+	var now: Vector3 = p.global_position
+	if _walk_samples > 0:
+		var moved: float = Vector2(now.x - _walk_from.x, now.z - _walk_from.z).length()
+		# What a frame could legitimately carry at a dead sprint, with room for
+		# the physics step being a touch longer than the nominal frame.
+		var ceiling: float = Player.SPRINT_SPEED * (1.0 / 60.0) * 2.5
+		_walk_worst = maxf(_walk_worst, moved - ceiling)
+	_walk_from = now
+	_walk_samples += 1
+
+func _check_nobody_teleported() -> void:
+	if _walk_samples < 20:
+		return
+	_ok(_walk_worst <= 0.0,
+		"the player never covers more ground in one frame than running could explain (worst overshoot %.3fm over %d frames)" % [
+			_walk_worst, _walk_samples])

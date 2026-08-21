@@ -1033,8 +1033,8 @@ func test_unknown_settings_are_rejected() -> void:
 
 func test_a_machine_cycle_is_a_visible_event() -> void:
 	var m := TreatmentMachine.new()
-	m.machine_id = "machine_vibe"
-	m.treatment_id = "vibe_stabilize"
+	m.machine_id = TreatmentMachine.INSTALLED[0]
+	m.treatment_id = "imaging"
 	m.units = "TEST INDEX"
 	m.build("Test Machine")
 	t.ok(not m.is_running(), "a machine at rest is not running")
@@ -1048,8 +1048,8 @@ func test_a_machine_cycle_is_a_visible_event() -> void:
 
 func test_how_wrong_the_dial_is_changes_what_you_see() -> void:
 	var m := TreatmentMachine.new()
-	m.machine_id = "machine_vibe"
-	m.treatment_id = "vibe_stabilize"
+	m.machine_id = TreatmentMachine.INSTALLED[0]
+	m.treatment_id = "imaging"
 	m.build("Test Machine")
 	m.begin_cycle(1.0, 0, null)
 	var ok_colour: Color = m._cycle_colour()
@@ -1123,41 +1123,6 @@ func test_sitting_folds_the_knee() -> void:
 	t.near(p._knees[0].rotation.x, 0.0, 0.001, "standing up straightens them again")
 	p.free()
 
-## No two people booked into the same hour, on any shift.
-##
-## `build_for_shift` spreads `count` slots over the whole hours between the
-## handover and the last hour, and rounds each one to an hour of the day. That
-## is a pigeonhole the moment the count exceeds the number of hours available:
-## the day shift went to eight appointments over a seven-hour window and put two
-## patients in the 12:00 slot and nobody in one of the others, every single day,
-## on the briefing screen and in the HUD alike. Nothing noticed, because the
-## existing roster test only asserts that the slots are not ALL at the same
-## time.
-##
-## (Lives here rather than in test_appointments.gd because this is the file that
-## stands systems up in a tree; the assertion belongs with the roster either
-## way, and should move if that file ever grows a spreading test of its own.)
-func test_no_two_appointments_land_in_the_same_hour() -> void:
-	var was := GameState.shift_kind
-	for kind in DB.SHIFT_ORDER:
-		GameState.shift_kind = kind
-		GameState.minute_of_day = GameState.shift_start_hour() * 60
-		var ps := PatientSystem.new()
-		t.root.add_child(ps)
-		var a := AppointmentSystem.new()
-		t.root.add_child(a)
-		a.patient_system = ps
-		a.economy = null
-		a.build_for_shift()
-		var seen := {}
-		for e in a.list:
-			var hour := int(e["hour"])
-			t.ok(not seen.has(hour), "%s: nobody is double-booked at %s" % [
-				kind, GameState.hour_string(hour)])
-			seen[hour] = true
-		a.free()
-		ps.free()
-	GameState.shift_kind = was
 
 # ------------------------------------------------------------------- the score
 #

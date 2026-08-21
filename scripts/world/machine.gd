@@ -362,6 +362,26 @@ func _nearby_patient(_player):
 	# follow the patient in. Without this the readout showed a prescribed value
 	# belonging to nobody present, which quietly made the dial meaningless in
 	# exactly the two rooms built around it.
+	# WHOEVER IS BOOKED, when nobody has been brought.
+	#
+	# Nothing in the hospital can bring a patient to the imaging bench: the ward
+	# beds are static chairs so nobody is wheeled anywhere, and a re-room is only
+	# accepted into a ward or Intake. So proximity always failed here, and the
+	# fix went into the run button alone — which left the two halves of the same
+	# machine disagreeing a metre apart. The player walked into Radiology, the
+	# dial said "(no patient present)" and the readout on the front showed the
+	# default aperture, while the button beside it named the person who had been
+	# booked; the readout only corrected itself the first time the crosshair
+	# happened to cross the button. It belongs here, where the dial, the panel
+	# readout and the button all read from it.
+	if best == null and machine_id == "machine_imaging":
+		var ps = get_tree().get_first_node_in_group("patient_system")
+		if ps != null:
+			for q in ps.active():
+				if not q.imaging_requested():
+					continue
+				if best == null or q.imaging_requested_day < best.imaging_requested_day:
+					best = q
 	if best != null and String(best.id) != _prescribed_for:
 		set_prescribed_for(best)
 	return best

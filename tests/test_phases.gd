@@ -437,6 +437,74 @@ func test_losing_your_nerve_is_free() -> void:
 ## a spawn point past the way out ends the evening on the first step backwards,
 ## and a mark whose route never enters a lamp turns a stealth level into a
 ## corridor you jog down.
+## A JOB YOU CANNOT DO CLEANLY IS NOT A DIFFICULTY, IT IS A BUG.
+##
+## The watchers sweep `base ± sweep` with sweep drawn from 0.5..1.0 and a period
+## of about nine seconds, so whether a spot sits inside somebody's cone at rest
+## says almost nothing. What decides the act is how long the cones are ALL off
+## it in a row, measured against the 2.2 seconds RigPoint needs to be held.
+##
+## The rig spot used to sit where the worst draw left a 2.08 second gap — 0.12
+## seconds shorter than the hold — so on those evenings the job could not be
+## done cleanly however well it was played, and nothing said so. A static read
+## of the geometry cannot see this: it reports "inside a cone" for a spot that
+## is perfectly workable, and "outside a cone" for one that a low sweep pins.
+func test_every_rig_job_has_a_gap_long_enough_to_do_it_in() -> void:
+	var need: float = RigPoint.HOLD_SECONDS
+	for spec in NightSystem.PLACES:
+		if String(spec.get("act", "")) != "rig":
+			continue
+		var st := Street.new()
+		t.root.add_child(st)
+		st.build(spec)
+		var worst := 999.0
+		# Both ends of the sweep range, and several phase alignments: the metas
+		# are randomised per evening, so the claim has to hold for all of them.
+		for sweep in [0.5, 0.7, 1.0]:
+			for k in 6:
+				var phases: Array[float] = []
+				for j in st.watcher_spots.size():
+					phases.append(TAU * fposmod(float(j) * 0.37 + float(k) * 0.166, 1.0))
+				worst = minf(worst, _clear_gap(st, phases, sweep))
+		t.gt(worst, need + 0.5,
+			"%s leaves a gap long enough to lay the boards in (%.2fs of cover for a %.2fs job)" % [
+				String(spec.get("id", "?")), worst, need])
+		st.queue_free()
+
+## The longest run of seconds, within one sweep, in which no watcher can see the
+## rig spot. Mirrors NightSystem's own sweep and _looks_at, minus the ray test —
+## there is nothing between a watcher and the pavement to hide behind, and
+## assuming there is would make this test weaker than the game.
+func _clear_gap(st: Street, phases: Array[float], sweep: float) -> float:
+	const OMEGA := 0.7
+	var period: float = TAU / OMEGA
+	var steps := 240
+	var run := 0
+	var best := 0
+	# Twice round, so a gap that straddles the wrap is measured whole.
+	for s in steps * 2:
+		var time: float = period * float(s % steps) / float(steps)
+		var seen := false
+		for i in st.watcher_spots.size():
+			var spot: Dictionary = st.watcher_spots[i]
+			var pos: Vector3 = spot["pos"]
+			var face: float = float(spot["facing"]) + sin(OMEGA * time + phases[i]) * sweep
+			if _cone_covers(pos + Vector3(0, 1.5, 0), face, st.rig_spot):
+				seen = true
+				break
+		run = 0 if seen else run + 1
+		best = maxi(best, mini(run, steps))
+	return float(best) * period / float(steps)
+
+func _cone_covers(from: Vector3, face: float, target: Vector3) -> bool:
+	var to := target - from
+	to.y = 0.0
+	var dist := to.length()
+	if dist > NightSystem.SIGHT or dist < 0.05:
+		return false
+	var facing := Vector3(sin(face), 0.0, cos(face))
+	return acos(clampf(facing.dot(to.normalized()), -1.0, 1.0)) <= NightSystem.CONE
+
 func test_the_street_is_laid_out_so_the_evening_is_playable() -> void:
 	var st := Street.new()
 	t.root.add_child(st)

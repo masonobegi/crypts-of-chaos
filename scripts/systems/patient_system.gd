@@ -13,7 +13,30 @@ const ENVIRONMENTAL_COMPLICATIONS := {
 	"cold": "draft_exposure",
 	"dark": "nocturnal_confusion",
 	"filthy": "secondary_beige",
+	# The thermostat wraps from 10 back to 28, so a stifling ward is a thing a
+	# player can build on purpose — and it used to hand out Draft Exposure
+	# ("Chilled. Faintly indignant about it.") to somebody sweating at 28 degrees,
+	# because "cold" was the default and the other two were overrides rather
+	# than a reading of what was actually worst about the room.
+	"stifling": "reverse_appetite",
+	# Scan somebody and their cutlery starts leaning towards them. `ferrous_aura`
+	# names `equipment_variance` as its cause and had no live producer at all:
+	# its only sources were the complication pool of a machine that was taken out
+	# of the wards, and a wrong-treatment path the torque wrench can never take.
+	# The imaging bench is the last device in the building, so it is the one
+	# thing in the game that can plausibly do this — and it gives the honest act
+	# of imaging a patient a downside, which the design wants everywhere.
+	"imaged": "ferrous_aura",
+	# "Made unwell by the amount of paperwork about them", which was previously
+	# unreachable and is the most on-theme sentence in the catalogue. The more
+	# you write about somebody — notes, logged treatments, edits, forgeries — the
+	# likelier they are to be made ill by it. A cheat's charts are fatter than an
+	# honest doctor's, so this quietly costs the careful player something.
+	"paperwork": "clerical_nausea",
 }
+
+## How much writing about a person it takes to make them unwell.
+const PAPERWORK_ENOUGH := 9
 
 var patients: Dictionary = {}          ## id -> Patient
 var bodies: Dictionary = {}            ## id -> PatientNPC
@@ -586,20 +609,50 @@ func tick(days: float) -> void:
 			EventBus.toast.emit("%s is fit for discharge." % p.display_name, "good")
 		EventBus.patient_state_changed.emit(p)
 
-## Cold rooms, dark rooms and filthy rooms eventually produce complications with
-## an entirely honest cause. Whether that cause ends up on the chart is your
-## business.
+## How much has been written about this person.
+##
+## Notes, logged treatments, edits and forgeries all count, because from the
+## patient's point of view they are the same thing: paperwork about them.
+func _paperwork_weight(p: Patient) -> int:
+	if p == null or p.chart == null:
+		return 0
+	return p.chart.notes.size() + p.chart.logged_treatments.size() \
+		+ p.chart.times_edited + p.chart.times_forged * 2
+
+func _already_has(p: Patient, comp_id: String) -> bool:
+	for c in p.complications:
+		if c.id == comp_id:
+			return true
+	return false
+
+## Cold rooms, dark rooms, filthy rooms, stifling rooms, a chart nobody could
+## lift and a scan you did not have to order eventually produce complications
+## with an entirely honest cause. Whether that cause ends up on the chart is
+## your business.
 func _maybe_environmental_complication(p: Patient, r: Room, days: float) -> void:
 	if r == null or p.discomfort < 0.35:
 		return
 	if not RNG.chance("env_comp", p.discomfort * days * 0.7):
 		return
+	# Whichever thing is actually worst, rather than a default of "cold" with two
+	# overrides. Each carries its own honest cause, because the cause is what the
+	# player has to find something plausible to write instead of.
 	var comp_id: String = ENVIRONMENTAL_COMPLICATIONS["cold"]
+	var cause := "facilities"
 	if not r.lights_on:
 		comp_id = ENVIRONMENTAL_COMPLICATIONS["dark"]
 	elif r.cleanliness < 0.4:
 		comp_id = ENVIRONMENTAL_COMPLICATIONS["filthy"]
-	add_complication(p, comp_id, "facilities")
+	elif r.temperature > Room.IDEAL_TEMP + 4.5:
+		comp_id = ENVIRONMENTAL_COMPLICATIONS["stifling"]
+		cause = "dietary"
+	elif _paperwork_weight(p) >= PAPERWORK_ENOUGH and not _already_has(p, ENVIRONMENTAL_COMPLICATIONS["paperwork"]):
+		comp_id = ENVIRONMENTAL_COMPLICATIONS["paperwork"]
+		cause = "administrative"
+	elif p.imaged_at > -99999 and not _already_has(p, ENVIRONMENTAL_COMPLICATIONS["imaged"]):
+		comp_id = ENVIRONMENTAL_COMPLICATIONS["imaged"]
+		cause = "equipment_variance"
+	add_complication(p, comp_id, cause)
 	p.discomfort = 0.0
 
 ## The core money-making verb. `true_cause` is what the simulation knows;

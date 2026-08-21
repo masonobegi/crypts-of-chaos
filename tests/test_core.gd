@@ -477,6 +477,21 @@ func test_every_substance_effect_is_a_real_treatment() -> void:
 ## A complication nothing can produce is not content, it is a dictionary entry.
 ## Every source that can create one is data rather than a match statement
 ## specifically so this test can add them up.
+## Which of the treatments sharing a tool gets performed when none of them is
+## indicated. Mirrors `PatientNPC._treatment_for_item`: the least harmful wins,
+## because a blanket used on somebody who does not need one is still a blanket.
+func _wins_its_tool(tid: String, tool: String) -> bool:
+	var best := -INF
+	var winner := ""
+	for other in DB.TREATMENTS:
+		if String(DB.TREATMENTS[other].get("tool", "")) != tool:
+			continue
+		var harm: float = float(DB.TREATMENTS[other].get("wrong", 0.0))
+		if harm > best:
+			best = harm
+			winner = String(other)
+	return winner == tid
+
 func test_no_complication_is_unreachable() -> void:
 	# A SOURCE ONLY COUNTS IF THE THING THAT PRODUCES IT STILL EXISTS.
 	#
@@ -487,19 +502,32 @@ func test_no_complication_is_unreachable() -> void:
 	# the pools of three machines that are not in the building.
 	var reachable := {}
 	for k in TreatmentMachine.COMPLICATION_POOLS:
-		# "" is the fallback pool for a device with an unrecognised id, so it is
-		# only a real source if some installed device could fall through to it.
-		if String(k) != "" and not TreatmentMachine.INSTALLED.has(String(k)):
+		# "" is the fallback pool for a device whose id nothing recognises, and
+		# furniture assigns machine ids by NAME with an assert — so nothing can
+		# fall through to it and it vouches for nobody.
+		if not TreatmentMachine.INSTALLED.has(String(k)):
 			continue
 		for id in TreatmentMachine.COMPLICATION_POOLS[k]:
 			reachable[String(id)] = true
+	# A wrong treatment only happens if the player can SELECT it on somebody it
+	# is not indicated for, and the only route to that is picking up its tool.
+	# Several treatments share a tool, `_treatment_for_item` picks exactly one of
+	# them when nothing is indicated, and the losers can then never be applied
+	# wrongly at all. Checking that the tool merely EXISTS certified three
+	# complications as producible that nothing in the game could produce.
 	for k in TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS:
 		var wt := String(DB.treatment(String(k)).get("tool", ""))
-		var performable: bool = wt == "" or Items.SPECS.has(wt) \
-			or (wt.begins_with("machine_") and TreatmentMachine.INSTALLED.has(wt))
-		if not performable:
+		if wt == "":
+			reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
 			continue
-		reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
+		if wt.begins_with("machine_"):
+			if TreatmentMachine.INSTALLED.has(wt):
+				reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
+			continue
+		if not Items.SPECS.has(wt):
+			continue
+		if _wins_its_tool(String(k), wt):
+			reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
 	for k in PatientSystem.ENVIRONMENTAL_COMPLICATIONS:
 		reachable[String(PatientSystem.ENVIRONMENTAL_COMPLICATIONS[k])] = true
 	for k in TreatmentSystem.EXAM_PARTS:
@@ -531,3 +559,28 @@ func test_no_complication_is_unreachable() -> void:
 	for cid in reachable:
 		t.ok(DB.COMPLICATIONS.has(String(cid)),
 			"%s is referenced as a complication and is one" % cid)
+
+## Every condition you treat by PRESCRIBING has a bottle that cures it.
+##
+## Ten conditions were converted from a machine dial to a prescription and did
+## not get a CURES entry, so every bottle on the shelf read as inert for them: a
+## perfect, honest, correctly-chosen dose graded "fair", and the player had no
+## way of knowing the right answer was not in the room. Nothing asserted this.
+func test_every_prescribed_condition_has_something_that_cures_it() -> void:
+	var missing: Array[String] = []
+	for cid in DB.CONDITIONS:
+		if String(Procedures.procedure_for(String(cid))) != "prescribe":
+			continue
+		var med := String(Procedures.CURES.get(String(cid), ""))
+		if med == "":
+			missing.append(String(cid))
+			continue
+		t.ok(Procedures.MEDICINES.has(med),
+			"%s is cured by %s, which must be a real bottle" % [cid, med])
+		# And it cannot be its own clash, or the shelf contradicts itself.
+		var clash: Array = Procedures.CLASHES.get(String(cid), [])
+		t.ok(not clash.has(med),
+			"%s's cure is not also listed as the thing that makes it worse" % cid)
+	t.ok(missing.is_empty(),
+		"every prescribed condition has a cure%s" % (
+			"" if missing.is_empty() else ": missing " + ", ".join(missing)))

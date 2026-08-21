@@ -43,8 +43,14 @@ func prompt(_player) -> Array:
 		return ["Seen to", "now be somewhere else"]
 	return ["See to %s" % display, "[hold E]"]
 
+## How long the boards take to lay. Named, because the street's layout has to be
+## checked against it: the watchers' sweep has to leave a gap longer than this
+## or the job cannot be done cleanly however well it is played, and a magic
+## number the test has to copy is a number the test stops agreeing with.
+const HOLD_SECONDS := 2.2
+
 func use_seconds(_player, _held) -> float:
-	return 2.2
+	return HOLD_SECONDS
 
 func interact(_player, _held) -> void:
 	if done:

@@ -21,6 +21,11 @@ var _hover: Node = null
 ## behind a loose prop takes priority for USE while the prop keeps priority for
 ## GRAB — see _prefer_person.
 var _use_hover: Node = null
+## Whether there WAS something under the crosshair last frame. A freed object
+## compares equal to null, so this is the only way to tell a thing that has been
+## destroyed from a thing that was never there — and the difference decides
+## whether the HUD prompt needs clearing.
+var _had_hover := false
 var _hold_yaw := 0.0
 var _hold_pitch := 0.0
 var _use_progress := 0.0
@@ -55,17 +60,35 @@ func _update_hover() -> void:
 	# function rather than yielding null (CLAUDE.md gotcha 11) — swallowing
 	# every [E] press for the rest of the run. is_instance_valid() is the only
 	# test that tells a freed object from a null one, and it is happy with null.
+	#
+	# Nulling the fields is only half of it. If the raycast ALSO returns nothing
+	# — which is the described case exactly, the street is gone and the
+	# crosshair is on empty air — then `null == null` on both sides and the
+	# early return below still fires, so `interact_prompt_cleared` is never
+	# emitted and the vanished street's prompt sits on the HUD until the player
+	# happens to aim at something else. Whether anything CHANGED is the question
+	# the early return is asking, and a thing being freed is a change.
+	# `_had_hover` and not `_hover != null`, because a freed object COMPARES
+	# equal to null — that is the whole trap — so the only way to tell "we were
+	# pointing at something and it has been destroyed" from "we were pointing at
+	# nothing, as usual" is to have written down that we had one. Without the
+	# distinction this fires on every frame the crosshair is on empty air and
+	# the prompt signals go out sixty times a second.
+	var lost_something := false
 	if not is_instance_valid(_hover):
 		_hover = null
+		lost_something = lost_something or _had_hover
 	if not is_instance_valid(_use_hover):
 		_use_hover = null
+		lost_something = lost_something or _had_hover
 	var hit := get_collider() if is_colliding() else null
 	var target := _resolve_interactable(hit)
 	var use_target := _prefer_person(target)
-	if target == _hover and use_target == _use_hover:
+	if not lost_something and target == _hover and use_target == _use_hover:
 		return
 	_hover = target
 	_use_hover = use_target
+	_had_hover = target != null or use_target != null
 	target = use_target
 	if held != null:
 		# While carrying, the prompt describes what you'd do WITH the thing.

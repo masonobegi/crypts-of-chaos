@@ -75,6 +75,18 @@ func _build() -> void:
 	# nothing in the room to set. It belongs on the charts of the patients whose
 	# treatment is genuinely a cycle on a machine — which now means a trip to
 	# the imaging bench, and nothing else.
+	# ...and also for anybody a colleague has ASKED to be scanned, which is the
+	# commonest way a player ever ends up at the bench. `machine_names` is built
+	# by walking the condition's indicated treatments, and imaging is indicated
+	# for exactly four conditions — but `DoctorNPC._maybe_request_imaging` books
+	# a scan for any OVERDUE patient regardless of what is wrong with them. So
+	# on the usual route the chart went silent about the aperture, which is the
+	# "you can only learn it by walking into the room" problem this row exists
+	# to remove, reintroduced for the majority case.
+	if machine_names.is_empty() and p.imaging_requested():
+		var bench = _machine_for("machine_imaging")
+		if bench != null:
+			machine_names.append(String(bench.fixture_name))
 	if not machine_names.is_empty():
 		scroll_box.add_child(UIKit.row("Prescribed setting",
 			"%d — %s" % [DB.prescribed_setting(p.condition_id),

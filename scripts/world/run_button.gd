@@ -32,20 +32,11 @@ func build(m: TreatmentMachine) -> void:
 func _target(player):
 	if machine == null:
 		return null
-	var p = machine._nearby_patient(player)
-	if p != null:
-		return p
-	if machine.machine_id != "machine_imaging":
-		return null
-	var ps = get_tree().get_first_node_in_group("patient_system")
-	if ps == null:
-		return null
-	var best = null
-	for q in ps.active():
-		if not q.imaging_requested():
-			continue
-		if best == null or q.imaging_requested_day < best.imaging_requested_day:
-			best = q
+	# One lookup, on the machine, so the dial, the readout on the front and this
+	# button can never disagree about who the cycle is for. It used to live here
+	# alone, which meant the bench said "(no patient present)" while the button
+	# a metre away named the person who had been booked.
+	var best = machine._nearby_patient(player)
 	# The prescribed aperture belongs to the patient, and _nearby_patient() is
 	# what normally carries it in. On this path nobody walked in, so it is
 	# fetched here — from prompt() as well as from interact(), so the readout on

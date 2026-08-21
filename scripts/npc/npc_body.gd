@@ -928,6 +928,39 @@ func set_seated(on: bool) -> void:
 	if _speech:
 		_speech.position.y = (1.82 if on else 2.12) * height_scale
 
+## PROPPED UP IN A BED, which is not the same as lying flat and not the same as
+## sitting in a chair.
+##
+## The chair was right for the game this used to be — a person lying down is
+## scenery you do things TO, and the note that asked for chairs was correct
+## about that. The redesign changed what the argument is about: the economy
+## bills BED-NIGHTS, the reviewer asks why a bed was occupied at ten o'clock,
+## and a ward that visibly contains no beds made the whole premise read as a
+## waiting room. So they are in beds again, propped against the pillows at
+## forty degrees, which is upright enough to look at you and to be looked at.
+func set_in_bed(on: bool) -> void:
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	_seated = on
+	var b: Node3D = body
+	# Hips at the mattress, trunk raised against the backrest.
+	b.position = Vector3(0, -0.62, 0.10) if on else Vector3.ZERO
+	b.rotation.x = 0.72 if on else 0.0
+	# Legs out along the mattress rather than folded off a seat.
+	for leg in _legs:
+		leg.rotation.x = -0.86 if on else 0.0
+	for knee in _knees:
+		knee.rotation.x = 0.28 if on else 0.0
+	for i in _arms.size():
+		var arm: Node3D = _arms[i]
+		arm.rotation.x = -0.55 if on else 0.0
+		arm.rotation.z = (0.22 if i == 0 else -0.22) if on else 0.0
+	if _nametag:
+		_nametag.position.y = (1.30 if on else 1.92) * height_scale
+	if _speech:
+		_speech.position.y = (1.54 if on else 2.12) * height_scale
+
 ## How they feel about it, on the face and in the shoulders.
 ##
 ## Asked for by name: "there should be an immediate facial and body expression

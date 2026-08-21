@@ -98,6 +98,9 @@ const ROSTER := [
 		"on_hold": "Thank you. Honestly. You've been very thorough with me.",
 		"on_discharge": "Right. No, you're right. It's just — no. You're right.",
 		"note": "Will praise you loudly and specifically to anybody who asks.",
+		## And "specifically" is the problem. A grateful patient who describes
+		## his care in detail is describing YOUR CONVERSATION in detail.
+		"tells_everyone": true,
 	},
 	{
 		"id": "blake", "name": "Winifred Blake", "age": 47, "bed": 5,

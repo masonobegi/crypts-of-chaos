@@ -61,9 +61,12 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_backdating(pid, list))
 		out.append_array(_author_elsewhere(pid, list, placements))
 		out.append_array(_patient_no_recall(pid, list, t))
+		out.append_array(_symptom_was_suggested(pid, list, t))
+		out.append_array(_grateful_witness(pid, list, t))
 		out.append_array(_unfulfilled_orders(pid, list))
 		out.append_array(_objective_refutes(pid, list))
 		if bool(t.get("held", false)):
+			out.append_array(_no_reason_recorded(pid, list))
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
 		out.append_array(_reversed_a_colleague(pid, list))
@@ -93,14 +96,26 @@ static func _conflicting_observations(pid: String, list: Array) -> Array:
 			if not ((a.supports_stay() and b.supports_discharge())
 					or (a.supports_discharge() and b.supports_stay())):
 				continue
+			var invited: bool = a.at_your_request or b.at_your_request
 			var f := Finding.new()
-			f.kind = "conflicting_observations"
+			f.kind = "invited_contradiction" if invited else "conflicting_observations"
 			f.patient_id = pid
 			f.entries = PackedStringArray([a.id, b.id])
 			f.axis = "the timeline"
 			# Two people disagreeing is worse than one person disagreeing with
 			# themselves — a second author is a second memory to manage.
 			f.severity = 0.45 if a.author != b.author else 0.30
+			if invited:
+				# You sent her. She looked. She wrote the opposite of what you
+				# needed, and you kept him anyway.
+				f.severity = 0.60
+				f.question = ("You asked Adeyemi to review him and she came back "
+					+ "with %s. You kept him in regardless. Why ask?") % _short(
+						b if b.at_your_request else a)
+				f.because = ("You requested a second opinion, got one that "
+					+ "disagreed with you, and billed the night anyway.")
+				out.append(f)
+				continue
 			f.question = "You've got %s at %s. %s has %s at %s. Walk me through that." % [
 				_short(a), ChartEntry._hhmm(a.stated_minute),
 				b.author_label().capitalize(), _short(b),
@@ -177,6 +192,64 @@ static func _patient_no_recall(pid: String, list: Array, t: Dictionary) -> Array
 		out.append(f)
 	return out
 
+## "Patient reports" — from a patient who remembers being asked leading questions
+## until he reported it.
+##
+## Without this, putting a symptom into a suggestible patient's mouth was free
+## money: the entry is authored by the PATIENT, so it never counted as your
+## uncorroborated word, and if he remembered saying it there was nothing to find
+## at all. It made the highest-paying play in the game also the safest one.
+##
+## The trade it creates is the good one. Agreeing and remembering are separate
+## rolls, so the person easiest to lead is the person least likely to recall it
+## — and on this ward that is an eighty-one-year-old on state funding who is
+## worth almost nothing to keep. The patient you can most easily use is the one
+## it is least worth using.
+static func _symptom_was_suggested(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	var suggested: Array = t.get("patient_suggested", [])
+	for e in list:
+		if e.author != ChartEntry.Author.PATIENT or not suggested.has(e.id):
+			continue
+		var f := Finding.new()
+		f.kind = "symptom_was_suggested"
+		f.patient_id = pid
+		f.entries = PackedStringArray([e.id])
+		f.axis = "where the symptom came from"
+		f.severity = 0.55
+		f.question = ("He says you asked him about it. Several times. Did he "
+			+ "volunteer this, or did you go looking for it?")
+		f.because = ("The patient remembers being asked about the symptom before "
+			+ "he ever reported it.")
+		out.append(f)
+	return out
+
+## GRATITUDE IS TESTIMONY.
+##
+## Sam Oduya is frightened, wants to stay, and will tell anybody who asks how
+## thorough his doctor was. That reads as the safest patient on the ward and it
+## is the opposite: an enthusiastic witness gives a DETAILED account, and the
+## detail includes how many times you asked him whether he felt faint. The
+## patients who resent you say nothing useful. The one who likes you describes
+## the whole conversation.
+static func _grateful_witness(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("tells_everyone", false)) or not bool(t.get("held", false)):
+		return out
+	if not bool(t.get("was_asked", false)):
+		return out
+	var f := Finding.new()
+	f.kind = "grateful_witness"
+	f.patient_id = pid
+	f.axis = "what the patient told me himself"
+	f.severity = 0.50
+	f.question = ("He was very complimentary about you. He also told me, without "
+		+ "my asking, how many times you brought up feeling faint.")
+	f.because = ("The patient volunteered a detailed account of the conversation, "
+		+ "because he was grateful.")
+	out.append(f)
+	return out
+
 static func _unfulfilled_orders(pid: String, list: Array) -> Array:
 	var out: Array = []
 	for e in list:
@@ -250,6 +323,32 @@ static func _justification_undermined(pid: String, list: Array) -> Array:
 		% [_short(later_clear), ChartEntry._hhmm(later_clear.stated_minute)])
 	f.because = ("The chart says the problem had resolved by %s, which leaves the "
 		+ "night with nothing holding it up.") % ChartEntry._hhmm(later_clear.stated_minute)
+	out.append(f)
+	return out
+
+## A BED WAS BILLED AND THE CHART SAYS NOTHING AT ALL.
+##
+## The simplest possible check, and it was missing, which made the cheapest
+## exploit in the game invisible: keep somebody in, write nothing down, and
+## there was no entry for anything else to disagree with. Twenty measured
+## playthroughs found it — asking a frightened man a leading question, having
+## him decline, and keeping him anyway produced the highest cash in the set with
+## a completely silent review.
+##
+## This is also the one finding a reviewer would notice from the corridor. She
+## does not need a contradiction; she needs a reason, and there isn't one.
+static func _no_reason_recorded(pid: String, list: Array) -> Array:
+	var out: Array = []
+	for e in list:
+		if e.supports_stay():
+			return out
+	var f := Finding.new()
+	f.kind = "no_reason_recorded"
+	f.patient_id = pid
+	f.axis = "why they were still here"
+	f.severity = 0.70
+	f.question = "There is nothing in these notes explaining why this bed was occupied. Was there a reason?"
+	f.because = "The night was billed and the chart offers no clinical reason for it at all."
 	out.append(f)
 	return out
 

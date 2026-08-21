@@ -1,26 +1,31 @@
 class_name PatientBed
 extends StaticBody3D
-## The chair the patient is sitting in.
+## A hospital bed, with somebody in it.
 ##
-## It used to be a bed on castors you could shove down the corridor with a
-## patient still in it. Two playtest notes killed that: "I don't want to be able
-## to mess with the patient's bed any more", and "I don't want the patient in
-## beds any more, I want them sitting in a chair". Both are right, and the
-## second is the bigger change — a person lying down is scenery you do things
-## TO, and a person sitting upright in a chair looking at you is somebody you
-## are in a room with. Everything in this game is better when the patient is
-## somebody you are in a room with.
+## This was a chair for a while, and the note that asked for chairs was right
+## about the game it was asking about: a person lying down is scenery you do
+## things TO, and a person sitting upright looking at you is somebody you are in
+## a room with.
 ##
-## The class keeps its name because every system, save file and test in the
-## project refers to a ward's occupied furniture as its bed, and renaming that
-## would be a hundred edits to say the same thing. What it BUILDS is a chair,
-## it does not move, and there is nothing on it to interact with.
+## The redesign changed what the argument is about. The economy bills BED-NIGHTS,
+## the ward sister asks why a bed was still occupied at ten o'clock, and the
+## commercial audit found the statement screen printing "BED DAYS" over a room
+## that visibly contained no beds — which made the whole premise read as a
+## waiting area rather than a ward somebody is being kept in. So: a bed, with the
+## patient propped at forty degrees against the pillows, which is upright enough
+## to be talked to and unmistakably a bed you are being kept in.
+##
+## It does not move. There is nothing on it to interact with. The person is the
+## interaction.
+
+const LENGTH := 2.05
+const WIDTH := 0.92
+const MATTRESS_TOP := 0.62
 
 @export var room_key := ""
 @export var patient_id := ""
 
-var occupant: Node3D = null          ## PatientNPC currently in this bed
-var brake_on := true
+var occupant: Node3D = null
 var _mount: Marker3D = null
 
 func _ready() -> void:
@@ -29,56 +34,61 @@ func _ready() -> void:
 	collision_mask = 0
 
 func build() -> void:
-	var frame := Build.mat(Color(0.34, 0.46, 0.54), 0.6)
-	var pad := Build.mat(Color(0.62, 0.76, 0.80), 0.85)
-	var arm_mat := Build.mat(Color(0.28, 0.38, 0.45), 0.6)
-	# The collider is the seat and the legs, not the whole chair. A box the full
-	# height of the back would have the sitting patient's own capsule inside it,
-	# and the player still cannot walk through a chair whose bottom half is
-	# solid.
-	var cs := CollisionShape3D.new()
-	var shape := BoxShape3D.new()
-	shape.size = Vector3(0.86, 0.50, 0.80)
-	cs.shape = shape
-	cs.position = Vector3(0, 0.25, 0)
-	add_child(cs)
+	var frame := Color(0.86, 0.88, 0.90)
+	var steel := Color(0.62, 0.65, 0.69)
+	var linen := Color(0.93, 0.95, 0.96)
+	var blanket := Color(0.42, 0.60, 0.66)
 
-	var mesh_root := Node3D.new()
-	mesh_root.name = "Mesh"
-	add_child(mesh_root)
-	# A ward day-chair: seat, raked back, headrest, two arms, four legs. Seat
-	# top at 0.48, which is the height every other chair in the building is, so
-	# a seated pose written for one works in the other.
-	mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.78, 0.12, 0.72), 0.05),
-		pad, Vector3(0, 0.42, 0)))
-	mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.78, 0.62, 0.12), 0.05),
-		pad, Vector3(0, 0.79, -0.32), Vector3(-0.12, 0, 0)))
-	mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.58, 0.18, 0.10), 0.045),
-		pad, Vector3(0, 1.12, -0.36), Vector3(-0.12, 0, 0)))
-	for sx in [-1.0, 1.0]:
-		mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.09, 0.09, 0.62), 0.035),
-			arm_mat, Vector3(sx * 0.43, 0.64, 0.0)))
-		mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.07, 0.20, 0.07), 0.03),
-			frame, Vector3(sx * 0.43, 0.54, 0.28)))
-		for sz in [-1.0, 1.0]:
-			mesh_root.add_child(Build.mi(Build.rbox_mesh(Vector3(0.07, 0.42, 0.07), 0.03),
-				frame, Vector3(sx * 0.36, 0.21, sz * 0.30)))
+	# Head is local -Z, foot is local +Z.
+	for z in [-LENGTH * 0.5 + 0.08, LENGTH * 0.5 - 0.08]:
+		for x in [-WIDTH * 0.5 + 0.07, WIDTH * 0.5 - 0.07]:
+			add_child(Build.mi(Build.cyl_mesh(0.028, 0.48, 8), Build.mat(steel),
+				Vector3(x, 0.24, z)))
+	# The deck.
+	add_child(Build.box_mi(Vector3(WIDTH, 0.09, LENGTH), frame,
+		Vector3(0, 0.50, 0), 0.6))
+	# The mattress, raised at the head end so it reads as a backrest.
+	add_child(Build.box_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.55), linen,
+		Vector3(0, MATTRESS_TOP - 0.02, LENGTH * 0.20), 0.9))
+	var back := Build.box_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.46), linen,
+		Vector3(0, MATTRESS_TOP + 0.12, -LENGTH * 0.26), 0.9)
+	back.rotation.x = -0.42
+	add_child(back)
+	# A blanket over the legs. Two thirds of the way up, like every hospital.
+	add_child(Build.box_mi(Vector3(WIDTH - 0.02, 0.05, LENGTH * 0.44), blanket,
+		Vector3(0, MATTRESS_TOP + 0.06, LENGTH * 0.25), 0.85))
+	# Pillow.
+	add_child(Build.box_mi(Vector3(WIDTH - 0.26, 0.10, 0.34), Color(0.97, 0.98, 0.99),
+		Vector3(0, MATTRESS_TOP + 0.26, -LENGTH * 0.38), 0.95))
+	# Head and foot boards, and the rails that make it a hospital bed rather
+	# than a divan.
+	for z in [-LENGTH * 0.5 + 0.03, LENGTH * 0.5 - 0.03]:
+		add_child(Build.box_mi(Vector3(WIDTH + 0.04, 0.30, 0.05), frame,
+			Vector3(0, 0.70, z), 0.6))
+	for x in [-WIDTH * 0.5 - 0.01, WIDTH * 0.5 + 0.01]:
+		add_child(Build.mi(Build.cyl_mesh(0.018, LENGTH * 0.42, 8), Build.mat(steel),
+			Vector3(x, 0.80, -LENGTH * 0.12), Vector3(PI * 0.5, 0, 0)))
+		add_child(Build.box_mi(Vector3(0.03, 0.20, 0.03), steel,
+			Vector3(x, 0.70, -LENGTH * 0.33), 0.5))
+		add_child(Build.box_mi(Vector3(0.03, 0.20, 0.03), steel,
+			Vector3(x, 0.70, LENGTH * 0.09), 0.5))
 
-	# Where the occupant STANDS. The seated pose does the rest — it drops the
-	# body onto the seat and folds the legs — so this is floor level, exactly
-	# like every other chair somebody sits in.
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(WIDTH + 0.06, 0.62, LENGTH)
+	shape.shape = box
+	shape.position = Vector3(0, 0.31, 0)
+	add_child(shape)
+
+	# Where the patient goes. Hips a little below the mattress top, because
+	# set_in_bed() drops the body from the marker rather than standing on it.
 	_mount = Marker3D.new()
 	_mount.name = "Occupant"
-	_mount.position = Vector3(0, 0.0, -0.04)
+	_mount.position = Vector3(0, MATTRESS_TOP + 0.30, -LENGTH * 0.06)
 	add_child(_mount)
 
 func mount_point() -> Vector3:
 	return _mount.global_position if _mount else global_position
 
-## Kept because save files from before the chair carry it. A chair has no brake
-## and cannot be pushed, so this is a field, not a mechanic.
-func toggle_brake() -> void:
-	brake_on = not brake_on
-
 func display_name() -> String:
-	return "Chair"
+	return "Bed"

@@ -77,7 +77,7 @@ func _hold_bed_pose(_delta: float) -> void:
 		and bed != null and is_instance_valid(bed)
 	var wants_seat := state == State.SITTING or in_chair
 	if wants_seat != is_seated():
-		set_seated(wants_seat)
+		set_in_bed(wants_seat)
 	if _reclined:
 		_reclined = false
 		set_reclined(false)

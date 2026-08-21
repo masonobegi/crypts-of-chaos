@@ -130,7 +130,9 @@ func test_mind_roundtrip() -> void:
 	t.eq(int(back.burned_covers.get("paperwork", 0)), 1, "burned covers roundtrip")
 	t.near(back.suspicion(0), m.suspicion(0), 0.0001, "suspicion identical after roundtrip")
 
-
+## Two tests about talking your way out of things stood here. Dialogue went with
+## the redesign — there is no persuasion check on this ward any more, only what
+## the chart says — so the excuse machinery below is all that is left of them.
 
 func test_gossip_prefers_people_who_get_on() -> void:
 	# Affinity was serialised and never consulted, so who told whom was purely
@@ -183,6 +185,9 @@ func test_a_watching_npc_is_harder_to_distract() -> void:
 	calm.queue_free()
 	alert.queue_free()
 
+## A patient counting the days against their expected discharge date used to be
+## asserted here. Expected stay, satisfaction and the whole recovery tick went
+## with the redesign; a patient is now five written lines and a truth flag.
 
 func test_how_blatant_an_act_is_dominates_whether_it_is_noticed() -> void:
 	# This was missing entirely: the chance depended only on observance and
@@ -251,4 +256,3 @@ func test_a_departed_npc_does_not_switch_off_everyone_elses_senses() -> void:
 
 	sus.free()
 	witness.free()
-

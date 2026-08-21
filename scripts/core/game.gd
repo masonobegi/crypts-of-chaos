@@ -332,9 +332,19 @@ func _start() -> void:
 	GameState.start_day()
 	EventBus.request_ui.emit("morning", {})
 
-func _physics_process(_delta: float) -> void:
+var _place_accum := 0.0
+
+func _physics_process(delta: float) -> void:
 	if player and suspicion:
 		suspicion.refresh_tells(player.global_position)
+	# Twice a second is plenty to know which room somebody is standing in, and
+	# it is what turns "I was at the bedside" into a claim that can be wrong.
+	_place_accum += delta
+	if _place_accum < 0.5 or ward == null or hospital == null or player == null:
+		return
+	_place_accum = 0.0
+	var room := String(hospital.room_at(player.global_position))
+	ward.observe_player(room, ward._who_can_see_me())
 
 ## The slice has no endings table. A day closes at the handover and that screen
 ## says what happened; anything past it belongs to a game that has more days.

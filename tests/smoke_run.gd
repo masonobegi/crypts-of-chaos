@@ -1,6 +1,6 @@
 extends SceneTree
-## Headless playthrough. Boots the real Game scene, runs a full shift by driving
-## the clock, and checks the whole simulation actually functions end to end.
+## Headless playthrough. Boots the real Game scene, walks one day through it and
+## checks the slice actually functions end to end.
 ##
 ##   godot --headless --path . --script res://tests/smoke_run.gd
 ##

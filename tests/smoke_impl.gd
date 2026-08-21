@@ -4,8 +4,13 @@ extends RefCounted
 ## The old smoke run was 1,000 lines covering shifts, treatments, machines,
 ## investigations, the street and a save round-trip. This one asks the four
 ## questions a vertical slice has to answer in the actual scene tree rather than
-## in isolation: does it build, are the five people in the five beds, does
-## writing in a chart work through the real systems, and does the day close.
+## in isolation: does it build, are the five people in the five beds, can the
+## doctor walk over to one of them, and does the day close on what was written.
+##
+## Gone with the redesign: the shift loop, the machines, the supply shelves, the
+## examinations, the surgeries, the overflow trolleys, the family row, the
+## evening, the courtroom and the save round-trip. None of those systems exist
+## to smoke any more.
 
 var tree: SceneTree = null
 var game: Node = null
@@ -13,9 +18,15 @@ var frames := 0
 var stage := "boot"
 var errors: Array[String] = []
 var notes: Array[String] = []
+## Where the doctor was standing when we told them to walk, and the physics
+## frame we said it on. Walking is measured in PHYSICS frames, not idle ones:
+## headless idle frames go past in microseconds and a dozen of them can pass
+## without the body being stepped once, which would make this a coin toss
+## rather than a test.
+var _walk_from := Vector3.ZERO
+var _walk_since := 0
 
 func start() -> void:
-	print("\n=== SMOKE RUN ===\n")
 	GameState.start_new_career(20260821)
 	GameState.set_flag("tutorial_done", true)
 	GameState.set_flag("headless_sim", true)
@@ -34,6 +45,11 @@ func tick() -> bool:
 			if frames > 8:
 				_check_the_building()
 				_check_the_ward()
+				_start_walking()
+				stage = "walk"
+		"walk":
+			if Engine.get_physics_frames() - _walk_since >= 20:
+				_check_the_player_can_walk()
 				stage = "work"
 		"work":
 			_check_the_chart_works()
@@ -45,7 +61,7 @@ func tick() -> bool:
 		"done":
 			_report()
 			return true
-	if frames > 600:
+	if frames > 6000:
 		_fail("smoke run stuck in '%s'" % stage)
 		_report()
 		return true
@@ -79,6 +95,29 @@ func _check_the_ward() -> void:
 			bodied += 1
 	_ok(named == ps.active().size(), "every one of them has a name")
 	_ok(bodied == ps.active().size(), "and a body somebody could walk up to")
+
+## THE DOCTOR HAS TO BE ABLE TO GET TO THE BED.
+##
+## Everything else in this file is a call into a system, and a building nobody
+## can cross would pass all of it. So this presses the key a player presses and
+## then looks at where the body ended up — on its feet, somewhere else, and not
+## through the floor.
+func _start_walking() -> void:
+	var p = tree.get_first_node_in_group("player")
+	if p == null:
+		return
+	_walk_from = p.global_position
+	_walk_since = Engine.get_physics_frames()
+	Input.action_press("move_forward")
+
+func _check_the_player_can_walk() -> void:
+	var p = tree.get_first_node_in_group("player")
+	Input.action_release("move_forward")
+	if p == null:
+		return
+	var moved: float = p.global_position.distance_to(_walk_from)
+	_ok(moved > 0.05, "the doctor walks when you ask them to (%.2fm)" % moved)
+	_ok(p.global_position.y > -1.0, "and does not fall through the floor")
 
 ## The four verbs, through the real WardDay in the real tree.
 func _check_the_chart_works() -> void:

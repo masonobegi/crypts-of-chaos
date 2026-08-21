@@ -56,6 +56,12 @@ var seen_by: PackedStringArray = PackedStringArray()  ## who was in sightline of
 ## admission that the record needed help.
 var explains: String = ""
 
+## Set when this entry exists because YOU asked for it. A nurse's routine round
+## disagreeing with you is bad luck; a nurse disagreeing with you because you
+## sent her to look is a different thing entirely, and the reviewer can tell the
+## difference because the request is in the notes.
+var at_your_request := false
+
 ## Orders only: what was asked for, and whether it ever happened.
 var order_kind: String = ""
 var fulfilled_by: String = ""
@@ -114,7 +120,7 @@ func to_dict() -> Dictionary:
 		"id": id, "pid": patient_id, "claim": int(claim), "text": text,
 		"st": stated_minute, "wr": written_minute, "au": int(author),
 		"aid": author_id, "term": terminal_id, "seen": seen_by,
-		"exp": explains, "ok": order_kind, "fb": fulfilled_by,
+		"exp": explains, "ok": order_kind, "fb": fulfilled_by, "req": at_your_request,
 	}
 
 static func from_dict(d: Dictionary) -> ChartEntry:
@@ -132,4 +138,5 @@ static func from_dict(d: Dictionary) -> ChartEntry:
 	e.explains = String(d.get("exp", ""))
 	e.order_kind = String(d.get("ok", ""))
 	e.fulfilled_by = String(d.get("fb", ""))
+	e.at_your_request = bool(d.get("req", false))
 	return e

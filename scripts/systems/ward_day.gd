@@ -43,6 +43,7 @@ func start() -> void:
 			"asked_symptom": false,   ## you put a symptom to them
 			"agreed": false,          ## and they went along with it
 			"recalls": [],            ## entry ids the patient would stand behind
+			"suggested": [],          ## ...and remembers you putting into their head
 			"nurse_checked": 0,
 			"tests": 0,
 			"discharged_at": -1,
@@ -74,6 +75,7 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	e.author_id = "player"
 	e.terminal_id = terminal
 	e.explains = explains
+	e.seen_by = _who_can_see_me()
 	records.add(e)
 	_log("write", {"pid": pid, "stated": stated, "written": minute,
 		"backdated": e.backdated_by(), "terminal": terminal,
@@ -103,9 +105,12 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	e.terminal_id = TERMINAL_WARD
 	records.add(e)
 	# Whether they will still stand behind it in the morning is a different
-	# question from whether they nodded now.
+	# question from whether they nodded now — AND whether they remember being
+	# ASKED, which is the other half and the more dangerous one. A patient who
+	# recalls the conversation recalls that the symptom was your idea.
 	if RNG.chance("recall_%s" % pid, float(c.get("recall", 0.6))):
 		(st["recalls"] as Array).append(e.id)
+		(st["suggested"] as Array).append(e.id)
 	entry_written.emit(e)
 	return e
 
@@ -123,6 +128,7 @@ func nurse_check(pid: String) -> ChartEntry:
 	e.stated_minute = minute
 	e.written_minute = minute + 2
 	e.terminal_id = TERMINAL_STATION
+	e.at_your_request = true
 	if well:
 		e.claim = ChartEntry.Claim.SETTLED
 		e.text = "Reviewed at doctor's request. Settled, no complaints."
@@ -277,9 +283,47 @@ func review_findings() -> Array:
 			"well": bool(Cases.by_id(pid).get("truly_well", true)),
 			"held": String(state[pid]["disposition"]) == "hold",
 			"patient_recalls": state[pid]["recalls"],
+			"patient_suggested": state[pid]["suggested"],
+			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
+			"was_asked": bool(state[pid]["asked_symptom"]),
 			"flagged": Cases.by_id(pid).has("audit_flag"),
 		}
 	return Contradictions.find_all(records.entries, truth, records.placements)
+
+# ------------------------------------------------------- place and time
+## WHERE YOU WERE, AND WHO COULD SEE YOU BEING THERE.
+##
+## This is the whole reason the game is in first person. A claim to have observed
+## something at half past seven is checkable against where you actually were at
+## half past seven, and the only thing that makes that checkable is somebody
+## having seen you somewhere else. Called on a timer by Game; cheap, because it
+## only records a bucket per quarter hour.
+func observe_player(room: String, witnesses: PackedStringArray) -> void:
+	if witnesses.is_empty():
+		return
+	# The room the ward's patients are in is where a bedside observation is
+	# expected to have happened. Being seen anywhere else at that minute is what
+	# `author_elsewhere` is looking for.
+	records.place("player", minute, room, String(witnesses[0]), "ward")
+
+func _who_can_see_me() -> PackedStringArray:
+	var out := PackedStringArray()
+	# CLAUDE.md 5: a node added during a SceneTree's _initialize() is not inside
+	# the tree, and get_tree() is null there. The headless harnesses build a
+	# WardDay exactly that way.
+	if not is_inside_tree():
+		return out
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	var player = get_tree().get_first_node_in_group("player")
+	if sus == null or player == null:
+		return out
+	for m in sus.all_minds():
+		var b = sus.body_of(m.id)
+		if b == null or not is_instance_valid(b) or not b.is_inside_tree():
+			continue
+		if b.perception != null and b.perception.can_see(player.global_position):
+			out.append(m.display_name)
+	return out
 
 func _log(kind: String, data: Dictionary) -> void:
 	data["t"] = minute

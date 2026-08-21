@@ -116,7 +116,7 @@ func _fragment_xf(angle: float) -> Transform2D:
 ## the guide is currently asking for.
 func _guide_point(angle: float) -> Vector2:
 	var f := _pivot()
-	var reach: float = _box().y * 0.40
+	var reach: float = _box().y * 0.54
 	return _fragment_xf(angle) * (f + Vector2(_rig()["axis"]) * reach)
 
 # ------------------------------------------------------------------ loop

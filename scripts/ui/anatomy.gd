@@ -327,7 +327,10 @@ static func _rig_knee() -> Dictionary:
 ## rig that gets swung through a whole arc, and an anatomically long humerus
 ## leaves the field at the top of the curve.
 static func _rig_shoulder() -> Dictionary:
-	var pivot := Vector2(0.400, 0.330)
+	# The pivot sits ON the edge of the chest wall rather than out in space, so
+	# a limb rotated about it stays attached to the shoulder it belongs to
+	# instead of floating beside the torso like a separate object.
+	var pivot := Vector2(0.352, 0.348)
 	var prox: Array = [
 		cap(0.110, 0.290, 0.300, 0.520, 0.185, 0.170),           # chest wall
 	]

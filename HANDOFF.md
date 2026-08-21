@@ -43,8 +43,9 @@ Play-run logs land in `.../Chronic Care/play/`.
 
 ## Last known good
 
-**2,088 assertions · smoke (incl. an object-overlap audit) · live · boot check ·
-21/21 balance design checks · 55 screenshots.** Windows and Linux both export,
+**2,119 assertions · 132 smoke checks (incl. an object-overlap audit) · 34 live
+checks over 7,000 frames · boot check · 21/21 balance design checks · 66
+screenshots.** Windows and Linux both export,
 and the exported Linux build boots and exits cleanly.
 
 `play.sh` takes 30-45 real minutes under this container's software GL — it is
@@ -84,6 +85,8 @@ See the Session 5 sections of `PROGRESS_LOG.md`. Headlines:
   Imaging you ordered weeks ago cannot be edited and turns up in court.
 - **The evening**: a street from above with cones of vision and lamps. Reach
   somebody unseen and they are on your list in the morning.
+- **A fourth verb**: taking a dislocated joint through an arc, which is a
+  tracking skill rather than a holding or clicking one.
 - Rebindable keys, gamepad support, controls/credits/achievements screens,
   twenty-five achievements, click and hover sounds on every button.
 - Every room dressed — curtains, gas panels, sharps bins, noticeboards,

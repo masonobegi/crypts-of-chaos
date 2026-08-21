@@ -27,6 +27,8 @@ const UI_SHOTS := [
 	["23_records", "records"],
 	["24_dialogue", "dialogue"],
 	["24b_patient", "patient"],
+	["24c_fight", "fight#mid"],
+	["24d_fight_won", "fight#won"],
 	["25_review", "review"],
 	["26_statement", "statement"],
 	["27_upgrades", "upgrades"],
@@ -61,6 +63,7 @@ const STREET_SHOTS := [
 	["32c_street_mark", Vector3(20.0, 1.7, 6.6), Vector3(-12.0, 1.5, 5.0)],
 	["32d_street_cone", Vector3(-14.0, 1.7, 7.4), Vector3(18.0, 1.2, 3.0)],
 ]
+var _open_tries := 0
 var street_index := 0
 var street_ready := false
 
@@ -136,6 +139,16 @@ func _tick_ui() -> bool:
 		return false
 	var shot: Array = UI_SHOTS[ui_index]
 	if game.ui.current == null:
+		# A screen that decides it has nothing to show closes itself on the
+		# frame it opens, and the branch below would reopen it forever. Two
+		# goes, then say so and move on — a silent skip would be worse than
+		# the hang it replaces.
+		if _open_tries >= 2:
+			print("  shot: %s SKIPPED (the screen closes itself)" % String(shot[0]))
+			_open_tries = 0
+			ui_index += 1
+			return false
+		_open_tries += 1
 		_set_ceilings_visible(true)
 		game.player.camera.global_position = Vector3(5.5, 1.7, -4.0)
 		game.player.camera.look_at(Vector3(5.5, 1.5, 2.0), Vector3.UP)
@@ -160,6 +173,8 @@ func _tick_ui() -> bool:
 			_stage_ui(game.ui.current, screen_id, stage)
 		settle = 0
 		return false
+	# It opened and stayed open, so this screen is not the broken kind.
+	_open_tries = 0
 	settle += 1
 	if settle == 3:
 		_pose_ui(game.ui.current, String(shot[1]))
@@ -189,6 +204,11 @@ func _stage_ui(screen, screen_id: String, stage: String) -> void:
 			screen.set("_mark_name", "Wendell Tosh")
 		"setbone", "suture", "manipulate":
 			screen.set("_intent", "treat" if stage == "treat" else "worsen")
+		"fight":
+			if stage == "won":
+				screen.set("_resolved", true)
+				screen.set("_won", true)
+				screen.set("_result", Brawl.outcome(true))
 		"medicate":
 			screen.set("_intent", "worsen" if stage == "dose" else "treat")
 			if stage == "dose":
@@ -230,6 +250,18 @@ func _pose_ui(screen, id: String) -> void:
 			screen.set("_angle", Procedures.manip_angle_at("treat",
 				1.6 / Procedures.MANIP_SECONDS) + 0.06)
 			screen.set("_grip", true)
+		"fight#mid":
+			# Freeze it. This screen runs on _process, so without this the pose
+			# set here is three frames stale by the time the shutter opens.
+			screen.set_process(false)
+			# Three exchanges in, one landed each way, mid wind-up on the right.
+			screen.set("_their_guard", Brawl.THEIR_GUARD - 2)
+			screen.set("_your_guard", Brawl.YOUR_GUARD - 1)
+			screen.set("_exchange", 3)
+			screen.set("_side", 1)
+			screen.set("_wind", 0.8)
+			screen.set("_t", 0.62)
+			screen.set("_recover", 0.0)
 		"night#street":
 			# A moment into the evening: partway down the street, one lamp too
 			# close, with somebody's eyeline just clipping you.
@@ -302,11 +334,18 @@ func _ui_context(id: String) -> Dictionary:
 			return {"claim": claim}
 		"night", "night#street":
 			return {}
-		"chart", "dialogue", "patient":
+		"chart", "dialogue", "patient", "fight", "fight#mid", "fight#won":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():
 				return {}
+			# An ADMITTED one. Some screens close themselves for a walk-in, and
+			# a screen that closes itself on open sends the harness round the
+			# reopen loop forever.
 			var p = list[0]
+			for q in list:
+				if q.admitted:
+					p = q
+					break
 			return {"patient_id": p.id, "npc_id": p.id}
 		"records":
 			return {"mode": "admin", "private": true, "room": "office",

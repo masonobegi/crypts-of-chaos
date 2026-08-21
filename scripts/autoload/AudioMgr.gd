@@ -255,101 +255,380 @@ func _build_hum() -> AudioStreamWAV:
 # ------------------------------------------------------------------ music
 ## A synthesised score.
 ##
-## There was none. Thirty-six one-shots and a room-tone hum, and a game with no
-## music at all reads as unfinished however good everything else is — it is the
-## first thing a Steam trailer needs and the first thing a player notices is
-## missing.
+## The first version was a four-chord pad loop, sixteen seconds long, three
+## triangle voices and a bass note. The playtest note was "this music sucks,
+## it's so bland" and that was fair: it had no rhythm section, no phrasing and
+## no second half, so by the third loop it had stopped being music and started
+## being a tone.
 ##
-## Built the same way as everything else here: a buffer of maths, no assets. A
-## slow four-chord loop on soft triangle pads with a plucked top line, at a
-## tempo and in a mode chosen per shift. Deliberately sparse and deliberately
-## a bit municipal — the joke of this hospital is that it is completely normal.
-## Gains are set so the loop PEAKS at roughly half of full scale. The first
-## pass peaked at 16%, which after the player's own -13 dB and a default 55%
-## ambience slider put the score at about -29 dBFS — present in a file and
-## inaudible in a room. Measured rather than guessed: see the note in
-## PROGRESS_LOG about analysing the buffer.
-const MUSIC_BARS := 4
-const MUSIC_BAR_SECONDS := 4.0
+## This is an arrangement. Eight bars, a rhythm section, a comping keyboard and
+## a lead that phrases — lounge jazz for a waiting room, which is the joke: the
+## hospital is completely normal and the music is the music of somewhere
+## completely normal, played slightly too smoothly, while you decide whether to
+## break a man's wrist for the bed-days.
+##
+## Everything is still maths and no assets. Notes are rendered as EVENTS into a
+## float buffer rather than evaluated per sample across every voice — a
+## twenty-second loop is 440,000 samples and forty voices, and doing that the
+## naive way is seventeen million trig calls in GDScript, which takes long
+## enough to stall the boot.
+##
+## Events wrap around the end of the buffer, so the tail of the last chord
+## decays into the top of the first bar and the loop has no seam to hide.
+const MUSIC_BARS := 8
+const BEATS_PER_BAR := 4
 
-## Semitone offsets from the root, per shift. Day is major and unbothered,
-## evening drops a third for something warmer and more tired, night is minor
-## and mostly absent — at night the game wants you listening for footsteps.
+## One entry per bar: `b` is the bass root in semitones from the mood's key, `c`
+## is the voicing above it. Ordinary changes played straight — a ii-V-I with a
+## couple of secondary dominants, which is the harmonic vocabulary of every hold
+## line and hotel lobby in the world.
 const MUSIC_MOODS := {
-	"day": {"root": 196.0, "chords": [[0, 4, 7], [5, 9, 12], [7, 11, 14], [2, 5, 9]],
-		"pluck": 0.5, "gain": 0.95},
-	"evening": {"root": 174.6, "chords": [[0, 3, 7], [5, 8, 12], [3, 7, 10], [-2, 2, 5]],
-		"pluck": 0.34, "gain": 0.86},
-	"night": {"root": 146.8, "chords": [[0, 3, 7], [-2, 3, 7], [-4, 3, 8], [-5, 2, 7]],
-		"pluck": 0.16, "gain": 0.70},
+	"day": {
+		"key": 261.63, "bpm": 96.0, "swing": 0.17, "gain": 1.0,
+		"drums": 1.0, "comp": 1.0, "lead": 1.0, "seed": 8112,
+		"prog": [
+			{"b": 0, "c": [4, 7, 11]}, {"b": -3, "c": [0, 4, 7]},
+			{"b": 2, "c": [5, 9, 12]}, {"b": -5, "c": [2, 5, 11]},
+			{"b": 4, "c": [7, 11, 14]}, {"b": -3, "c": [1, 4, 7]},
+			{"b": 2, "c": [5, 9, 12]}, {"b": -5, "c": [2, 5, 11]},
+		],
+		"scale": [0, 2, 4, 5, 7, 9, 11],
+	},
+	"evening": {
+		"key": 233.08, "bpm": 82.0, "swing": 0.20, "gain": 0.92,
+		"drums": 0.7, "comp": 0.95, "lead": 0.85, "seed": 4471,
+		"prog": [
+			{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
+			{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
+			{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
+			{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 9]},
+		],
+		"scale": [0, 2, 3, 5, 7, 8, 10],
+	},
+	## Night is nearly nothing. The stealth half of the game is listening for
+	## footsteps, and a rhythm section is thirty-two competing transients a bar.
+	"night": {
+		"key": 196.00, "bpm": 66.0, "swing": 0.0, "gain": 0.74,
+		"drums": 0.0, "comp": 0.75, "lead": 0.30, "seed": 2903,
+		"prog": [
+			{"b": 0, "c": [3, 7, 10]}, {"b": 0, "c": [3, 7, 10]},
+			{"b": -4, "c": [3, 8, 12]}, {"b": -4, "c": [3, 8, 12]},
+			{"b": -5, "c": [2, 7, 11]}, {"b": -5, "c": [2, 7, 11]},
+			{"b": -2, "c": [1, 5, 10]}, {"b": -2, "c": [1, 5, 10]},
+		],
+		"scale": [0, 2, 3, 5, 7, 8, 10],
+	},
 }
 
 var _music_player: AudioStreamPlayer = null
 var _music_kind := ""
 
-static func _semitone(root: float, n: int) -> float:
-	return root * pow(2.0, float(n) / 12.0)
+static func _semitone(root: float, n: float) -> float:
+	return root * pow(2.0, n / 12.0)
+
+## A sine table, because the score is a hundred and fifty seconds of rendered
+## audio and `sin()` in GDScript is the whole cost of it.
+##
+## Measured before writing this: the arrangement took 7.8 seconds to build all
+## three shifts, which is a visible stall on the frame a shift starts. Table
+## lookup for the oscillators and an incremental multiplier for the envelopes
+## (exp(-k*u) becomes env *= exp(-k/SR), which is exact, not an approximation)
+## take it to a fraction of that.
+const SIN_BITS := 12
+const SIN_SIZE := 1 << SIN_BITS
+const SIN_MASK := SIN_SIZE - 1
+static var _sin_tab: PackedFloat32Array = PackedFloat32Array()
+
+static func _sin_table() -> PackedFloat32Array:
+	if _sin_tab.size() == SIN_SIZE:
+		return _sin_tab
+	var tab := PackedFloat32Array()
+	tab.resize(SIN_SIZE)
+	for i in SIN_SIZE:
+		tab[i] = sin(TAU * float(i) / float(SIN_SIZE))
+	_sin_tab = tab
+	return _sin_tab
+
+## Add one note into the buffer, wrapping past the end.
+##
+## One function per timbre, and the choice made ONCE per note rather than once
+## per sample. That is the whole optimisation: the first version had a
+## `match voice:` on a String inside the inner loop, and comparing three strings
+## four hundred thousand times a second cost more than every oscillator and
+## envelope in the arrangement put together — eight seconds to build the score,
+## which is a visible stall on the frame a shift starts.
+##
+## Oscillators read a sine table and envelopes are incremental multipliers
+## (exp(-k*u) becomes env *= exp(-k/SR), which is exact rather than an
+## approximation). Everything gets a three-millisecond attack, because a sine
+## that starts at full amplitude is a click and forty of them a bar is a
+## percussion section nobody asked for.
+func _render(buf: PackedFloat32Array, voice: String, at: float, dur: float,
+		f: float, gain: float, rng: RandomNumberGenerator) -> void:
+	var n := buf.size()
+	if n == 0 or gain <= 0.0:
+		return
+	var start := int(at * float(SR))
+	var count := mini(int(dur * float(SR)), n)
+	if count <= 0:
+		return
+	match voice:
+		"bass": _r_bass(buf, start, count, f, gain)
+		"keys": _r_keys(buf, start, count, f, gain)
+		"vibe": _r_vibe(buf, start, count, f, gain)
+		"pad": _r_pad(buf, start, count, f, gain, dur)
+		"hat": _r_hat(buf, start, count, gain, rng)
+		"rim": _r_rim(buf, start, count, gain, rng)
+		"kick": _r_kick(buf, start, count, gain)
+
+const ATTACK_S := 0.003
+
+func _r_bass(buf: PackedFloat32Array, start: int, count: int, f: float, gain: float) -> void:
+	var tab := _sin_table()
+	var n := buf.size()
+	var sr := float(SR)
+	var inc := f / sr * float(SIN_SIZE)
+	var p1 := 0.0
+	var p2 := 0.0
+	var e1 := gain
+	var e2 := gain * 0.22
+	var d1 := exp(-2.1 / sr)
+	var d2 := exp(-5.0 / sr)
+	var attack := int(ATTACK_S * sr)
+	var i := start % n
+	for j in count:
+		var v: float = tab[int(p1) & SIN_MASK] * e1 + tab[int(p2) & SIN_MASK] * e2
+		if j < attack:
+			v *= float(j) / float(attack)
+		buf[i] += v
+		p1 += inc
+		p2 += inc * 2.0
+		e1 *= d1
+		e2 *= d2
+		i += 1
+		if i >= n:
+			i = 0
+
+## Electric piano: a body, a twin a few cents off for the chorus every one of
+## these has, and a bell partial that dies first.
+func _r_keys(buf: PackedFloat32Array, start: int, count: int, f: float, gain: float) -> void:
+	var tab := _sin_table()
+	var n := buf.size()
+	var sr := float(SR)
+	var inc := f / sr * float(SIN_SIZE)
+	var p1 := 0.0
+	var p2 := 0.0
+	var p3 := 0.0
+	var e1 := gain * 0.55
+	var e2 := gain * 0.55 * 0.18
+	var d1 := exp(-2.6 / sr)
+	var d2 := exp(-9.0 / sr)
+	var attack := int(ATTACK_S * sr)
+	var i := start % n
+	for j in count:
+		var v: float = (tab[int(p1) & SIN_MASK] + tab[int(p2) & SIN_MASK] * 0.8) * e1
+		v += tab[int(p3) & SIN_MASK] * e2
+		if j < attack:
+			v *= float(j) / float(attack)
+		buf[i] += v
+		p1 += inc
+		p2 += inc * 1.004
+		p3 += inc * 4.0
+		e1 *= d1
+		e2 *= d2
+		i += 1
+		if i >= n:
+			i = 0
+
+## Vibraphone, motor on.
+func _r_vibe(buf: PackedFloat32Array, start: int, count: int, f: float, gain: float) -> void:
+	var tab := _sin_table()
+	var n := buf.size()
+	var sr := float(SR)
+	var inc := f / sr * float(SIN_SIZE)
+	var minc := 5.4 / sr * float(SIN_SIZE)
+	var p1 := 0.0
+	var p2 := 0.0
+	var e1 := gain
+	var d1 := exp(-1.9 / sr)
+	var attack := int(ATTACK_S * sr)
+	var i := start % n
+	for j in count:
+		var v: float = tab[int(p1) & SIN_MASK] * e1 * (0.86 + 0.14 * tab[int(p2) & SIN_MASK])
+		if j < attack:
+			v *= float(j) / float(attack)
+		buf[i] += v
+		p1 += inc
+		p2 += minc
+		e1 *= d1
+		i += 1
+		if i >= n:
+			i = 0
+
+## Triangle straight off the phase, with a slow swell in and out so a held
+## chord breathes instead of switching on.
+func _r_pad(buf: PackedFloat32Array, start: int, count: int, f: float,
+		gain: float, dur: float) -> void:
+	var n := buf.size()
+	var sr := float(SR)
+	var inc := f / sr
+	var ph := 0.0
+	var i := start % n
+	for j in count:
+		ph = fposmod(ph + inc, 1.0)
+		var u := float(j) / sr
+		var v: float = (4.0 * absf(ph - 0.5) - 1.0) * gain
+		v *= clampf(u / 0.35, 0.0, 1.0) * clampf((dur - u) / 0.6, 0.0, 1.0)
+		buf[i] += v
+		i += 1
+		if i >= n:
+			i = 0
+
+## Brushed: noise differenced against itself, which is a one-pole high pass and
+## costs one subtraction.
+func _r_hat(buf: PackedFloat32Array, start: int, count: int, gain: float,
+		rng: RandomNumberGenerator) -> void:
+	var n := buf.size()
+	var e1 := gain * 0.5
+	var d1 := exp(-34.0 / float(SR))
+	var last := 0.0
+	var i := start % n
+	for j in count:
+		var w := rng.randf_range(-1.0, 1.0)
+		buf[i] += (w - last) * e1
+		last = w
+		e1 *= d1
+		i += 1
+		if i >= n:
+			i = 0
+
+func _r_rim(buf: PackedFloat32Array, start: int, count: int, gain: float,
+		rng: RandomNumberGenerator) -> void:
+	var tab := _sin_table()
+	var n := buf.size()
+	var inc := 340.0 / float(SR) * float(SIN_SIZE)
+	var p1 := 0.0
+	var e1 := gain
+	var d1 := exp(-46.0 / float(SR))
+	var i := start % n
+	for j in count:
+		buf[i] += (rng.randf_range(-1.0, 1.0) * 0.5 + tab[int(p1) & SIN_MASK]) * e1
+		p1 += inc
+		e1 *= d1
+		i += 1
+		if i >= n:
+			i = 0
+
+## A pitch envelope from 118 Hz down to 46, which is what turns a sine into a
+## drum.
+func _r_kick(buf: PackedFloat32Array, start: int, count: int, gain: float) -> void:
+	var tab := _sin_table()
+	var n := buf.size()
+	var sr := float(SR)
+	var p1 := 0.0
+	var e1 := gain
+	var e2 := 1.0
+	var d1 := exp(-9.5 / sr)
+	var d2 := exp(-26.0 / sr)
+	var k := float(SIN_SIZE) / sr
+	var i := start % n
+	for j in count:
+		buf[i] += tab[int(p1) & SIN_MASK] * e1
+		p1 += (46.0 + 72.0 * e2) * k
+		e1 *= d1
+		e2 *= d2
+		i += 1
+		if i >= n:
+			i = 0
 
 func _build_music(kind: String) -> AudioStreamWAV:
-	var key := "__music_" + kind
+	var key := "__music2_" + kind
 	if _cache.has(key):
 		return _cache[key]
 	var mood: Dictionary = MUSIC_MOODS.get(kind, MUSIC_MOODS["day"])
-	var root: float = float(mood["root"])
-	var chords: Array = mood["chords"]
-	var total: float = MUSIC_BAR_SECONDS * float(MUSIC_BARS)
-	var n_samples := int(total * SR)
+	var root: float = float(mood["key"])
+	var prog: Array = mood["prog"]
+	var scale: Array = mood["scale"]
+	var beat: float = 60.0 / float(mood["bpm"])
+	var swing: float = float(mood["swing"])
+	var total: float = beat * float(BEATS_PER_BAR * MUSIC_BARS)
+	var n_samples := int(total * float(SR))
+	var buf := PackedFloat32Array()
+	buf.resize(n_samples)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(mood["seed"])
+
+	var drums: float = float(mood["drums"])
+	var comp: float = float(mood["comp"])
+	var lead: float = float(mood["lead"])
+
+	for bar in MUSIC_BARS:
+		var here: Dictionary = prog[bar % prog.size()]
+		var next: Dictionary = prog[(bar + 1) % prog.size()]
+		var b0 := float(here["b"])
+		var chord: Array = here["c"]
+		var bar_t := float(bar) * beat * float(BEATS_PER_BAR)
+
+		# Walking bass: root, fifth, octave, then a chromatic approach to
+		# whatever the next bar starts on. That last note is the whole reason a
+		# walking line sounds like it is going somewhere.
+		var approach := float(next["b"]) + (-1.0 if rng.randf() < 0.5 else 1.0)
+		var walk := [b0, b0 + 7.0, b0 + 12.0, approach]
+		for i in 4:
+			_render(buf, "bass", bar_t + float(i) * beat, beat * 1.5,
+				_semitone(root, float(walk[i]) - 24.0), 0.62, rng)
+
+		# Comping. Off the beat, because a chord on the beat is a hymn.
+		if comp > 0.0:
+			var hits := [1.0 + swing, 2.5 + swing, 3.0]
+			if kind == "night":
+				hits = [0.0, 2.0]
+			for h in hits:
+				var voice: String = "pad" if kind == "night" else "keys"
+				var length: float = beat * (3.0 if kind == "night" else 1.6)
+				for n in chord:
+					_render(buf, voice, bar_t + float(h) * beat, length,
+						_semitone(root, float(n) - 12.0),
+						comp * (0.16 if kind == "night" else 0.20), rng)
+
+		# The lead phrases: two bars on, two bars off, and it lands on a chord
+		# tone. Sparse enough to sit under eighteen minutes of a shift.
+		if lead > 0.0 and bar % 4 < 2:
+			var figure := [0.0, 0.75 + swing * 0.5, 1.5, 2.5 + swing]
+			for i in figure.size():
+				if rng.randf() > 0.82:
+					continue
+				var pick: int = int(chord[i % chord.size()]) if i % 2 == 0 \
+					else int(scale[rng.randi() % scale.size()])
+				_render(buf, "vibe", bar_t + float(figure[i]) * beat, beat * 2.2,
+					_semitone(root, float(pick) + 12.0), lead * 0.13, rng)
+
+		# Kit. Kick on one and the and-of-three, rim on two and four, brushes
+		# on the swung eighths.
+		if drums > 0.0:
+			_render(buf, "kick", bar_t, 0.30, 0.0, drums * 0.72, rng)
+			_render(buf, "kick", bar_t + 2.5 * beat, 0.26, 0.0, drums * 0.46, rng)
+			for b in [1.0, 3.0]:
+				_render(buf, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.30, rng)
+			for i in 8:
+				var pos: float = float(i) * 0.5
+				if i % 2 == 1:
+					pos += swing * 0.5
+				_render(buf, "hat", bar_t + pos * beat, 0.10,
+					0.0, drums * (0.13 if i % 2 == 0 else 0.08), rng)
+
+	# Normalise to a known peak. The previous score was mixed by eye and landed
+	# thirteen decibels quieter than anybody could hear; measuring it is one
+	# pass over a buffer that already exists.
+	var peak := 0.0
+	for i in n_samples:
+		peak = maxf(peak, absf(buf[i]))
+	var norm: float = (0.74 * float(mood["gain"])) / maxf(peak, 0.0001)
+
 	var data := PackedByteArray()
 	data.resize(n_samples * 2)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash(key)
-
 	for i in n_samples:
-		var t := float(i) / float(SR)
-		var bar := int(t / MUSIC_BAR_SECONDS) % MUSIC_BARS
-		var bar_t: float = fposmod(t, MUSIC_BAR_SECONDS)
-		var chord: Array = chords[bar]
-		var s := 0.0
-
-		# Pad: three triangle-ish voices with a slow swell and release, so each
-		# bar breathes rather than switching on.
-		var swell: float = clampf(bar_t / 0.9, 0.0, 1.0) \
-			* clampf((MUSIC_BAR_SECONDS - bar_t) / 1.1, 0.0, 1.0)
-		for n in chord:
-			var f: float = _semitone(root, int(n)) * 0.5
-			# Triangle from a sine, which is warmer than a raw sine and much
-			# softer than the saw the one-shots use.
-			var tri: float = asin(sin(TAU * f * t)) * (2.0 / PI)
-			s += tri * 0.22 * swell
-
-		# Bass: the root of the bar, an octave down, with a gentle pulse.
-		var bass_f: float = _semitone(root, int(chord[0])) * 0.25
-		s += sin(TAU * bass_f * t) * 0.30 * swell * (0.7 + 0.3 * sin(TAU * 0.5 * t))
-
-		# A plucked top line on the off-beats. Sparse on purpose: this plays
-		# under a shift that lasts eighteen minutes, and anything busier stops
-		# being background inside two loops.
-		var pluck_gain: float = float(mood["pluck"])
-		if pluck_gain > 0.0:
-			var step: float = fposmod(t, 1.0)
-			var beat := int(t) % 4
-			if beat == 1 or beat == 3:
-				var note: int = int(chord[(bar + beat) % chord.size()])
-				var pf: float = _semitone(root, note) * 2.0
-				var env: float = exp(-6.0 * step)
-				s += sin(TAU * pf * t) * 0.16 * env * pluck_gain
-
-		# A whisper of air over the top so it is not purely tonal.
-		s += rng.randf_range(-1.0, 1.0) * 0.012
-
-		# Cross-fade the last half second into the first, so the loop seam is
-		# inaudible without needing every frequency to divide the buffer.
-		var fade := 0.5
-		if t > total - fade:
-			var k: float = (total - t) / fade
-			s *= k
-
-		var v := int(clampf(s * float(mood["gain"]) * 22000.0, -32768.0, 32767.0))
+		var v := int(clampf(buf[i] * norm * 32767.0, -32768.0, 32767.0))
 		var uv := v & 0xFFFF
 		data[i * 2] = uv & 0xFF
 		data[i * 2 + 1] = (uv >> 8) & 0xFF

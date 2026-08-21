@@ -155,7 +155,7 @@ static func staff_on(kind: String) -> int:
 const CONDITIONS := {
 	"funny_bone": {
 		"name": "Inflamed Funny Bone",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "The bone is not funny. It is furious.",
 		"base_days": 2.0, "rate": 0.55, "revenue": 1200,
 		"treats": ["percussive_realign", "chalkinol", "rest"],
@@ -173,7 +173,7 @@ const CONDITIONS := {
 	},
 	"spleen_torque": {
 		"name": "Excessive Spleen Torque",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Spleen is over-tightened. Do not overtighten the spleen.",
 		"base_days": 2.5, "rate": 0.48, "revenue": 1500,
 		"treats": ["torque_wrench", "humour_rebalance", "fluids"],
@@ -191,7 +191,7 @@ const CONDITIONS := {
 	},
 	"gravitational_confusion": {
 		"name": "Mild Gravitational Confusion",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Patient is unsure which way is down. Down is unsure too.",
 		"base_days": 4.0, "rate": 0.32, "revenue": 1800,
 		"treats": ["vibe_stabilize", "weighted_blanket", "fluids"],
@@ -236,7 +236,7 @@ const CONDITIONS := {
 	},
 	"ossified_vibes": {
 		"name": "Ossified Vibes",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "The vibes have gone to bone. Rare. Expensive.",
 		"base_days": 6.0, "rate": 0.22, "revenue": 2600,
 		"treats": ["dread_extraction", "vibe_stabilize", "humour_rebalance"],
@@ -263,7 +263,7 @@ const CONDITIONS := {
 	},
 	"bilateral_opinions": {
 		"name": "Bilateral Wrist Opinions",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Both wrists have views. The views differ.",
 		"base_days": 2.5, "rate": 0.46, "revenue": 1300,
 		"treats": ["opinion_realign", "torque_wrench", "rest"],
@@ -299,7 +299,7 @@ const CONDITIONS := {
 	},
 	"magnetic_indecision": {
 		"name": "Magnetic Indecision",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Cannot choose. Attracts cutlery while failing to.",
 		"base_days": 4.0, "rate": 0.3, "revenue": 1900,
 		"treats": ["vibe_stabilize", "opinion_realign", "weighted_blanket"],
@@ -365,7 +365,7 @@ const CONDITIONS := {
 	# ---------------------------------------------------------- psychiatry
 	"recursive_worry": {
 		"name": "Recursive Worry",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Worried about the worrying. And about that.",
 		"base_days": 4.0, "rate": 0.28, "revenue": 1700,
 		"treats": ["talk_therapy_lite", "dread_extraction", "colour_therapy"],
@@ -374,7 +374,7 @@ const CONDITIONS := {
 	},
 	"borrowed_conviction": {
 		"name": "Borrowed Conviction",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Absolutely certain about something that belongs to somebody else.",
 		"base_days": 5.0, "rate": 0.24, "revenue": 2000,
 		"treats": ["talk_therapy_lite", "vibe_stabilize", "rest"],
@@ -429,7 +429,7 @@ const CONDITIONS := {
 	},
 	"chronic_certainty": {
 		"name": "Chronic Certainty",
-		"procedure": "dial",
+		"procedure": "prescribe",
 		"desc": "Has never said 'maybe' and is not about to start.",
 		"base_days": 5.0, "rate": 0.26, "revenue": 1700,
 		"treats": ["talk_therapy_lite", "opinion_realign", "sequential_apology"],
@@ -514,7 +514,7 @@ const CONDITIONS := {
 	},
 	"concussion": {
 		"name": "Concussion",
-		"procedure": "dial", "injury": true, "part": "head",
+		"procedure": "prescribe", "injury": true, "part": "head",
 		"desc": "Present, mostly. Asks the same question twice.",
 		"base_days": 1.6, "rate": 0.62, "revenue": 2400,
 		"treats": ["rest", "reorientation_walk", "imaging"],
@@ -660,6 +660,14 @@ const TREATMENTS := {
 # =============================================================== COMPLICATIONS
 ## The billable secondary conditions. `causes` lists cause tags a chart accepts.
 const COMPLICATIONS := {
+	## What a patient leaves a disagreement with. "Fell" is on the list of
+	## plausible causes and is the single most-used word in this game.
+	"disputed_contusion": {
+		"name": "Disputed Contusion", "days": 2.5, "rec": -0.14, "sev": 0.6,
+		"symptom": "Bruising in the shape of a professional disagreement.",
+		"color": Color(0.55, 0.35, 0.62),
+		"causes": ["fall", "known_risk", "patient_noncompliance", "idiopathic"],
+	},
 	"ambient_dread": {
 		"name": "Ambient Dread", "days": 1.5, "rec": -0.08, "sev": 0.35,
 		"symptom": "Room feels wrong. Nobody can say why.",
@@ -859,6 +867,7 @@ const CAUSES := {
 	# what the simulation knows, and they only ever surface when something
 	# outside the player's handwriting reports them.
 	"machine_deviation": "a treatment device run well off its prescribed setting",
+	"altercation": "a physical altercation with the treating physician",
 	"examination": "the examination itself",
 	"surgical": "the procedure itself",
 	"prescription": "what they were sent home with",
@@ -867,7 +876,8 @@ const CAUSES := {
 ## Mechanisms the simulation knows about but no chart will ever accept, because
 ## there is no box on the form for them. Filing one is not an option; the game
 ## only ever uses these as TRUTH.
-const TRUTH_ONLY_CAUSES := ["machine_deviation", "examination", "surgical", "prescription"]
+const TRUTH_ONLY_CAUSES := ["machine_deviation", "examination", "surgical",
+	"prescription", "altercation"]
 
 ## Cause tags that can be filed against an acquired injury and be believed.
 const INJURY_MECHANISMS := ["fall", "pre_existing", "transfer", "known_risk",

@@ -2931,3 +2931,116 @@ A pass over every screen in the shot harness, which is what that harness is for.
   labelled "Sent home on the wrong thing". That list is the reward for the whole
   career.
 - **The courtroom's replies are the buttons.** Same fix as the patient card.
+
+## Session 6 — the machine goes, the bed goes, and somebody takes a swing
+
+Six notes off a playtest, all of them structural.
+
+### "Take off whatever this little machine is"
+
+*"There is no reason to have it, I should just be able to go in and talk to the
+patient."* Correct. Twelve conditions were treated by walking to a box beside
+the bed and turning a knob on it — a second, worse interface sitting between the
+player and the person they came to see, which turned a third of the ward into an
+errand. Every one of them is a prescription now: the same choice (which bottle,
+how much) made at the bedside with the patient in front of you.
+
+The bedside devices and the treatment bay's two machines are gone. Imaging
+stays, because it is not a treatment — it is the one thing that writes an
+authoritative, timestamped, uneditable observation into a chart, and the whole
+legal phase leans on that.
+
+### "I don't want the patient in beds any more, I want them sitting in a chair"
+
+This is the bigger of the two and it is not really about furniture. A person
+lying down is scenery you do things *to*. A person sitting upright in a chair
+facing the door is somebody you have walked in on, and everything else in this
+game — the dialogue, the card, the procedures, the fight — is better when the
+patient is somebody you are in a room with.
+
+`PatientBed` keeps its name, because every system, save file and test in the
+project calls a ward's occupied furniture its bed and renaming that is a hundred
+edits to say the same thing. What it BUILDS is a day-chair, it is static, and
+there is nothing on it to interact with — *"I don't want to be able to mess with
+the patient's bed any more"*.
+
+That change took the ramping mechanic with it, so ramping moved: it is the
+PATIENT's position that decides which room they are in now, not their bed's.
+Which is more honest anyway — and it exposed a rule that used to be moot.
+Parking somebody in Intake is defensible only when the ward was genuinely full,
+and the room they just walked out of does not count as somewhere you could have
+put them instead. It never came up while the room went with them.
+
+### Signage, again
+
+*"Signage is still bad."* Every room had a name plate on the wall, a number flag
+projecting into the corridor AND a door card — three labels within a metre of
+each other, all saying the same number, stacking into an unreadable pile at any
+distance. They are split by job now. A ward's sign is its CARD, which carries
+the number, who is behind the door, how many nights and a colour strip legible
+from the far end. Everywhere else gets one flag, because those are destinations
+you navigate towards rather than doors you check.
+
+`Build.label3d` also had a twelve-pixel outline on a sixty-four-pixel font,
+which is a halo half a stroke wide: at any distance the outlines of adjacent
+glyphs merged and every sign in the building read as a dark blob with a
+suggestion of letters in it.
+
+### The bars
+
+The corridor handrail was one unbroken cylinder from end to end, which means it
+ran across every door opening at waist height — you walked through a rail to get
+into a room. It is segmented at the doorways now, with rounded returns so a cut
+rail looks finished rather than snapped off, and in a neutral grey rather than
+the tan that read as a gold bar.
+
+### A difference of opinion
+
+*"Maybe I can fight my patients — if I win they're staying in the hospital
+longer, if they win I lose medical bills plus the medical day is ended plus no
+crime at night that night."*
+
+Which is a better mechanic than it sounds, because it is the only thing in this
+game where the downside is your own TIME. Everything else you do badly costs
+standing, and standing can still be traded against; losing a fight to a man with
+a sore elbow costs you the afternoon, the evening and a bill, and no amount of
+paperwork makes that back.
+
+The manoeuvre is a side, not a reaction time. They wind up on your left or your
+right, a bar closes from that edge toward the middle, and you cover that side
+before it arrives. The wind-up is what shortens as the fight goes on — so the
+last exchanges are tense because you have less time to READ, not because you
+have less time to twitch. The shortest wind-up is still longer than the block
+window, and there is a test asserting exactly that, because the moment it is not
+the last exchange becomes a coin toss.
+
+Winning leaves them with an injury they did not arrive with, in a room with a
+door, and the ward's existing machinery for who-saw-that does the rest. The
+truth tag is `altercation`, which is not on any form — what you write down
+instead is the whole game.
+
+### The score
+
+*"This music sucks, it's so bland."* Fair: it was a four-chord pad loop, sixteen
+seconds long, three triangle voices and a bass note, with no rhythm section, no
+phrasing and no second half. By the third loop it had stopped being music and
+started being a tone.
+
+It is an arrangement now. Eight bars, a walking bass that approaches the next
+bar chromatically, brushed hats on swung eighths, a rim on two and four, a
+comping electric piano off the beat and a vibraphone that phrases two bars on
+and two off. Lounge jazz for a waiting room, which is the joke: the hospital is
+completely normal and the music is the music of somewhere completely normal,
+played slightly too smoothly while you decide whether to break a man's wrist for
+the bed-days. Night is nearly nothing on purpose — the stealth half of the game
+is listening for footsteps and a rhythm section is thirty-two competing
+transients a bar.
+
+Rendering it took 7.8 seconds, which is a visible stall on the frame a shift
+starts. Notes are rendered as EVENTS into a float buffer (and wrap past the end,
+so the last chord decays into the top of bar one and the loop has no seam), and
+the fix that mattered was moving the `match voice:` OUT of the inner loop:
+comparing three strings four hundred thousand times a second cost more than
+every oscillator and envelope in the arrangement put together. One function per
+timbre, a sine table, and envelopes as incremental multipliers — `exp(-k*u)`
+becomes `env *= exp(-k/SR)`, which is exact rather than an approximation.

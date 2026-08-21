@@ -98,6 +98,8 @@ var stats := {
 	"night_jobs": 0, "night_jobs_clean": 0, "night_jobs_botched": 0,
 	"lawsuits_filed": 0, "lawsuits_settled": 0, "lawsuits_won": 0,
 	"lawsuits_lost": 0, "damages_paid": 0,
+	# Disagreements that stopped being verbal.
+	"fights_won": 0, "fights_lost": 0,
 }
 
 func _ready() -> void:

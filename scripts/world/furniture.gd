@@ -136,7 +136,7 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	# The bed bay, marked out on the floor. Mixed toward the floor's own colour
 	# rather than painted in the room tint: a saturated rectangle reads as a rug
 	# somebody laid down, and this is meant to be vinyl somebody specified.
-	Dressing.floor_zone(h, Vector3(bed.x + 0.2, 0, bed.z + toward * 0.4),
+	Dressing.floor_zone(h, Vector3(bed.x + 0.2, 0, bed.z + toward * 0.9),
 		Vector2(3.4, 3.0), _ward_tint(r.key).darkened(0.28).lerp(
 			Color(0.56, 0.66, 0.57), 0.45))
 	# The floor was the problem: a nine-metre room with everything against one
@@ -146,7 +146,10 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	var cab := Vector3(bed.x - 1.15, 0, bed.z + toward * -0.55)
 	Dressing.cabinet(h, cab, _far_rot(r))
 	_occupy(cab.x, cab.z, 0.6, 0.55)
-	var tray := Vector3(bed.x + 0.55, 0, bed.z + toward * 1.98)
+	# A side table, within reach of the chair rather than out in the room. It
+	# was an over-bed table two metres away, which is where a bed's foot used
+	# to be and is now the middle of the floor.
+	var tray := Vector3(bed.x + 0.95, 0, bed.z + toward * 0.55)
 	Dressing.overbed_table(h, tray, _door_rot(r))
 	_occupy(tray.x + 0.2, tray.z, 0.8, 0.5)
 	Dressing.stool(h, Vector3(bed.x + 1.9, 0, bed.z + toward * 1.5), _ward_tint(r.key))
@@ -180,8 +183,22 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	var x1: float = r.rect.end.x - 1.0
 	# Rails both sides, and the coloured lines on the floor that every real
 	# hospital uses instead of signage nobody reads.
-	Dressing.handrail(h, x0, x1, z0 + 0.12)
-	Dressing.handrail(h, x0, x1, z1 - 0.12)
+	# Rails both sides, broken at every doorway on that side.
+	var north_gaps: Array = []
+	var south_gaps: Array = []
+	for entry in Hospital.LAYOUT:
+		if String(entry["kind"]) == "corridor":
+			continue
+		var rect: Rect2 = entry["rect"]
+		var centre := float(entry.get("door", rect.get_center().x))
+		var w := float(entry.get("door_w", Hospital.DOOR_W)) * 0.5 + 0.45
+		# A room north of the corridor opens onto the corridor's north wall.
+		if rect.position.y > 0.0:
+			north_gaps.append(Vector2(centre - w, centre + w))
+		else:
+			south_gaps.append(Vector2(centre - w, centre + w))
+	Dressing.handrail_run(h, x0, x1, z0 + 0.12, south_gaps)
+	Dressing.handrail_run(h, x0, x1, z1 - 0.12, north_gaps)
 	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88))
 	Dressing.floor_line(h, x0, x1, z0 + 0.95, Color(0.94, 0.72, 0.24))
 	Dressing.floor_line(h, x0, x1, z1 - 0.80, Color(0.42, 0.76, 0.52))
@@ -450,36 +467,22 @@ static func _ward(h: Hospital, r: Room) -> void:
 	var far_z := r.rect.position.y + r.rect.size.y      # exterior wall
 	var bed_pos := h.bed_position(r.key)
 
+	# The patient's chair, on the floor, facing the door — so the first thing
+	# you see walking in is a person looking back at you.
 	var bed := PatientBed.new()
 	bed.room_key = r.key
 	bed.name = "Bed_" + r.key
 	h.add_child(bed)
 	bed.build()
-	bed.position = bed_pos + Vector3(0, 0.4, 0)
+	bed.position = bed_pos
+	bed.rotation.y = _far_rot(r)
+	_occupy(bed_pos.x, bed_pos.z, 0.9, 0.9)
 
 	var vc := VitalsConsole.new()
 	vc.room_key = r.key
 	h.add_child(vc)
 	vc.build()
-	vc.position = bed_pos + Vector3(-1.0, 1.5, -0.6)
-
-	# Bedside treatment device.
-	var m := TreatmentMachine.new()
-	m.room_key = r.key
-	m.machine_id = "machine_humour"
-	m.treatment_id = "humour_rebalance"
-	m.units = "HUMOUR GRADIENT"
-	h.add_child(m)
-	m.build("Humour Rebalancer")
-	m.position = bed_pos + Vector3(1.5, 0, -0.2)
-	m.rotation.y = PI
-	_occupy(bed_pos.x + 1.5, bed_pos.z - 0.2, 1.1, 0.7)
-
-	var rb := MachineRunButton.new()
-	rb.room_key = r.key
-	h.add_child(rb)
-	rb.build(m)
-	rb.position = m.position + Vector3(-0.3, 1.05, -0.4)
+	vc.position = bed_pos + Vector3(-1.15, 1.5, -0.55)
 
 	var win := WindowUnit.new()
 	win.room_key = r.key
@@ -503,12 +506,20 @@ static func _ward(h: Hospital, r: Room) -> void:
 	thermo.position = Vector3(_door_x(r) + 1.6, 1.25, r.rect.position.y + 0.14)
 	thermo.rotation.y = PI
 
-	_chair(h, Vector3(c.x - 2.2, 0, c.z + 1.0), 1.2)
+	# A chair opposite theirs, which is where you sit if you were ever going to.
+	_chair(h, Vector3(bed_pos.x + 0.15, 0, bed_pos.z + _toward(r) * 1.85),
+		_far_rot(r), Color(0.42, 0.52, 0.58))
 	_table(h, Vector3(c.x - 2.6, 0, c.z - 0.6), 0.5, 0.5)
-	_iv_stand(h, bed_pos + Vector3(0.9, 0, -0.9))
+	# Out of the way. It used to stand directly in front of the patient's face,
+	# which was fine over a bed and is not fine over a person looking at you.
+	_iv_stand(h, bed_pos + Vector3(1.55, 0, _toward(r) * 0.35))
 	_prop(h, "flowers", Vector3(c.x - 2.6, 0.95, c.z - 0.6))
-	_prop(h, "bedpan", bed_pos + Vector3(-1.1, 0.3, 0.9))
-	_wall_sign(h, r.display, Vector3(c.x, 2.1, far_z - 0.14), PI, 0.2)
+	# Small, and up above the window rather than across it.
+	_wall_sign(h, r.display, Vector3(c.x, 2.45, far_z - 0.14), PI, 0.1)
+
+## Which way is "into the room" from the far wall.
+static func _toward(r: Room) -> float:
+	return -1.0 if _door_on_min_z(r) else 1.0
 
 static func _door_x(r: Room) -> float:
 	for entry in Hospital.LAYOUT:
@@ -693,25 +704,13 @@ static func _station(h: Hospital, r: Room) -> void:
 # ------------------------------------------------------------------ treatment
 static func _treatment(h: Hospital, r: Room) -> void:
 	var c := r.center()
-	var specs := [
-		{"id": "machine_vibe", "t": "vibe_stabilize", "n": "Vibe Stabiliser", "u": "RESONANCE INDEX", "x": -2.6},
-		{"id": "machine_dread", "t": "dread_extraction", "n": "Ambient Dread Extractor", "u": "SUCTION GRADE", "x": 1.0},
-	]
-	for s in specs:
-		var m := TreatmentMachine.new()
-		m.room_key = r.key
-		m.machine_id = String(s["id"])
-		m.treatment_id = String(s["t"])
-		m.units = String(s["u"])
-		h.add_child(m)
-		m.build(String(s["n"]))
-		m.position = Vector3(c.x + float(s["x"]), 0, r.rect.position.y + 1.0)
-		_occupy(c.x + float(s["x"]), r.rect.position.y + 1.0, 1.1, 0.7)
-		var rb := MachineRunButton.new()
-		rb.room_key = r.key
-		h.add_child(rb)
-		rb.build(m)
-		rb.position = m.position + Vector3(0.7, 1.05, 0.4)
+	# No treatment machines. Turning a knob on a box was a second, worse
+	# interface between the player and the person they came to see; what used to
+	# need one is a prescription now. The bay keeps its trolleys, its shelf and
+	# its couch, because it is still where walk-ins are seen.
+	_chair(h, Vector3(c.x - 2.6, 0, r.rect.position.y + 1.2), 0.0)
+	_chair(h, Vector3(c.x + 1.0, 0, r.rect.position.y + 1.2), 0.0)
+	Dressing.trays(h, Vector3(c.x - 0.8, 0, r.rect.position.y + 1.1))
 
 	# The imaging bench used to appear here the moment Radiology was bought.
 	# It now lives in Radiology, which is a room, which you have to walk to.

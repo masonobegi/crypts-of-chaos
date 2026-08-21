@@ -61,16 +61,15 @@ func _wall(size: Vector3, at: Vector3, horizontal: bool) -> void:
 
 # ------------------------------------------------------------------ contents
 func _furnish() -> void:
+	# The patient's chair, which is what a ward has in it now.
 	var bed := PatientBed.new()
 	add_child(bed)
 	bed.build()
-	# The one thing in here that would otherwise roll away on its own.
-	bed.freeze = true
 	# Everything worth looking at is pushed OUT to the sides. The menu panel
 	# covers the middle two-fifths of the screen, so anything composed into the
 	# centre of the shot is a thing nobody will ever see.
 	bed.position = Vector3(-3.05, 0, -1.5)
-	bed.rotation.y = 0.28
+	bed.rotation.y = 0.55
 
 	Dressing.overbed_table(self, Vector3(-1.75, 0, -1.2), 0.2)
 	Dressing.curtain(self, Vector3(-4.3, 0, -0.2), 2.4, PI * 0.5)

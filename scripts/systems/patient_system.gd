@@ -791,28 +791,43 @@ func _reconcile_room(p: Patient, body) -> void:
 	var bed = body.bed
 	if bed == null or not is_instance_valid(bed) or not bed.is_inside_tree():
 		return
-	var where := hospital.room_at(bed.global_position)
+	# The PATIENT's position, not the chair's. It used to be the bed's, because
+	# the bed was the thing that moved — you wheeled somebody into Intake and
+	# left them there. Chairs do not move, so the only way an admitted patient
+	# is somewhere else now is that they walked, and where they are is where
+	# they are.
+	if not body.is_inside_tree():
+		return
+	var where := hospital.room_at(body.global_position)
 	if where == "" or where == p.room:
 		return
 	# Only somewhere a patient can legitimately be kept counts. A bed parked in
 	# the corridor for ten seconds while you get a door open is not a transfer.
 	if not (WARD_KEYS.has(where) or where == "intake"):
 		return
-	var was_ward: bool = WARD_KEYS.has(p.room)
+	var came_from: String = p.room
+	var was_ward: bool = WARD_KEYS.has(came_from)
 	p.room = where
 	EventBus.patient_state_changed.emit(p)
 	if was_ward and where == "intake":
-		_announce_ramp(p, body, bed)
+		_announce_ramp(p, body, bed, came_from)
 
 ## Somebody has just wheeled an admitted patient out of a ward and left them in
 ## the middle of Emergency Intake. This is a legitimate thing a hospital does
 ## when it has run out of beds, and an indefensible thing to do when it has not
 ## — so the difference is exactly what decides whether there is a cover story
 ## for it.
-func _announce_ramp(p: Patient, body, bed) -> void:
+func _announce_ramp(p: Patient, body, bed, came_from := "") -> void:
 	var somewhere_else := false
 	for key in WARD_KEYS:
 		if key == p.room:
+			continue
+		# Not the room they just walked out of, either. It is empty because you
+		# ramped them; a room that is only free BECAUSE of the thing you are
+		# defending is not a defence. This used to be moot — the room went with
+		# them, because the bed did — and stopped being moot when the furniture
+		# stopped moving.
+		if key == came_from:
 			continue
 		var taken := false
 		for id in patients:

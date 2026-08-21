@@ -1204,25 +1204,23 @@ func test_the_hud_cannot_eat_mouse_look() -> void:
 		"nothing in the HUD blocks the mouse (%s)" % ", ".join(offenders))
 	hud.free()
 
-func test_a_bed_does_not_fight_its_own_passenger() -> void:
-	# "I released the bed brake and the bed glitched out and flew everywhere."
-	#
-	# The patient is pinned INSIDE the bed's collision box and the bed's mask
-	# includes the NPC layer, so unfreezing resolved that overlap against a
-	# 42 kg rigid body.
+func test_a_chair_does_not_fight_the_person_sitting_in_it() -> void:
+	# The seated capsule reaches down into the chair's own collider, so without
+	# an exception the ward's furniture spends every frame trying to push the
+	# patient out of their own room. The exception is registered on the PATIENT
+	# now rather than the chair, because the chair is static and it is the
+	# patient's move_and_slide that would do the shoving.
 	var bed := PatientBed.new()
 	bed.build()
 	var npc := PatientNPC.new()
 	var p := Patient.new("bedtest")
 	p.display_name = "Test Patient"
 	npc.bind(p, bed)
-	t.ok(bed.get_collision_exceptions().has(npc),
-		"a bed excepts the person lying on it")
-	# ...and still collides with everybody else, because shoving a bed down a
-	# corridor into somebody is a thing the game is allowed to do.
+	t.ok(npc.get_collision_exceptions().has(bed),
+		"a patient excepts the chair they are sitting in")
 	var bystander := NurseNPC.new()
-	t.ok(not bed.get_collision_exceptions().has(bystander),
-		"but not with anybody else")
+	t.ok(not npc.get_collision_exceptions().has(bystander),
+		"but not anybody else standing in the room")
 	npc.free()
 	bystander.free()
 	bed.free()

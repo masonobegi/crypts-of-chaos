@@ -517,8 +517,18 @@ static func dose_target(intent: String) -> float:
 static func dose_precision(intent: String, level: float) -> float:
 	return clampf(1.0 - absf(level - dose_target(intent)) / (DOSE_TOLERANCE * 3.0), 0.0, 1.0)
 
+## There is no "dial" any more.
+##
+## Twelve conditions used to be treated by walking to a box beside the bed and
+## turning a knob on it. The note was "take off whatever this little machine is,
+## there is no reason to have it, I should just be able to go in and talk to the
+## patient" — and it was right: the box was a second, worse interface sitting
+## between the player and the person they came to see, and it made a third of
+## the ward a errand rather than a decision. Those conditions are prescriptions
+## now, which is the same choice (which bottle, how much) made at the bedside
+## with the patient in front of you.
 static func procedure_for(condition_id: String) -> String:
-	return String(DB.condition(condition_id).get("procedure", "dial"))
+	return String(DB.condition(condition_id).get("procedure", "prescribe"))
 
 static func procedure_name(kind: String) -> String:
 	match kind:
@@ -526,7 +536,7 @@ static func procedure_name(kind: String) -> String:
 		"prescribe": return "Prescribe something"
 		"suture": return "Close it up"
 		"manipulate": return "Take it through the arc"
-	return "Run a cycle"
+	return "Prescribe something"
 
 ## Which screen does which job.
 static func screen_for(kind: String) -> String:

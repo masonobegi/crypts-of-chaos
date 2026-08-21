@@ -39,18 +39,11 @@ func bind(p: Patient, p_bed: PatientBed) -> void:
 	if p_bed:
 		p_bed.patient_id = p.id
 		p_bed.occupant = self
-		# A bed does not collide with its own passenger.
-		#
-		# The patient is pinned to the bed's origin, which puts their capsule
-		# INSIDE its 1.0 x 0.7 x 2.1 collision box, and the bed's mask includes
-		# the NPC layer. Frozen, nothing happens. Release the brake and the
-		# solver resolves that overlap against a 42 kg rigid body — which in the
-		# first playtest sent the bed across the room and out of the building.
-		#
-		# An exception rather than dropping layer 8 from the bed's mask: a bed
-		# shoved down a corridor should still shove people out of the way. It
-		# just should not fight the person lying on it.
-		p_bed.add_collision_exception_with(self)
+		# The chair does not collide with the person in it. Its collider is the
+		# seat and legs, and a seated capsule reaches down into that — so
+		# without this the ward's own furniture spends every frame trying to
+		# push the patient out of their own room.
+		add_collision_exception_with(p_bed)
 
 func _physics_process(delta: float) -> void:
 	_tick_cycle(delta)
@@ -61,28 +54,30 @@ func _physics_process(delta: float) -> void:
 	_tick_state(delta)
 	_tick_symptoms(delta)
 
-## While in bed the patient is pinned to the bed's mount point — which means
-## wheeling the bed wheels the patient, exactly as it should.
+## An admitted patient sits in the chair in their room.
+##
+## They used to lie in a bed, and lying down turned every person on the ward
+## into scenery you did things to. Upright in a chair, facing the door, they are
+## somebody you walked in on — which is what every other system in this game is
+## built to make interesting.
 func _hold_bed_pose(_delta: float) -> void:
-	# SITTING was a state with no pose. Patients waiting to be seen were sent to
-	# a chair in the treatment bay and left STANDING in it — invisible in a wide
-	# shot, impossible to unsee at three metres, and the waiting row is the
-	# first thing a walk-in patient is ever seen doing.
-	var wants_seat := state == State.SITTING
+	# SITTING is the waiting-room pose; IN_BED is now the same pose in the
+	# chair in their own room. Both want the same thing from the rig.
+	var in_chair := state == State.IN_BED and bed != null and is_instance_valid(bed)
+	var wants_seat := state == State.SITTING or in_chair
 	if wants_seat != is_seated():
 		set_seated(wants_seat)
-	var in_bed := state == State.IN_BED and bed != null and is_instance_valid(bed)
-	if in_bed != _reclined:
-		_reclined = in_bed
-		set_reclined(in_bed)
-	pinned = in_bed
-	if not in_bed:
+	if _reclined:
+		_reclined = false
+		set_reclined(false)
+	pinned = in_chair
+	if not in_chair:
 		return
-	global_position = bed.global_position
+	global_position = bed.mount_point()
 	rotation.y = bed.rotation.y
 	velocity = Vector3.ZERO
 
-## A patient lying in a bed does not budge for a doctor squeezing past — the bed
+## A patient in their chair does not budge for a doctor squeezing past — the
 ## pose is re-asserted every frame anyway, so a sidestep would only make them
 ## twitch and snap back.
 func can_step_aside() -> bool:

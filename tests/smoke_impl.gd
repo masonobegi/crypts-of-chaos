@@ -304,13 +304,18 @@ func _check_midshift() -> void:
 
 	# Exercise the sabotage path end to end: dial a machine off-prescription,
 	# run it, and confirm the truth layer, the log and the evidence all move.
+	# Any machine: the wards no longer have one. What used to be a bedside box
+	# with a knob on it is a prescription now, and the only device left in the
+	# building is the imaging bench — which is still the sabotage path this is
+	# actually testing, because a miscalibrated one writes a wrong, timestamped,
+	# uneditable observation into a chart that turns up in court.
 	var machine: TreatmentMachine = null
 	for f in tree.get_nodes_in_group("fixture"):
-		if f is TreatmentMachine and f.room_key.begins_with("ward"):
+		if f is TreatmentMachine:
 			machine = f
 			break
 	if machine == null:
-		_fail("no ward machine found")
+		_fail("no treatment machine found anywhere in the building")
 		return
 	var victim: Patient = null
 	for p in ps.active():
@@ -456,9 +461,10 @@ func _check_intake_overflow(ps) -> void:
 
 	_check_wheeling(ps)
 
-## Beds are on wheels, so which room a patient is in is a question about where
-## their bed ended up. Doing it on purpose is the ramping strategy; the game has
-## to actually notice.
+## Which room a patient is in is a question about where the PATIENT is, and an
+## admitted patient standing in Emergency Intake is being ramped. The ward has
+## to notice, and whether it is defensible depends on whether there was anywhere
+## else to put them.
 func _check_wheeling(ps) -> void:
 	var p = null
 	for q in ps.active():
@@ -466,43 +472,38 @@ func _check_wheeling(ps) -> void:
 			p = q
 			break
 	if p == null:
-		_fail("no ward patient with a bed to wheel")
+		_fail("no ward patient with a chair of their own")
 		return
 	var home: String = p.room
 	var body = ps.get_body(p.id)
-	var bed = body.bed
 	var seen: Array[String] = []
 	var probe := func(evt): seen.append(String(evt.kind))
 	EventBus.world_event.connect(probe)
 	var had_room: bool = not ps.free_wards().is_empty()
-	bed.global_position = Vector3(-8.0, 0.4, 7.0)
-	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
+	# The patient walks, rather than the bed being wheeled: there are no beds
+	# any more and the chair does not move. Ending up parked in Intake is still
+	# ramping and still has to be noticed.
+	body.state = PatientNPC.State.WANDERING
+	body.global_position = Vector3(-8.0, 0.0, 7.0)
 	GameState.active_covers.erase("bed_shortage")
 	ps._reconcile_room(p, body)
 	EventBus.world_event.disconnect(probe)
-	_ok(p.room == "intake", "wheeling a bed into Intake moves the patient with it")
+	_ok(p.room == "intake", "a patient left standing in Intake is recorded as being in Intake")
 	# Ramping is an observable act with the player as its actor, so it goes
 	# through perception like anything else you do.
 	_ok(seen.has("patient_moved_to_corridor"), "and everybody in the room can see it happen")
 	# Defensible only when there was genuinely nowhere else to put them.
 	_ok(GameState.has_cover("bed_shortage") != had_room,
 		"a bed shortage excuses it and a free ward does not (free ward: %s)" % str(had_room))
-	_ok(not ps.free_wards().has(home),
-		"the ward they left is empty, but an empty room is not a free bed")
+	_ok(ps.free_wards().has(home),
+		"and the room they left is available again, because the chair is still in it")
 
-	# Push a spare trolley into the vacated ward and it counts again. Ramping a
-	# patient out to free their room is a two-part physical job, which is the
-	# right amount of effort for what it buys.
-	var spare = null
-	for b in tree.get_nodes_in_group("bed"):
-		if b != bed and (b.occupant == null or not is_instance_valid(b.occupant)):
-			spare = b
-			break
-	if spare == null:
-		_fail("no spare trolley to swap in")
-		return
-	spare.global_position = ps.hospital.bed_position(home) + Vector3(0, 0.4, 0)
-	_ok(ps.free_wards().has(home), "wheeling a trolley in makes it a bed again")
+	# Walk them back and the ward is theirs again. Ramping is reversible, which
+	# is what makes it a tactic rather than a mistake.
+	body.global_position = ps.hospital.bed_position(home)
+	ps._reconcile_room(p, body)
+	_ok(p.room == home, "and walking them back puts them where they started")
+	_ok(not ps.free_wards().has(home), "so the room is occupied again")
 
 func comp_owner(p: Patient) -> Patient:
 	return p

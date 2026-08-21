@@ -52,10 +52,6 @@ func _build() -> void:
 	if screen != "":
 		v.add_child(_choice(Procedures.procedure_name(kind), _procedure_line(kind),
 			UIKit.ACCENT, func(): _go(screen)))
-	else:
-		v.add_child(_choice("It needs a machine", 
-			"Their chart names the machine. It is in the treatment bay, or beside the bed.",
-			UIKit.INK_DIM, Callable()))
 
 	v.add_child(_choice("Examine them", _examine_line(), UIKit.INK,
 		func(): _go("exam")))
@@ -78,6 +74,13 @@ func _build() -> void:
 
 	v.add_child(_choice("Talk to them", _talk_line(), UIKit.INK,
 		func(): _go("dialogue")))
+
+	# Last, and in the colour of a thing you should think about. It is here at
+	# all because it is funny, and it is at the bottom because the game is not
+	# trying to talk you into it.
+	if Brawl.can_fight(_patient):
+		v.add_child(_choice("Square up", _fight_line(), UIKit.BAD,
+			func(): _go("fight")))
 	card_footer(UIKit.button("Leave them be", close))
 
 # ------------------------------------------------------------------ the header
@@ -169,6 +172,15 @@ func _discharge_line() -> String:
 		return "They go home well. The bed stops earning and you keep your name."
 	return "They go home early. The bed stops earning, and people who go home "  \
 		+ "before they are better sometimes come back with a solicitor."
+
+## Say what happens, both ways, in one sentence. This is the only choice on the
+## card where the bad half of the outcome lands on YOU, and the player has to
+## know that before they press it rather than afterwards.
+func _fight_line() -> String:
+	var who := "They have something to settle. " \
+		if Brawl.has_a_grievance(_patient, _mind) else ""
+	return who + "Win and they stay in for the bruising. Lose and you pay for " \
+		+ "your own stitches, the day is over, and you are going nowhere tonight."
 
 func _talk_line() -> String:
 	if _mind == null:

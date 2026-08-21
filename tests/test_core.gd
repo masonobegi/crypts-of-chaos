@@ -485,6 +485,12 @@ func test_no_complication_is_unreachable() -> void:
 	# Hand-procedures produce their own. Walked rather than listed, so adding a
 	# band to a procedure cannot quietly point at a complication that is not in
 	# the catalogue — which is exactly how wound_dehiscence got caught.
+	# A fight is not a procedure and does not live in that table, but it leaves
+	# somebody with something they did not arrive with, so it is a source.
+	for k in Brawl.OUTCOMES:
+		var bh := String(Brawl.OUTCOMES[k].get("harm", ""))
+		if bh != "":
+			reachable[bh] = true
 	for kind in Procedures.OUTCOMES:
 		for intent in Procedures.OUTCOMES[kind]:
 			for band in Procedures.OUTCOMES[kind][intent]:

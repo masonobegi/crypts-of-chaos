@@ -369,6 +369,49 @@ func test_the_street_is_laid_out_so_the_evening_is_playable() -> void:
 			"every watcher is standing in the street")
 	st.queue_free()
 
+# ============================================================== a disagreement
+func test_a_fight_is_worth_having_and_worth_avoiding() -> void:
+	# The one place in this game where losing costs your own time rather than
+	# your standing, so the two sides of it have to be genuinely different
+	# things and not two sizes of the same penalty.
+	var won := Brawl.outcome(true)
+	var lost := Brawl.outcome(false)
+	t.gt(float(won["stay"]), 1.0, "winning keeps them in the building")
+	t.ok(String(won["harm"]) != "", "and leaves them with something to explain")
+	t.ok(DB.COMPLICATIONS.has(String(won["harm"])),
+		"which is a real complication the ward knows about")
+	t.ok(not lost.has("stay"), "losing does not extend anybody's stay")
+	t.gt(float(lost["bill"]), 0.0, "it costs you money instead")
+	t.gt(float(lost["visual"]), float(won["visual"]),
+		"and a doctor on the floor is more visible than a patient on the floor")
+
+func test_the_wind_up_shortens_but_never_disappears() -> void:
+	var first := Brawl.telegraph_for(0)
+	var tenth := Brawl.telegraph_for(9)
+	var absurd := Brawl.telegraph_for(400)
+	t.gt(first, tenth, "the tenth swing gives you less warning than the first")
+	t.near(absurd, Brawl.TELEGRAPH_MIN, 0.001,
+		"and it bottoms out rather than becoming unreadable")
+	t.gt(Brawl.TELEGRAPH_MIN, Brawl.WINDOW,
+		"the shortest wind-up is still longer than the block window, so the "
+		+ "last exchange is a read rather than a coin toss")
+
+func test_only_somebody_who_is_here_can_square_up() -> void:
+	var p := Patient.new("f1")
+	p.display_name = "Test"
+	p.admitted = false
+	t.ok(not Brawl.can_fight(p), "a walk-in in the waiting room is not in a fight")
+	p.admitted = true
+	t.ok(Brawl.can_fight(p), "an admitted patient is")
+	p.discharged = true
+	t.ok(not Brawl.can_fight(p), "and somebody who has gone home is not")
+
+func test_the_bill_for_losing_grows_with_the_career() -> void:
+	# A broken nose costs the same on day one and day thirty, and on day thirty
+	# that is nothing at all.
+	t.gt(float(Brawl.bill_for(30)), float(Brawl.bill_for(1)) * 1.5,
+		"losing on day thirty costs meaningfully more than losing on day one")
+
 # ============================================================== achievements
 func test_every_achievement_is_reachable_and_named() -> void:
 	# A catalogue is only worth having if every entry can be earned and every

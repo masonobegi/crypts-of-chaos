@@ -612,16 +612,18 @@ func _check_a_patient_is_actually_in_the_bed() -> void:
 		bed = b.bed
 		break
 	if body == null:
-		_ok(false, "somebody on this ward is in a bed")
+		_ok(false, "somebody on this ward is in their chair")
 		return
 
 	var rel: Vector3 = body.head_position() - bed.global_position
-	# The bed frame is 1.0 x 2.1 about its own origin; mattress top is +0.78.
-	_ok(absf(rel.x) < 0.5, "the patient's head is over the bed, not beside it (x %+.2f)" % rel.x)
-	_ok(rel.z < -0.15 and rel.z > -1.05,
-		"and at the pillow end rather than the foot (z %+.2f)" % rel.z)
-	_ok(rel.y > 0.85 and rel.y < 1.20,
-		"and resting on the mattress rather than hovering over it (y %+.2f)" % rel.y)
+	# The chair is 0.78 across with its seat top at 0.48 and its back at z -0.32.
+	_ok(absf(rel.x) < 0.45, "the patient's head is over the chair, not beside it (x %+.2f)" % rel.x)
+	_ok(absf(rel.z) < 0.55, "and between its arms rather than in front of it (z %+.2f)" % rel.z)
+	# Sitting is lower than standing and higher than lying down. A head at 1.6
+	# is somebody who never sat; a head at 0.9 is somebody through the seat.
+	_ok(rel.y > 1.05 and rel.y < 1.50,
+		"and sitting on it rather than standing in it (y %+.2f)" % rel.y)
+	_ok(body.is_seated(), "and actually in the seated pose")
 
 # ------------------------------------------------------------------ cost
 ## Phase 19. What a frame of this game actually costs, measured on the one

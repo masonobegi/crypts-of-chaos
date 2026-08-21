@@ -15,6 +15,7 @@ const SCREEN_SCRIPTS := {
 	"medicate": "res://scripts/ui/screen_medicate.gd",
 	"suture": "res://scripts/ui/screen_suture.gd",
 	"manipulate": "res://scripts/ui/screen_manipulate.gd",
+	"fight": "res://scripts/ui/screen_fight.gd",
 	"court": "res://scripts/ui/screen_court.gd",
 	"night": "res://scripts/ui/screen_night.gd",
 	"briefing": "res://scripts/ui/screen_briefing.gd",

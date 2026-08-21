@@ -71,6 +71,12 @@ const LIST := [
 	{"id": "the_full_amount", "name": "The Full Amount",
 	 "desc": "Lose at trial and pay for it."},
 
+	# ---- disagreements
+	{"id": "bedside_manner", "name": "Bedside Manner", "hidden": true,
+	 "desc": "Win a physical disagreement with a patient."},
+	{"id": "floored", "name": "Floored", "hidden": true,
+	 "desc": "Lose a physical disagreement with a patient, and the day with it."},
+
 	# ---- careers
 	{"id": "fortnight", "name": "A Fortnight",
 	 "desc": "Survive fourteen days."},
@@ -111,6 +117,11 @@ static func earned_now() -> Array[String]:
 		out.append("landlord")
 	if GameState.unlocked_departments.size() >= 4:
 		out.append("renovator")
+
+	if int(s.get("fights_won", 0)) >= 1:
+		out.append("bedside_manner")
+	if int(s.get("fights_lost", 0)) >= 1:
+		out.append("floored")
 
 	if int(s.get("bribes_paid", 0)) >= 1:
 		out.append("an_arrangement")

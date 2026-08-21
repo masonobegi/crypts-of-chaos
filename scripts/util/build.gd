@@ -313,8 +313,12 @@ static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard 
 	l.double_sided = true
 	l.no_depth_test = false
 	l.shaded = false
-	l.outline_size = 12
-	l.outline_modulate = Color(0, 0, 0, 0.85)
+	# 12 was a halo half a stroke wide. At any distance the outlines of adjacent
+	# glyphs merged and every sign in the building read as a dark blob with a
+	# suggestion of letters in it. 5 is a keyline: it separates the text from
+	# whatever is behind it without eating the text.
+	l.outline_size = 5
+	l.outline_modulate = Color(0.04, 0.06, 0.09, 0.85)
 	return l
 
 # ------------------------------------------------------------------ lighting

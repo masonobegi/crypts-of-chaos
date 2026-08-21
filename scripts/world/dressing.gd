@@ -212,13 +212,40 @@ static func sprinkler(h: Node3D, pos: Vector3) -> Node3D:
 	return _add(h, root, pos)
 
 ## A rail along a corridor wall, with brackets. Runs from x0 to x1 at a fixed z.
+## A handrail that stops at the doorways.
+##
+## `gaps` is a list of Vector2(from, to) in x. The corridor rail used to be one
+## unbroken cylinder from end to end, which meant it ran straight across every
+## door opening at waist height — you walked through a rail to get into a room,
+## and every screenshot of a ward door had a gold bar drawn across it.
+static func handrail_run(h: Node3D, x0: float, x1: float, z: float,
+		gaps: Array, y := 0.92, tint := Color(0.62, 0.64, 0.68)) -> void:
+	var cuts: Array = gaps.duplicate()
+	cuts.sort_custom(func(a, b): return a.x < b.x)
+	var cursor := x0
+	for g in cuts:
+		var from: float = maxf(x0, float(g.x))
+		var to: float = minf(x1, float(g.y))
+		if to <= cursor:
+			continue
+		if from - cursor > 0.5:
+			handrail(h, cursor, from, z, y, tint)
+		cursor = maxf(cursor, to)
+	if x1 - cursor > 0.5:
+		handrail(h, cursor, x1, z, y, tint)
+
 static func handrail(h: Node3D, x0: float, x1: float, z: float, y := 0.92,
-		tint := Color(0.78, 0.62, 0.38)) -> Node3D:
+		tint := Color(0.62, 0.64, 0.68)) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Handrail"
 	var span: float = absf(x1 - x0)
 	root.add_child(Build.mi(Build.cyl_mesh(0.045, span, 10), Build.mat(tint, 0.6),
 		Vector3.ZERO, Vector3(0, 0, PI * 0.5)))
+	# Rounded returns, so a rail that stops at a door looks finished rather
+	# than snapped off.
+	for sx in [-1.0, 1.0]:
+		root.add_child(Build.mi(Build.sphere_mesh(0.046), Build.mat(tint, 0.6),
+			Vector3(sx * span * 0.5, 0, 0)))
 	var brackets := maxi(2, int(span / 2.4))
 	for i in brackets:
 		var t: float = float(i) / float(maxi(1, brackets - 1))

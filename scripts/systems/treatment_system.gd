@@ -483,6 +483,64 @@ func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vecto
 		String(spec.get("tone", "info")))
 	return spec
 
+## A physical disagreement, applied.
+##
+## Not a treatment and never charted as one. Winning leaves them with an injury
+## they did not arrive with — which is exactly the shape of thing the ward
+## already knows how to notice, so the evidence, the audit and the solicitor all
+## work on it for free. Losing costs you the afternoon.
+func apply_brawl(p: Patient, won: bool, from_pos := Vector3.ZERO) -> Dictionary:
+	if p == null or p.discharged:
+		return {}
+	var spec := Brawl.outcome(won)
+	var body = patient_system.get_body(p.id) if patient_system != null else null
+	var where: Vector3 = from_pos if from_pos != Vector3.ZERO else global_position()
+
+	if won:
+		p.expected_stay_days = maxf(0.5, p.expected_stay_days + float(spec["stay"]))
+		if patient_system != null:
+			# TRUTH is "altercation", which is not on any form. What you write
+			# down instead is the whole game.
+			patient_system.add_complication(p, String(spec["harm"]), "altercation")
+		GameState.stats["fights_won"] = int(GameState.stats.get("fights_won", 0)) + 1
+	else:
+		var eco = get_tree().get_first_node_in_group("economy")
+		var bill := Brawl.bill_for(GameState.day)
+		if eco != null:
+			eco.bill_procedure_cost("Your own treatment — %s" % p.display_name, bill)
+		spec["bill"] = bill
+		GameState.stats["fights_lost"] = int(GameState.stats.get("fights_lost", 0)) + 1
+		# The rest of the day, and the evening with it.
+		var night = get_tree().get_first_node_in_group("night_system")
+		if night != null:
+			night.used_tonight = true
+		var shift = get_tree().get_first_node_in_group("shift_system")
+		if shift != null and shift.can_end_day():
+			shift.call_deferred("end_shift", true)
+
+	if body != null:
+		body.startle(1.0)
+		if body.has_method("say"):
+			body.say(String(RNG.pick("brawl_bark", spec.get("say", ["..."]))), 3.6)
+	# Everybody sees this one. There is no version of a fight in a ward that
+	# happens quietly, and pretending otherwise would be the one dishonest
+	# number in the system.
+	WorldEvent.new("altercation", "player").at(where, p.room).about(p.id) \
+		.seen(float(spec["visual"])).heard(0.9, 22.0) \
+		.tag("violence").tag("injury") \
+		.says("%s %s" % [
+			"put %s on the floor" % p.display_name if won
+				else "was put on the floor by %s" % p.display_name,
+			"in %s" % p.room]).emit()
+	var sue := float(spec.get("sue", 0.0))
+	if sue > 0.0:
+		p.set_meta("sue_risk", float(p.get_meta("sue_risk", 0.0)) + sue)
+	GameState.add_heat(0.05 if won else 0.02)
+	AudioMgr.play("thud", -6.0)
+	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec["label"])],
+		"warn" if won else "bad")
+	return spec
+
 ## The cause that gets filed. A procedure that went badly has an honest and
 ## extremely useful explanation available to it, which is the entire reason
 ## surgeons invented the phrase.

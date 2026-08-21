@@ -22,6 +22,10 @@ extends ScreenBase
 var _patient = null
 var _mind: Mind = null
 
+func _init() -> void:
+	# They stay in the room with you.
+	pauses_world = false
+
 func _build() -> void:
 	_patient = patient_system().get_patient(String(ctx.get("patient_id", ""))) \
 		if patient_system() else null
@@ -31,7 +35,7 @@ func _build() -> void:
 	var sus = suspicion()
 	_mind = sus.mind_of(_patient.id) if sus != null else null
 
-	var v := shell(760, 700, _patient.display_name, _subtitle())
+	var v := card_shell(560, 690, _patient.display_name, _subtitle())
 	if _patient.admitted and _patient.ready_for_discharge():
 		v.add_child(UIKit.stamp("fit to go home", UIKit.GOOD))
 	elif not _patient.acquired_injuries().is_empty():

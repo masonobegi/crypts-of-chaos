@@ -117,7 +117,7 @@ func open(id: String, ctx: Dictionary = {}) -> void:
 	current = screen
 	current_id = id
 	add_child(screen)
-	_set_modal(true)
+	_set_modal(true, bool(screen.get("pauses_world") if screen.get("pauses_world") != null else true))
 	# After it is genuinely up, and regardless of who asked. See EventBus.
 	EventBus.ui_opened.emit(id)
 
@@ -129,8 +129,29 @@ func close() -> void:
 	current_id = ""
 	_set_modal(false)
 
-func _set_modal(on: bool) -> void:
-	get_tree().paused = on
+## Some screens stop the world and some do not.
+##
+## A card you read while standing in front of somebody must not freeze them:
+## the whole reason to walk up to a person is that they are a person, and a
+## paused ward is a photograph. Those screens leave the tree running so the
+## patient keeps breathing and reacting — but they stop the CLOCK, because time
+## passing while you read is a cost nobody agreed to.
+var _clock_was_running := false
+var _froze_clock := false
+
+func _set_modal(on: bool, pauses := true) -> void:
+	# Only a screen that froze the clock may thaw it. Restoring it on every
+	# close undid the clock-in the briefing had just performed, because the
+	# state being restored was the one from before the button was pressed.
+	if on:
+		if not pauses:
+			_clock_was_running = GameState.clock_running
+			_froze_clock = true
+			GameState.clock_running = false
+	elif _froze_clock:
+		GameState.clock_running = _clock_was_running
+		_froze_clock = false
+	get_tree().paused = on and pauses
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
 	var p = get_tree().get_first_node_in_group("player")
 	if p:

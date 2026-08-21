@@ -295,6 +295,11 @@ static func place(node: Control, preset: int, left: float, top: float,
 		Control.PRESET_CENTER_TOP: ax = 0.5
 		Control.PRESET_CENTER: ax = 0.5; ay = 0.5
 		Control.PRESET_CENTER_BOTTOM: ax = 0.5; ay = 1.0
+		# Missing until a card needed to sit against the right-hand edge, at
+		# which point it silently anchored top-left and placed itself six
+		# hundred pixels off the side of the screen.
+		Control.PRESET_CENTER_LEFT: ay = 0.5
+		Control.PRESET_CENTER_RIGHT: ax = 1.0; ay = 0.5
 		Control.PRESET_BOTTOM_LEFT: ay = 1.0
 		Control.PRESET_BOTTOM_RIGHT: ax = 1.0; ay = 1.0
 	node.anchor_left = ax
@@ -314,6 +319,19 @@ static func full_screen(node: Control) -> Control:
 static func center_panel(width: float, height: float) -> PanelContainer:
 	var p := panel(PANEL, 3, 2, Color(0.22, 0.23, 0.25))
 	place(p, Control.PRESET_CENTER, -width * 0.5, -height * 0.5, width, height)
+	p.custom_minimum_size = Vector2(width, height)
+	return p
+
+## A form pinned to one side of the screen, leaving the world visible.
+##
+## Used for anything you do while standing in front of a person: the whole point
+## of walking up to somebody is that they are there, and a centred modal with a
+## dimmer behind it replaces them with a menu. The card goes to the right, they
+## stay in the middle, and you can watch them react to what you pick.
+static func side_panel(width: float, height: float) -> PanelContainer:
+	var p := panel(PANEL, 3, 2, Color(0.22, 0.23, 0.25))
+	# Nudged down so the top of the card clears the money panel in the corner.
+	place(p, Control.PRESET_CENTER_RIGHT, -width - 36.0, -height * 0.5 + 52.0, width, height)
 	p.custom_minimum_size = Vector2(width, height)
 	return p
 

@@ -186,6 +186,11 @@ func _check_nothing_is_inside_anything_else() -> void:
 		# fittings correctly attached to walls.
 		if big >= 2 or (big >= 1 and aabb.size.y >= 2.0):
 			continue
+		# Physics props are excluded: a mop resting in a bucket overlaps it, and
+		# where a rigid body has rolled to is the solver's business. This audit
+		# is about geometry somebody PLACED.
+		if child is RigidBody3D:
+			continue
 		boxes.append({"name": _describe(child), "aabb": aabb})
 
 	var clashes: Array[String] = []

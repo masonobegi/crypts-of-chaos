@@ -2,6 +2,13 @@ class_name ScreenBase
 extends Control
 ## Shared chrome for modal screens.
 
+## Does this screen stop the world while it is up?
+##
+## True for anything that takes your whole attention — a procedure, a briefing,
+## a hearing. False for a card you read while standing in front of somebody, so
+## that they carry on being a person while you decide what to do about them.
+var pauses_world := true
+
 var ctx: Dictionary = {}
 var ui = null
 var body: VBoxContainer = null
@@ -35,6 +42,39 @@ func shell(width: float, height: float, heading: String, subheading := "") -> VB
 		v.add_child(UIKit.chart_header(heading))
 	if subheading != "":
 		v.add_child(UIKit.label(subheading, 14, UIKit.INK_DIM))
+	body = v
+	return v
+
+## The same sheet, pinned to the right, with the world left visible behind it.
+##
+## "I still want the patient's physical body in front of me — I'm just saying
+## the actions and dialogue should be on a card so it is easier to handle."
+## Exactly right, and the dimmer was the problem: it replaced the person you had
+## just walked up to with a menu about them. No dimmer here, and the form sits
+## off to one side so they are still in shot, still breathing, still reacting.
+func card_shell(width: float, height: float, heading: String, subheading := "") -> VBoxContainer:
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var panel := UIKit.side_panel(width, height)
+	add_child(panel)
+
+	var sheet := UIKit.hbox(0)
+	panel.add_child(sheet)
+	var margin := ColorRect.new()
+	margin.color = UIKit.MARGIN_RED
+	margin.custom_minimum_size.x = 3
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sheet.add_child(margin)
+	sheet.add_child(UIKit.spacer(12, false))
+
+	var v := UIKit.vbox(8)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet.add_child(v)
+	if heading != "":
+		v.add_child(UIKit.chart_header(heading))
+	if subheading != "":
+		v.add_child(UIKit.label(subheading, 14, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
 	body = v
 	return v
 

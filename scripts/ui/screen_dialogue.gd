@@ -14,6 +14,10 @@ var _stage := "speaking"
 var _spoke_hint: Label = null
 var _was_down := false
 
+func _init() -> void:
+	# They stay in the room with you.
+	pauses_world = false
+
 func _build() -> void:
 	var sus = suspicion()
 	if sus == null:
@@ -43,7 +47,7 @@ func _build() -> void:
 ## it, and the second click is you deciding to answer.
 func _build_speech() -> void:
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
-	var v := shell(760, 460, _mind.display_name, sub)
+	var v := card_shell(620, 700, _mind.display_name, sub)
 	v.add_child(UIKit.spacer(10))
 	var rp := UIKit.panel(UIKit.NOTE, 8, 1, UIKit.ACCENT)
 	var rl := UIKit.label("", 20, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
@@ -89,7 +93,7 @@ func _advance() -> void:
 # ------------------------------------------------------------------ options
 func _build_options() -> void:
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
-	var v := shell(760, 640, _mind.display_name, sub)
+	var v := card_shell(620, 700, _mind.display_name, sub)
 
 	# What they are currently holding against you, in their words.
 	var worst := _mind.strongest(GameState.career_minutes)

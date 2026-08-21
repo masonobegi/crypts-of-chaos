@@ -29,44 +29,85 @@ signal night_resolved(result: Dictionary)
 ## Where you go, who is there, and what they turn up with. Each place maps onto
 ## a different procedure, so a week of evenings fills a ward with variety rather
 ## than with five identical forearms.
+## Where you go, who is there, what they turn up with — and WHAT YOU DO.
+##
+## The note was "let me choose based on difficulty what I want to do", and the
+## deeper half of it: "make a variety of games, not just run up to somebody and
+## hold E". So a place is a JOB now. It carries an act, and the three acts are
+## genuinely different questions:
+##
+##  * REACH  — get within arm's length unseen. Positioning. The original.
+##  * BUMP   — be beside them at one particular moment on their walk, and only
+##             then. Timing, in a street that is still full of people.
+##  * RIG    — do something to a thing on their route, then be somewhere else
+##             when they get to it. Two problems, and the second one is being
+##             innocent at a specific time.
+##
+## `diff` is 1..3 and drives nothing on its own; it is what the screen sorts and
+## labels by, so "I want a hard one tonight" is a thing you can ask for.
 const PLACES := [
 	{
-		"id": "ladder_yard", "name": "The Ladder Yard",
-		"blurb": "Scaffolders finishing up. Everything here is already leaning.",
-		"condition": "acute_shatter", "watchers": 3, "lamps": 2, "hazard": "",
-		"pay": 1.0, "mark_speed": 62.0,
+		"id": "allotments", "name": "The allotments",
+		"blurb": "Uneven ground, low fences, and a man who is always there.",
+		"condition": "torn_knee", "watchers": 1, "lamps": 0, "hazard": "dog",
+		"pay": 0.75, "mark_speed": 44.0, "act": "reach", "diff": 1,
 	},
 	{
 		"id": "ossory_steps", "name": "Ossory Street steps",
 		"blurb": "Forty-one wet steps and one handrail, on the wrong side.",
 		"condition": "fractured_ankle", "watchers": 2, "lamps": 1, "hazard": "",
-		"pay": 0.9, "mark_speed": 48.0,
-	},
-	{
-		"id": "the_anchor", "name": "The Anchor, at closing",
-		"blurb": "Nobody in this street is a reliable witness and all of them are here.",
-		"condition": "cracked_ribs", "watchers": 5, "lamps": 3, "hazard": "drunk",
-		"pay": 1.25, "mark_speed": 40.0,
-	},
-	{
-		"id": "multi_storey", "name": "The multi-storey, level four",
-		"blurb": "One camera, pointed at the barrier. Concrete everywhere else.",
-		"condition": "dislocated_shoulder", "watchers": 2, "lamps": 2, "hazard": "camera",
-		"pay": 1.15, "mark_speed": 70.0,
-	},
-	{
-		"id": "allotments", "name": "The allotments",
-		"blurb": "Uneven ground, low fences, and a man who is always there.",
-		"condition": "torn_knee", "watchers": 1, "lamps": 0, "hazard": "dog",
-		"pay": 0.75, "mark_speed": 44.0,
+		"pay": 0.9, "mark_speed": 48.0, "act": "rig", "diff": 2,
+		"rig_name": "the loose handrail bracket",
 	},
 	{
 		"id": "tram_stop", "name": "The tram stop on Fell Row",
 		"blurb": "Well lit, well used, and the last tram was twenty minutes ago.",
 		"condition": "percussive_sinus", "watchers": 4, "lamps": 3, "hazard": "tram",
-		"pay": 1.1, "mark_speed": 56.0,
+		"pay": 1.1, "mark_speed": 56.0, "act": "bump", "diff": 2,
+	},
+	{
+		"id": "ladder_yard", "name": "The Ladder Yard",
+		"blurb": "Scaffolders finishing up. Everything here is already leaning.",
+		"condition": "acute_shatter", "watchers": 3, "lamps": 2, "hazard": "",
+		"pay": 1.0, "mark_speed": 62.0, "act": "rig", "diff": 2,
+		"rig_name": "the stack of boards",
+	},
+	{
+		"id": "multi_storey", "name": "The multi-storey, level four",
+		"blurb": "One camera, pointed at the barrier. Concrete everywhere else.",
+		"condition": "dislocated_shoulder", "watchers": 2, "lamps": 2, "hazard": "camera",
+		"pay": 1.15, "mark_speed": 70.0, "act": "bump", "diff": 3,
+	},
+	{
+		"id": "the_anchor", "name": "The Anchor, at closing",
+		"blurb": "Nobody in this street is a reliable witness and all of them are here.",
+		"condition": "cracked_ribs", "watchers": 5, "lamps": 3, "hazard": "drunk",
+		"pay": 1.25, "mark_speed": 40.0, "act": "reach", "diff": 3,
 	},
 ]
+
+## What each act asks of you, in one line, for the screen that offers them.
+const ACTS := {
+	"reach": {
+		"name": "Get next to them",
+		"how": "Walk up behind them without being seen and take your moment.",
+	},
+	"bump": {
+		"name": "Catch them at the kerb",
+		"how": "Be beside them at one particular step of their walk, and only "
+			+ "then. Early or late is just a man bumping into somebody.",
+	},
+	"rig": {
+		"name": "Leave something for them",
+		"how": "See to something on their route, then be a long way from it "
+			+ "when they get there. Being nowhere near is the whole job.",
+	},
+}
+
+const DIFF_NAMES := ["", "Straightforward", "Awkward", "A bad idea"]
+
+static func act_of(id: String) -> String:
+	return String(place(id).get("act", "reach"))
 
 ## What else is in the street, besides people who might look up.
 ##
@@ -134,6 +175,15 @@ var _tram := -1.0
 const SIGHT := 17.0
 const CONE := 0.62
 const EXPOSURE_RATE := 0.42
+## How much more of a street sees you while you are actually doing it. The note
+## was "the games need to be harder with a higher chance of being seen during
+## the act" — so the act has its own, worse, check, and it is the one that
+## decides whether there is a witness rather than a rumour.
+const ACT_CONE := 1.55
+const ACT_REACH := 1.45
+var caught_in_the_act := false
+## `rig` only: whether the thing on their route has been seen to yet.
+var rigged := false
 ## Cool for "looking somewhere", hot for "looking at you". Deliberately NOT the
 ## sodium of the lamps: the street already has warm pools on the ground and a
 ## second warm shape on the ground would read as more of them. A cone has to be
@@ -215,8 +265,16 @@ func _physics_process(delta: float) -> void:
 			AudioMgr.play("tick", -26.0, 1.3)
 	else:
 		exposure = maxf(0.0, exposure - delta * 0.04)
-	EventBus.objective_changed.emit("Get next to %s. [hold E]  ·  %s" % [
-		_mark_name, exposure_word()])
+	EventBus.objective_changed.emit("%s  ·  %s" % [_task_line(), exposure_word()])
+
+	# The rig goes off when THEY reach it, not when you do. Everything before
+	# that was preparation; the only question left is where you are standing.
+	if rigged and String(_place.get("act", "")) == "rig" and street != null \
+			and mark != null and is_instance_valid(mark):
+		if mark.global_position.distance_to(street.rig_spot) < 1.5:
+			rigged = false
+			strike()
+			return
 
 	# They get home eventually, and then the evening is over whatever you did.
 	if mark != null and is_instance_valid(mark) and mark.home():
@@ -228,6 +286,21 @@ func _physics_process(delta: float) -> void:
 	# home to finish.
 	if street != null and player.global_position.x < Street.ORIGIN.x - Street.LENGTH * 0.47:
 		finish(false)
+
+## What you are supposed to be doing, right now, in six words.
+func _task_line() -> String:
+	match String(_place.get("act", "reach")):
+		"bump":
+			var w := bump_window()
+			if w > 0.0:
+				return "NOW — %s is at the kerb. [hold E]" % _mark_name
+			return "Be beside %s at the kerb, and only there." % _mark_name
+		"rig":
+			if not rigged:
+				return "See to %s, up ahead on their route." % String(
+					_place.get("rig_name", "the thing"))
+			return "Now be nowhere near it when %s gets there." % _mark_name
+	return "Get next to %s. [hold E]" % _mark_name
 
 func exposure_word() -> String:
 	if exposure < 0.12:
@@ -319,6 +392,31 @@ func _light_on(at: Vector3) -> float:
 const STRIKE_BEAT := 1.4
 var _striking := -1.0
 
+## Can you do it right now?
+##
+## `reach` is always yes once you are close enough. `bump` is only yes inside
+## the window, which is the whole act. `rig` is never yes on the mark — you do
+## it to a thing, not to them.
+func can_act() -> bool:
+	if not active or _striking >= 0.0:
+		return false
+	match String(_place.get("act", "reach")):
+		"reach": return true
+		"bump": return bump_window() > 0.0
+	return false
+
+## 0 outside the window, 1 dead in the middle of it. The mark walks past one
+## particular spot and there is about a second and a half either side of it.
+const BUMP_REACH := 4.2
+
+func bump_window() -> float:
+	if mark == null or not is_instance_valid(mark) or street == null:
+		return 0.0
+	var d: float = mark.global_position.distance_to(street.bump_spot)
+	return clampf(1.0 - d / BUMP_REACH, 0.0, 1.0)
+
+## Doing it. `caught` is decided HERE and only here: who had you in their
+## eyeline at the moment, not how much of the evening you spent visible.
 func strike() -> void:
 	if not active or _striking >= 0.0:
 		return
@@ -330,17 +428,35 @@ func strike() -> void:
 		mark.stop_moving()
 	if player == null:
 		return
+	# Was anybody actually looking? A wider cone and a longer reach than the
+	# ambient check uses, because something just happened and heads turn toward
+	# something happening.
+	var eye: Vector3 = player.global_position + Vector3(0, 1.2, 0)
+	caught_in_the_act = false
+	for w in watchers:
+		if not is_instance_valid(w):
+			continue
+		var face: float = float(w.get_meta("facing", 0.0))
+		if _looks_at(w.global_position + Vector3(0, 1.5, 0), face,
+				CONE * ACT_CONE, SIGHT * ACT_REACH, eye) > 0.0:
+			caught_in_the_act = true
+	if _hazard_node != null and is_instance_valid(_hazard_node):
+		if _looks_at(_hazard_node.global_position + Vector3(0, 1.2, 0),
+				_hz_face, CONE * ACT_CONE, SIGHT * ACT_REACH, eye) > 0.0:
+			caught_in_the_act = true
+	if _tram >= 0.0:
+		caught_in_the_act = true      # the whole street is lit
 	for w in watchers:
 		if not is_instance_valid(w):
 			continue
 		var to: Vector3 = player.global_position - w.global_position
 		if Vector2(to.x, to.z).length() > 26.0:
 			continue
-		var face: float = atan2(to.x, to.z)
-		w.rotation.y = face
+		var face2: float = atan2(to.x, to.z)
+		w.rotation.y = face2
 		# Their sweep resumes from where they turned to, not from where they
 		# were standing before the noise.
-		w.set_meta("facing", face)
+		w.set_meta("facing", face2)
 		w.startle(1.0)
 
 ## Come home, whatever happened.
@@ -349,7 +465,8 @@ func finish(reached: bool) -> void:
 		return
 	active = false
 	set_physics_process(false)
-	var res := resolve(String(_place["id"]), _mark_name, exposure, reached)
+	var res := resolve(String(_place["id"]), _mark_name, exposure, reached,
+		caught_in_the_act)
 	leave()
 	EventBus.request_ui.emit("night", {"result": res})
 
@@ -421,15 +538,17 @@ func enter(place_id: String) -> void:
 	_spawn_people()
 	_set_night_look(true)
 	exposure = 0.0
+	caught_in_the_act = false
+	rigged = false
 	_elapsed = 0.0
 	_striking = -1.0
 	_tram = -1.0
 	active = true
 	set_physics_process(true)
-	EventBus.objective_changed.emit(
-		"Get next to %s without being seen. [hold E]" % _mark_name)
+	EventBus.objective_changed.emit(_task_line())
 	EventBus.toast.emit("%s. %s" % [String(_place["name"]), String(_place["blurb"])],
 		"info")
+	EventBus.toast.emit(String(ACTS[String(_place.get("act", "reach"))]["how"]), "info")
 	EventBus.toast.emit("Walk back the way you came if you change your mind.", "info")
 	AudioMgr.play("door", -12.0)
 
@@ -459,6 +578,14 @@ func _spawn_people() -> void:
 		var cone := _cone_node(CONE, SIGHT)
 		street.add_child(cone)
 		cones.append(cone)
+
+	# The thing on their route, for the acts that need one.
+	if String(_place.get("act", "")) == "rig":
+		var rp := RigPoint.new()
+		rp.name = "RigPoint"
+		street.add_child(rp)
+		rp.build(String(_place.get("rig_name", "the loose bracket")))
+		rp.global_position = street.rig_spot
 
 	_hazard_node = null
 	_hz_cone = null
@@ -594,7 +721,20 @@ func _set_night_look(on: bool) -> void:
 func available() -> bool:
 	if used_tonight:
 		return false
-	return not GameState.flag("tutorial_active", false)
+	if GameState.flag("tutorial_active", false):
+		return false
+	# A night shift ends at eight in the morning and you have been awake for it.
+	# This is what nights COST — they were the best of the three in every other
+	# respect, which is not a choice, it is a right answer.
+	return float(DB.shift(GameState.shift_kind).get("night_penalty", 0.0)) < 0.5
+
+## Why not, in words, for the screen that has to say so.
+func unavailable_because() -> String:
+	if used_tonight:
+		return "You have been out once tonight. That is enough."
+	if float(DB.shift(GameState.shift_kind).get("night_penalty", 0.0)) >= 0.5:
+		return "You have been awake since midnight. You are going to bed."
+	return ""
 
 func beds_free() -> int:
 	if patient_system == null:
@@ -606,14 +746,24 @@ static func mark_name(seed_key: String) -> String:
 
 ## Turn an evening into a morning.
 ##
-## `exposure` is 0..1 — how much of the act happened where somebody could see
-## it. `reached` is whether you got to them at all.
-func resolve(place_id: String, mark: String, exposure: float, reached: bool) -> Dictionary:
+## `exposure` is 0..1 — how much of the evening you spent where somebody could
+## see you. `caught` is a different and much worse thing: somebody had you in
+## their eyeline AT THE MOMENT OF THE ACT.
+##
+## The two are separated because they are separated in life, and the note asked
+## for exactly that: "if I get caught mid-act I get sued, but if I just get seen
+## I just get told off". Being noticed on a street is a description. Being
+## watched doing it is a witness, and a witness is a claim form.
+func resolve(place_id: String, mark: String, exposure: float, reached: bool,
+		caught := false) -> Dictionary:
 	used_tonight = true
 	var spec := place(place_id)
+	var cond := String(spec["condition"])
 	var res := {
 		"place": String(spec["name"]), "mark": mark, "exposure": exposure,
-		"admitted": false, "outcome": "missed",
+		"admitted": false, "outcome": "missed", "caught": caught,
+		"injury": String(DB.condition(cond).get("name", cond)),
+		"act": String(spec.get("act", "reach")),
 	}
 	GameState.stats.night_jobs += 1
 
@@ -621,31 +771,43 @@ func resolve(place_id: String, mark: String, exposure: float, reached: bool) -> 
 		# You stood in a doorway for twenty minutes and went home. It costs
 		# nothing but the evening, which is the correct price for losing nerve.
 		res["outcome"] = "missed"
+		res["injury"] = ""
 		res["line"] = "They went in before you got near them. You walk home the long way."
 		last_result = res
 		night_resolved.emit(res)
 		return res
 
-	var clean: bool = exposure < CLEAN
-	var messy: bool = exposure < MESSY
-	res["outcome"] = "clean" if clean else ("messy" if messy else "caught")
-
-	if clean:
-		GameState.stats.night_jobs_clean += 1
-		res["line"] = "Nobody looked up. They are going to need somebody to look at that."
-	elif messy:
-		GameState.stats.night_jobs_botched += 1
-		GameState.add_heat(0.08, "something on Fell Row")
-		res["line"] = "Somebody in a window. Somebody always in a window."
+	if caught:
+		res["outcome"] = "caught"
+	elif exposure < CLEAN:
+		res["outcome"] = "clean"
 	else:
-		GameState.stats.night_jobs_botched += 1
-		GameState.add_heat(0.22, "a description given to police")
-		res["line"] = "Two people saw the whole thing and one of them ran after you."
+		res["outcome"] = "seen"
+
+	match res["outcome"]:
+		"clean":
+			GameState.stats.night_jobs_clean += 1
+			res["line"] = "Nobody looked up. They are going to need somebody to look at that."
+		"seen":
+			# Told off. A description of a man in a coat is not evidence of
+			# anything, and everybody on this street has seen worse.
+			GameState.stats.night_jobs_botched += 1
+			GameState.add_heat(0.10, "a description given on Fell Row")
+			res["line"] = "Somebody in a window, and somebody in a doorway. "  \
+				+ "Nobody who could pick you out of two men."
+		"caught":
+			# Watched. That is a name, a face and a statement, and it arrives
+			# as a letter rather than as a rumour.
+			GameState.stats.night_jobs_botched += 1
+			GameState.add_heat(0.30, "a witness statement")
+			res["line"] = "Somebody was looking straight at you when you did it, "  \
+				+ "and they did not look away."
+			res["sued"] = _serve_for_the_street(mark, spec)
 
 	# Whatever happened, they need a hospital, and yours is the near one. Even
 	# the caught case sends them your way — which is the joke and the trap: the
 	# witness to your evening is now in your ward, in your care, all week.
-	if beds_free() > 0 or messy:
+	if beds_free() > 0 or res["outcome"] != "clean":
 		_book_admission(spec, mark, res["outcome"])
 		res["admitted"] = true
 	else:
@@ -655,6 +817,18 @@ func resolve(place_id: String, mark: String, exposure: float, reached: bool) -> 
 	night_resolved.emit(res)
 	Meta.check_achievements()
 	return res
+
+## Being watched doing it is a claim, not a rumour.
+##
+## Filed against you personally rather than against the hospital, and served the
+## same way a discharge claim is, so the courtroom phase already knows what to
+## do with it. Returns whether it actually landed.
+func _serve_for_the_street(mark: String, spec: Dictionary) -> bool:
+	var legal = get_tree().get_first_node_in_group("legal_system")
+	if legal == null or not legal.has_method("file_street_claim"):
+		return false
+	return bool(legal.file_street_claim(mark, String(spec["name"]),
+		String(spec["condition"])))
 
 ## They turn up tomorrow. Held as a booking rather than a patient so the night
 ## genuinely ends in between — same machinery a readmission uses, because from

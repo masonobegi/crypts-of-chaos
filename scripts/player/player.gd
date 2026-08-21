@@ -147,8 +147,44 @@ func _handle_movement(delta: float) -> void:
 	# have an opinion about it. See _push_obstacles.
 	_intended_speed = Vector2(target.x, target.z).length()
 	_open_door_ahead()
+	var before := global_position
 	move_and_slide()
+	_step_up(before, dir, delta)
 	_push_obstacles()
+
+## Walking up a kerb.
+##
+## There was no step handling at all: a CharacterBody3D stops dead against
+## anything taller than its safe margin, and the street's pavement is a fifth of
+## a metre proud of the road. The report was "I couldn't get on the sidewalk for
+## one of them" and it was literally true — the kerb was a wall.
+##
+## The standard three-move version, done only when we are actually stuck: lift
+## by the step height, try the move again from up there, and drop back down. If
+## the drop finds nothing to stand on within the step height, put everything
+## back and take the wall, so this cannot be used to walk up the side of a
+## building or off a stair edge into the air.
+const STEP_HEIGHT := 0.34
+
+func _step_up(before: Vector3, dir: Vector3, delta: float) -> void:
+	if not is_on_floor() or dir.length_squared() < 0.01:
+		return
+	# Did we actually get anywhere? A tenth of what we asked for means blocked.
+	var moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
+	if moved > _intended_speed * delta * 0.4:
+		return
+	var want := Vector3(dir.x, 0.0, dir.z).normalized() * maxf(_intended_speed * delta, 0.06)
+	var from := global_transform
+	var up := from
+	up.origin += Vector3.UP * STEP_HEIGHT
+	# Somewhere to put a foot up there?
+	if test_move(up, want):
+		return
+	up.origin += want
+	if not test_move(up, Vector3.DOWN * (STEP_HEIGHT + 0.02)):
+		return      # nothing below: that was a ledge, not a step
+	global_transform = up
+	move_and_collide(Vector3.DOWN * (STEP_HEIGHT + 0.02))
 
 ## Look a metre and a half ahead and open any door in the way, BEFORE walking
 ## into it. NPCs have done this since doors were script-driven; the player never

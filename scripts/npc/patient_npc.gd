@@ -61,6 +61,11 @@ func _physics_process(delta: float) -> void:
 ## somebody you walked in on — which is what every other system in this game is
 ## built to make interesting.
 func _hold_bed_pose(_delta: float) -> void:
+	# A fight, or being out cold, owns the body. Without this the chair pose is
+	# re-asserted every physics frame and somebody who has just stood up to
+	# swing at you sits back down inside the same tick.
+	if is_fighting() or out_cold:
+		return
 	# SITTING is the waiting-room pose; IN_BED is now the same pose in the
 	# chair in their own room. Both want the same thing from the rig.
 	var in_chair := state == State.IN_BED and bed != null and is_instance_valid(bed)
@@ -164,7 +169,31 @@ func set_asleep(v: bool) -> void:
 		# looking as though they do not.
 		perception.attention = 0.0 if v else 1.0
 
+## Out cold.
+##
+## Not sleep: sleep ends when somebody drops a tray. This is "they cannot
+## remember you fought them", which in this game means an attention of zero for
+## the rest of the day and a body slumped in a chair that nothing wakes.
+var out_cold := false
+
+func knock_out() -> void:
+	out_cold = true
+	stand_down()
+	pinned = true
+	stop_moving()
+	set_seated(true)
+	set_slumped(true)
+	set_asleep(true)
+	set_mood(-0.4)
+	if data != null:
+		# They also lose the thread of the day. Whatever they were about to
+		# complain about is gone with the rest of it.
+		data.set_meta("out_cold_day", GameState.day)
+
 func wake_up(why := "") -> void:
+	# A tray on the floor does not bring somebody round.
+	if out_cold:
+		return
 	if not asleep:
 		return
 	set_asleep(false)

@@ -155,3 +155,43 @@ func test_operating_on_the_wrong_part_of_somebody_is_findable_forever() -> void:
 	_ts.perform_surgery(ok_patient, "knee", ["careful", "careful", "careful"])
 	t.ok(not _kinds(ok_patient).has("wrong_site"),
 		"operating on the part that was the problem is not a finding")
+
+## Harm is not the easy option.
+##
+## "The minigames to give the wrong medicine should also be legit hard — they
+## have such big payoffs and are too easy." A dose that turns a two-day stay
+## into a five-day one was a bar you filled and released inside a fifth of the
+## barrel with the target printed on it.
+func test_a_dose_has_to_actually_be_accurate() -> void:
+	for intent in ["treat", "worsen"]:
+		var target: float = Procedures.dose_target(intent)
+		t.gt(Procedures.dose_precision(intent, target), 0.99,
+			"%s: dead on the line is full marks" % intent)
+		# A tenth of the barrel out is most of the way to nothing.
+		t.lt(Procedures.dose_precision(intent, target + 0.10), 0.05,
+			"%s: a tenth of a barrel out is a miss" % intent)
+		t.lt(Procedures.dose_precision(intent, target - 0.06), 0.45,
+			"%s: even a small overshoot costs the good band" % intent)
+
+func test_the_plunger_carries_after_you_let_go() -> void:
+	# Nothing in a hand stops instantly, and the skill is knowing that.
+	var settled := Procedures.dose_settle(0.40, 0.42)
+	t.gt(settled, 0.40, "releasing while still pulling overshoots")
+	t.lt(settled, 0.50, "but not by an absurd amount")
+	t.near(Procedures.dose_settle(0.40, 0.0), 0.40, 0.001,
+		"and a hand that had already stopped does not move")
+
+func test_harming_somebody_with_a_bottle_is_no_easier_than_helping() -> void:
+	# Perfect hands on the correct bottle for what you SAID you were doing.
+	var help := Procedures.dose_grade("treat", "cure", 1.0)
+	var harm := Procedures.dose_grade("worsen", "adverse", 1.0)
+	t.lt(harm, help + 0.0001,
+		"the best possible piece of harm does not out-score the best possible cure")
+	t.lt(Procedures.dose_grade("worsen", "adverse", 0.7), Procedures.BAND_GOOD,
+		"and seven-tenths of a steady hand is not good enough for the good band")
+
+func test_the_bone_hold_is_a_hold() -> void:
+	t.gt(Procedures.BONE_HOLD_SECONDS, 1.5,
+		"long enough that the tremor gets a go at you")
+	var t2: Dictionary = Procedures.bone_target("worsen")
+	t.lt(float(t2["tol_angle"]), 0.06, "and the dishonest angle is a real angle")

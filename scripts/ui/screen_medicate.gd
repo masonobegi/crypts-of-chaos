@@ -34,6 +34,7 @@ var _level := 0.0
 var _elapsed := 0.0
 var _was_down := false
 var _drawing := false
+var _rate := 0.0
 var _given := false
 var _jab := 0.0
 var _done := false
@@ -163,12 +164,20 @@ func _process(delta: float) -> void:
 			if not _drawing:
 				_drawing = true
 				AudioMgr.play("swab", -16.0)
-			# The plunger does not come up evenly. Nothing in this building does.
-			var rate: float = FILL_RATE * (1.0 + 0.34 * sin(_elapsed * 5.3))
+			# The plunger does not come up evenly, and it does not come up the
+			# same way twice: two beats against each other so there is no rhythm
+			# to learn, only a line to watch.
+			var rate: float = FILL_RATE * (1.0 + 0.52 * sin(_elapsed * 7.1)
+				+ 0.22 * sin(_elapsed * 2.3 + 1.1))
+			_rate = rate
 			_level = clampf(_level + rate * delta, 0.0, 1.0)
 			if fmod(_level, 0.1) < rate * delta:
 				AudioMgr.play("tick", -24.0, 0.8 + _level * 0.8)
 		elif _drawing and _was_down:
+			# It carries. Letting go on the line puts you past it, so the skill
+			# is knowing how early to stop — which is a skill, unlike watching a
+			# bar and releasing.
+			_level = Procedures.dose_settle(_level, _rate)
 			_give()
 	_was_down = down
 	if _readout != null and not _given:

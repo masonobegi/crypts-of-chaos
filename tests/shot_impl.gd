@@ -27,7 +27,6 @@ const UI_SHOTS := [
 	["23_records", "records"],
 	["24_dialogue", "dialogue"],
 	["24b_patient", "patient"],
-	["24c_fight", "fight#mid"],
 	["24d_fight_won", "fight#won"],
 	["25_review", "review"],
 	["26_statement", "statement"],
@@ -101,6 +100,34 @@ func _tick_street() -> bool:
 	street_index += 1
 	settle = 6
 	return false
+
+## A fight, mid-exchange, in the room. It is not a screen any more, so the only
+## way to photograph it is to start one and stand in front of it.
+var _fight_started := false
+
+func _square_up() -> void:
+	if _fight_started:
+		return
+	_fight_started = true
+	var bs = game.get("brawl")
+	if bs == null:
+		return
+	var pool: Array = game.patient_system.active()
+	for q in pool:
+		if q.admitted:
+			bs.start(q)
+			break
+	# Straight to a wind-up rather than the settling beat, so the shutter has
+	# something to catch.
+	bs.set("_recover", 0.0)
+	bs.call("_next_exchange")
+	bs.set("_t", bs.get("_wind") * 0.8)
+	bs.set("_their_guard", Brawl.THEIR_GUARD - 3)
+	bs.set("_your_guard", Brawl.YOUR_GUARD - 1)
+	bs.set_physics_process(false)
+	var body = game.patient_system.get_body(bs.patient.id) if bs.patient != null else null
+	if body != null and body.has_method("swing_arm"):
+		body.swing_arm(bs.get("_shown"), 0.8, 0.0)
 
 ## The title screen, which is the one screen a player is guaranteed to see and
 ## the only one that was never photographed. It is its own scene, so it has to
@@ -204,11 +231,6 @@ func _stage_ui(screen, screen_id: String, stage: String) -> void:
 			screen.set("_mark_name", "Wendell Tosh")
 		"setbone", "suture", "manipulate":
 			screen.set("_intent", "treat" if stage == "treat" else "worsen")
-		"fight":
-			if stage == "won":
-				screen.set("_resolved", true)
-				screen.set("_won", true)
-				screen.set("_result", Brawl.outcome(true))
 		"medicate":
 			screen.set("_intent", "worsen" if stage == "dose" else "treat")
 			if stage == "dose":
@@ -250,18 +272,6 @@ func _pose_ui(screen, id: String) -> void:
 			screen.set("_angle", Procedures.manip_angle_at("treat",
 				1.6 / Procedures.MANIP_SECONDS) + 0.06)
 			screen.set("_grip", true)
-		"fight#mid":
-			# Freeze it. This screen runs on _process, so without this the pose
-			# set here is three frames stale by the time the shutter opens.
-			screen.set_process(false)
-			# Three exchanges in, one landed each way, mid wind-up on the right.
-			screen.set("_their_guard", Brawl.THEIR_GUARD - 2)
-			screen.set("_your_guard", Brawl.YOUR_GUARD - 1)
-			screen.set("_exchange", 3)
-			screen.set("_side", 1)
-			screen.set("_wind", 0.8)
-			screen.set("_t", 0.62)
-			screen.set("_recover", 0.0)
 		"night#street":
 			# A moment into the evening: partway down the street, one lamp too
 			# close, with somebody's eyeline just clipping you.
@@ -334,7 +344,18 @@ func _ui_context(id: String) -> Dictionary:
 			return {"claim": claim}
 		"night", "night#street":
 			return {}
-		"chart", "dialogue", "patient", "fight", "fight#mid", "fight#won":
+		"fight#won":
+			var pool3: Array = game.patient_system.active()
+			if pool3.is_empty():
+				return {}
+			var who = pool3[0]
+			for q in pool3:
+				if q.admitted:
+					who = q
+					break
+			return {"patient_id": who.id, "won": true,
+				"result": Brawl.outcome(true)}
+		"chart", "dialogue", "patient", "fight":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():
 				return {}
@@ -430,6 +451,7 @@ const SHOTS := [
 	# act the whole game is about, which nothing had ever photographed.
 	["04c_cycle", Vector3(5.6, 1.5, 8.2), Vector3(3.4, 1.15, 9.9), "cycle"],
 	["04b_bedside", Vector3(5.1, 1.68, 8.8), Vector3(3.05, 1.14, 9.9)],
+	["04d_fight", Vector3(3.4, 1.68, 7.4), Vector3(3.05, 1.45, 9.6), "fight"],
 	["05_nurses_station", Vector3(15.0, 1.7, -1.5), Vector3(15.0, 1.2, -7.0)],
 	# The waiting row, with somebody in it. A walk-in patient sitting down is the
 	# first thing that class of character is ever seen doing.
@@ -621,6 +643,8 @@ func tick() -> bool:
 		_buy_everything()
 	if shot.size() > 3 and String(shot[3]) == "unkit":
 		_sell_everything()
+	if shot.size() > 3 and String(shot[3]) == "fight":
+		_square_up()
 	if shot.size() > 3 and String(shot[3]).begins_with("shift:"):
 		GameState.shift_kind = String(shot[3]).trim_prefix("shift:")
 		game.apply_shift_look()

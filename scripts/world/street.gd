@@ -34,6 +34,11 @@ const LAMP := Color(1.0, 0.78, 0.42)
 
 var lamps: Array[Vector3] = []
 var mark_route: PackedVector3Array = PackedVector3Array()
+## The one spot on their walk that the timing acts care about: a kerb they step
+## off, and a thing on the pavement they will walk past. Both sit on the route
+## rather than beside it, so "be there when they are" is a real place.
+var bump_spot := Vector3.ZERO
+var rig_spot := Vector3.ZERO
 var watcher_spots: Array[Dictionary] = []      ## {pos, facing}
 var hazard_spot := Vector3.ZERO
 var player_start := Vector3.ZERO
@@ -208,6 +213,12 @@ func _layout_people(watchers: int) -> void:
 		ORIGIN + Vector3(-LENGTH * 0.30, 0.4, ROAD_HALF + 2.2),
 		ORIGIN + Vector3(-LENGTH * 0.47, 0.4, ROAD_HALF + 2.0),
 	])
+	# Two thirds of the way along, which is late enough that you have to get
+	# past most of the street to reach it and early enough that missing it is
+	# not the end of the evening.
+	bump_spot = ORIGIN + Vector3(-LENGTH * 0.06, 0.4, ROAD_HALF + 2.6)
+	rig_spot = ORIGIN + Vector3(LENGTH * 0.10, 0.3, ROAD_HALF + 1.8)
+
 	watcher_spots.clear()
 	for i in maxi(watchers, 0):
 		var t: float = (float(i) + 0.7) / float(maxi(watchers, 1))

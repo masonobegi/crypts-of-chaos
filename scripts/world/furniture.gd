@@ -506,9 +506,9 @@ static func _ward(h: Hospital, r: Room) -> void:
 	thermo.position = Vector3(_door_x(r) + 1.6, 1.25, r.rect.position.y + 0.14)
 	thermo.rotation.y = PI
 
-	# A chair opposite theirs, which is where you sit if you were ever going to.
-	_chair(h, Vector3(bed_pos.x + 0.15, 0, bed_pos.z + _toward(r) * 1.85),
-		_far_rot(r), Color(0.42, 0.52, 0.58))
+	# ONE chair in the room, and the patient is in it. A second one opposite
+	# read as a waiting area and put a piece of furniture between the player
+	# and the person they walked in to see.
 	_table(h, Vector3(c.x - 2.6, 0, c.z - 0.6), 0.5, 0.5)
 	# Out of the way. It used to stand directly in front of the patient's face,
 	# which was fine over a bed and is not fine over a person looking at you.

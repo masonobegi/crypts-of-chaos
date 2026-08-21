@@ -16,23 +16,42 @@ extends RefCounted
 ## leaves them with an injury they did not arrive with, in a room with a door,
 ## and the ward's existing machinery for "who saw that" does the rest.
 
-## Hits. Six landed on them wins it; four landed on you loses it.
-const THEIR_GUARD := 6
-const YOUR_GUARD := 4
+## Hits. This is meant to be hard.
+##
+## "Fights should be legit difficult — they have such big payoffs and are too
+## easy for them right now." Fair: three days of bed-rate for a patient who
+## cannot remember it happened is one of the best-paying things in the game, and
+## it was six coin flips with a second of warning each.
+##
+## Eight to put them down, three to put you down, a wind-up that starts short
+## and gets shorter, a window a fifth of a second wide — and FEINTS, which are
+## the thing that makes it a read rather than a reaction. What they cost you is
+## not milliseconds; it is that the first commitment is a lie often enough that
+## you cannot trust it.
+const THEIR_GUARD := 8
+const YOUR_GUARD := 3
 
-## How long the wind-up lasts. It shortens as the fight goes on, which is what
-## keeps the last two exchanges tense when the first two were free.
-const TELEGRAPH_START := 0.90
-const TELEGRAPH_MIN := 0.40
-const TELEGRAPH_STEP := 0.06
+## How long the wind-up lasts, and it does not last long.
+const TELEGRAPH_START := 0.72
+const TELEGRAPH_MIN := 0.26
+const TELEGRAPH_STEP := 0.052
 
-## How far either side of the strike a block still counts, in seconds. Generous
-## on purpose: the decision this asks for is WHICH SIDE, not what your reaction
-## time is, and a game about picking a side should not be a game about latency.
-const WINDOW := 0.26
+## How far either side of the strike a block still counts, in seconds.
+const WINDOW := 0.17
 
 ## Seconds after a swing lands before the next one starts.
-const RECOVER := 0.55
+const RECOVER := 0.42
+
+## The chance a wind-up is a lie, and how far through it they switch hands. It
+## climbs with the exchange, so the fight gets harder in the way a fight does:
+## they work out that you are reading them.
+const FEINT_AT := 0.55
+const FEINT_START := 0.10
+const FEINT_STEP := 0.055
+const FEINT_MAX := 0.55
+
+static func feint_chance(exchange: int) -> float:
+	return minf(FEINT_MAX, FEINT_START + FEINT_STEP * float(exchange))
 
 static func telegraph_for(exchange: int) -> float:
 	return maxf(TELEGRAPH_MIN, TELEGRAPH_START - TELEGRAPH_STEP * float(exchange))

@@ -1135,10 +1135,19 @@ func test_the_score_is_built_and_loops() -> void:
 	t.eq(day.loop_mode, AudioStreamWAV.LOOP_FORWARD, "and it loops")
 	t.eq(day.loop_end, int(day.data.size() / 2), "over its whole length")
 
-func test_each_shift_sounds_different() -> void:
+## There is ONE piece of music, on purpose.
+##
+## This used to assert the opposite — that each shift sounded different — and
+## the three moods it was protecting are what made the title screen's track get
+## thrown away the moment a shift started. The score is the same everywhere now
+## and asking for it by any name returns the same buffer, which is the property
+## that makes `play_music` idempotent and stops two tracks overlapping.
+func test_there_is_one_score_and_it_plays_everywhere() -> void:
 	var day := AudioMgr._build_music("day")
 	var night := AudioMgr._build_music("night")
-	t.ok(day.data != night.data, "night is not the same music as day")
+	t.ok(day.data == night.data, "asking for the night music gets the same score")
+	t.ok(day == night, "and literally the same stream, so nothing restarts")
+	t.gt(float(day.data.size()), 44100.0 * 2.0, "which is more than a second long")
 
 ## Loud enough to hear, quiet enough not to clip.
 ##

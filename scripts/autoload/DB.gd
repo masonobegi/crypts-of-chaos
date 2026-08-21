@@ -94,28 +94,48 @@ static func prescriptions_for(condition_id: String) -> Array[String]:
 ## crowded, and a crowd is also an alibi. That is the whole reason there are
 ## three of these rather than one.
 ##
-## pay        : multiplier on your salary for the shift
+## pay         : multiplier on your salary for the shift
 ## appointments: how many booked encounters land on your list
-## scrutiny   : how carefully the paperwork is read afterwards
-## admissions : morning arrivals multiplier
+## scrutiny    : how carefully the paperwork is read afterwards
+## admissions  : morning arrivals multiplier
+## night_penalty: how much of the evening out the shift has already cost you
+##
+## The note was "there is not as much of a trade-off for any shift — why am I
+## getting paid more and there are fewer people in the morning?", and it was
+## right: nights paid better AND had nobody watching, so the only thing it cost
+## was volume, and volume is the thing a cheat cares least about.
+##
+## Each one gives up something the others keep:
+##  * DAY is the money. Eight on the list and everybody billing — and five
+##    members of staff on the floor who will see anything you try.
+##  * EVENING is the compromise, and the one shift where you get an evening out
+##    afterwards at full strength.
+##  * NIGHT is the one where nobody is watching, and it costs you BOTH ends of
+##    the day: two appointments, and you have been awake for eight hours when
+##    the streets are the only place left to be. `night_penalty` is how much of
+##    an evening out you have left in you.
 const SHIFTS := {
 	"night": {
 		"name": "Night", "start_hour": 0, "hours": 8,
-		"pay": 1.45, "appointments": 3, "scrutiny": 0.4, "admissions": 0.4,
-		"blurb": "Skeleton crew. Nobody is watching.",
-		"catch": "And everybody knows exactly who was on.",
+		"pay": 1.60, "appointments": 2, "scrutiny": 0.35, "admissions": 0.35,
+		"night_penalty": 1.0,
+		"blurb": "Two on the list and one nurse in the building.",
+		"catch": "Nobody sees a thing — and you are too wrecked to go out after.",
 	},
 	"day": {
 		"name": "Day", "start_hour": 8, "hours": 8,
-		"pay": 1.0, "appointments": 7, "scrutiny": 1.0, "admissions": 1.0,
-		"blurb": "Full clinic, full staffing, consultant rounds.",
-		"catch": "The money is here. So is everyone else.",
+		"pay": 1.0, "appointments": 8, "scrutiny": 1.15, "admissions": 1.0,
+		"night_penalty": 0.0,
+		"blurb": "Eight on the list, five staff on the floor, consultant rounds.",
+		"catch": "All of the money, and an audience for everything you do.",
 	},
 	"evening": {
 		"name": "Evening", "start_hour": 16, "hours": 8,
-		"pay": 1.2, "appointments": 5, "scrutiny": 0.7, "admissions": 0.7,
+		"pay": 1.25, "appointments": 5, "scrutiny": 0.7, "admissions": 0.7,
+		"night_penalty": 0.0,
 		"blurb": "Visiting hours, then the building empties.",
-		"catch": "Families see things staff have learned not to.",
+		"catch": "Families see things staff have learned not to — and you finish "
+			+ "with the whole night ahead of you.",
 	},
 }
 

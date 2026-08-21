@@ -278,46 +278,30 @@ func _build_hum() -> AudioStreamWAV:
 const MUSIC_BARS := 8
 const BEATS_PER_BAR := 4
 
-## One entry per bar: `b` is the bass root in semitones from the mood's key, `c`
-## is the voicing above it. Ordinary changes played straight — a ii-V-I with a
-## couple of secondary dominants, which is the harmonic vocabulary of every hold
-## line and hotel lobby in the world.
-const MUSIC_MOODS := {
-	"day": {
-		"key": 261.63, "bpm": 96.0, "swing": 0.17, "gain": 1.0,
-		"drums": 1.0, "comp": 1.0, "lead": 1.0, "seed": 8112,
-		"prog": [
-			{"b": 0, "c": [4, 7, 11]}, {"b": -3, "c": [0, 4, 7]},
-			{"b": 2, "c": [5, 9, 12]}, {"b": -5, "c": [2, 5, 11]},
-			{"b": 4, "c": [7, 11, 14]}, {"b": -3, "c": [1, 4, 7]},
-			{"b": 2, "c": [5, 9, 12]}, {"b": -5, "c": [2, 5, 11]},
-		],
-		"scale": [0, 2, 4, 5, 7, 9, 11],
-	},
-	"evening": {
-		"key": 233.08, "bpm": 82.0, "swing": 0.20, "gain": 0.92,
-		"drums": 0.7, "comp": 0.95, "lead": 0.85, "seed": 4471,
-		"prog": [
-			{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
-			{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
-			{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
-			{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 9]},
-		],
-		"scale": [0, 2, 3, 5, 7, 8, 10],
-	},
-	## Night is nearly nothing. The stealth half of the game is listening for
-	## footsteps, and a rhythm section is thirty-two competing transients a bar.
-	"night": {
-		"key": 196.00, "bpm": 66.0, "swing": 0.0, "gain": 0.74,
-		"drums": 0.0, "comp": 0.75, "lead": 0.30, "seed": 2903,
-		"prog": [
-			{"b": 0, "c": [3, 7, 10]}, {"b": 0, "c": [3, 7, 10]},
-			{"b": -4, "c": [3, 8, 12]}, {"b": -4, "c": [3, 8, 12]},
-			{"b": -5, "c": [2, 7, 11]}, {"b": -5, "c": [2, 7, 11]},
-			{"b": -2, "c": [1, 5, 10]}, {"b": -2, "c": [1, 5, 10]},
-		],
-		"scale": [0, 2, 3, 5, 7, 8, 10],
-	},
+## One entry per bar: `b` is the root the bar is built on in semitones from the
+## key, `c` is the voicing above it.
+##
+## There is ONE piece of music and it plays the whole time — menu, ward, street,
+## courtroom. Three shift moods meant the title screen's track was thrown away
+## the moment a shift started, which is where "the menu music and the game music
+## overlap" came from, and the one people liked was the menu's.
+##
+## And there is no bass line and no kick drum. The note was "there's a weird DUH
+## DUH DUH going on in the background that I hate, but I like the melody" —
+## between them the walking bass and the kick put something low on every single
+## beat, which is the one thing a loop this long cannot get away with. What is
+## left is what people were actually listening to: brushes, a comping electric
+## piano off the beat, and a vibraphone that phrases.
+const SCORE := {
+	"key": 233.08, "bpm": 82.0, "swing": 0.20, "gain": 0.95,
+	"drums": 0.5, "comp": 1.0, "lead": 1.0, "seed": 4471,
+	"prog": [
+		{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
+		{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
+		{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
+		{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 9]},
+	],
+	"scale": [0, 2, 3, 5, 7, 8, 10],
 }
 
 var _music_player: AudioStreamPlayer = null
@@ -541,11 +525,14 @@ func _r_kick(buf: PackedFloat32Array, start: int, count: int, gain: float) -> vo
 		if i >= n:
 			i = 0
 
-func _build_music(kind: String) -> AudioStreamWAV:
-	var key := "__music2_" + kind
+## `kind` is ignored. It is still in the signature because four call sites pass
+## a shift name, and there being one piece of music is a fact about the score
+## rather than about them.
+func _build_music(_kind := "") -> AudioStreamWAV:
+	var key := "__score"
 	if _cache.has(key):
 		return _cache[key]
-	var mood: Dictionary = MUSIC_MOODS.get(kind, MUSIC_MOODS["day"])
+	var mood: Dictionary = SCORE
 	var root: float = float(mood["key"])
 	var prog: Array = mood["prog"]
 	var scale: Array = mood["scale"]
@@ -564,32 +551,22 @@ func _build_music(kind: String) -> AudioStreamWAV:
 
 	for bar in MUSIC_BARS:
 		var here: Dictionary = prog[bar % prog.size()]
-		var next: Dictionary = prog[(bar + 1) % prog.size()]
 		var b0 := float(here["b"])
 		var chord: Array = here["c"]
 		var bar_t := float(bar) * beat * float(BEATS_PER_BAR)
 
-		# Walking bass: root, fifth, octave, then a chromatic approach to
-		# whatever the next bar starts on. That last note is the whole reason a
-		# walking line sounds like it is going somewhere.
-		var approach := float(next["b"]) + (-1.0 if rng.randf() < 0.5 else 1.0)
-		var walk := [b0, b0 + 7.0, b0 + 12.0, approach]
-		for i in 4:
-			_render(buf, "bass", bar_t + float(i) * beat, beat * 1.5,
-				_semitone(root, float(walk[i]) - 24.0), 0.62, rng)
-
-		# Comping. Off the beat, because a chord on the beat is a hymn.
+		# No bass line. The chord below carries the bar's root as its bottom
+		# note instead, which is enough to say where the harmony is without
+		# putting something low on every beat.
+		#
+		# Comping, off the beat, because a chord on the beat is a hymn.
 		if comp > 0.0:
-			var hits := [1.0 + swing, 2.5 + swing, 3.0]
-			if kind == "night":
-				hits = [0.0, 2.0]
-			for h in hits:
-				var voice: String = "pad" if kind == "night" else "keys"
-				var length: float = beat * (3.0 if kind == "night" else 1.6)
-				for n in chord:
-					_render(buf, voice, bar_t + float(h) * beat, length,
-						_semitone(root, float(n) - 12.0),
-						comp * (0.16 if kind == "night" else 0.20), rng)
+			for h in [1.0 + swing, 2.5 + swing, 3.0]:
+				var voicing: Array = [b0 - 12.0]
+				voicing.append_array(chord)
+				for n in voicing:
+					_render(buf, "keys", bar_t + float(h) * beat, beat * 1.6,
+						_semitone(root, float(n) - 12.0), comp * 0.20, rng)
 
 		# The lead phrases: two bars on, two bars off, and it lands on a chord
 		# tone. Sparse enough to sit under eighteen minutes of a shift.
@@ -603,13 +580,10 @@ func _build_music(kind: String) -> AudioStreamWAV:
 				_render(buf, "vibe", bar_t + float(figure[i]) * beat, beat * 2.2,
 					_semitone(root, float(pick) + 12.0), lead * 0.13, rng)
 
-		# Kit. Kick on one and the and-of-three, rim on two and four, brushes
-		# on the swung eighths.
+		# Kit, brushes only. No kick: that and the bass were the DUH DUH DUH.
 		if drums > 0.0:
-			_render(buf, "kick", bar_t, 0.30, 0.0, drums * 0.72, rng)
-			_render(buf, "kick", bar_t + 2.5 * beat, 0.26, 0.0, drums * 0.46, rng)
 			for b in [1.0, 3.0]:
-				_render(buf, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.30, rng)
+				_render(buf, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.26, rng)
 			for i in 8:
 				var pos: float = float(i) * 0.5
 				if i % 2 == 1:
@@ -646,9 +620,12 @@ func _build_music(kind: String) -> AudioStreamWAV:
 
 ## Start (or switch) the score. Idempotent for the same shift, so calling it
 ## every time a shift starts does not restart the loop mid-bar.
-func play_music(kind: String) -> void:
+func play_music(_kind := "") -> void:
 	if DisplayServer.get_name() == "headless":
 		return
+	# One score, so this is a no-op after the first call from anywhere. That is
+	# the fix for the menu's track being replaced the moment a shift started.
+	var kind := "score"
 	_ensure_voices()
 	if _music_player == null:
 		_music_player = AudioStreamPlayer.new()

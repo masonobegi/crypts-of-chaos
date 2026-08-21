@@ -49,8 +49,13 @@ func _build() -> void:
 	var kind := Procedures.procedure_for(_patient.condition_id)
 	var screen := Procedures.screen_for(kind)
 	if screen != "":
-		v.add_child(_choice(Procedures.procedure_name(kind), _procedure_line(kind),
-			UIKit.ACCENT, func(): _go(screen)))
+		var done: bool = _patient.seen_to_today()
+		v.add_child(_choice(Procedures.procedure_name(kind),
+			("You have already had your hands on them today. Whatever it did, "
+				+ "it has until the morning to do it.") if done
+				else _procedure_line(kind),
+			UIKit.INK_DIM if done else UIKit.ACCENT,
+			Callable() if done else func(): _go(screen)))
 
 	v.add_child(_choice("Examine them", _examine_line(), UIKit.INK,
 		func(): _go("exam")))
@@ -78,8 +83,7 @@ func _build() -> void:
 	# all because it is funny, and it is at the bottom because the game is not
 	# trying to talk you into it.
 	if Brawl.can_fight(_patient):
-		v.add_child(_choice("Square up", _fight_line(), UIKit.BAD,
-			func(): _go("fight")))
+		v.add_child(_choice("Square up", _fight_line(), UIKit.BAD, _square_up))
 	card_footer(UIKit.button("Leave them be", close))
 
 # ------------------------------------------------------------------ the header
@@ -216,6 +220,16 @@ func _choice(title: String, outcome: String, tint: Color, cb: Callable) -> Contr
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	p.add_child(bv)
 	return p
+
+## Close the card and do it in the room. There is no screen for this: they
+## stand up out of the chair in front of you and it happens between two bodies.
+func _square_up() -> void:
+	var pid: String = _patient.id
+	close()
+	var bs = get_tree().get_first_node_in_group("brawl_system")
+	if bs != null:
+		var ps = patient_system()
+		bs.call_deferred("start", ps.get_patient(pid) if ps != null else null)
 
 func _go(screen: String) -> void:
 	var pid: String = _patient.id

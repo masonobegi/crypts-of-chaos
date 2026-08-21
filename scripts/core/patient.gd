@@ -35,6 +35,11 @@ var chart: PatientChart = null
 ## Ground truth of what you actually did to them.
 var actual_treatments: Array[Dictionary] = []   ## {id, time, quality}
 var last_treatment_time: int = -999
+## Which day you last put your hands on them. One procedure per patient per day:
+## the ward is a question about which of five people is worth YOUR time, and
+## being able to work the same person over and over turned that into a grind on
+## whoever paid best.
+var treated_on_day: int = -1
 
 var room: String = ""
 ## False while they are a walk-in sitting in the treatment bay waiting to be
@@ -233,6 +238,10 @@ func record_treatment(tid: String, quality: float) -> void:
 	actual_treatments.append({"id": tid, "time": GameState.career_minutes, "quality": quality})
 	last_treatment_time = GameState.career_minutes
 
+## Have you already done something to them today?
+func seen_to_today() -> bool:
+	return treated_on_day == GameState.day
+
 # ------------------------------------------------------------------ vitals
 ## The player-facing readout. Deliberately fictional, deliberately noisy, and
 ## distorted by the patient's own personality — a hypochondriac reports worse
@@ -378,7 +387,8 @@ func to_dict() -> Dictionary:
 		"rate": recovery_rate, "esd": expected_stay_days, "da": days_admitted,
 		"aod": admitted_on_day, "ins": insurance, "bdr": base_daily_revenue,
 		"comps": comps, "chart": chart.to_dict(), "at": actual_treatments,
-		"ltt": last_treatment_time, "room": room, "disc": discharged,
+		"ltt": last_treatment_time, "tod": treated_on_day,
+		"room": room, "disc": discharged,
 		"dr": discharge_reason, "sat": satisfaction, "env": env_modifier,
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
@@ -411,6 +421,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	for t in d.get("at", []):
 		p.actual_treatments.append(t)
 	p.last_treatment_time = int(d.get("ltt", -999))
+	p.treated_on_day = int(d.get("tod", -1))
 	p.room = d.get("room", "")
 	p.discharged = bool(d.get("disc", false))
 	p.discharge_reason = d.get("dr", "")

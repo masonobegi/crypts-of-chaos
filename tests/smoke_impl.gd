@@ -800,11 +800,17 @@ func _check_a_wrong_site_can_be_revised() -> void:
 	_ok(String(bad.get("indicated", "")) == right,
 		"and the outcome names the site that should have been opened (%s)" % right)
 
-	# The revision: same patient, correct site, on a body already opened once.
-	var fixed: Dictionary = game.treatment.perform_surgery(p, right,
+	# The revision: same patient, on a body already opened once — and the site
+	# that is indicated NOW, which is not necessarily the one that was indicated
+	# five minutes ago. Opening the wrong knee leaves an injury in that knee,
+	# and an unresolved injury is the first thing `indicated_site_for` looks
+	# for. So the operation you owe them next is the one on the damage you just
+	# did, which is bleak and correct.
+	var right_now: String = TreatmentSystem.indicated_site_for(p)
+	var fixed: Dictionary = game.treatment.perform_surgery(p, right_now,
 		["improvise", "improvise", "improvise"])
 	_ok(not bool(fixed.get("wrong_site", true)),
-		"going back for the indicated site is not itself a wrong site")
+		"going back for the site that is indicated now is not a wrong site")
 	_ok(int(GameState.stats.surgeries) == before + 2,
 		"and the record shows both operations, not one")
 	_ok(p.chart.surgery_log.size() >= 2,

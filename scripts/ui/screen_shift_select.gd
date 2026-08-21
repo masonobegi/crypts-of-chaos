@@ -31,8 +31,19 @@ func _card(o: Dictionary) -> Control:
 	bv.add_child(UIKit.label(String(o.get("hours", "")), 14, UIKit.INK_DIM))
 	bv.add_child(UIKit.rule())
 	bv.add_child(UIKit.row("Pay", "×%.2f" % float(o.get("pay", 1.0)), UIKit.MONEY))
-	bv.add_child(UIKit.row("On the floor", "%d other staff" % int(o.get("staff", 0))))
-	bv.add_child(UIKit.row("On your list", "%d appointments" % int(o.get("appointments", 0))))
+	bv.add_child(UIKit.row("On your list", "%d appointments" % int(o.get("appointments", 0)),
+		UIKit.MONEY if int(o.get("appointments", 0)) >= 6 else UIKit.INK))
+	# Staff on the floor is the number that decides whether anything you do is
+	# seen, so it is stated as what it MEANS rather than as a headcount.
+	var staff := int(o.get("staff", 0))
+	bv.add_child(UIKit.row("Watching you", _eyes(staff),
+		UIKit.BAD if staff >= 5 else (UIKit.WARN if staff >= 3 else UIKit.GOOD)))
+	# ...and so is what it costs you afterwards, which is the thing nights were
+	# missing. A shift with no evening after it is a shift with no way to fill
+	# the beds it just emptied.
+	var out: bool = float(o.get("night_penalty", 0.0)) < 0.5
+	bv.add_child(UIKit.row("Out afterwards", "yes" if out else "no",
+		UIKit.GOOD if out else UIKit.BAD))
 	bv.add_child(UIKit.spacer(6))
 	bv.add_child(UIKit.label(String(o.get("blurb", "")), 14, UIKit.INK,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -44,6 +55,14 @@ func _card(o: Dictionary) -> Control:
 	bv.add_child(UIKit.button("Take it", func(): _take(kind), Color(0.16, 0.32, 0.30)))
 	box.add_child(bv)
 	return box
+
+## Five people is an audience. One is a witness. Nobody is nobody.
+func _eyes(staff: int) -> String:
+	if staff <= 1:
+		return "one nurse"
+	if staff <= 3:
+		return "%d, and visitors" % staff
+	return "%d, all shift" % staff
 
 func _take(kind: String) -> void:
 	var ss = shift_system()

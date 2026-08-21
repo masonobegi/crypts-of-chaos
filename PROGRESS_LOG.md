@@ -3044,3 +3044,116 @@ comparing three strings four hundred thousand times a second cost more than
 every oscillator and envelope in the arrangement put together. One function per
 timbre, a sine table, and envelopes as incremental multipliers — `exp(-k*u)`
 becomes `env *= exp(-k/SR)`, which is exact rather than an approximation.
+
+## Session 7 — the notes that changed the shape of the day
+
+### The DUH DUH DUH
+
+*"There's a weird DUH DUH DUH going on in the background that I hate, but I like
+the melody, just leave that in."* That was the walking bass and the kick, which
+between them put something low on every single beat. Both gone. The chord below
+carries the bar's root as its bottom note instead, which says where the harmony
+is without pulsing. Brushes on the swung eighths, a rim on two and four, the
+comping piano and the vibraphone.
+
+*"It seems like the menu music and the game music overlap."* They did, in the
+sense that the title screen's track was thrown away the moment a shift started —
+three shift moods, three different loops. There is ONE score now and it plays
+everywhere; `play_music` ignores what it is asked for and is therefore idempotent
+from any call site, which is what stops two tracks running at once.
+
+### One pair of hands, once a day
+
+*"I should only be able to do one treatment per patient per night."* The ward is
+a question about which of five people is worth YOUR time, and being able to work
+the same person repeatedly turned that into a grind on whoever paid best. One
+per patient per day, and the same rule stated from every door into it.
+
+*"As soon as that's done the patient should have a quip about their feelings —
+whether they know I fucked it, or it's better or worse."* Two lines, not one.
+The outcome's own `say` is what comes out of them at the moment; a couple of
+seconds later comes the verdict, and whether they can tell you did it on purpose
+is a property of how VISIBLE it was rather than how bad it was. A quiet piece of
+harm gets "hm, bit worse, might just be me". A loud one gets named.
+
+*"There should be an immediate facial and body expression change if it's worse or
+better."* `NPCBody.set_mood()`: brows angle down toward the nose or lift and out,
+a mouth in three pieces whose corners ride up or down, shoulders squared or
+slumped, head up or dropped. The brows were already there and were the whole
+expression budget; they just never moved.
+
+### Shifts that cost something
+
+*"There's not as much of a trade-off for any shift — why am I getting paid more
+and there are fewer people in the morning?"* Because nights paid better AND had
+nobody watching, so the only thing they cost was volume, and volume is what a
+cheat cares least about. Nights now cost you the evening: you have been awake
+since midnight and you are not going out. That is the sharpest trade in the game
+— the shift where nobody sees anything is the shift where you cannot go and
+create tomorrow's patients.
+
+### The evening is three different jobs
+
+*"Let me choose based on difficulty what I want to do... make a variety of games,
+not just run up to someone and hold E."*
+
+- **Reach** — get within arm's length unseen. Positioning. The original.
+- **Bump** — be beside them at one particular step of their walk and only then;
+  everywhere else it is a man bumping into somebody, which is not an injury and
+  very much is a witness.
+- **Rig** — see to something on their route, then be a long way from it when
+  they get there. Two problems, and the second one is being innocent at a
+  specific time.
+
+*"If I get caught mid-act I get sued, but if I just get seen I get told off."*
+Those are two numbers now, not one. Exposure is ambient and produces a
+description of a man in a coat. Being in somebody's eyeline AT THE MOMENT is a
+witness, and a witness is a claim form — filed through the same machinery as
+every other claim, with a strength of 0.72 and one name on the witness list who
+is not a colleague and owes you nothing. Pointing at your own notes is worth
+almost nothing against it, because a street is not in the notes.
+
+*"The games need to be harder with a higher chance of being seen during the
+act."* The act runs its own, worse, visibility check: cones half again as wide
+and reaching half again as far, and a tram lighting the street counts as caught
+outright.
+
+*"I couldn't get on the sidewalk for one of them."* Literally true — the player
+had no step handling at all, and a CharacterBody3D stops dead against anything
+taller than its safe margin. The kerb was a wall. There is a three-move step-up
+now (lift, move, drop, and put it all back if there is nothing to land on), so
+kerbs and thresholds work everywhere.
+
+### The fight, in the room
+
+*"If I win the fight the patient should be knocked out so they can't remember I
+just fought them, and the fighting game should be in the 3D world — as many
+times as you can make the minigames in the 3D world without them being
+obnoxious, the better. Fighting on that 2D minigame was pretty lame."*
+
+It was. They stand up out of the chair now, you stop being able to walk away,
+and the exchange happens between two bodies in a room with a door. The arm is
+driven straight off the rules clock, so there is no animation that can fall out
+of step with what the fight thinks is happening. Winning knocks them out —
+`set_asleep` puts their attention at zero, which is exactly what "cannot
+remember" means to the perception pass, and nothing wakes them.
+
+### Legitimately hard
+
+*"Fights should be legit difficult, and the minigames to give the wrong medicine
+should also be legit hard — they have such big payoffs and are too easy."*
+
+The fight: eight to put them down, three to take you down, a wind-up starting at
+0.72s and shortening to 0.26, a window 0.17s wide — and **feints**, which are
+the thing that makes it a read rather than a reaction. The chance a wind-up is a
+lie climbs with the exchange, so it gets harder the way a fight does: they work
+out that you are reading them. The shortest wind-up is still longer than the
+window, and there is a test asserting that, because the moment it is not, the
+last exchange is a coin toss.
+
+The dose: the band is a third of what it was, the plunger runs on two beats
+against each other so there is no rhythm to learn, and it CARRIES after you let
+go. The skill is releasing early by an amount you have learned rather than
+stopping on the line. The best possible piece of harm no longer out-scores the
+best possible cure. The bone hold is longer and both tolerances are tighter; the
+stitch radius is down a third; the arc is narrower and faster.

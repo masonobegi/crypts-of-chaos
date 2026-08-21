@@ -132,7 +132,7 @@ func _build_options() -> void:
 		# the same job and should not be the same verb.
 		var kind := Procedures.procedure_for(_patient.condition_id)
 		var screen := Procedures.screen_for(kind)
-		if screen != "":
+		if screen != "" and not _patient.seen_to_today():
 			var pb := UIKit.button(Procedures.procedure_name(kind), func():
 				var pid: String = _patient.id
 				close()
@@ -140,6 +140,10 @@ func _build_options() -> void:
 				Color(0.20, 0.32, 0.30))
 			pb.alignment = HORIZONTAL_ALIGNMENT_LEFT
 			v.add_child(pb)
+		elif screen != "":
+			# One per patient per day, and the same rule from every door into it.
+			v.add_child(UIKit.label("You have already had your hands on them today.",
+				14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 		var ex := UIKit.button("Examine them", func():
 			var pid: String = _patient.id
 			close()

@@ -120,6 +120,44 @@ func file_claim(p, reason: String) -> Dictionary:
 	GameState.stats.lawsuits_filed += 1
 	return claim
 
+## A claim that did not come from the ward at all.
+##
+## Somebody watched you do something in a street and is willing to say so. It
+## goes through the same machinery as every other claim — served after a delay,
+## settled or fought, argued in front of the same four barristers — because from
+## the courtroom's point of view it is the same document. What makes it worse is
+## `witnesses`: there is one, they are not a colleague, and they owe you
+## nothing.
+func file_street_claim(who: String, where: String, condition_id: String,
+		who_saw := "a passer-by") -> bool:
+	var claim := {
+		"id": "claim_%d" % _next_id,
+		"patient_id": "",
+		"patient": who,
+		"condition": String(DB.condition(condition_id).get("name", condition_id)),
+		"reason": "street",
+		"summary": "Claimant states that on the evening in question, at %s, the "
+			% where + "defendant caused the injury for which they were "
+			+ "subsequently admitted to the defendant's own ward.",
+		"amount": 9000 + RNG.randi_range_s("street_claim", 0, 7000)
+			+ 400 * maxi(0, GameState.day - 1),
+		# High, and not much you can do about it: the difference between this
+		# and a discharge claim is that somebody saw it happen.
+		"strength": 0.72,
+		"day_filed": GameState.day + RNG.randi_range_s("serve", SERVE_DELAY[0], SERVE_DELAY[1]),
+		"state": "pending",
+		# A list of names, like every other claim's — there is exactly one on it
+		# and they are not a colleague, which is what makes a flat denial the
+		# expensive answer here.
+		"witnesses": [who_saw],
+		"imaging": false,
+		"lawyer": "",
+	}
+	_next_id += 1
+	claims.append(claim)
+	GameState.stats.lawsuits_filed += 1
+	return true
+
 ## Everything the claimant can actually put in front of a court.
 func _strength_of(p, reason: String) -> float:
 	var s := 0.22
@@ -427,8 +465,13 @@ static func reply_score(claim: Dictionary, reply: String, lawyer_id: String,
 	match reply:
 		"record":
 			# Only as good as the paperwork. Imaging that disagrees with the
-			# chart is the worst moment available in this game.
-			base = 0.62 if not imaged else 0.18
+			# chart is the worst moment available in this game — and a claim
+			# about a STREET is not in the paperwork at all, so pointing at the
+			# notes is pointing at a document nobody is asking about.
+			if String(claim["reason"]) == "street":
+				base = 0.16
+			else:
+				base = 0.62 if not imaged else 0.18
 		"risk":
 			base = 0.55 if String(claim["reason"]) in ["procedure", "injury"] else 0.30
 		"deny":

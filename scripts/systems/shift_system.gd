@@ -76,6 +76,7 @@ func offer_shifts() -> void:
 			"appointments": int(spec["appointments"]),
 			"blurb": String(spec["blurb"]),
 			"catch": String(spec["catch"]),
+			"night_penalty": float(spec.get("night_penalty", 0.0)),
 		})
 	shift_choice_ready.emit({"day": GameState.day, "options": options,
 		"personal": GameState.personal_money, "owed": GameState.total_debt()})

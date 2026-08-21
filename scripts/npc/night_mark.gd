@@ -39,16 +39,35 @@ func home() -> bool:
 func prompt(_player) -> Array:
 	if _done:
 		return ["", ""]
+	var night = get_tree().get_first_node_in_group("night_system")
+	if night == null:
+		return [display, "[hold E]"]
+	match String(NightSystem.act_of(String(night._place.get("id", "")))):
+		"rig":
+			# Nothing to do to them directly. The thing you did is up the road.
+			return [display, "not like this"]
+		"bump":
+			# Only at the kerb. Everywhere else this is a man walking into
+			# somebody, which is not an injury and is very much a witness.
+			if night.bump_window() <= 0.0:
+				return [display, "not here"]
+			return [display, "NOW · [hold E]"]
 	return [display, "[hold E]"]
 
 func use_seconds(_player, _held) -> float:
-	# A hold, not a tap. The one act in the game that ought to take a moment of
-	# committing to, and long enough that a bystander's sweep can catch you
-	# halfway through it.
+	# The timing act is a shove, not a procedure. Holding for a second at the
+	# kerb is not a thing the window has room for.
+	var night = get_tree().get_first_node_in_group("night_system")
+	if night != null and String(NightSystem.act_of(
+			String(night._place.get("id", "")))) == "bump":
+		return 0.25
 	return 1.1
 
 func interact(_player, _held) -> void:
 	if _done:
+		return
+	var night2 = get_tree().get_first_node_in_group("night_system")
+	if night2 != null and not night2.can_act():
 		return
 	_done = true
 	stop_moving()

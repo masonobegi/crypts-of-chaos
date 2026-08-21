@@ -22,6 +22,7 @@ var appointments: AppointmentSystem
 var shift: ShiftSystem
 var legal: LegalSystem
 var night: NightSystem
+var brawl: BrawlSystem
 var codex: Codex
 var ui: Node
 
@@ -281,6 +282,14 @@ func _spawn_systems() -> void:
 	night = NightSystem.new()
 	night.name = "NightSystem"
 	add_child(night)
+
+	# The fight happens in the room, so it is a system on the floor rather than
+	# a screen over it.
+	brawl = BrawlSystem.new()
+	brawl.name = "BrawlSystem"
+	brawl.patient_system = patient_system
+	brawl.treatment_system = treatment
+	add_child(brawl)
 
 	shift = ShiftSystem.new()
 	shift.name = "ShiftSystem"

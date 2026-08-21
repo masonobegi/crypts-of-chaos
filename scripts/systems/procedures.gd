@@ -318,9 +318,10 @@ static func site_name(condition_id: String) -> String:
 ## absence of one, so that making somebody worse on purpose is a manoeuvre.
 const BONE_MAX_ANGLE := 0.62      # radians the distal fragment can swing
 const BONE_MAX_GAP := 26.0        # pixels of traction, either way
-const BONE_TREAT_TARGET := {"angle": 0.0, "gap": 0.0, "tol_angle": 0.085, "tol_gap": 4.6}
-const BONE_WORSEN_TARGET := {"angle": 0.40, "gap": 15.0, "tol_angle": 0.075, "tol_gap": 4.2}
-const BONE_HOLD_SECONDS := 1.15   # how long it has to stay there
+const BONE_TREAT_TARGET := {"angle": 0.0, "gap": 0.0, "tol_angle": 0.060, "tol_gap": 3.2}
+const BONE_WORSEN_TARGET := {"angle": 0.40, "gap": 15.0, "tol_angle": 0.048, "tol_gap": 2.8}
+## Longer, because a hold is only a test if the tremor gets a go at you.
+const BONE_HOLD_SECONDS := 1.75
 const BONE_SECONDS := 14.0        # before the anaesthetic gives up
 
 static func bone_target(intent: String) -> Dictionary:
@@ -330,8 +331,8 @@ static func bone_target(intent: String) -> Dictionary:
 ## so you cannot buy a good grade on angle alone.
 static func bone_closeness(intent: String, angle: float, gap: float) -> float:
 	var t := bone_target(intent)
-	var da: float = absf(angle - float(t["angle"])) / (float(t["tol_angle"]) * 3.0)
-	var dg: float = absf(gap - float(t["gap"])) / (float(t["tol_gap"]) * 3.0)
+	var da: float = absf(angle - float(t["angle"])) / (float(t["tol_angle"]) * 2.6)
+	var dg: float = absf(gap - float(t["gap"])) / (float(t["tol_gap"]) * 2.6)
 	return clampf(1.0 - maxf(da, dg), 0.0, 1.0)
 
 static func bone_in_tolerance(intent: String, angle: float, gap: float) -> bool:
@@ -348,8 +349,8 @@ static func bone_in_tolerance(intent: String, angle: float, gap: float) -> bool:
 ## dislocated shoulder actually is — not force, but taking the limb round a
 ## particular curve at a particular speed — and it is the one manoeuvre in the
 ## game where being too fast and being too slow are both wrong.
-const MANIP_SECONDS := 7.0
-const MANIP_TOL := 0.17           ## radians either side of the guide
+const MANIP_SECONDS := 6.2
+const MANIP_TOL := 0.115          ## radians either side of the guide
 const MANIP_START := 0.62         ## how far out the joint sits to begin with
 
 ## The path, as a list of angles the guide passes through. Treating them takes
@@ -377,7 +378,7 @@ static func manip_angle_at(intent: String, t: float) -> float:
 
 ## 1.0 dead on the guide, 0.0 a full tolerance-and-a-half away.
 static func manip_closeness(err: float) -> float:
-	return clampf(1.0 - absf(err) / (MANIP_TOL * 2.4), 0.0, 1.0)
+	return clampf(1.0 - absf(err) / (MANIP_TOL * 2.0), 0.0, 1.0)
 
 ## Time on the guide is what is graded, and letting go stops your hand rather
 ## than the arc — so a player who panics and releases watches the joint go on
@@ -390,7 +391,7 @@ static func manip_grade(quality_time: float, total_time: float) -> float:
 # ------------------------------------------------------------------ suturing
 const SUTURE_POINTS := 6
 const SUTURE_SECONDS := 16.0
-const SUTURE_RADIUS := 34.0       # how far off a stitch can land and still take
+const SUTURE_RADIUS := 23.0       # how far off a stitch can land and still take
 ## How far to the side of the wound the loose bites sit, as a fraction of the
 ## wound's own half-width. Wide enough to be a different manoeuvre, close
 ## enough that it reads on the drawing as a stitch rather than a stab.
@@ -479,7 +480,10 @@ static func medicine_effect(condition_id: String, med_id: String) -> String:
 ## check doing its job.
 const DRUG_FACTOR := {
 	"treat": {"cure": 1.0, "inert": 0.46, "adverse": 0.10},
-	"worsen": {"adverse": 1.0, "inert": 0.50, "cure": 0.10},
+	# Harm is not easier than help. It used to be: the adverse bottle carried
+	# full marks and the dose band was wide enough to hit with your eyes shut,
+	# for the best-paying outcome on the board.
+	"worsen": {"adverse": 0.92, "inert": 0.34, "cure": 0.08},
 }
 
 static func dose_grade(intent: String, effect: String, precision: float) -> float:
@@ -507,15 +511,31 @@ static func options_for(condition_id: String) -> Array[String]:
 ## Where the prescribed line sits on the barrel, and where the line you want
 ## sits if you are not prescribing in good faith. Both are printed on the
 ## syringe; only one of them is printed in ink.
+## Both are printed on the barrel, and the one you want if you are not
+## prescribing in good faith is printed higher.
+##
+## These were much wider. "The minigames to give the wrong medicine should also
+## be legit hard — they have such big payoffs and are too easy": a dose that
+## turns a two-day stay into a five-day one was a bar you filled and let go of
+## within a fifth of the barrel. The band is a third of what it was, the plunger
+## is less predictable, and it CARRIES after you let go — so the skill is
+## releasing early by an amount you have learned, not stopping on the line.
 const DOSE_TREAT_TARGET := 0.42
 const DOSE_WORSEN_TARGET := 0.88
-const DOSE_TOLERANCE := 0.075
+const DOSE_TOLERANCE := 0.028
+## How much further the plunger travels after you release, per unit of the rate
+## you were pulling at. Nothing in a hand stops instantly.
+const DOSE_CARRY := 0.085
 
 static func dose_target(intent: String) -> float:
 	return DOSE_WORSEN_TARGET if intent == "worsen" else DOSE_TREAT_TARGET
 
 static func dose_precision(intent: String, level: float) -> float:
-	return clampf(1.0 - absf(level - dose_target(intent)) / (DOSE_TOLERANCE * 3.0), 0.0, 1.0)
+	return clampf(1.0 - absf(level - dose_target(intent)) / (DOSE_TOLERANCE * 3.4), 0.0, 1.0)
+
+## Where the plunger ends up, given where it was and how fast it was moving.
+static func dose_settle(level: float, rate: float) -> float:
+	return clampf(level + rate * DOSE_CARRY, 0.0, 1.0)
 
 ## There is no "dial" any more.
 ##
@@ -527,6 +547,43 @@ static func dose_precision(intent: String, level: float) -> float:
 ## the ward a errand rather than a decision. Those conditions are prescriptions
 ## now, which is the same choice (which bottle, how much) made at the bedside
 ## with the patient in front of you.
+## What they say about it a couple of seconds later, once they have had a moment
+## to notice how they feel.
+##
+## Different from the `say` line in an outcome, which is what comes out of them
+## AT the moment: this is the verdict. Whether they can tell you made it worse
+## is not a property of how bad it was — it is a property of how VISIBLE it was,
+## which is the same rule the whole suspicion system runs on. A quiet piece of
+## harm gets "hm, it's a bit worse, might just be me". A loud one gets named.
+static func feeling_line(rec: float, visual: float, part: String) -> String:
+	var where := Anatomy.part_name(part)
+	if rec >= 0.12:
+		return String(RNG.pick("feeling", [
+			"Oh — no, that's better. That's much better.",
+			"Huh. I can move it.",
+			"Right. Yes. Thank you. Genuinely.",
+			"My %s hasn't felt like that in weeks." % where,
+		]))
+	if rec >= -0.03:
+		return String(RNG.pick("feeling", [
+			"Feels about the same, if I'm honest.",
+			"Was something meant to happen?",
+			"No change. Is that normal?",
+		]))
+	if visual >= 0.5:
+		return String(RNG.pick("feeling", [
+			"That's worse. That is definitely worse, and you did that.",
+			"I felt that. I felt you do that.",
+			"No. No, my %s was better before you touched it." % where,
+			"I want that written down. What you just did.",
+		]))
+	return String(RNG.pick("feeling", [
+		"Hm. Bit worse, maybe. Might just be me.",
+		"Is it meant to throb like this?",
+		"I'll give it till morning.",
+		"Something's not right, but I couldn't tell you what.",
+	]))
+
 static func procedure_for(condition_id: String) -> String:
 	return String(DB.condition(condition_id).get("procedure", "prescribe"))
 

@@ -429,8 +429,11 @@ func take_night_admissions() -> Array[Dictionary]:
 			ev.patient_id = p.id
 			ev.source = Evidence.Source.WITNESSED
 			ev.time = GameState.career_minutes
-			ev.base_weight = 0.45 if outcome == "messy" else 0.78
-			ev.certainty = 0.5 if outcome == "messy" else 0.85
+			# "seen" is a description of somebody; "caught" is a face they were
+			# looking straight at. The old "messy" band is both of those at
+			# once, which is why it is two now.
+			ev.base_weight = 0.45 if outcome == "seen" else 0.82
+			ev.certainty = 0.5 if outcome == "seen" else 0.90
 			ev.summary = "has seen you somewhere before and cannot place it"
 			p.mind.add_evidence(ev)
 			p.mind.observance = clampf(p.mind.observance + 0.25, 0.0, 1.0)

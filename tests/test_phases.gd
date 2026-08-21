@@ -307,17 +307,40 @@ func test_the_places_are_not_all_the_same_evening() -> void:
 		watchers[int(spec["watchers"])] = true
 	t.gt(float(watchers.size()), 2.0, "the streets differ in how busy they are")
 
-func test_being_seen_is_the_thing_that_costs_you() -> void:
+## Two different kinds of trouble, and they are not the same size.
+##
+## Being SEEN is ambient — you spent the evening where people could look at you,
+## and what comes of that is a description of a man in a coat. Being CAUGHT is
+## somebody's eyeline on you at the moment of the act, and what comes of THAT is
+## a witness, which is a claim form. The whole street phase is the gap between
+## those two, and it used to be one number with a threshold in it.
+func test_being_seen_and_being_caught_are_different_things() -> void:
 	var ns := NightSystem.new()
 	t.root.add_child(ns)
 	var heat_before := GameState.heat
-	var clean := ns.resolve("allotments", "A Person", 0.05, true)
+
+	var clean := ns.resolve("allotments", "A Person", 0.05, true, false)
 	t.eq(String(clean["outcome"]), "clean", "unseen is a clean night")
 	t.near(GameState.heat, heat_before, 0.001, "and costs nothing")
+	t.ok(String(clean["injury"]) != "",
+		"and it still tells you what they are turning up with")
+
 	ns.used_tonight = false
-	var caught := ns.resolve("allotments", "B Person", 0.9, true)
-	t.eq(String(caught["outcome"]), "caught", "being watched the whole time is not")
-	t.gt(GameState.heat, heat_before, "and it follows you home")
+	heat_before = GameState.heat
+	var seen := ns.resolve("allotments", "B Person", 0.9, true, false)
+	var seen_cost := GameState.heat - heat_before
+	t.eq(String(seen["outcome"]), "seen",
+		"a whole evening in the open, but nobody watching the act, is a telling-off")
+	t.ok(not bool(seen.get("sued", false)), "and nobody has a claim")
+	t.gt(seen_cost, 0.0, "it does follow you home")
+
+	ns.used_tonight = false
+	heat_before = GameState.heat
+	var caught := ns.resolve("allotments", "C Person", 0.05, true, true)
+	var caught_cost := GameState.heat - heat_before
+	t.eq(String(caught["outcome"]), "caught",
+		"being watched AT the moment is the bad one, however quiet the rest was")
+	t.gt(caught_cost, seen_cost, "and it costs more than merely being about")
 	ns.queue_free()
 
 func test_losing_your_nerve_is_free() -> void:
@@ -411,6 +434,67 @@ func test_the_bill_for_losing_grows_with_the_career() -> void:
 	# that is nothing at all.
 	t.gt(float(Brawl.bill_for(30)), float(Brawl.bill_for(1)) * 1.5,
 		"losing on day thirty costs meaningfully more than losing on day one")
+
+## The three acts have to be three different questions, not one question with
+## three names on it.
+func test_the_evening_offers_more_than_one_kind_of_job() -> void:
+	var acts := {}
+	var diffs := {}
+	for spec in NightSystem.PLACES:
+		var a := String(spec.get("act", ""))
+		t.ok(NightSystem.ACTS.has(a), "%s has a real act (%s)" % [spec["name"], a])
+		t.ok(String(NightSystem.ACTS[a].get("how", "")).length() > 20,
+			"and %s says what it asks of you" % a)
+		acts[a] = true
+		diffs[int(spec.get("diff", 0))] = true
+	t.gt(float(acts.size()), 2.0, "there are at least three different things to do")
+	t.gt(float(diffs.size()), 2.0, "at three different difficulties")
+	# A rig needs something to rig, or the objective line asks for a thing that
+	# does not exist.
+	for spec in NightSystem.PLACES:
+		if String(spec.get("act", "")) == "rig":
+			t.ok(String(spec.get("rig_name", "")) != "",
+				"%s names the thing you see to" % spec["name"])
+
+func test_the_easiest_job_is_offered_first() -> void:
+	# The screen renders PLACES in order and does not sort, so the order IS the
+	# difficulty curve.
+	var last := 0
+	for spec in NightSystem.PLACES:
+		var d := int(spec.get("diff", 1))
+		t.ok(d >= last, "%s does not come before something harder" % spec["name"])
+		last = d
+
+func test_being_caught_puts_a_letter_in_the_post() -> void:
+	var lg := LegalSystem.new()
+	t.root.add_child(lg)
+	var before: int = lg.claims.size()
+	t.ok(lg.file_street_claim("Wendell Tosh", "The allotments", "torn_knee"),
+		"a witness to the act can bring a claim")
+	t.eq(lg.claims.size(), before + 1, "and it lands on the pile")
+	var claim: Dictionary = lg.claims.back()
+	t.eq(String(claim["reason"]), "street", "filed as what it is")
+	t.gt(float(claim["strength"]), 0.6, "and it is a strong one, because somebody watched")
+	# Pointing at your own notes is no defence against something that did not
+	# happen on your ward.
+	t.lt(lg.reply_score(claim, "record", "duty"),
+		lg.reply_score(claim, "deny", "duty"),
+		"the chart is worth less than a flat denial here")
+	lg.queue_free()
+
+## The fight is meant to be hard, and hard in a way that is a read rather than
+## a reaction test.
+func test_a_fight_is_a_read_and_not_a_twitch() -> void:
+	t.gt(Brawl.TELEGRAPH_MIN, Brawl.WINDOW,
+		"even the shortest wind-up is longer than the block window")
+	t.gt(float(Brawl.THEIR_GUARD), float(Brawl.YOUR_GUARD) * 2.0,
+		"you have to land a lot more than you can take")
+	t.gt(Brawl.feint_chance(12), Brawl.feint_chance(0),
+		"and they start lying to you more as it goes on")
+	t.lt(Brawl.feint_chance(999), 0.7,
+		"but never so often that reading them is pointless")
+	t.ok(Brawl.FEINT_AT > 0.2 and Brawl.FEINT_AT < 0.9,
+		"the switch happens inside the wind-up, where you can still react to it")
 
 # ============================================================== achievements
 func test_every_achievement_is_reachable_and_named() -> void:

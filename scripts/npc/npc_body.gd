@@ -41,6 +41,13 @@ var _head: Node3D = null
 var _legs: Array[Node3D] = []
 var _eyes_open: Array[MeshInstance3D] = []
 var _eyes_shut: Array[MeshInstance3D] = []
+var _brows: Array[MeshInstance3D] = []
+var _mouth: MeshInstance3D = null
+var _mouth_corners: Array[MeshInstance3D] = []
+## -1 is "you have made this worse", +1 is "that is much better". Sticky: it is
+## set by something happening to them, not by the frame.
+var _mood := 0.0
+var _head_y := 1.50
 var _arms: Array[Node3D] = []
 var _torso: Node3D = null
 var _react_cooldown := 0.0
@@ -160,6 +167,7 @@ func _build_body() -> void:
 
 	_head = Node3D.new()
 	_head.position = Vector3(0, 1.50, 0)
+	_head_y = 1.50
 	root.add_child(_head)
 	# An egg, not a ball: taller than wide, flattened at the back, the volume
 	# carried high, and the jaw taken out of the same solid by squashing rather
@@ -220,9 +228,16 @@ func _build_body() -> void:
 		# A brow above each eye, in the hair colour. Two small dark bars are the
 		# whole of this model's expression budget and they are worth every
 		# triangle: without them the face is permanently, blankly surprised.
-		_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.098, 0.020, 0.026), 0.009),
+		#
+		# Kept, because they move. A brow angled down toward the nose is the
+		# entire difference between "this is going well" and "you have made me
+		# worse", and it is the fastest thing on this model to read at three
+		# metres.
+		var brow := Build.mi(Build.rbox_mesh(Vector3(0.098, 0.020, 0.026), 0.009),
 			Build.mat(hair.lightened(0.10), 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.082, 0.068, 0.192)))
+			Vector3(sx * 0.082, 0.068, 0.192))
+		_head.add_child(brow)
+		_brows.append(brow)
 		# A closed lid, hidden until it is needed. Hiding the eyes alone leaves
 		# a blank face, which reads as a missing texture rather than as sleep.
 		var lid := Build.mi(Build.rbox_mesh(Vector3(0.095, 0.017, 0.024), 0.008),
@@ -230,6 +245,19 @@ func _build_body() -> void:
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)
+
+	# A mouth in three pieces: a bar, and a corner block each side that rides up
+	# for a smile and down for a grimace. One rotated bar cannot do both, and a
+	# face that cannot do both has no opinion about what you just did to it.
+	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.086, 0.018, 0.022), 0.008),
+		Build.unshaded(Color(0.38, 0.20, 0.20)), Vector3(0, -0.062, 0.196))
+	_head.add_child(_mouth)
+	for sx in [-1.0, 1.0]:
+		var corner := Build.mi(Build.rbox_mesh(Vector3(0.026, 0.018, 0.022), 0.008),
+			Build.unshaded(Color(0.38, 0.20, 0.20)),
+			Vector3(sx * 0.052, -0.062, 0.194))
+		_head.add_child(corner)
+		_mouth_corners.append(corner)
 
 	for sx in [-1.0, 1.0]:
 		var arm := Node3D.new()
@@ -841,27 +869,137 @@ func set_on_duty(v: bool) -> void:
 ## unsee at three metres. There is no knee in this rig, so the whole leg rotates
 ## forward at the hip and the torso drops to seat height: at this level of
 ## stylisation that reads as sitting, and it costs two rotations.
+## Sitting.
+##
+## Hips down, thighs forward, shins down, hands on the thighs and a little
+## forward lean. The first version left the arms straight out in front like
+## somebody sleepwalking, and never put them back when they stood up.
 func set_seated(on: bool) -> void:
 	var body := get_node_or_null("Body")
 	if body == null:
 		return
 	_seated = on
 	var b: Node3D = body
-	b.position = Vector3(0, -0.26, 0) if on else Vector3.ZERO
+	b.position = Vector3(0, -0.30, 0) if on else Vector3.ZERO
+	# Sitting up straight is a thing nobody does. A few degrees of forward lean
+	# is most of the difference between a person and a shop dummy.
+	b.rotation.x = 0.07 if on else 0.0
 	for leg in _legs:
-		leg.rotation.x = -1.45 if on else 0.0
-	# Thigh forward, shin back down, foot on the floor.
+		leg.rotation.x = -1.42 if on else 0.0
 	for knee in _knees:
-		knee.rotation.x = 1.45 if on else 0.0
-	if _arms.size() >= 2 and on:
-		# Hands on knees, roughly. Anything is better than two arms hanging
-		# through the seat of a chair.
-		_arms[0].rotation.x = -0.55
-		_arms[1].rotation.x = -0.55
+		knee.rotation.x = 1.36 if on else 0.0
+	for i in _arms.size():
+		var arm: Node3D = _arms[i]
+		# Down and forward, elbows in — hands land on the thighs rather than
+		# hovering over them.
+		arm.rotation.x = -0.95 if on else 0.0
+		arm.rotation.z = (0.16 if i == 0 else -0.16) if on else 0.0
 	if _nametag:
-		_nametag.position.y = (1.62 if on else 1.92) * height_scale
+		_nametag.position.y = (1.58 if on else 1.92) * height_scale
 	if _speech:
-		_speech.position.y = (1.86 if on else 2.12) * height_scale
+		_speech.position.y = (1.82 if on else 2.12) * height_scale
+
+## How they feel about it, on the face and in the shoulders.
+##
+## Asked for by name: "there should be an immediate facial and body expression
+## change if it's worse or better". Immediate is the point — the reaction has to
+## land in the same second as the thing that caused it, or the player never
+## connects the two.
+func set_mood(m: float) -> void:
+	_mood = clampf(m, -1.0, 1.0)
+	for i in _brows.size():
+		var sx: float = -1.0 if i % 2 == 0 else 1.0
+		var brow: MeshInstance3D = _brows[i]
+		# Inner ends down for a scowl, up and out for pleased.
+		brow.rotation.z = sx * _mood * 0.42
+		brow.position.y = 0.068 + _mood * 0.012
+	for i in _mouth_corners.size():
+		var corner: MeshInstance3D = _mouth_corners[i]
+		corner.position.y = -0.062 + _mood * 0.030
+	if _mouth != null:
+		# A mouth that opens slightly when things are bad. Nobody grimaces with
+		# their lips closed.
+		_mouth.scale.y = 1.0 + maxf(0.0, -_mood) * 1.6
+	if _torso != null:
+		# And the shoulders. Slumped when it went badly, squared when it did not.
+		_torso.rotation.x = -_mood * 0.10
+	if _head != null:
+		_head.position.y = _head_y + _mood * 0.014 - maxf(0.0, -_mood) * 0.03
+
+## Squaring up: on your feet, fists up, facing whoever this is about.
+##
+## `set_seated(false)` on its own leaves somebody standing to attention, which
+## is not a fight stance. The guard is two arms brought up and in, and a slight
+## turn so one shoulder leads.
+func stand_and_square_up(at: Vector3) -> void:
+	set_seated(false)
+	set_reclined(false)
+	pinned = true
+	stop_moving()
+	_fighting = true
+	var to := at - global_position
+	to.y = 0.0
+	if to.length_squared() > 0.01:
+		rotation.y = atan2(to.x, to.z)
+		# Out of the chair and a step toward you, so they are not standing
+		# inside their own furniture for the whole exchange.
+		global_position += to.normalized() * 0.75
+	set_mood(-0.55)
+	for i in _arms.size():
+		_arms[i].rotation.x = -1.15
+		_arms[i].rotation.z = (0.40 if i == 0 else -0.40)
+
+func stand_down() -> void:
+	_fighting = false
+	pinned = false
+	set_mood(0.0)
+	for i in _arms.size():
+		_arms[i].rotation.x = 0.0
+		_arms[i].rotation.z = 0.0
+
+## One arm, mid-swing. `wind` 0..1 draws it back, `through` 0..1 brings it
+## across. Driven straight off the rules clock, so there is no animation that
+## can fall out of step with what the fight thinks is happening.
+func swing_arm(side: int, wind: float, through: float) -> void:
+	if _arms.size() < 2:
+		return
+	if side == 0:
+		for i in _arms.size():
+			_arms[i].rotation.x = -1.15 if _fighting else 0.0
+			_arms[i].rotation.z = ((0.40 if i == 0 else -0.40) if _fighting else 0.0)
+		return
+	# _arms[0] is their left, which is the player's right when they are facing
+	# you. The side passed in is the PLAYER's side, so it maps straight across.
+	var idx: int = 1 if side < 0 else 0
+	for i in _arms.size():
+		if i == idx:
+			_arms[i].rotation.x = -1.15 - 0.75 * wind + 2.3 * through
+			_arms[i].rotation.z = (1.0 if i == 0 else -1.0) * (0.40 + 0.55 * wind - 0.9 * through)
+		else:
+			_arms[i].rotation.x = -1.15
+			_arms[i].rotation.z = (0.40 if i == 0 else -0.40)
+
+## Folded forward over their own knees. Reads as unconscious from any angle,
+## and needs no geometry that is not already there.
+func set_slumped(on: bool) -> void:
+	var body := get_node_or_null("Body")
+	if body == null:
+		return
+	var b: Node3D = body
+	b.rotation.x = 0.62 if on else (0.07 if _seated else 0.0)
+	for i in _arms.size():
+		_arms[i].rotation.x = 0.30 if on else 0.0
+		_arms[i].rotation.z = 0.0
+	if _head != null:
+		_head.rotation.x = 0.45 if on else 0.0
+
+func is_fighting() -> bool:
+	return _fighting
+
+var _fighting := false
+
+func mood() -> float:
+	return _mood
 
 func is_seated() -> bool:
 	return _seated

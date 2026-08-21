@@ -453,11 +453,29 @@ func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vecto
 
 	# What the room saw. A clean job of either kind is a doctor doing their job;
 	# a fumbled one is a noise, and a face in the doorway.
+	# One per patient per day. The ward is a question about which of five people
+	# is worth YOUR hands, and being able to work the same person over and over
+	# turned that into a grind on whoever paid best.
+	p.treated_on_day = GameState.day
+
 	var body = patient_system.get_body(p.id) if patient_system != null else null
 	if body != null:
 		body.startle(0.55 if band == "poor" else (0.2 if rec > 0.0 else 0.35))
 		if body.has_method("say"):
-			body.say(String(RNG.pick("procedure_bark", spec.get("say", ["Hm."]))), 3.4)
+			body.say(String(RNG.pick("procedure_bark", spec.get("say", ["Hm."]))), 3.0)
+		# The face and the shoulders, immediately. This has to land in the same
+		# second as the thing that caused it or the player never connects them.
+		if body.has_method("set_mood"):
+			body.set_mood(clampf(rec * 3.2, -1.0, 1.0))
+		# ...and the verdict, a couple of seconds later, once they have had a
+		# moment to notice how they actually feel.
+		var visual_now := float(spec.get("visual", 0.0))
+		var part := Procedures.site_for(p.condition_id)
+		var who = body
+		var t := get_tree().create_timer(3.2)
+		t.timeout.connect(func():
+			if is_instance_valid(who) and who.has_method("say"):
+				who.say(Procedures.feeling_line(rec, visual_now, part), 4.2))
 	var visual := float(spec.get("visual", 0.0))
 	if visual > 0.0:
 		var e := WorldEvent.new("procedure_botched", "player") \

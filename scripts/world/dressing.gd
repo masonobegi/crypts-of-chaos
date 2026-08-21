@@ -545,3 +545,35 @@ static func floor_zone(h: Node3D, centre: Vector3, size: Vector2, tint: Color) -
 	root.add_child(Build.box_mi(Vector3(size.x - 0.14, 0.014, size.y - 0.14),
 		tint.lightened(0.10), Vector3(0, 0.003, 0), 0.85, 0.0))
 	return _add(h, root, Vector3(centre.x, 0.008, centre.z))
+
+## A folding privacy screen, parked. Three leaves at an angle, which is the one
+## piece of hospital furniture that is always somewhere nobody put it.
+static func screen_partition(h: Node3D, pos: Vector3, rot_y := 0.0,
+		tint := Color(0.52, 0.72, 0.74)) -> Node3D:
+	var root := Node3D.new()
+	root.name = "ScreenPartition"
+	for i in 3:
+		var a: float = -0.5 + float(i) * 0.42
+		var leaf := Build.box_mi(Vector3(0.62, 1.62, 0.05), tint.lightened(0.05 * float(i % 2)),
+			Vector3(a, 0.90, 0.10 * sin(float(i) * 2.1)), 0.9, 0.010)
+		leaf.rotation.y = 0.42 * (1.0 if i % 2 == 0 else -1.0)
+		root.add_child(leaf)
+		root.add_child(Build.box_mi(Vector3(0.10, 0.06, 0.10), Color(0.42, 0.46, 0.50),
+			Vector3(a, 0.05, 0.10 * sin(float(i) * 2.1)), 0.5, 0.008))
+	return _add(h, root, pos, rot_y)
+
+## A rail of hooks by the door with one coat on it that nobody has claimed.
+static func coat_hooks(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.name = "CoatHooks"
+	root.add_child(Build.box_mi(Vector3(0.80, 0.09, 0.04), Color(0.55, 0.42, 0.30),
+		Vector3.ZERO, 0.8, 0.008))
+	for i in 4:
+		root.add_child(Build.box_mi(Vector3(0.03, 0.10, 0.09), Color(0.62, 0.66, 0.70),
+			Vector3(-0.30 + float(i) * 0.20, -0.06, 0.05), 0.5, 0.006))
+	# The coat. One, always, on the second hook.
+	root.add_child(Build.mi(Build.taper_mesh(Vector2(0.30, 0.14), Vector2(0.40, 0.18), 0.62),
+		Build.mat(Color(0.34, 0.40, 0.52), 0.95), Vector3(-0.10, -0.36, 0.09)))
+	root.add_child(Build.box_mi(Vector3(0.10, 0.10, 0.06), Color(0.34, 0.40, 0.52),
+		Vector3(-0.10, -0.03, 0.07), 0.95, 0.006))
+	return _add(h, root, pos, rot_y, 0.14)

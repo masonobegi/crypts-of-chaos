@@ -27,7 +27,7 @@ extends RefCounted
 ## do not stretch when the field is wide.
 
 const OUTLINE := Color(0.12, 0.10, 0.13, 1.0)
-const BONE := Color(0.95, 0.93, 0.86)
+const BONE := Color(0.97, 0.94, 0.84)
 const BONE_SHADE := Color(0.72, 0.69, 0.62)
 const BONE_GHOST := Color(0.55, 0.90, 0.82, 0.55)
 const NAIL := Color(0.98, 0.90, 0.86)
@@ -445,7 +445,7 @@ static func draw_part(ci: CanvasItem, part: String, field: Vector2, tone: Color,
 ## The part mid-procedure: fixed half, swinging half, and the bones showing
 ## through both like a lamp behind a hand.
 static func draw_part_split(ci: CanvasItem, part: String, field: Vector2, tone: Color,
-		xf: Transform2D, bone_alpha := 0.70) -> Dictionary:
+		xf: Transform2D, bone_alpha := 0.55) -> Dictionary:
 	var r := rig(part)
 	draw_caps(ci, r["prox"], field, tone)
 	draw_caps(ci, r["dist"], field, tone, xf)

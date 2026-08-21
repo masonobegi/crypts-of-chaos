@@ -133,9 +133,12 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	Dressing.clock(h, _door_wall(r, 0.72, 2.34), _door_rot(r))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.8, 0, _door_wall_z(r) - toward * 0.9))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, far_z + toward * 0.9), 0.9)
-	# The bed bay, marked out on the floor in the room's own colour.
+	# The bed bay, marked out on the floor. Mixed toward the floor's own colour
+	# rather than painted in the room tint: a saturated rectangle reads as a rug
+	# somebody laid down, and this is meant to be vinyl somebody specified.
 	Dressing.floor_zone(h, Vector3(bed.x + 0.2, 0, bed.z + toward * 0.4),
-		Vector2(3.6, 3.2), _ward_tint(r.key).darkened(0.35))
+		Vector2(3.4, 3.0), _ward_tint(r.key).darkened(0.28).lerp(
+			Color(0.56, 0.66, 0.57), 0.45))
 	# The floor was the problem: a nine-metre room with everything against one
 	# wall reads as a warehouse with a bed in it. These are the things that are
 	# actually beside a hospital bed, and they take footprints where they are
@@ -153,6 +156,16 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	Dressing.floor_mat(h, Vector3(_door_x(r), 0, _door_wall_z(r) - toward * 1.05),
 		Vector2(1.5, 0.9), Color(0.22, 0.30, 0.32))
 	Dressing.wall_tv(h, _right_wall(r, 0.80, 2.05), RIGHT_ROT)
+	# ...and the near half of the room, which was nine square metres of nothing
+	# between the door and the bed.
+	var scr := Vector3(r.rect.end.x - 1.2, 0, _door_wall_z(r) - toward * 1.9)
+	Dressing.screen_partition(h, scr, _door_rot(r) + 0.5, _ward_tint(r.key))
+	_occupy(scr.x, scr.z, 1.4, 0.6)
+	Dressing.coat_hooks(h, _left_wall(r, 0.14, 1.72), LEFT_ROT)
+	_chair(h, Vector3(r.rect.position.x + 1.5, 0, _door_wall_z(r) - toward * 2.4),
+		LEFT_ROT, _ward_tint(r.key).darkened(0.25))
+	_table(h, Vector3(r.rect.position.x + 1.5, 0, _door_wall_z(r) - toward * 3.3),
+		0.6, 0.6, 0.52, Color(0.68, 0.62, 0.52))
 
 ## One colour per room, so a ward is somewhere rather than anywhere.
 static func _ward_tint(key: String) -> Color:

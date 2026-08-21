@@ -14,6 +14,10 @@ var _bark_timer := 0.0
 var _symptom_mesh: MeshInstance3D = null
 var _shiver := 0.0
 var _reclined := false
+## Whatever they were doing before you spoke to them, so that a word with
+## somebody in the corridor puts them back in the corridor and not, with a pop,
+## into a chair two rooms away.
+var _pre_talk: State = State.IN_BED
 
 func _ready() -> void:
 	EventBus.shift_started.connect(_on_shift_started)
@@ -104,7 +108,19 @@ const SLEEP_CHANCE := {"night": 0.85, "evening": 0.30, "day": 0.06}
 var asleep := false
 
 func _on_shift_started(_day: int) -> void:
-	if data == null or data.discharged or state != State.IN_BED:
+	if data == null or data.discharged:
+		return
+	# Out cold is "for the rest of the day", and the day has just turned over.
+	# Nothing ever read the out_cold_day stamp, so the flag it was written for
+	# was permanent: bodies live from admission to discharge and are not rebuilt
+	# between shifts, and _hold_bed_pose declines to touch one that is out cold,
+	# so a patient you fought on day three was still folded over their own knees
+	# with their eyes shut, and unwakeable, on day nine. Cleared BEFORE the state
+	# gate below, because a fight is started from the patient card and therefore
+	# leaves them in State.TALKING, which the gate would have turned away.
+	if out_cold and GameState.day > int(data.get_meta("out_cold_day", -1)):
+		_come_round()
+	if state != State.IN_BED:
 		return
 	set_asleep(RNG.chance("patient_sleep", float(
 		SLEEP_CHANCE.get(GameState.shift_kind, 0.06))))
@@ -164,9 +180,13 @@ func set_asleep(v: bool) -> void:
 	_lids_held = v
 	set_eyes_open(not v)
 	if perception != null:
-		# Attention is the multiplier on every notice roll, so zero means a
-		# sleeping patient genuinely witnesses nothing rather than merely
-		# looking as though they do not.
+		# The FLAG is what makes this real. Attention is derived — perception
+		# recomputes it from its own distraction every frame — so writing the
+		# number here and nothing else lasted less than one frame, and a ward
+		# put to sleep for the night was back to full observance immediately
+		# and silently. The number is still written so that a same-frame read
+		# of attention agrees with the flag rather than lagging it by a tick.
+		perception.suppressed = v
 		perception.attention = 0.0 if v else 1.0
 
 ## Out cold.
@@ -181,6 +201,17 @@ func knock_out() -> void:
 	stand_down()
 	pinned = true
 	stop_moving()
+	# Back into the chair FIRST. stand_and_square_up() stepped them 0.75m clear
+	# of it so they were not throwing punches from inside their own furniture,
+	# and _hold_bed_pose refuses to re-assert the chair pose while out_cold — so
+	# slumping them where they stand leaves somebody folded double, seated on
+	# nothing, a stride in front of an empty chair, visible from the doorway for
+	# the rest of their admission. Only for somebody who has a chair to be in:
+	# a patient fought in the corridor stays where they fell.
+	if bed != null and is_instance_valid(bed) \
+			and state != State.WANDERING and state != State.LEAVING:
+		global_position = bed.mount_point()
+		rotation.y = bed.rotation.y
 	set_seated(true)
 	set_slumped(true)
 	set_asleep(true)
@@ -189,6 +220,23 @@ func knock_out() -> void:
 		# They also lose the thread of the day. Whatever they were about to
 		# complain about is gone with the rest of it.
 		data.set_meta("out_cold_day", GameState.day)
+
+## The way back out of out_cold, and the only one — wake_up() deliberately
+## refuses to do it, because a tray on the floor does not bring somebody round.
+##
+## The unfolding cannot be left to set_slumped(false) alone: it returns the arms
+## to rotation 0, which is the STANDING pose, not the seated hands-on-thighs one.
+## So the sit is dropped here and _hold_bed_pose is left to notice on the next
+## frame that a patient who wants a chair is not seated, and re-apply the whole
+## pose down the same path everybody else takes into it. Idempotent, so callers
+## that are not sure whether this body was ever knocked out can just call it.
+func _come_round() -> void:
+	out_cold = false
+	pinned = false
+	set_slumped(false)
+	set_seated(false)
+	set_asleep(false)
+	set_mood(0.0)
 
 func wake_up(why := "") -> void:
 	# A tray on the floor does not bring somebody round.
@@ -249,7 +297,24 @@ func refresh_site_mark() -> void:
 	host.add_child(_site_mark)
 
 func _tick_state(_delta: float) -> void:
-	if data == null or data.discharged:
+	if data == null:
+		return
+	# Walking out is the one thing a discharged patient is still doing, so it is
+	# handled ABOVE the discharged guard and not inside the match below it.
+	# PatientSystem.discharge() sets p.discharged and only THEN calls
+	# discharge_and_leave(), so with the guard first the LEAVING branch was
+	# unreachable: every patient ever sent home walked to the lobby, stopped, and
+	# stood there for the rest of the career. Nobody sees a leak like that,
+	# because it does not look like one — it looks like a busy lobby. But the
+	# node never left the tree, so the tree_exiting hook in PatientSystem never
+	# fired, their entry in bodies was never erased, and each of them went on
+	# running a live NPCPerception that witnessed the player and fed evidence to
+	# a Mind. Suspicion kept climbing from people discharged a fortnight ago.
+	if state == State.LEAVING:
+		if not is_moving():
+			queue_free()
+		return
+	if data.discharged:
 		return
 	refresh_site_mark()
 	match state:
@@ -258,14 +323,41 @@ func _tick_state(_delta: float) -> void:
 				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
 				_maybe_bark()
 				_maybe_wander()
+		State.SITTING:
+			# Walk-ins waiting to be seen. They bark and they do NOT wander:
+			# somebody who gets up and walks off has left the queue, and the
+			# player then cannot find the person the appointment board is
+			# telling them to see. Before this, SITTING had no case at all and
+			# fell through to `_: pass` — so the entire waiting room sat in
+			# total silence, which read as a room full of props rather than a
+			# room full of people with somewhere to be.
+			if _timer <= 0.0:
+				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
+				_maybe_bark()
 		State.WANDERING:
 			if not is_moving():
 				_timer -= 1.0
 				if _timer <= 0.0:
 					_return_to_bed()
-		State.LEAVING:
-			if not is_moving():
-				queue_free()
+		State.TALKING:
+			# TALKING was a one-way door. Nothing anywhere put a patient back
+			# into State.IN_BED except _return_to_bed(), which is only reachable
+			# from WANDERING — so pressing E on somebody once took them out of
+			# their chair permanently: _hold_bed_pose stopped wanting a seat and
+			# unpinned them, _maybe_bark() is only called from the IN_BED branch
+			# so they went silent (including the fit-to-go-home line, which is
+			# the most important thing in the building for the player to hear),
+			# and _on_shift_started's IN_BED gate meant they could never be put
+			# to sleep again. Since talking to patients IS the loop, the whole
+			# ward was standing up and mute by the middle of day one.
+			#
+			# The state only exists so that look_toward() survives, and the chair
+			# pose does not fight it. A few seconds of facing you is all that
+			# needs; the fight owns the body separately and must be allowed to
+			# finish before the chair claims it back.
+			if _timer <= 0.0 and not is_fighting():
+				state = _pre_talk if _pre_talk != State.TALKING else State.IN_BED
+				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
 		_:
 			pass
 
@@ -442,6 +534,13 @@ func _room_node():
 
 func discharge_and_leave() -> void:
 	state = State.LEAVING
+	# Anybody who was knocked out is still pinned, and a pinned body has its
+	# velocity zeroed before move_and_slide ever runs — so a patient you had
+	# fought would be handed a route to the lobby and not take a single step of
+	# it, which also means is_moving() never goes false and they are never freed.
+	# Cheap to call on everyone: it is idempotent, and it also opens the eyes of
+	# somebody who happened to be asleep when the discharge came through.
+	_come_round()
 	if bed:
 		bed.occupant = null
 	var h = get_tree().get_first_node_in_group("hospital")
@@ -522,6 +621,30 @@ func _treatment_for_item(held) -> String:
 			fallback = String(tid)
 	return fallback
 
+## How long somebody stays turned towards you after you speak to them. Refreshed
+## on every interaction, so it is "a few seconds after you last did anything"
+## rather than a countdown that starts when the card opens — the patient card
+## deliberately does not pause the world, so this ticks while you read it.
+const TALK_SECONDS := 6.0
+
+## Face whoever is talking to them, and let go of the chair pose while they do.
+##
+## The state exists only so that look_toward() survives: _hold_bed_pose rewrites
+## rotation.y to the chair's yaw every frame for anybody IN_BED, so without a
+## state that opts out of the pin, a patient cannot turn their head to you at all.
+##
+## Guarded on `discharged`, because somebody on their way out of the building is
+## in State.LEAVING and that state is the one that frees them — dropping them
+## into TALKING as you pass would strand them in the lobby permanently.
+func _turn_to_talk(player) -> void:
+	look_toward(player.global_position if player else global_position)
+	if data.discharged:
+		return
+	if state != State.TALKING:
+		_pre_talk = state
+	state = State.TALKING
+	_timer = TALK_SECONDS
+
 func interact(player, held) -> void:
 	if data == null:
 		return
@@ -542,8 +665,7 @@ func interact(player, held) -> void:
 				if rs:
 					rs.log_real_treatment(data, tid)
 			return
-	look_toward(player.global_position if player else global_position)
-	state = State.TALKING
+	_turn_to_talk(player)
 	# A tap admits a waiting patient outright. Everybody already in a bed gets
 	# the card, because there is nothing you would do to them in one keypress.
 	if not data.admitted and not data.discharged:
@@ -560,8 +682,7 @@ func interact_held(player, _held) -> void:
 	if data == null:
 		return
 	wake_up("touched")
-	look_toward(player.global_position if player else global_position)
-	state = State.TALKING
+	_turn_to_talk(player)
 	_open_card()
 
 func _open_card() -> void:

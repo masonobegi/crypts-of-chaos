@@ -74,6 +74,26 @@ func daily_check() -> void:
 	var heat := GameState.heat
 	var scrutiny := GameState.rep("gov_scrutiny")
 	var chance := heat * 0.55 + scrutiny * 0.35
+
+	# WHO IS IN THE BUILDING TODAY TO READ YESTERDAY'S PAPERWORK.
+	#
+	# `SHIFTS[kind]["scrutiny"]` has existed since the shift table was written,
+	# is documented in DB.gd as "how carefully the paperwork is read afterwards",
+	# and until now was read by absolutely nothing. Both shift-select cards
+	# promised it out loud — night says "Nobody sees a thing", day says "an
+	# audience for everything you do" — so the game was making a claim in copy
+	# that the code did not honour, which is exactly the shape of "there is not
+	# as much of a trade-off for any shift" that the note complained about.
+	# Nights paid the best multiplier AND had the fewest witnesses AND drew
+	# institutional attention at precisely the same rate as a day shift, so the
+	# only thing night actually cost was volume, and volume is the thing a cheat
+	# cares least about.
+	#
+	# It scales the whole roll rather than adding to it, because scrutiny is not
+	# a separate accusation — it is how thoroughly the existing ones get looked
+	# at. A doctor with nothing on file is not investigated by a busy ward.
+	var watched: float = float(DB.shift(GameState.shift_kind).get("scrutiny", 1.0))
+	chance *= watched
 	# Insurers audit money, not morals: rich patients staying long is the signal.
 	var insurer_sus: float = suspicion.suspicion_of("insurer") if suspicion else 0.0
 	chance += insurer_sus * 0.3

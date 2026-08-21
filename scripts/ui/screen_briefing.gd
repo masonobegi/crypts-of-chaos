@@ -85,8 +85,14 @@ func shift_brief() -> VBoxContainer:
 				String(AppointmentSystem.LABELS.get(String(a["kind"]), ""))],
 				String(a["name"]))
 			content.add_child(row)
+		# "with you", not "tonight": the same line is printed under a heading
+		# that has just named the shift from ctx, and on a day shift it read
+		# "5 other staff on the floor tonight" directly beneath "YOUR LIST —
+		# DAY SHIFT". The number is the whole trade the shift-select screen is
+		# built on, and this is the one place it is restated in the morning, so
+		# it cannot be the line that contradicts the shift it describes.
 		content.add_child(UIKit.label(
-			"%d other staff on the floor tonight." % int(ctx.get("staff_on", 0)),
+			"%d other staff on the floor with you." % int(ctx.get("staff_on", 0)),
 			13, UIKit.INK_DIM))
 
 	var open_inv: Array = ctx.get("open_investigations", [])

@@ -80,7 +80,17 @@ func _build_shelf() -> void:
 	if _read_the_chart:
 		var ind := String(Procedures.CURES.get(_patient.condition_id, ""))
 		var clashes: Array = Procedures.CLASHES.get(_patient.condition_id, [])
-		var lines := "Chart, examined: indicated is %s." % _med_name(ind)
+		# A condition with no entry in CURES used to render "indicated is ."
+		# — _med_name() falls back to the id it was handed, and the id of
+		# nothing is nothing, so the one reward for having gone and read the
+		# chart was a sentence with a hole in the middle of it. The chart is
+		# allowed to say that nothing on this shelf is licensed for what they
+		# have; it is not allowed to trail off mid-indication.
+		var lines := ""
+		if ind == "":
+			lines = "Chart, examined: nothing on this shelf is licensed for it."
+		else:
+			lines = "Chart, examined: indicated is %s." % _med_name(ind)
 		if not clashes.is_empty():
 			lines += "\nNoted as disagreeing with it: %s." % _med_name(String(clashes[0]))
 		var box := UIKit.panel(UIKit.NOTE_GOOD, 6, 1, UIKit.ACCENT)

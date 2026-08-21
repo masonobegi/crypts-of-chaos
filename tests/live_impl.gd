@@ -46,6 +46,9 @@ var _investigating := 0
 var _seen_door_open := -1
 var _seen_door_shut := -1
 
+var _talked_to := ""
+var _talk_took_them_out_of_the_chair := false
+
 func start() -> void:
 	GameState.start_new_career(555111)
 	GameState.set_flag("tutorial_done", true)
@@ -67,6 +70,10 @@ func tick() -> bool:
 			GameState._advance_minute()
 	if frames == 60:
 		_seed_conditions()
+	if frames == 300:
+		_talk_to_somebody()
+	if frames == 760:
+		_check_they_sat_back_down()
 	if frames == FRAMES - 1800:
 		_make_a_noise()
 	if frames > FRAMES - 1800 and frames <= FRAMES - 1000 and frames % 10 == 0:
@@ -691,3 +698,44 @@ func _report() -> void:
 		for e in errors:
 			printerr("  " + e)
 	print("--------------------------------------\n")
+
+## TALKING TO A PATIENT HAS TO END.
+##
+## Pressing E on somebody is the single most common thing a player does in this
+## game, and for most of the project's life it permanently broke whoever it was
+## done to. State.TALKING had no exit: the only route back into IN_BED was
+## _return_to_bed(), reachable only from WANDERING. So one conversation took a
+## patient out of their chair for the rest of the career — standing, silent
+## (barks fire from the IN_BED branch, including the line that tells you they
+## are fit to go home), and un-sleepable, because the night pass gates on
+## IN_BED. It needs REAL FRAMES to catch: the state is left by a timer that
+## decrements in _physics_process, so no unit test and no smoke frame can see
+## the door fail to open.
+func _talk_to_somebody() -> void:
+	var ps = game.patient_system
+	for q in ps.active():
+		var b = ps.get_body(q.id)
+		if b == null or not b.is_seated() or q.discharged:
+			continue
+		_talked_to = String(q.id)
+		b.interact(game.player, null)
+		# The pin has to let go while they are facing you, or they cannot turn
+		# their head at all — so the intermediate state is part of the contract.
+		_talk_took_them_out_of_the_chair = b.state == PatientNPC.State.TALKING
+		return
+
+func _check_they_sat_back_down() -> void:
+	if _talked_to == "":
+		return
+	_ok(_talk_took_them_out_of_the_chair,
+		"talking to a patient turns them towards you")
+	var b = game.patient_system.get_body(_talked_to)
+	if b == null:
+		# Discharged mid-test. Nothing to prove, and nothing broken.
+		return
+	_ok(b.state != PatientNPC.State.TALKING,
+		"and a few seconds later they are done talking, not stuck facing you forever")
+	_ok(b.state == PatientNPC.State.IN_BED or b.state == PatientNPC.State.WANDERING,
+		"and they are back to being a patient (state %d)" % b.state)
+	if b.state == PatientNPC.State.IN_BED:
+		_ok(b.is_seated(), "and the chair has claimed them back")

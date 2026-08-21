@@ -75,6 +75,23 @@ change — five real bugs have been caught only by looking at the game.
     pushes it out by half of it. This was most of the reported "things phasing
     through each other".
 
+14. **An assertion made in the same frame as its setup reads LAST frame's
+    value.** Anything a node writes in `_process`/`_physics_process` — an
+    animation pose, a derived perception value, a `queue_free` — has not
+    happened yet when the setup line returns. `_check_the_ward_sleeps_at_night`
+    asserted `attention == 0.0` in the frame that called `set_asleep(true)` and
+    passed for months while every sleeping patient in the building witnessed
+    everything, because `_process` recomputed `attention` from `_distraction`
+    each frame and overwrote the zero. `smoke_impl.gd` has `_defer(n, callable)`
+    for exactly this, and the run refuses to report while one is outstanding.
+15. **A constant nothing reads is a promise the game is making in copy and not
+    keeping in code.** `SHIFTS[kind]["scrutiny"]` was documented as "how
+    carefully the paperwork is read afterwards", was printed at the player on
+    both shift cards ("Nobody sees a thing"), and was read by nothing at all —
+    so the night shift paid the best multiplier, had the fewest witnesses, and
+    drew institutional attention at exactly the same rate as a day shift. Grep
+    every key of a data table for a reader before trusting the table.
+
 ## Design rules that are load-bearing
 
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no

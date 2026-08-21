@@ -19,7 +19,11 @@ const STEPS := [
 		"text": "Go and see them. Talk to them, then examine them — firm enough to find something."},
 	{"id": "vitals", "where": "vitals",
 		"text": "Check their vitals at the bedside monitor."},
-	{"id": "treat", "where": "machine",
+	# Points at the patient, not at a box beside them. The ward's treatment
+	# machines are gone — a bedside dial was a second interface between the
+	# player and the person they came to see — so "treat" is now something you
+	# do to somebody, and the marker has to sit on the somebody.
+	{"id": "treat", "where": "patient",
 		"text": "Treat them. The chart lists what's indicated; the supply room has the kit."},
 	{"id": "records", "where": "terminal",
 		"text": "Log it at a terminal. The nurses' station has one; so does your office."},
@@ -50,7 +54,6 @@ const WHERE_LABEL := {
 	"chart": "Patient Chart",
 	"patient": "Your Patient",
 	"vitals": "Vitals Monitor",
-	"machine": "Treatment Machine",
 	"terminal": "Records Terminal",
 	"office": "Your Office",
 }
@@ -68,9 +71,16 @@ func _ready() -> void:
 	# step 1 of 6 — "check your list" — could never complete and the tutorial
 	# could never advance past it.
 	EventBus.ui_opened.connect(func(id): _on_ui(id, {}))
+	# `treatment_applied` carries the PROCEDURE KIND for anything graded by
+	# Procedures.apply_outcome(), so the credited set is read off that table
+	# rather than written out here. The hand-written list said set_bone, suture
+	# and dose and predates "manipulate" existing: a player who reduced a
+	# dislocated shoulder — one of the four things on day one's ward that needs
+	# hands — did the step and was still being asked to go and do it. Any kind
+	# added to OUTCOMES from now on is credited the day it is added.
 	EventBus.treatment_applied.connect(func(_p, tid, _q):
 		complete("treat")
-		if String(tid) in ["set_bone", "suture", "dose"]:
+		if Procedures.OUTCOMES.has(String(tid)):
 			complete("procedure"))
 	EventBus.shift_ended.connect(func(_d): complete("shift"))
 	# The examination step completes on the act, not on opening the screen —
@@ -151,26 +161,32 @@ func _target_for(where: String) -> Vector3:
 		"chart":
 			for c in tree.get_nodes_in_group("chart_prop"):
 				return (c as Node3D).global_position + Vector3(0, 0.4, 0)
-		"patient", "vitals", "machine":
+		"patient", "vitals":
 			var ps = tree.get_first_node_in_group("patient_system")
 			if ps == null:
 				return Vector3.INF
-			# The first patient who is actually in a bed — the one every one of
-			# these three steps is about.
+			# The first patient who is actually in the ward — the one both of
+			# these steps are about.
+			#
+			# There used to be a third case here, "machine", which hunted the
+			# TreatmentMachine in the patient's room and fell back to the
+			# patient's head when it found none. The only machine left in the
+			# building is the imaging bench in Radiology, so every ward fell
+			# through that fallback and the marker sat over a seated patient
+			# captioned "Treatment Machine". A fallback that is always taken is
+			# not a fallback, it is the behaviour — so the step points at the
+			# patient outright and says so.
 			for p in ps.active():
 				var body = ps.get_body(p.id)
 				if body == null:
 					continue
 				if where == "patient":
 					return body.global_position + Vector3(0, 1.7, 0)
-				var kind := "vitals" if where == "vitals" else "machine"
 				for f in tree.get_nodes_in_group("fixture"):
 					if String(f.get("room_key")) != String(p.room):
 						continue
-					if kind == "vitals" and f is VitalsConsole:
+					if f is VitalsConsole:
 						return (f as Node3D).global_position + Vector3(0, 0.9, 0)
-					if kind == "machine" and f is TreatmentMachine:
-						return (f as Node3D).global_position + Vector3(0, 1.8, 0)
 				return body.global_position + Vector3(0, 1.7, 0)
 		"terminal":
 			for f in tree.get_nodes_in_group("fixture"):

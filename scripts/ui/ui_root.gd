@@ -87,6 +87,20 @@ func _owed_screen() -> Dictionary:
 	var ss = get_tree().get_first_node_in_group("shift_system")
 	if ss == null:
 		return {}
+	# Nothing is owed while you are out for the evening.
+	#
+	# The evening runs with the phase still on POST_SHIFT, because the statement
+	# is what leads into it — so Escape in the middle of a street offered the
+	# end-of-shift statement, which is on the non-dismissible list, and whose
+	# only button is "Go home". That runs the post-shift chain a second time
+	# underneath a night that is still live: the night chooser opens over the
+	# street, picking a place does nothing (enter() refuses while active), and
+	# "Go home. It's been a day." advances the day with the player still stood
+	# on the pavement. The statement is not owed here — it has already been
+	# read, and the thing that ends the evening is walking it to its end.
+	var night = get_tree().get_first_node_in_group("night_system")
+	if night != null and bool(night.get("active")):
+		return {}
 	match GameState.phase:
 		GameState.Phase.PRE_SHIFT:
 			return {"id": "briefing", "ctx": ss.briefing()}
@@ -447,7 +461,10 @@ func _pause_screen() -> Control:
 
 # ---- tutorial
 func _tutorial_screen() -> Control:
-	var parts := _shell(700, 560, "Ward C — First Shift")
+	# Two lines taller than it was: the dial bullet became the two-line
+	# statement of the procedure grammar, and a PanelContainer that has to grow
+	# past its placed rect to fit its text grows off the bottom of it.
+	var parts := _shell(700, 600, "Ward C — First Shift")
 	var v: VBoxContainer = parts[1]
 	v.add_child(UIKit.rich("""[b]You are $%d in debt, your bills are $%d a day, and you make $240 a shift.[/b]
 
@@ -457,14 +474,16 @@ Nobody will ever ask you to do anything unethical. They don't have to.
 [b]The basics[/b]
 · [color=#5cc]WASD[/color] move, [color=#5cc]E[/color] use, [color=#5cc]LMB[/color] grab, [color=#5cc]RMB[/color] throw, [color=#5cc]Q[/color] tablet.
 · Every patient has a [b]chart[/b] — pick it up and read it.
-· Treatment machines have a [b]dial[/b] and a [b]prescribed setting[/b]. The chart says which.
+· Some ailments need your hands. You say what you mean to do, then you do it,
+  and you are marked on how well you did the thing you said.
 · A patient leaves when they're better. Not when the paperwork says so.
 
 [b]The part nobody will tell you[/b]
 · People remember what they [i]see[/i]. Two witnesses is much worse than one.
 · A complication with a plausible cause written down [i]before anyone notices[/i]
   is just medicine. The same complication with no paperwork is an incident.
-· Machines keep their own logs. So does everyone's memory.
+· The building keeps its own logs — the thermostat, the imaging bench. So does
+  everyone's memory.
 · Noise moves people. That's all a thrown bedpan is: a way to move someone.
 
 Nothing in this game will ever be labelled 'suspicious'. Work it out.""" % [GameState.total_debt(), GameState.daily_debt_payment()], 15))

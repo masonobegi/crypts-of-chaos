@@ -14,8 +14,25 @@ extends Fixture
 const DIAL_MIN := 0
 const DIAL_MAX := 11
 
-@export var machine_id := "machine_humour"
-@export var treatment_id := "humour_rebalance"
+## EVERY DEVICE THIS HOSPITAL ACTUALLY CONTAINS.
+##
+## The bedside machines were removed — the note was "take off whatever this
+## little machine is, there is no reason to have it, I should just be able to go
+## in and talk to the patient" — and three treatments went on requiring
+## machine_vibe, machine_humour and machine_dread for months afterwards. They
+## were indicated for sixteen conditions, so those sixteen conditions had a
+## correct treatment that could not be performed anywhere in the building, and
+## the only symptom was patients who never got better. The unit test that is
+## supposed to catch exactly this skipped any tool starting with "machine_",
+## because when it was written every machine existed.
+##
+## Furniture builds from this list and the test asserts against it, so a
+## treatment naming a device nobody installed now fails at the desk rather than
+## in somebody's ward a fortnight later.
+const INSTALLED := ["machine_imaging"]
+
+@export var machine_id := "machine_imaging"
+@export var treatment_id := "imaging"
 @export var units := "PLASMA GRADIENT"
 
 var dial := 5

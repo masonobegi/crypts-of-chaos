@@ -426,6 +426,12 @@ const MEDICINES := {
 	"yawnase": {"name": "Yawnase", "blurb": "Completes an unfinished yawn."},
 	"grievadone": {"name": "Grievadone", "blurb": "Takes the edge off a grievance."},
 	"pneumoclear": {"name": "Pneumoclear", "blurb": "Clears clerical lung."},
+	# The shelf grew when the treatment machines went. Ten conditions used to be
+	# treated by walking somebody to a box with a dial on it; the box is gone,
+	# their verb is a bottle now, and nothing on the shelf was licensed for
+	# gravity, direction or an unshakeable opinion.
+	"ballastium": {"name": "Ballastium", "blurb": "Heavy. Points a patient back at the floor."},
+	"dubitane": {"name": "Dubitane", "blurb": "Introduces a maybe. One maybe."},
 }
 
 ## condition -> the one that cures it. Everything else is inert, except the
@@ -445,6 +451,24 @@ const CURES := {
 	"unfinished_yawn": "yawnase",
 	"spontaneous_tuesday": "mondazepam",
 	"catastrophic_yawn": "yawnase",
+	# Everything below arrived with the dial-to-prescribe conversion. A missing
+	# entry here does not read as "no cure is known", it reads as "every bottle
+	# on the shelf is inert" — and inert caps DRUG_FACTOR.treat at 0.46, which
+	# is under BAND_GOOD however steady the hand on the plunger was. So a
+	# condition left out of this table quietly grades a perfect honest dose as
+	# "fair" and adds a day to the stay for doing the job properly, while the
+	# dishonest intent caps at 0.34 and can never be anything but "poor". Both
+	# ends of the knowledge check collapse; the table has to be complete.
+	"funny_bone": "chalkinol",
+	"spleen_torque": "grievadone",
+	"gravitational_confusion": "ballastium",
+	"ossified_vibes": "vibrizone",
+	"bilateral_opinions": "dubitane",
+	"magnetic_indecision": "ballastium",
+	"recursive_worry": "mondazepam",
+	"borrowed_conviction": "dubitane",
+	"chronic_certainty": "dubitane",
+	"concussion": "ballastium",
 }
 
 ## Pairs that do something worse than nothing. Deliberately few: the common bad
@@ -464,6 +488,21 @@ const CLASHES := {
 	"spontaneous_tuesday": ["pneumoclear"],
 	"catastrophic_yawn": ["lactaway"],
 	"reverse_shivers": ["pneumoclear"],
+	# The other half of reading the chart: each of these is the bottle a player
+	# who has NOT read it would reach for. A humming elbow is not a job for the
+	# drug that is licensed for anything that hums, and Dubitane — which is the
+	# right answer for three of the certainties — is the worst possible thing to
+	# hand somebody who already cannot choose.
+	"funny_bone": ["vibrizone"],
+	"spleen_torque": ["vibrizone"],
+	"gravitational_confusion": ["mondazepam"],
+	"ossified_vibes": ["chalkinol"],
+	"bilateral_opinions": ["chalkinol"],
+	"magnetic_indecision": ["dubitane"],
+	"recursive_worry": ["vibrizone"],
+	"borrowed_conviction": ["grievadone"],
+	"chronic_certainty": ["chalkinol"],
+	"concussion": ["mondazepam"],
 }
 
 static func medicine_effect(condition_id: String, med_id: String) -> String:

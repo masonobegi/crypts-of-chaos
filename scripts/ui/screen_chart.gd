@@ -35,12 +35,12 @@ func _build() -> void:
 	var scroll_box := UIKit.vbox(6)
 	scroll_box.add_child(UIKit.rule())
 	scroll_box.add_child(UIKit.label("INDICATED TREATMENTS", 13, UIKit.INK_DIM))
-	# The number the whole game turns on, above the treatments rather than under
-	# them. It used to live on the machine and nowhere else, so the one thing a
-	# player needs BEFORE walking into a room could only be learned by walking
-	# into the room.
-	scroll_box.add_child(UIKit.row("Prescribed setting",
-		"dial %d" % DB.prescribed_setting(p.condition_id), UIKit.ACCENT))
+	# The treatment rows are built before any of them is added, because the
+	# prescribed-setting row above them is only printed if one of them turns out
+	# to be a machine cycle — and that is only knowable after looking at all of
+	# them.
+	var rows: Array = []
+	var machine_names: Array = []
 	for tid in DB.correct_treatments(p.condition_id):
 		var spec: Dictionary = DB.treatment(String(tid))
 		var tool_id := String(spec.get("tool", ""))
@@ -48,9 +48,39 @@ func _build() -> void:
 		# is a chart written by a programmer.
 		var tool_label := "no equipment"
 		if tool_id != "":
-			tool_label = String(Items.SPECS[tool_id]["name"]) if Items.SPECS.has(tool_id) \
-				else "at the machine"
-		scroll_box.add_child(UIKit.row(String(spec.get("name", tid)), tool_label))
+			if Items.SPECS.has(tool_id):
+				tool_label = String(Items.SPECS[tool_id]["name"])
+			else:
+				# Anything not in the item catalogue is done on a machine, and
+				# the machine is asked whether it still exists rather than
+				# assumed. This line used to read "at the machine" for every
+				# such treatment, which sent the player looking for a box that
+				# was taken off the wards with the rest of the bedside dials —
+				# all three of Ossified Vibes' indicated treatments pointed at
+				# equipment this hospital does not own.
+				var m = _machine_for(tool_id)
+				if m == null:
+					tool_label = "unavailable here"
+				else:
+					tool_label = String(m.fixture_name)
+					if not machine_names.has(tool_label):
+						machine_names.append(tool_label)
+		rows.append(UIKit.row(String(spec.get("name", tid)), tool_label))
+
+	# The number the whole game turns on, above the treatments rather than under
+	# them. It used to live on the machine and nowhere else, so the one thing a
+	# player needs BEFORE walking into a room could only be learned by walking
+	# into the room — and then it was printed on EVERY chart, including the
+	# lacerations and the prescriptions, which have no setting to be off and
+	# nothing in the room to set. It belongs on the charts of the patients whose
+	# treatment is genuinely a cycle on a machine — which now means a trip to
+	# the imaging bench, and nothing else.
+	if not machine_names.is_empty():
+		scroll_box.add_child(UIKit.row("Prescribed setting",
+			"%d — %s" % [DB.prescribed_setting(p.condition_id),
+				", ".join(machine_names)], UIKit.ACCENT))
+	for r in rows:
+		scroll_box.add_child(r)
 
 	scroll_box.add_child(UIKit.rule())
 	scroll_box.add_child(UIKit.label("COMPLICATIONS", 13, UIKit.INK_DIM))
@@ -89,3 +119,16 @@ func _build() -> void:
 	v.add_child(UIKit.scroll(scroll_box))
 	v.add_child(UIKit.label("Changes are made at a terminal.", 12, UIKit.INK_DIM))
 	v.add_child(UIKit.button("Close", close))
+
+## The machine a treatment is performed on, or null if the building no longer
+## has one. Read live off the tree rather than off a table: which machines exist
+## is a property of what Furniture built this run, and a chart that names a
+## fixture nobody can walk to is worse than a chart that says nothing.
+##
+## Untyped deliberately — a typed local holding a fixture that has since been
+## freed aborts the function on assignment rather than yielding null.
+func _machine_for(tool_id: String):
+	for f in get_tree().get_nodes_in_group("fixture"):
+		if f is TreatmentMachine and String(f.machine_id) == tool_id:
+			return f
+	return null

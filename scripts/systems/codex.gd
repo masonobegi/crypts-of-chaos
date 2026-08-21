@@ -127,8 +127,16 @@ func _on_world_event(evt) -> void:
 		if e.kind == "prop_noise":
 			return
 		return
-	if e.tags.has("machine") and e.kind == "machine_extreme_dial":
-		observe("machine_deviation")
+	# "Dials" is NOT unlocked by turning one.
+	#
+	# It used to be, on two `machine_extreme_dial` events — which the machine
+	# emits for nothing more than leaving the knob four or more off prescribed
+	# and walking away. No patient, no cycle, no complication. So a player who
+	# fiddled with the imaging bench twice in an empty department was handed a
+	# note in which their character has twice watched a patient develop
+	# something new afterwards, which had never happened to them. The codex's
+	# one rule is that a note is written after you have personally caused the
+	# same effect twice, and causing it is what _on_complication sees.
 	if e.tags.has("substitution"):
 		observe("substitution")
 	if e.kind == "phantom_billing":

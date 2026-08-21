@@ -10,6 +10,27 @@ var stage := "firstrun"
 var errors: Array[String] = []
 var notes: Array[String] = []
 var sim_minutes := 0
+## Assertions that cannot be made in the frame that sets up their subject.
+## Anything driven by a node's own _process or _physics_process — an animation
+## pose, a body freeing itself, a derived perception value — is still holding
+## last frame's answer at the moment the setup line returns. Three checks were
+## asserting exactly that and passing on stale state, which is precisely how
+## the sleeping-witness bug shipped green.
+var _deferred: Array = []
+
+func _defer(n: int, fn: Callable) -> void:
+	_deferred.append({"at": frames + maxi(1, n), "fn": fn})
+
+func _run_deferred() -> void:
+	if _deferred.is_empty():
+		return
+	var still: Array = []
+	for d in _deferred:
+		if frames >= int(d["at"]):
+			(d["fn"] as Callable).call()
+		else:
+			still.append(d)
+	_deferred = still
 func start() -> void:
 	print("\n=== SMOKE RUN ===\n")
 	GameState.start_new_career(20260819)
@@ -23,6 +44,7 @@ func start() -> void:
 
 func tick() -> bool:
 	frames += 1
+	_run_deferred()
 	# The briefing screen pauses the tree on open; drive things directly.
 	tree.paused = false
 	match stage:
@@ -45,6 +67,7 @@ func tick() -> bool:
 			_check_the_morning_only_happens_once()
 			_check_every_indicated_treatment_can_be_given()
 			_check_a_wrong_site_can_be_revised()
+			_check_a_seated_person_is_still_assembled()
 			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
 			_check_a_family_row_keeps_going()
@@ -67,6 +90,10 @@ func tick() -> bool:
 			_check_next_day()
 			stage = "done"
 		"done":
+			# Never report while a deferred assertion is still pending, or the
+			# run would pass by finishing before its own slowest checks ran.
+			if not _deferred.is_empty():
+				return false
 			_report()
 			return true
 	if frames > 4000:
@@ -454,12 +481,78 @@ func _check_intake_overflow(ps) -> void:
 		_fail("no ward patient to discharge")
 		return
 	var freed: String = victim.room
+	var gone_id: String = String(victim.id)
 	ps.discharge(victim, "recovered")
+	_check_a_discharged_patient_actually_leaves(gone_id)
 	ps._relieve_intake(freed)
 	_ok(overflow.room == freed, "a ward coming free gets them off the trolley")
 	_ok(ps.free_trolleys() == trolleys_before, "and the trolley is free again")
 
 	_check_wheeling(ps)
+
+## Being discharged has to end with the body OUT OF THE TREE.
+##
+## For most of this project's life it did not. `_tick_state` returned early on
+## `data.discharged` before it reached the LEAVING branch, so everyone ever sent
+## home walked as far as the lobby and then stood in it permanently. That leak
+## is invisible by inspection — a hospital lobby with people in it looks correct
+## — but each of those nodes went on running a live NPCPerception, so the player
+## was being watched in the lobby by a fortnight of former patients and suspicion
+## climbed from nowhere. The assertions are deferred because freeing is a
+## queue_free: the node is still perfectly valid for the rest of the frame that
+## asks for it, so an immediate check reads the corpse and passes.
+func _check_a_discharged_patient_actually_leaves(gone_id: String) -> void:
+	var ps = game.patient_system
+	_defer(2, func() -> void:
+		var b = ps.get_body(gone_id)
+		if b == null:
+			_ok(true, "a discharged patient's body is gone from the ward")
+			_ok(not ps.bodies.has(gone_id), "and the ward is not still holding a reference to them")
+			return
+		_ok(b.state == PatientNPC.State.LEAVING,
+			"a discharged patient is on their way out, not standing where they were")
+		# Land them at the door rather than simulating the whole walk, which
+		# would outlast the smoke run. What is under test is that ARRIVING frees
+		# them, not how long the corridor is.
+		b.stop_moving()
+		_defer(3, func() -> void:
+			_ok(ps.get_body(gone_id) == null,
+				"and reaching the door actually frees them instead of parking them in the lobby")
+			_ok(not ps.bodies.has(gone_id),
+				"and the ward's body table lets go of them with it")))
+
+## A person sitting in a chair has to still be assembled.
+##
+## The seated idle pose wrote the breath offset onto the torso from the wrong
+## base — -0.26 instead of 0.95 — which put every seated character's trunk 1.21m
+## below their own head. Their head, arms and legs are siblings of the torso and
+## stayed put, so the result was a floating head above an empty chair with a body
+## in the floor beneath it. Nothing failed: no assertion in six suites looks at
+## where a mesh ended up, and it took a screenshot to see it at all. This is the
+## cheap general form of that check.
+func _check_a_seated_person_is_still_assembled() -> void:
+	var ps = game.patient_system
+	var seated_id := ""
+	for q in ps.active():
+		var b = ps.get_body(q.id)
+		if b != null and b.is_seated():
+			seated_id = String(q.id)
+			break
+	if seated_id == "":
+		return
+	# Deferred: the pose is written by _animate during _physics_process, so in
+	# the frame that finds them the torso is still wherever last frame left it.
+	_defer(3, func() -> void:
+		var b = ps.get_body(seated_id)
+		if b == null or not b.is_inside_tree():
+			return
+		var head_y: float = b.head_position().y
+		var torso_y: float = b.torso_position().y
+		var drop: float = head_y - torso_y
+		_ok(drop > 0.0 and drop < 0.85,
+			"a seated patient's torso is under their head and not in the floor (%.2fm below the eyes)" % drop)
+		_ok(torso_y > b.global_position.y + 0.30,
+			"and their trunk is above their own feet"))
 
 ## Which room a patient is in is a question about where the PATIENT is, and an
 ## admitted patient standing in Emergency Intake is being ramped. The ward has
@@ -760,16 +853,36 @@ func _check_the_ward_sleeps_at_night() -> void:
 	if body == null:
 		_ok(false, "there is a patient body to put to sleep")
 		return
+	var who: String = String(pool[0].id)
+	var room: String = String(pool[0].room)
 	body.set_asleep(true)
 	_ok(body.asleep, "a patient can be asleep")
-	_ok(body.perception != null and body.perception.attention == 0.0,
-		"and an asleep patient's attention is genuinely zero, not merely dimmed")
 
-	# A noise in the room wakes them, which is what stops night being a free pass.
-	body.on_heard_noise(WorldEvent.new("test_clatter", "").at(
-		body.global_position, pool[0].room).heard(0.0, 20.0))
-	_ok(not body.asleep, "and a noise nearby wakes them")
-	_ok(body.perception.attention > 0.0, "with their attention back")
+	# THE ASSERTION HAS TO WAIT A FRAME. This check used to read `attention`
+	# in the same frame as set_asleep(), before NPCPerception._process had run
+	# once — so it was reading the value the previous frame left behind and
+	# would have passed no matter what set_asleep() did. It duly passed for
+	# months while every sleeping patient in the building witnessed everything,
+	# because _process recomputed attention from _distraction each frame and
+	# overwrote the zero. An id, not a node: the sleeper may be discharged
+	# between now and then, and reading a freed object into a typed local
+	# aborts the function.
+	_defer(3, func() -> void:
+		var b = game.patient_system.get_body(who)
+		if b == null:
+			return
+		_ok(b.perception != null and b.perception.attention == 0.0,
+			"and an asleep patient's attention is still genuinely zero a few frames later, not merely dimmed")
+
+		# A noise in the room wakes them, which is what stops night being a free pass.
+		b.on_heard_noise(WorldEvent.new("test_clatter", "").at(
+			b.global_position, room).heard(0.0, 20.0))
+		_ok(not b.asleep, "and a noise nearby wakes them")
+		_defer(3, func() -> void:
+			var c = game.patient_system.get_body(who)
+			if c == null:
+				return
+			_ok(c.perception.attention > 0.0, "with their attention back, and it stays back")))
 
 	# Every shift has to declare a sleep rate, or a new shift silently gets the
 	# day-time one and nobody notices for a year.

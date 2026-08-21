@@ -253,7 +253,10 @@ func book_walkin(force_condition := "") -> Patient:
 ## ...and turns up for it. The body is spawned when the slot comes round rather
 ## than at the start of the shift, so the treatment bay fills up over the day
 ## instead of containing everybody you will ever see at eight in the morning.
-func arrive_walkin(p: Patient) -> Patient:
+## `announce` exists for the load path: from_dict() re-seats the walk-ins who
+## were already in the bay when the game was saved, and a save file restoring
+## itself should not read as five people walking through the door at once.
+func arrive_walkin(p: Patient, announce := true) -> Patient:
 	if p == null or bodies.has(p.id):
 		return p
 	var npc := PatientNPC.new()
@@ -289,8 +292,9 @@ func arrive_walkin(p: Patient) -> Patient:
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
 	if sus:
 		sus.register(p.mind, npc)
-	EventBus.toast.emit("%s is here for a %s." % [p.display_name,
-		"review" if RNG.chance("walkin_word", 0.5) else "check-up"], "info")
+	if announce:
+		EventBus.toast.emit("%s is here for a %s." % [p.display_name,
+			"review" if RNG.chance("walkin_word", 0.5) else "check-up"], "info")
 	return p
 
 ## Somebody who was sent home on the wrong thing comes back. Not tomorrow and
@@ -755,6 +759,15 @@ func transfer(p: Patient, ward_key: String) -> bool:
 		old.patient_id = ""
 	body.bind(p, bed)
 	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
+	# Binding a chair is not the same as being in it. Only IN_BED makes
+	# _hold_bed_pose pin the body to mount_point() and hold the chair's yaw;
+	# only IN_BED is a state _on_shift_started will put to sleep on a night
+	# shift, and only IN_BED barks or wanders. A walk-in admitted out of the
+	# waiting row arrives here still SITTING, and SITTING has no case in
+	# _tick_state — so without this they spent the rest of their stay dropped
+	# half a metre above the chair, awake through every night shift with full
+	# attention, silent, and shovable by anybody who walked into them.
+	body.state = PatientNPC.State.IN_BED
 	p.room = ward_key
 
 	var chart = charts.get(p.id, null)
@@ -960,7 +973,22 @@ func from_dict(d: Dictionary) -> void:
 		var p := Patient.from_dict(stored[id])
 		patients[p.id] = p
 		if not p.discharged:
-			_spawn_body(p, p.room, sus)
-			_spawn_chart(p, p.room)
+			# An un-admitted walk-in is NOT a ward patient with a missing bed.
+			# Putting them through _spawn_body finds no bed in "treatment",
+			# drops them on a random nav point with the default IN_BED state
+			# and a null bed, and from there _hold_bed_pose refuses to seat
+			# them while _tick_state starts wandering them off down the
+			# corridor — an unadmitted person, out of their chair, permanently.
+			# _spawn_chart is worse: it gives somebody who has not been
+			# admitted a physical chart, and the one admit() spawns for them
+			# later overwrites the dictionary entry and orphans this prop in
+			# the treatment bay where nothing will ever free it.
+			# They go back the way they arrived instead: seated in the waiting
+			# row, no chart, no announcement.
+			if p.admitted:
+				_spawn_body(p, p.room, sus)
+				_spawn_chart(p, p.room)
+			else:
+				arrive_walkin(p, false)
 	for w in d.get("waiting", []):
 		waiting.append(Patient.from_dict(w))

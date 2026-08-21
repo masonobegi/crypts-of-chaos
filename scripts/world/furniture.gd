@@ -876,11 +876,11 @@ static func _intake(h: Hospital, r: Room) -> void:
 	term.rotation.y = PI
 	_occupy(c.x, c.z + 1.2, 4.4, 1.0)
 
-	# Trolleys down the east side. These are REAL beds, on wheels, in the bed
-	# group — so when the ward is full an admission physically lands on one of
-	# them, and anybody can push it anywhere. A corridor is a place you can
-	# legitimately put a patient, and the game does not distinguish between
-	# doing that because there was no room and doing it on purpose.
+	# Overflow chairs down the east side, in the bed group — so when the ward is
+	# full an admission physically lands on one of them. Being seen out here
+	# rather than behind a door is the point of them; the game does not
+	# distinguish between putting somebody here because there was no room and
+	# doing it on purpose.
 	for i in 3:
 		var trolley := PatientBed.new()
 		trolley.room_key = r.key
@@ -888,7 +888,14 @@ static func _intake(h: Hospital, r: Room) -> void:
 		h.add_child(trolley)
 		trolley.build()
 		var z := r.rect.position.y + 2.0 + float(i) * 2.6
-		trolley.position = Vector3(east - 2.4, 0.4, z)
+		# Floor level, exactly like the ward chairs at bed_position(). These used
+		# to be rigid-body beds on castors whose origin sat at mattress height,
+		# so 0.4 was correct then; PatientBed now builds a chair with its leg
+		# bottoms at local y = 0 and its occupant marker on the floor, and the
+		# old offset left the chair — and the patient pinned to mount_point()
+		# every frame — hovering 40cm above the intake floor beside an IV stand
+		# standing correctly at 0.
+		trolley.position = Vector3(east - 2.4, 0.0, z)
 		trolley.rotation.y = PI / 2
 		_occupy(east - 2.4, z, 2.4, 1.3)
 		_iv_stand(h, Vector3(east - 3.9, 0, z))
@@ -967,7 +974,8 @@ static func _radiology(h: Hospital, r: Room) -> void:
 
 	var img := TreatmentMachine.new()
 	img.room_key = r.key
-	img.machine_id = "machine_imaging"
+	# From the registry, so the installed set and the treatment table cannot drift.
+	img.machine_id = TreatmentMachine.INSTALLED[0]
 	img.treatment_id = "imaging"
 	img.units = "APERTURE DEPTH"
 	h.add_child(img)

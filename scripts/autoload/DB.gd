@@ -96,7 +96,10 @@ static func prescriptions_for(condition_id: String) -> Array[String]:
 ##
 ## pay         : multiplier on your salary for the shift
 ## appointments: how many booked encounters land on your list
-## scrutiny    : how carefully the paperwork is read afterwards
+## scrutiny    : how carefully the paperwork is read afterwards. Scales the
+##               daily roll in InvestigationSystem.daily_check() — it is who is
+##               in the building to read yesterday's charts, not a second
+##               accusation, so it multiplies rather than adds.
 ## admissions  : morning arrivals multiplier
 ## night_penalty: how much of the evening out the shift has already cost you
 ##
@@ -575,20 +578,31 @@ const TREATMENTS := {
 		"effect": 0.15, "wrong": 0.05, "tool": "", "time": 1.0,
 		"desc": "Tell them to lie down. Bill for it.",
 	},
+	# These three were the Vibe Stabiliser, the Humour Rebalancer and the Dread
+	# Extractor: three boxes with dials on them, all of which left the building
+	# with the rest of the treatment machines. Nothing removed them from the
+	# `treats` lists, so sixteen conditions went on printing INDICATED against a
+	# tool id that no fixture builds any more — and because `_treatment_for_item`
+	# matches on the id of the thing in your hands and the dialogue screen only
+	# offers treatments needing no tool at all, there was no path to any of them
+	# from anywhere. Worst of it was Ossified Vibes, whose chart listed all three
+	# and nothing else. They are hand procedures now, on tools that are actually
+	# on the trolley, and the descriptions say what your hands do rather than
+	# where to stand while a machine does it.
 	"vibe_stabilize": {
 		"name": "Vibe Stabilisation", "verb": "stabilised the vibes",
-		"effect": 0.4, "wrong": -0.06, "tool": "machine_vibe", "time": 3.0,
-		"desc": "Run the patient through the Vibe Stabiliser at a sensible setting.",
+		"effect": 0.4, "wrong": -0.06, "tool": "duster", "time": 3.0,
+		"desc": "Hold the duster near the patient and let the frequency settle what is wobbling.",
 	},
 	"humour_rebalance": {
 		"name": "Humour Rebalancing", "verb": "rebalanced humours",
-		"effect": 0.38, "wrong": -0.05, "tool": "machine_humour", "time": 3.0,
-		"desc": "Four humours. One dial. Go.",
+		"effect": 0.38, "wrong": -0.05, "tool": "compress", "time": 3.0,
+		"desc": "Four humours. Warm the one that is sulking until the others agree.",
 	},
 	"dread_extraction": {
 		"name": "Ambient Dread Extraction", "verb": "extracted ambient dread",
-		"effect": 0.45, "wrong": -0.1, "tool": "machine_dread", "time": 4.0,
-		"desc": "Suction, but for the soul. Emptying the canister is your job.",
+		"effect": 0.45, "wrong": -0.1, "tool": "blanket", "time": 4.0,
+		"desc": "Lay the heavy blanket over them and press the dread out at the edges.",
 	},
 	"torque_wrench": {
 		"name": "Spleen Detorquing", "verb": "detorqued the spleen",

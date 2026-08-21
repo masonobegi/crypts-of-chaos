@@ -14,9 +14,13 @@ extends RefCounted
 const CATALOGUE := {
 	# ---------------------------------------------------------- pure upside
 	"better_beds": {
-		"name": "Adjustable Beds", "cost": 8400, "tier": 1,
+		# The id is "better_beds" because it was written when there were beds.
+		# There are chairs now, and renaming a saved upgrade id would silently
+		# un-buy it for everyone with a career in progress — so the id stays and
+		# the copy tells the truth about the footrest it actually installs.
+		"name": "Reclining Chairs", "cost": 8400, "tier": 1,
 		"desc": "Patients recover slightly faster and complain less.",
-		"note": "Comfort improves satisfaction across the ward.",
+		"note": "A footrest and a headrest. They stop asking for a bed.",
 	},
 	"coffee_machine": {
 		"name": "Decent Coffee Machine", "cost": 3600, "tier": 1,

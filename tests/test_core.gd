@@ -204,7 +204,17 @@ func test_every_condition_has_reachable_treatments() -> void:
 			var spec: Dictionary = DB.treatment(String(tid))
 			t.ok(not spec.is_empty(), "%s references a real treatment (%s)" % [cid, tid])
 			var tool := String(spec.get("tool", ""))
-			if tool == "" or tool.begins_with("machine_"):
+			if tool == "":
+				continue
+			# The blanket "machine_" skip is why sixteen conditions shipped with
+			# a correct treatment that could not be performed in the building.
+			# It was written when every machine existed; three of them were
+			# later removed and nothing here noticed. A device is now checked
+			# against the devices that get installed.
+			if tool.begins_with("machine_"):
+				t.ok(TreatmentMachine.INSTALLED.has(tool),
+					"treatment %s for %s needs device '%s', which must actually be in the hospital" % [
+						tid, cid, tool])
 				continue
 			t.ok(Items.SPECS.has(tool),
 				"treatment %s needs tool '%s', which must be a real item" % [tid, tool])

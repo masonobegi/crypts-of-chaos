@@ -16,6 +16,23 @@ var body: NPCBody = null
 ## distracted by a noise; this is the window a thrown bedpan buys you.
 var attention := 1.0
 var _distraction := 0.0
+## True while this character cannot take anything in: asleep, or out cold.
+##
+## This has to be a FLAG and not a written-down number, because attention is
+## DERIVED. `_process` recomputes it from `_distraction` on every idle frame, so
+## a caller setting `attention = 0.0` — which is what put-them-to-sleep did —
+## had it overwritten one frame later, and could never have made it stick in any
+## case: the clamp below has a floor of 0.15. That defect was the entire night
+## shift. The five patients asleep in their chairs are supposed to be five
+## people who genuinely witness nothing; they were instead five people who
+## witnessed everything at full observance from the frame after they shut their
+## eyes, while looking sound asleep.
+##
+## Hearing is deliberately NOT suppressed. A bang still reaches a sleeper,
+## because reaching them is precisely what wakes them up: the distraction you
+## threw to move the nurse is the same distraction that turns a ward of sleepers
+## into a ward of witnesses, and that trade is the reason nights cost anything.
+var suppressed := false
 ## Where they are currently looking, if they are deliberately watching something.
 var focus: Vector3 = Vector3.ZERO
 var has_focus := false
@@ -24,7 +41,13 @@ func setup(p_body: NPCBody) -> void:
 	body = p_body
 
 func _process(delta: float) -> void:
+	# Distraction keeps decaying underneath a suppressed observer, so they come
+	# round with a clean slate rather than owing whatever noise happened while
+	# they were under.
 	_distraction = maxf(0.0, _distraction - delta * 0.35)
+	if suppressed:
+		attention = 0.0
+		return
 	attention = clampf(1.0 - _distraction, 0.15, 1.0)
 
 ## Called when something loud happens elsewhere — they look away from you.
@@ -55,7 +78,12 @@ func eye_position() -> Vector3:
 	return body.head_position() if body else Vector3.ZERO
 
 func can_see(target: Vector3, ignore_fov := false) -> bool:
-	if body == null:
+	# Eyes shut. An attention of zero is not sufficient on its own and never was:
+	# notice_chance()'s attentiveness term bottoms out at 0.7 with an observance
+	# of zero, so a blatant act performed in front of a sleeping patient still
+	# rolled better than even odds of being seen by them. Somebody who is not
+	# conscious does not get the roll at all.
+	if body == null or suppressed:
 		return false
 	var eye := eye_position()
 	var to := target - eye
@@ -127,7 +155,9 @@ func evaluate(evt: WorldEvent) -> Dictionary:
 			}
 
 	# --- ambient: some things you just notice by being in the room
-	if evt.ambient and same_room(evt.room):
+	# Ambient is "you were in the room when it happened", which is only true of
+	# somebody who was awake in it.
+	if evt.ambient and not suppressed and same_room(evt.room):
 		return {
 			"source": Evidence.Source.WITNESSED,
 			"weight": evt.visual_weight * 0.6,

@@ -30,17 +30,44 @@ var _exchange := 0
 var _their_guard := Brawl.THEIR_GUARD
 var _your_guard := Brawl.YOUR_GUARD
 var _blocked := false
-var _shake := 0.0
 var _why := ""
 var _was_can_move := true
+var _objective_before := ""
 
 func _ready() -> void:
 	add_to_group("brawl_system")
 	set_physics_process(false)
+	# Whatever the ward last told the player to do, kept so the fight can put it
+	# back. The objective line is emitted ONCE, at clock-in, and the tutorial's
+	# is emitted only when a step advances — so blanking it at the end of a
+	# fight left a new player staring at an empty instruction until they
+	# happened to complete the step some other way. Only recorded while no fight
+	# is running, because the guard prompt and the pips are ours and putting
+	# either of those back afterwards would be worse than the blank.
+	EventBus.objective_changed.connect(func(text):
+		if not active:
+			_objective_before = String(text))
+	# The day ending stops the fight rather than leaving one running underneath
+	# the chart review, still landing hits on somebody whose stay has already
+	# been totted up.
+	EventBus.shift_ended.connect(func(_day): cancel())
 
 ## Square up. Returns false if there is nobody to square up to.
 func start(p) -> bool:
 	if active or p == null or not Brawl.can_fight(p):
+		return false
+	# Not after the day has been signed off. `Brawl.can_fight()` is a statement
+	# about the person — admitted, still here, not already on the floor — and
+	# deliberately says nothing about the clock. But half of what a fight costs
+	# is only wired up during the shift: losing bills you and then asks
+	# ShiftSystem to end a day that has already ended, and winning adds three
+	# days and a contusion AFTER `pending_findings()` has built the review the
+	# player is sitting reading. "Go and fix it" on that review puts you back on
+	# the floor with the phase still on CHART_REVIEW, which is exactly where
+	# both of those happen.
+	if GameState.phase == GameState.Phase.CHART_REVIEW \
+			or GameState.phase == GameState.Phase.POST_SHIFT \
+			or GameState.phase == GameState.Phase.GAME_OVER:
 		return false
 	_body = patient_system.get_body(p.id) if patient_system != null else null
 	_player = get_tree().get_first_node_in_group("player")
@@ -51,7 +78,6 @@ func start(p) -> bool:
 	_your_guard = Brawl.YOUR_GUARD
 	_exchange = 0
 	_recover = 0.6
-	_shake = 0.0
 	_why = ""
 	active = true
 
@@ -79,7 +105,6 @@ func _physics_process(delta: float) -> void:
 	if _body == null or not is_instance_valid(_body) or _player == null:
 		_finish(false)
 		return
-	_shake = maxf(0.0, _shake - delta * 3.0)
 	_face_each_other(delta)
 	if _recover > 0.0:
 		_recover -= delta
@@ -154,7 +179,15 @@ func _land(blocked: bool) -> void:
 		EventBus.subtitle.emit("Blocked, and returned.", 1.4, "")
 	else:
 		_your_guard -= 1
-		_shake = 1.0
+		# The camera, via the player's own shake — which respects the
+		# camera_shake accessibility setting and stacks on top of the walk bob,
+		# and is what a door in the face and an opened investigation already
+		# use. This system used to keep a private `_shake` float, decay it every
+		# frame and expose it through an accessor "the HUD reads", except that
+		# nothing in the HUD had ever heard of the brawl system: getting hit
+		# moved nothing on screen at all.
+		if _player.has_method("shake"):
+			_player.shake(0.85)
 		AudioMgr.play("thud", -5.0, 0.8)
 		EventBus.subtitle.emit(_why if _why != "" else "That one landed.", 1.4, "")
 		_why = ""

@@ -146,6 +146,7 @@ func _build_body() -> void:
 	# should read as separate objects: the collar, the cuffs, the hair.
 	const LINE := 0.009
 	_torso = Node3D.new()
+	_torso.name = "Torso"
 	_torso.position = Vector3(0, 0.95, 0)
 	root.add_child(_torso)
 	# One solid, hip to shoulder, broad at the top.
@@ -185,11 +186,12 @@ func _build_body() -> void:
 	_head.add_child(Build.mi(Build.sphere_mesh(0.040),
 		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.022, 0.188), Vector3.ZERO, Vector3(0.78, 0.70, 1.15)))
-	# A mouth. One dark bar, and the face stops being a nose between two eyes.
-	# It is also where every future expression goes, if there is ever one.
-	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.085, 0.022, 0.03), 0.010),
-		Build.mat(Color(0.42, 0.24, 0.24), 0.9, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, -0.100, 0.180)))
+	# The mouth is built further down, in three pieces that move. There WAS a
+	# static bar here as well — the original single-piece mouth — and adding the
+	# animated one below it did not remove it, so every face in the building
+	# carried two: the new one at y=-0.062 pulling a grimace, and a dead one
+	# 3.8cm under it sitting flat through the whole reaction. Both stand proud
+	# of the head ellipsoid at their own heights, so neither hid the other.
 	# A chin, so the jaw has a bottom to it. Lined, because it is the profile.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
 		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
@@ -630,13 +632,38 @@ func _animate(delta: float) -> void:
 	# Three signals, all tiny, none of which needs a rig: a breath, a slow shift
 	# of weight from one foot to the other, and a blink. The first two fade out
 	# as the character starts moving, because a walk already carries them.
+	if _fighting:
+		# A fight owns the arms for exactly as long as it is running.
+		#
+		# `pinned` routes a squared-up NPC through here every physics frame, and
+		# the idle pass below writes both arm rotations unconditionally. The
+		# fight sets those same rotations from its own rules clock in
+		# BrawlSystem._physics_process, and the NPC node is added to the tree
+		# after the systems are — so the idle pass ran second and won every
+		# frame. The guard, the wind-up and the feint were all computed and then
+		# overwritten with a breath before anything was drawn, which is to say
+		# the one thing the player has to read in order to block was invisible.
+		# Breathe and blink, because nothing in the fight touches those, and
+		# leave every limb to swing_arm().
+		if _torso:
+			_torso.position.y = 0.95 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
+		_tick_blink(delta)
+		return
 	if _seated:
 		# Seated: breathe and blink, but do not walk. Without this the legs
 		# swing back to vertical on the first frame of the idle cycle and the
 		# character stands up through the chair.
-		_idle_phase += 0.0
+		#
+		# The breath is offset from the SAME 0.95 base as the standing branch.
+		# It used to sit on -0.26, a hip drop copied from set_seated() back when
+		# that offset lived on the torso; it lives on the Body node now (and is
+		# -0.30), so writing it here as well moved the trunk 1.21m down while
+		# the head, arms and legs — siblings of _torso, not children — stayed
+		# where they were. That is a floating head with detached limbs, and now
+		# that the ward beds are chairs it was every patient in the game rather
+		# than only the visitors in the waiting row.
 		if _torso:
-			_torso.position.y = -0.26 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
+			_torso.position.y = 0.95 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
 		_tick_blink(delta)
 		return
 	var still: float = clampf(1.0 - planar * 1.6, 0.0, 1.0)
@@ -1024,6 +1051,17 @@ func head_position() -> Vector3:
 	if _head and _head.is_inside_tree():
 		return _head.global_position
 	return global_position + Vector3(0, 1.5, 0)
+
+## Where the trunk actually ended up, for tests.
+##
+## Nothing in the game needs this; the seated-pose bug that put every sitting
+## character's torso 1.21m below their own head does. A pose is written straight
+## onto a node's transform every physics frame, so the only way to catch one
+## being written wrong is to go and look at the transform.
+func torso_position() -> Vector3:
+	if _torso and _torso.is_inside_tree():
+		return _torso.global_position
+	return global_position + Vector3(0, 0.95, 0)
 
 func display_name() -> String:
 	return display

@@ -432,8 +432,12 @@ func _fit_cameras() -> void:
 func _fit_curtains() -> void:
 	for r in wards():
 		var b := bed_position(r.key)
-		# The rail runs along the bed, which lies along X — a cylinder stands up
-		# by default, so it is rotation.z that lays it down the right way.
+		# The rail runs along X, across the front of the chair — a cylinder
+		# stands up by default, so it is rotation.z that lays it down the right
+		# way. It used to be described as running "along the bed"; the bed is a
+		# chair now and has no long axis, but the rail is still a rail across
+		# the front of the space you screen off, so the geometry survived the
+		# change even though the reason for it did not.
 		var rail := Build.cyl_mi(0.028, 3.0, Color(0.80, 0.82, 0.86),
 			b + Vector3(0.1, 2.16, -0.55), 8)
 		rail.rotation.z = PI * 0.5
@@ -450,14 +454,29 @@ func _fit_curtains() -> void:
 			b + Vector3(-1.32, 1.22, -0.55))
 		_fittings.add_child(drape)
 
-## Adjustable beds get a visible head section and a control pendant.
+## The comfort upgrade gets a footrest and a control pendant.
+##
+## This used to add a raised head section and a pendant floating beside it, both
+## positioned against the old rigid-body bed: a mattress-height slab half a
+## metre in front of the frame was the head end of something you lie on. The
+## bed is a chair now — origin on the floor, seat top at 0.48, back at local
+## -z, and every ward chair yawed by PI so it faces the door at low z — so
+## those two boxes were left hanging in mid-air a good 70cm in FRONT of the
+## seated patient's knees, supported by nothing, which is the single most
+## visible thing in the room once you have paid for it.
+##
+## So the fitting is now what a comfortable chair actually gains: a footstool
+## standing on the floor where the feet are, and a pendant resting on the arm
+## where a hand is. Both are still world-axis offsets rather than rotated ones,
+## because every ward's door is on min z and _far_rot is PI for all five of
+## them — the chair's front is world -z in every room in the building.
 func _fit_bed_rails() -> void:
 	for r in wards():
 		var b := bed_position(r.key)
-		_fittings.add_child(Build.box_mi(Vector3(1.0, 0.06, 0.5),
-			Color(0.86, 0.89, 0.94), b + Vector3(0, 0.62, -0.72)))
-		_fittings.add_child(Build.box_mi(Vector3(0.10, 0.16, 0.05),
-			Color(0.30, 0.34, 0.40), b + Vector3(0.62, 0.72, -0.2)))
+		_fittings.add_child(Build.box_mi(Vector3(0.62, 0.34, 0.36),
+			Color(0.86, 0.89, 0.94), b + Vector3(0, 0.17, -0.66)))
+		_fittings.add_child(Build.box_mi(Vector3(0.10, 0.14, 0.06),
+			Color(0.30, 0.34, 0.40), b + Vector3(0.43, 0.75, -0.10)))
 
 func _fit_shred_bin() -> void:
 	var o: Room = rooms.get("office", null)

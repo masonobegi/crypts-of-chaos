@@ -10,12 +10,12 @@ func _ready() -> void:
 	# The title screen had no sound at all, which is the first thing anybody
 	# hears of this game and it was nothing.
 	AudioMgr.play_music("evening")
-	var bg := ColorRect.new()
-	bg.color = Color(0.07, 0.09, 0.11)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg)
+	_backdrop()
 
-	var panel := UIKit.center_panel(660, 780)
+	# Short on purpose. A PanelContainer grows to fit, so this is a floor and
+	# not a ceiling — the panel is exactly as tall as what is in it, which is
+	# different on a first run and a hundredth.
+	var panel := UIKit.center_panel(660, 420)
 	add_child(panel)
 	var v := UIKit.vbox(10)
 	panel.add_child(v)
@@ -25,7 +25,15 @@ func _ready() -> void:
 		16, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.rule())
 
-	v.add_child(UIKit.button("New Career", _new_career, Color(0.16, 0.32, 0.30)))
+	var go := UIKit.button("New Career", _new_career, Color(0.11, 0.30, 0.29))
+	go.add_theme_font_size_override("font_size", 20)
+	# The one dark button on a page of pale ones needs its own text colour, or
+	# it is ink on ink and the most important control on the screen is the least
+	# readable one.
+	for state in ["font_color", "font_hover_color", "font_pressed_color",
+			"font_focus_color"]:
+		go.add_theme_color_override(state, Color(0.92, 0.98, 0.96))
+	v.add_child(go)
 	if SaveSystem.has_save(SaveSystem.AUTOSAVE):
 		var info := SaveSystem.list_saves()
 		var label := "Continue"
@@ -78,8 +86,37 @@ func _ready() -> void:
 		13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label(
 		"Everything in this game is fictional and extremely stupid on purpose.",
-		12, Color(1, 1, 1, 0.28), HORIZONTAL_ALIGNMENT_CENTER))
+		12, Color(UIKit.INK.r, UIKit.INK.g, UIKit.INK.b, 0.45),
+		HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.button("Quit", func(): get_tree().quit()))
+
+## The title screen looks through a window into the building.
+##
+## A panel on a flat dark rectangle is a strange first thing to show somebody
+## about a game whose whole look is a bright cartoon hospital, so this renders a
+## corner of a ward into a SubViewport and puts the menu on top of it. Needs its
+## own World3D — the menu scene is a Control tree with no 3D world of its own,
+## and without this the room would have nowhere to exist.
+func _backdrop() -> void:
+	var holder := SubViewportContainer.new()
+	holder.stretch = true
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(holder)
+	var vp := SubViewport.new()
+	vp.own_world_3d = true
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp.msaa_3d = Viewport.MSAA_2X
+	holder.add_child(vp)
+	vp.add_child(MenuScene.new())
+	# A scrim, because the panel has to be readable over whatever the camera
+	# happens to be pointing at and the camera is deliberately not still.
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.05, 0.08, 0.11, 0.18)
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(scrim)
 
 func _new_career() -> void:
 	var s := 0

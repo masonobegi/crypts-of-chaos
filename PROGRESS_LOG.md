@@ -2879,3 +2879,30 @@ minimum size to fit its content, so a card with one option too many ran off the
 bottom and took its last button with it. The card is capped against the window,
 the body scrolls, and the way out is pinned underneath the scroll — because the
 thing you have to scroll to find is a choice the player did not make.
+
+### A title screen that looks like the game
+
+The menu was a panel on a flat dark rectangle — a strange first thing to show
+somebody about a game whose whole look is a bright cartoon hospital, and the
+one screen every player is guaranteed to see. It now renders a corner of a ward
+into a `SubViewport` behind the panel: the two-tone wall with its rail and
+skirting, a bed, a nurse in green standing over it, a cabinet, a plant, a stool,
+a clock, and a ceiling panel doing the lighting, with the camera drifting slowly
+across it on two different periods so it never quite repeats.
+
+Everything worth looking at is composed OUT to the sides, because the panel
+covers the middle two-fifths of the screen and anything centred in that shot is
+a thing nobody will ever see. The camera is aimed slightly up for the same
+reason in the other axis: level at eye height fills the bottom half of the frame
+with empty floor, and the bottom half is the half the panel does not cover.
+
+The nurse fell out of the world in the first version, silently and with no
+error, because the floor was built with `Build.box_mi` — a mesh with no
+collider — and she is a `CharacterBody3D`. It is `Build.wall` now.
+
+It is deliberately a vignette and not the real hospital. The real one is
+sixty-two metres of building with navigation and staff in it, and the title
+screen has no business paying for that before you have pressed anything.
+
+Also: the courtroom's replies are the buttons now, rather than a heading with a
+"Say it" underneath it — the same fix the patient card got, for the same reason.

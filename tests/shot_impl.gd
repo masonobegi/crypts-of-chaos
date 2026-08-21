@@ -82,10 +82,9 @@ func _tick_street() -> bool:
 		night.finish(false)
 		if game.ui != null:
 			game.ui.close()
-		print("captured %d frames to %s" % [
-			SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size(),
-			ProjectSettings.globalize_path(out_dir)])
-		return true
+		phase = "menu"
+		settle = 0
+		return false
 	# Street coordinates are written as if the street were at the origin; it is
 	# not (see Street.ORIGIN), so both ends of every shot carry the offset.
 	var shot: Array = STREET_SHOTS[street_index]
@@ -99,6 +98,35 @@ func _tick_street() -> bool:
 	street_index += 1
 	settle = 6
 	return false
+
+## The title screen, which is the one screen a player is guaranteed to see and
+## the only one that was never photographed. It is its own scene, so it has to
+## be stood up next to the game and the game put away behind it.
+var _menu: Node = null
+
+func _tick_menu() -> bool:
+	if _menu == null:
+		game.visible = false
+		if game.ui != null:
+			game.ui.close()
+			# game.visible hides the 3D; the HUD is a CanvasLayer and does not
+			# care what the node above it is doing.
+			game.ui.visible = false
+		_menu = load("res://scenes/MainMenu.tscn").instantiate()
+		tree.root.add_child(_menu)
+		settle = 0
+		return false
+	settle += 1
+	# Long enough that the drift has moved off its first frame and every light
+	# has settled.
+	if settle < 30:
+		return false
+	tree.root.get_texture().get_image().save_png("%s/00_menu.png" % out_dir)
+	print("  shot: 00_menu")
+	print("captured %d frames to %s" % [
+		SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size() + 1,
+		ProjectSettings.globalize_path(out_dir)])
+	return true
 
 ## name, position, look-at
 func _tick_ui() -> bool:
@@ -536,6 +564,8 @@ func tick() -> bool:
 		return false
 	if phase == "street":
 		return _tick_street()
+	if phase == "menu":
+		return _tick_menu()
 	if index >= SHOTS.size():
 		return _tick_ui()
 

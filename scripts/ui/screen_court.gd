@@ -183,10 +183,17 @@ func _build_hearing() -> void:
 func _reply_button(key: String) -> Control:
 	var spec: Dictionary = LegalSystem.REPLIES[key]
 	var used := _said.count(key)
-	var p := UIKit.panel(UIKit.PANEL_LIGHT, 6)
+	var tint: Color = UIKit.ACCENT if used == 0 else UIKit.INK_DIM
+	var p := UIKit.panel(UIKit.PANEL_LIGHT, 6, 2, tint)
 	var bv := UIKit.vbox(2)
-	bv.add_child(UIKit.label(String(spec["label"]), 16,
-		UIKit.INK if used == 0 else UIKit.INK_DIM))
+	# The line you would say IS the button. A heading with a "Say it" underneath
+	# names every choice twice and puts the click somewhere other than the words
+	# you are choosing — the same thing that made the patient screen unreadable.
+	var b := UIKit.button(String(spec["label"]), func(): _say(key), UIKit.PANEL_LIGHT)
+	b.add_theme_font_size_override("font_size", 17)
+	b.add_theme_color_override("font_color", tint)
+	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	bv.add_child(b)
 	bv.add_child(UIKit.label(String(spec["note"]), 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	# Saying it again is allowed and is worth less every time. Shown, because a
@@ -195,7 +202,6 @@ func _reply_button(key: String) -> Control:
 		bv.add_child(UIKit.label(
 			"You have said this once already." if used == 1
 			else "You have said this %d times." % used, 12, UIKit.WARN))
-	bv.add_child(UIKit.button("Say it", func(): _say(key)))
 	p.add_child(bv)
 	return p
 

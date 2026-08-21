@@ -15,6 +15,7 @@ var _claim: Dictionary = {}
 var _stage := "letter"
 var _lawyer := ""
 var _exchange := 0
+var _said: Array[String] = []
 var _scores: Array[float] = []
 var _outcome: Dictionary = {}
 
@@ -147,19 +148,22 @@ func _instruct(id: String) -> void:
 	_stage = "hearing"
 	_exchange = 0
 	_scores.clear()
+	_said.clear()
 	AudioMgr.play("paper", -10.0)
 	rebuild()
 
 # ------------------------------------------------------------------ the room
 func _build_hearing() -> void:
-	var rounds := LegalSystem.exchanges(_claim)
-	if _exchange >= rounds.size():
+	if _exchange >= LegalSystem.HEARING_LENGTH:
 		_finish_hearing()
 		return
-	var ex: Dictionary = rounds[_exchange]
+	# Built from what has already been said rather than from a fixed list, so
+	# the line you are answering is a line about your last answer.
+	var ex := LegalSystem.exchange(_claim, _said)
 	var v := shell(820, 700, "In the matter of %s" % String(_claim["patient"]),
 		"%s for the defendant · exchange %d of %d" % [
-			String(LegalSystem.lawyer(_lawyer)["name"]), _exchange + 1, rounds.size()])
+			String(LegalSystem.lawyer(_lawyer)["name"]), _exchange + 1,
+			LegalSystem.HEARING_LENGTH])
 
 	var box := UIKit.panel(Color(0.14, 0.16, 0.22, 0.92), 6, 1, UIKit.BAD)
 	var rl := UIKit.label("", 17, Color(0.94, 0.90, 0.88), HORIZONTAL_ALIGNMENT_LEFT, true)
@@ -178,17 +182,26 @@ func _build_hearing() -> void:
 
 func _reply_button(key: String) -> Control:
 	var spec: Dictionary = LegalSystem.REPLIES[key]
+	var used := _said.count(key)
 	var p := UIKit.panel(UIKit.PANEL_LIGHT, 6)
 	var bv := UIKit.vbox(2)
-	bv.add_child(UIKit.label(String(spec["label"]), 16, UIKit.INK))
+	bv.add_child(UIKit.label(String(spec["label"]), 16,
+		UIKit.INK if used == 0 else UIKit.INK_DIM))
 	bv.add_child(UIKit.label(String(spec["note"]), 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
+	# Saying it again is allowed and is worth less every time. Shown, because a
+	# hidden decay is a trap rather than a decision.
+	if used > 0:
+		bv.add_child(UIKit.label(
+			"You have said this once already." if used == 1
+			else "You have said this %d times." % used, 12, UIKit.WARN))
 	bv.add_child(UIKit.button("Say it", func(): _say(key)))
 	p.add_child(bv)
 	return p
 
 func _say(key: String) -> void:
-	_scores.append(LegalSystem.reply_score(_claim, key, _lawyer))
+	_scores.append(LegalSystem.reply_score(_claim, key, _lawyer, _said.count(key)))
+	_said.append(key)
 	_exchange += 1
 	AudioMgr.play("stamp", -16.0)
 	rebuild()

@@ -36,6 +36,12 @@ var _watchers: Array[Dictionary] = []
 var _lamps: Array[Vector2] = []
 var _exposure := 0.0
 var _lit := 0.0
+## The place's own hazard: a camera, a dog, a drunk, or a tram. Kept beside the
+## watchers rather than inside them because each one moves by a different rule.
+var _hazard := ""
+var _hz := Vector2.ZERO
+var _hz_face := 0.0
+var _tram := -1.0
 var _elapsed := 0.0
 var _done := false
 var _result: Dictionary = {}
@@ -84,6 +90,9 @@ func _place_option(spec: Dictionary) -> Control:
 		w, "person" if w == 1 else "people",
 		"unlit" if l == 0 else ("one lamp" if l == 1 else "%d lamps" % l)],
 		12, UIKit.WARN if w + l >= 5 else UIKit.INK_DIM))
+	var hz := String(NightSystem.HAZARDS.get(String(spec.get("hazard", "")), ""))
+	if hz != "":
+		bv.add_child(UIKit.label(hz, 12, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
 	bv.add_child(UIKit.button("Go there", func(): _begin(spec)))
 	p.add_child(bv)
 	return p
@@ -143,6 +152,18 @@ func _lay_out() -> void:
 			"sweep": 0.28 + 0.42 * float(RNG.randf_s("%s_s%d" % [key, i])),
 			"phase": TAU * float(RNG.randf_s("%s_p%d" % [key, i])),
 		})
+	_hazard = String(_place.get("hazard", ""))
+	_hz = Vector2(FIELD.x * 0.72, FIELD.y * 0.24)
+	_hz_face = PI * 0.75
+	_tram = -1.0
+	match _hazard:
+		"dog":
+			_hz = Vector2(FIELD.x * 0.30, FIELD.y * 0.82)
+		"drunk":
+			_hz = Vector2(FIELD.x * 0.58, FIELD.y * 0.52)
+		"camera":
+			_hz = Vector2(FIELD.x * 0.80, FIELD.y * 0.16)
+
 	_lamps.clear()
 	var lamps := int(_place["lamps"])
 	for i in lamps:
@@ -151,6 +172,57 @@ func _lay_out() -> void:
 
 ## Where a watcher is looking right now. They sweep rather than stare, so the
 ## street has a rhythm you can read and wait out.
+## Each hazard moves by its own rule, and the rule is the point of it.
+func _tick_hazard(delta: float) -> void:
+	match _hazard:
+		"camera":
+			# Never blinks, never gets bored, and sweeps slowly enough that you
+			# can wait it out — if you are prepared to spend the time.
+			_hz_face = PI * 0.75 + sin(_elapsed * 0.42) * 0.62
+		"dog":
+			# Comes to you. The only thing in the street that closes distance.
+			var to := _me - _hz
+			if to.length() < 230.0 and to.length() > 26.0:
+				_hz += to.normalized() * 58.0 * delta
+			_hz_face = to.angle() if to.length() > 1.0 else _hz_face
+		"drunk":
+			# Wanders, and looks wherever he happens to be facing.
+			_hz += Vector2(sin(_elapsed * 0.8), cos(_elapsed * 0.53)) * 34.0 * delta
+			_hz = _hz.clamp(Vector2(30, FIELD.y * 0.34), Vector2(FIELD.x - 30, FIELD.y * 0.64))
+			_hz_face = sin(_elapsed * 1.7) * 2.6 + cos(_elapsed * 0.9) * 1.1
+		"tram":
+			# Every twenty seconds the whole street is daylight for a moment.
+			var phase: float = fposmod(_elapsed, 20.0)
+			_tram = phase if phase < 3.4 else -1.0
+
+## How bright the tram makes everything, which is not the same as being looked
+## at — it makes what anybody DOES see usable.
+func _tram_glare() -> float:
+	if _hazard != "tram" or _tram < 0.0:
+		return 0.0
+	return clampf(sin(_tram / 3.4 * PI), 0.0, 1.0)
+
+func _seen_by_hazard() -> float:
+	match _hazard:
+		"camera":
+			return _cone_hit(_hz, _hz_face, 0.40, 300.0)
+		"dog":
+			# Short sight, wide as a barn door, and it is coming to you.
+			return _cone_hit(_hz, _hz_face, 1.1, 120.0)
+		"drunk":
+			return _cone_hit(_hz, _hz_face, 0.52, 150.0)
+	return 0.0
+
+func _cone_hit(at: Vector2, facing: float, half: float, reach: float) -> float:
+	var to: Vector2 = _me - at
+	var dist := to.length()
+	if dist > reach:
+		return 0.0
+	var off: float = absf(wrapf(to.angle() - facing, -PI, PI))
+	if off > half:
+		return 0.0
+	return clampf((1.0 - off / half) * (1.0 - dist / reach), 0.0, 1.0)
+
 func _watcher_facing(w: Dictionary) -> float:
 	return float(w["face"]) + sin(_elapsed * 0.9 + float(w["phase"])) * float(w["sweep"])
 
@@ -191,10 +263,12 @@ func _process(delta: float) -> void:
 	_mark_t += delta * float(_place["mark_speed"]) / _route_length()
 	_mark = _point_on_route(clampf(_mark_t, 0.0, 1.0))
 
-	_lit = _lamplight()
+	_tick_hazard(delta)
+	_lit = maxf(_lamplight(), _tram_glare())
 	var watched := 0.0
 	for w in _watchers:
 		watched = maxf(watched, _seen_by(w))
+	watched = maxf(watched, _seen_by_hazard())
 	# A lamp does not make people look at you. It makes what they see usable.
 	var rate: float = watched * (0.55 + _lit * 0.85)
 	if rate > 0.0:
@@ -288,9 +362,11 @@ func _draw_street() -> void:
 
 	for w in _watchers:
 		_draw_cone(ci, w)
+	_draw_hazard_cone(ci)
 	for w2 in _watchers:
 		_draw_person(ci, Vector2(w2["at"]), 13.0, Color(0.44, 0.47, 0.55),
 			_watcher_facing(w2))
+	_draw_hazard(ci)
 
 	# Them. Ringed and named, so there is never a question which shape matters.
 	var near: bool = _me.distance_to(_mark) <= REACH
@@ -353,6 +429,59 @@ func _draw_terrace(ci: CanvasItem, top: float, tall: float, upper: bool) -> void
 					Vector2(x + 10 + float(col) * (w - 22) / 3.0, y + 12 + float(row) * (h * 0.42)),
 					Vector2(12, 14)),
 					Color(0.98, 0.86, 0.52, 0.55) if lit else Color(0.13, 0.14, 0.18))
+
+func _draw_hazard_cone(ci: CanvasItem) -> void:
+	match _hazard:
+		"camera": _cone(ci, _hz, _hz_face, 0.40, 300.0, Color(0.95, 0.45, 0.42))
+		"dog": _cone(ci, _hz, _hz_face, 1.1, 120.0, Color(0.92, 0.72, 0.40))
+		"drunk": _cone(ci, _hz, _hz_face, 0.52, 150.0, Color(0.86, 0.78, 0.52))
+
+## The hazard itself. Each one has to be recognisable at a glance, because you
+## have about a second to decide whether to move.
+func _draw_hazard(ci: CanvasItem) -> void:
+	match _hazard:
+		"camera":
+			# A box on a bracket with a light on it that does not go out.
+			ci.draw_line(_hz, _hz + Vector2(0, -22), Color(0.34, 0.36, 0.40), 4.0)
+			var body := Rect2(_hz - Vector2(13, 8), Vector2(26, 16))
+			ci.draw_rect(body.grow(2.5), Color(0.05, 0.06, 0.08))
+			ci.draw_rect(body, Color(0.42, 0.45, 0.50))
+			ci.draw_circle(_hz + Vector2.from_angle(_hz_face) * 14.0, 4.0,
+				Color(0.96, 0.34, 0.30))
+		"dog":
+			ci.draw_circle(_hz, 12.0, Color(0.05, 0.06, 0.08))
+			ci.draw_circle(_hz, 9.5, Color(0.46, 0.34, 0.24))
+			# Ears and a snout, which is all a dog needs from above.
+			for side in [-0.6, 0.6]:
+				ci.draw_circle(_hz + Vector2.from_angle(_hz_face + side) * 8.0, 3.4,
+					Color(0.34, 0.25, 0.18))
+			ci.draw_circle(_hz + Vector2.from_angle(_hz_face) * 11.0, 4.0,
+				Color(0.30, 0.22, 0.16))
+		"drunk":
+			_draw_person(ci, _hz, 13.0, Color(0.56, 0.44, 0.50), _hz_face)
+		"tram":
+			var glare := _tram_glare()
+			if glare > 0.0:
+				# Headlights across the road, and a carriage behind them.
+				var x: float = FIELD.x * (1.15 - (_tram / 3.4) * 1.35)
+				ci.draw_rect(Rect2(Vector2(x - 90, FIELD.y * 0.40),
+					Vector2(90, FIELD.y * 0.19)), Color(0.24, 0.26, 0.34))
+				ci.draw_rect(Rect2(Vector2(x - 84, FIELD.y * 0.425),
+					Vector2(78, FIELD.y * 0.08)), Color(0.96, 0.88, 0.58, 0.55))
+				ci.draw_rect(Rect2(Vector2.ZERO, FIELD),
+					Color(1.0, 0.94, 0.72, glare * 0.13))
+
+func _cone(ci: CanvasItem, at: Vector2, facing: float, half: float, reach: float,
+		tint: Color) -> void:
+	var pts := PackedVector2Array([at])
+	for i in range(15):
+		var a: float = facing - half + 2.0 * half * float(i) / 14.0
+		pts.append(at + Vector2.from_angle(a) * reach)
+	ci.draw_colored_polygon(pts, Color(tint.r, tint.g, tint.b, 0.075))
+	ci.draw_line(at, at + Vector2.from_angle(facing - half) * reach,
+		Color(tint.r, tint.g, tint.b, 0.22), 1.5)
+	ci.draw_line(at, at + Vector2.from_angle(facing + half) * reach,
+		Color(tint.r, tint.g, tint.b, 0.22), 1.5)
 
 func _draw_cone(ci: CanvasItem, w: Dictionary) -> void:
 	var at: Vector2 = Vector2(w["at"])

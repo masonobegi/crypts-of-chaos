@@ -239,6 +239,60 @@ func test_a_hearing_always_has_something_to_argue_about() -> void:
 				t.ok(LegalSystem.REPLIES.has(String(key)),
 					"every reply offered is one the game knows how to score")
 
+func test_counsel_answers_what_you_actually_said() -> void:
+	# The point of a hearing rather than a die roll: the first thing you say
+	# decides what you have to answer next. Every branch has to lead somewhere
+	# real, from an empty hearing, whatever the claim looks like.
+	_systems()
+	for imaged in [false, true]:
+		for witnessed in [false, true]:
+			var p := _patient()
+			var claim: Dictionary = _legal.file_claim(p, "injury")
+			claim["imaging"] = imaged
+			claim["witnesses"] = ["Nurse Pell"] if witnessed else []
+			var seen := {}
+			for opener in ["record", "deny", "concede", "risk"]:
+				var ex := LegalSystem.exchange(claim, [opener])
+				t.ok(String(ex["them"]).length() > 12,
+					"answering '%s' gets a real line back" % opener)
+				t.ok(not String(ex["them"]).contains("%s"),
+					"and every placeholder in it has been filled in")
+				t.ok(Array(ex["replies"]).size() >= 3,
+					"with something to say to it")
+				seen[String(ex["them"])] = true
+			t.gt(float(seen.size()), 2.0,
+				"and four different answers do not all get the same line back")
+
+func test_saying_the_same_thing_again_is_worth_less() -> void:
+	# A man with one answer. The court notices before he does, and the screen
+	# says so rather than decaying it silently.
+	_systems()
+	var p := _patient()
+	var claim: Dictionary = _legal.file_claim(p, "procedure")
+	var first := LegalSystem.reply_score(claim, "deny", "firm", 0)
+	var second := LegalSystem.reply_score(claim, "deny", "firm", 1)
+	var third := LegalSystem.reply_score(claim, "deny", "firm", 2)
+	t.lt(second, first, "the second time is worth less than the first")
+	t.lt(third, second, "and the third less than the second")
+	t.gt(third, -0.001, "without ever going negative")
+
+func test_a_hearing_ends_and_can_be_played_out() -> void:
+	# Walked end to end the way the screen walks it, because the screen's loop
+	# and the system's exchange() have to agree about when it is over.
+	_systems()
+	var p := _patient()
+	var claim: Dictionary = _legal.file_claim(p, "premature_discharge")
+	var said: Array = []
+	var scores: Array = []
+	for i in LegalSystem.HEARING_LENGTH:
+		var ex := LegalSystem.exchange(claim, said)
+		var pick := String(ex["replies"][0])
+		scores.append(LegalSystem.reply_score(claim, pick, "firm", said.count(pick)))
+		said.append(pick)
+	t.eq(said.size(), LegalSystem.HEARING_LENGTH, "the hearing runs to its length")
+	var score := LegalSystem.hearing_score(scores)
+	t.ok(score >= 0.0 and score <= 1.0, "and produces a score a verdict can use")
+
 # ============================================================== the evening
 func test_every_place_you_can_go_produces_a_patient_you_can_treat() -> void:
 	for spec in NightSystem.PLACES:

@@ -33,40 +33,57 @@ const PLACES := [
 	{
 		"id": "ladder_yard", "name": "The Ladder Yard",
 		"blurb": "Scaffolders finishing up. Everything here is already leaning.",
-		"condition": "acute_shatter", "watchers": 3, "lamps": 2,
+		"condition": "acute_shatter", "watchers": 3, "lamps": 2, "hazard": "",
 		"pay": 1.0, "mark_speed": 62.0,
 	},
 	{
 		"id": "ossory_steps", "name": "Ossory Street steps",
 		"blurb": "Forty-one wet steps and one handrail, on the wrong side.",
-		"condition": "fractured_ankle", "watchers": 2, "lamps": 1,
+		"condition": "fractured_ankle", "watchers": 2, "lamps": 1, "hazard": "",
 		"pay": 0.9, "mark_speed": 48.0,
 	},
 	{
 		"id": "the_anchor", "name": "The Anchor, at closing",
 		"blurb": "Nobody in this street is a reliable witness and all of them are here.",
-		"condition": "cracked_ribs", "watchers": 5, "lamps": 3,
+		"condition": "cracked_ribs", "watchers": 5, "lamps": 3, "hazard": "drunk",
 		"pay": 1.25, "mark_speed": 40.0,
 	},
 	{
 		"id": "multi_storey", "name": "The multi-storey, level four",
 		"blurb": "One camera, pointed at the barrier. Concrete everywhere else.",
-		"condition": "dislocated_shoulder", "watchers": 2, "lamps": 2,
+		"condition": "dislocated_shoulder", "watchers": 2, "lamps": 2, "hazard": "camera",
 		"pay": 1.15, "mark_speed": 70.0,
 	},
 	{
 		"id": "allotments", "name": "The allotments",
 		"blurb": "Uneven ground, low fences, and a man who is always there.",
-		"condition": "torn_knee", "watchers": 1, "lamps": 0,
+		"condition": "torn_knee", "watchers": 1, "lamps": 0, "hazard": "dog",
 		"pay": 0.75, "mark_speed": 44.0,
 	},
 	{
 		"id": "tram_stop", "name": "The tram stop on Fell Row",
 		"blurb": "Well lit, well used, and the last tram was twenty minutes ago.",
-		"condition": "percussive_sinus", "watchers": 4, "lamps": 3,
+		"condition": "percussive_sinus", "watchers": 4, "lamps": 3, "hazard": "tram",
 		"pay": 1.1, "mark_speed": 56.0,
 	},
 ]
+
+## What else is in the street, besides people who might look up.
+##
+## Six identical evenings with a different number of pedestrians is one evening
+## played six times. Each place gets a thing that behaves differently, so the
+## question changes: a camera never blinks and has to be waited out, a dog comes
+## to YOU, a drunk cannot be predicted, and a tram lights the whole street for a
+## second and a half whatever you were doing at the time.
+const HAZARDS := {
+	"camera": "One camera, on the barrier. It does not get bored.",
+	"dog": "Somebody's dog is loose and it has noticed you.",
+	"drunk": "One of them is not walking in a straight line.",
+	"tram": "A tram every half minute, and its lights go everywhere.",
+}
+
+static func hazard_note(id: String) -> String:
+	return String(HAZARDS.get(String(place(id).get("hazard", "")), ""))
 
 static func place(id: String) -> Dictionary:
 	for p in PLACES:

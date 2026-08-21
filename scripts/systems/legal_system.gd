@@ -325,39 +325,100 @@ const REPLIES := {
 	},
 }
 
-## The exchanges for a specific claim, built from what is actually in it.
+## What the other side says next, given what you have just said.
+##
+## The first version read three fixed lines whatever you did, which made the
+## hearing a form with quotes on it: your answer changed the score and nothing
+## else. Counsel answers you now. Lean on the record and they ask to read it
+## beside the scan; deny it and they name the person who was standing there;
+## concede and they stop arguing about whether and start arguing about how much.
+##
+## Which means the first thing you say decides what you have to answer next,
+## and that is the whole reason to have a hearing rather than a die roll.
+const HEARING_LENGTH := 4
+
+const FOLLOW_UPS := {
+	"record": {
+		"imaged": {
+			"them": "\"Then let us read your note. Out loud. Beside a scan taken the same week.\"",
+			"replies": ["risk", "concede", "deny"],
+		},
+		"clear": {
+			"them": "\"Your note. Written by you, about you, and the only account of it anywhere.\"",
+			"replies": ["risk", "deny", "concede"],
+		},
+	},
+	"deny": {
+		"witnessed": {
+			"them": "\"Not what happened. We will hear from %s, who was standing in the room.\"",
+			"replies": ["concede", "record", "risk"],
+		},
+		"alone": {
+			"them": "\"Nobody saw it, so nobody can contradict you. How convenient that is.\"",
+			"replies": ["record", "risk", "concede"],
+		},
+	},
+	"concede": {
+		"any": {
+			"them": "\"You accept it. Then we can stop arguing about whether, and start on how much.\"",
+			"replies": ["risk", "record", "deny"],
+		},
+	},
+	"risk": {
+		"any": {
+			"them": "\"A recognised risk. Recognised when, doctor — before, or in the writing-up?\"",
+			"replies": ["record", "concede", "deny"],
+		},
+	},
+}
+
+## The closing, which is the same question however you got there.
+const CLOSING := {
+	"them": "\"Is there anything the court has not heard?\"",
+	"replies": ["concede", "record", "deny"],
+}
+
+## `said` is what the defence has already said, in order. Empty means the
+## hearing has not started.
+static func exchange(claim: Dictionary, said: Array) -> Dictionary:
+	if said.is_empty():
+		return {
+			"them": "\"%s\"" % String(claim["summary"]),
+			"replies": ["record", "deny", "concede"],
+		}
+	if said.size() >= HEARING_LENGTH - 1:
+		return CLOSING.duplicate(true)
+	var last := String(said[said.size() - 1])
+	var branch: Dictionary = FOLLOW_UPS.get(last, FOLLOW_UPS["concede"])
+	var wits: Array = claim.get("witnesses", [])
+	var key := "any"
+	if branch.has("imaged"):
+		key = "imaged" if bool(claim.get("imaging", false)) else "clear"
+	elif branch.has("witnessed"):
+		key = "witnessed" if wits.size() > 0 else "alone"
+	var spec: Dictionary = branch[key].duplicate(true)
+	if String(spec["them"]).contains("%s"):
+		spec["them"] = String(spec["them"]) % (String(wits[0]) if wits.size() > 0 else "the ward")
+	return spec
+
+## Kept for anything that wants the whole hearing at once — a harness playing
+## it through, or a test walking every line it can reach.
 static func exchanges(claim: Dictionary) -> Array:
 	var out: Array = []
-	out.append({
-		"them": "\"%s\"" % String(claim["summary"]),
-		"replies": ["record", "deny", "concede"],
-	})
-	if bool(claim.get("imaging", false)):
-		out.append({
-			"them": "\"We have the imaging. It was taken on the ward, by the ward.\"",
-			"replies": ["risk", "record", "concede"],
-		})
-	else:
-		out.append({
-			"them": "\"There is no imaging. There is no imaging because nobody looked.\"",
-			"replies": ["record", "risk", "deny"],
-		})
-	var wits: Array = claim.get("witnesses", [])
-	if wits.size() > 0:
-		out.append({
-			"them": "\"We will hear from %s.\"" % String(wits[0]),
-			"replies": ["deny", "concede", "risk"],
-		})
-	else:
-		out.append({
-			"them": "\"Nobody on that ward will say a word. Ask yourself why.\"",
-			"replies": ["record", "deny", "concede"],
-		})
+	var said: Array = []
+	for i in HEARING_LENGTH:
+		var ex := exchange(claim, said)
+		out.append(ex)
+		said.append(String(ex["replies"][0]))
 	return out
 
 ## How well an answer lands. Skill is your representation; the rest is the
 ## claim's own facts arguing back at you.
-static func reply_score(claim: Dictionary, reply: String, lawyer_id: String) -> float:
+## `times_said` is how often the defence has already used this line. Saying the
+## same thing four times is not a strategy, it is a man with one answer, and the
+## court notices before you do.
+static func reply_score(claim: Dictionary, reply: String, lawyer_id: String,
+		times_said := 0) -> float:
 	var l := lawyer(lawyer_id)
 	var skill: float = float(l["skill"])
 	var wits: int = Array(claim.get("witnesses", [])).size()
@@ -375,7 +436,8 @@ static func reply_score(claim: Dictionary, reply: String, lawyer_id: String) -> 
 		"concede":
 			# Never brilliant, never a disaster. The floor under a bad case.
 			base = 0.42
-	return clampf(base * (0.55 + skill * 0.75), 0.0, 1.0)
+	return clampf(base * (0.55 + skill * 0.75) / (1.0 + 0.55 * float(times_said)),
+		0.0, 1.0)
 
 ## Averaged rather than summed so the number the verdict compares against is on
 ## the same scale as the claim's strength.

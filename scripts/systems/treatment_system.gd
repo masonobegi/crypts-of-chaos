@@ -72,6 +72,15 @@ func apply(p: Patient, treatment_id: String, item = null, from_pos := Vector3.ZE
 	EventBus.treatment_applied.emit(p, billed_as, quality)
 	if item != null and item.has_method("get_item_id"):
 		AudioMgr.play_at_var("beep", from_pos, -12.0)
+	# What came out of them has to go SOMEWHERE, and the canister is the
+	# somewhere. The refill used to hang off the Dread Extractor's run cycle,
+	# which stopped existing when the treatment machines left the building —
+	# leaving the canister spawned full, emptiable exactly once, and never
+	# fillable again for the rest of a career. Extraction is a pair of hands and
+	# a heavy blanket now, so the loop the substance's own blurb describes
+	# ("Was in a patient. Is now in a canister") hangs off that instead.
+	if correct and treatment_id == "dread_extraction":
+		_fill_nearest_canister(from_pos if from_pos != Vector3.ZERO else global_position())
 	return {"effect": effect, "correct": correct, "substituted": substituted, "complication": comp_id}
 
 ## What the wrong treatment produces. Thematically tied to the treatment rather
@@ -541,9 +550,14 @@ func apply_brawl(p: Patient, won: bool, from_pos := Vector3.ZERO) -> Dictionary:
 		var night = get_tree().get_first_node_in_group("night_system")
 		if night != null:
 			night.used_tonight = true
-		var shift = get_tree().get_first_node_in_group("shift_system")
-		if shift != null and shift.can_end_day():
-			shift.call_deferred("end_shift", true)
+		# The shift itself is ended by BrawlSystem, once the card explaining
+		# that it has been ended has actually been dismissed. Doing it here
+		# meant deferring `end_shift` from inside the same physics step that
+		# built the result card, and the message queue flushes at the end of
+		# that step regardless of `get_tree().paused` — so the chart review
+		# opened over the card, freeing it, and the day simply stopped with no
+		# stated reason. The evening is killed here because nothing shows it a
+		# screen; the day is not, because something does.
 
 	if body != null:
 		body.startle(1.0)
@@ -651,8 +665,6 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 		tags.append("wrong_treatment")
 	if m.machine_id == "machine_imaging":
 		_record_imaging(p, int(res["deviation"]))
-	elif m.machine_id == "machine_dread":
-		_fill_nearest_canister(m)
 
 	# What the room hears, and what you are told happened. Both used to live in a
 	# modal that paused the world; a treatment now announces itself where you
@@ -676,13 +688,21 @@ func run_machine(m: TreatmentMachine, p: Patient) -> Dictionary:
 
 ## Extraction has to put what it extracted SOMEWHERE. The canister is a physical
 ## object with a lid, and nothing in the building stops you carrying it off.
-func _fill_nearest_canister(m: TreatmentMachine) -> void:
+##
+## An EMPTY one, and close enough to the extraction to have been in the room for
+## it — so the canister has to have been carried to the patient, which is the
+## whole joke.
+## Filling the nearest one regardless of what was already in it would announce
+## "the canister is full again" over a canister that never stopped being full.
+func _fill_nearest_canister(where: Vector3) -> void:
 	var best: Node3D = null
 	var best_d := 6.0
 	for prop in get_tree().get_nodes_in_group("prop"):
 		if not prop.has_method("get_item_id") or String(prop.call("get_item_id")) != "dread_canister":
 			continue
-		var d: float = prop.global_position.distance_to(m.global_position)
+		if String(prop.get("contents")) != "":
+			continue
+		var d: float = prop.global_position.distance_to(where)
 		if d < best_d:
 			best_d = d
 			best = prop

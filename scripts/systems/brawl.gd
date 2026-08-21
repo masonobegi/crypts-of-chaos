@@ -86,6 +86,20 @@ static func can_fight(p) -> bool:
 		return false
 	return int(p.get_meta("out_cold_day", -1)) != GameState.day
 
+## Is there still a shift going on to have a fight during?
+##
+## `can_fight()` is a statement about the PERSON — admitted, still here, not
+## already on the floor today — and is deliberately clock-free so the data layer
+## has no opinion about phases. This is the other half, and both the button and
+## BrawlSystem.start() read it, because they were disagreeing: the card went on
+## offering "Square up" after the day was signed off (reachable from "Go and fix
+## it" on the chart review), the fight refused to start, and the player got a
+## button that did nothing with no explanation.
+static func on_the_clock() -> bool:
+	return GameState.phase != GameState.Phase.CHART_REVIEW \
+		and GameState.phase != GameState.Phase.POST_SHIFT \
+		and GameState.phase != GameState.Phase.GAME_OVER
+
 ## Do they have a grievance? Only changes what gets said.
 static func has_a_grievance(p, mind) -> bool:
 	if p == null:

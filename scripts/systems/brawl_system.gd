@@ -65,9 +65,7 @@ func start(p) -> bool:
 	# player is sitting reading. "Go and fix it" on that review puts you back on
 	# the floor with the phase still on CHART_REVIEW, which is exactly where
 	# both of those happen.
-	if GameState.phase == GameState.Phase.CHART_REVIEW \
-			or GameState.phase == GameState.Phase.POST_SHIFT \
-			or GameState.phase == GameState.Phase.GAME_OVER:
+	if not Brawl.on_the_clock():
 		return false
 	_body = patient_system.get_body(p.id) if patient_system != null else null
 	_player = get_tree().get_first_node_in_group("player")
@@ -226,23 +224,72 @@ func _finish(won: bool) -> void:
 		var where: Vector3 = _body.global_position if _body != null \
 			and is_instance_valid(_body) else Vector3.ZERO
 		res = treatment_system.apply_brawl(patient, won, where)
-	EventBus.objective_changed.emit("")
+	EventBus.objective_changed.emit(_objective_before)
 	EventBus.request_ui.emit("fight", {
 		"patient_id": patient.id if patient != null else "",
 		"result": res, "won": won,
 	})
+	if not won:
+		_end_the_day_once_the_card_is_read()
 	patient = null
 	_body = null
 
-## How hard the camera has just been hit, 0..1. The HUD reads this.
-func shake() -> float:
-	return _shake
+## Losing ends the day — but not until the card that says so has been read.
+##
+## `apply_brawl` used to end it itself, with `call_deferred("end_shift", true)`,
+## and a deferred call flushes at the end of the same physics step whether or
+## not the tree is paused. So: `_finish` asked for the day to end, emitted
+## `request_ui`, UIRoot built the result card — "you wake up on the floor", the
+## bill, the rest of today gone — and before that frame was ever presented the
+## flush ran `end_shift`, which fires `review_ready`, and `open("review")`
+## closes whatever is up first. The player lost the afternoon, the evening and
+## the best part of two thousand pounds and was shown their paperwork with
+## nothing anywhere saying why.
+##
+## The card's own exit is the join instead, which is how every other
+## end-of-phase screen hands back to ShiftSystem. Connected to the node rather
+## than to a signal on the bus because there is no "screen closed" signal, and
+## one-shot because the next fight will want its own.
+func _end_the_day_once_the_card_is_read() -> void:
+	var shift = get_tree().get_first_node_in_group("shift_system")
+	if shift == null or not shift.can_end_day():
+		return
+	var game = get_tree().get_first_node_in_group("game")
+	var card = game.get("ui").current if game != null and game.get("ui") != null else null
+	if card == null or not is_instance_valid(card):
+		# No card went up, so there is nothing to read and nothing to wait for.
+		shift.call_deferred("end_shift", true)
+		return
+	card.tree_exited.connect(_end_the_day_now, CONNECT_ONE_SHOT)
 
-## Which side is coming, if any: -1, 0 or 1, plus how far through the wind-up.
-func telegraph() -> Array:
-	if not active or _recover > 0.0:
-		return [0, 0.0]
-	return [_side, clampf(_t / maxf(_wind, 0.01), 0.0, 1.0)]
+func _end_the_day_now() -> void:
+	# `tree_exited` also fires while a scene is being torn down, and a node on
+	# its way out of the tree has nothing to look ShiftSystem up in — so this
+	# checks that it is still standing in a tree before it goes asking.
+	if not is_inside_tree():
+		return
+	var shift = get_tree().get_first_node_in_group("shift_system")
+	if shift != null:
+		shift.end_shift(true)
 
-func guards() -> Array:
-	return [_their_guard, _your_guard]
+## Put the fight down without settling it.
+##
+## The day ending mid-exchange is the case: the review has already been built
+## from the ward as it stood, so applying an outcome after it would be writing
+## into a document the player is reading. Everything `_finish` restores is
+## restored, and nothing it decides is decided.
+func cancel() -> void:
+	if not active:
+		return
+	active = false
+	set_physics_process(false)
+	if _player != null and is_instance_valid(_player):
+		_player.can_move = _was_can_move
+	if _body != null and is_instance_valid(_body):
+		if _body.has_method("swing_arm"):
+			_body.swing_arm(0, 0.0, 0.0)
+		if _body.has_method("stand_down"):
+			_body.stand_down()
+	EventBus.objective_changed.emit(_objective_before)
+	patient = null
+	_body = null

@@ -478,11 +478,27 @@ func test_every_substance_effect_is_a_real_treatment() -> void:
 ## Every source that can create one is data rather than a match statement
 ## specifically so this test can add them up.
 func test_no_complication_is_unreachable() -> void:
+	# A SOURCE ONLY COUNTS IF THE THING THAT PRODUCES IT STILL EXISTS.
+	#
+	# This walked table membership alone, so a complication was certified
+	# "reachable" by a machine that had been taken out of every ward and by
+	# treatments whose tool had been deleted — which is the precise opposite of
+	# what the test is for. Four complications were being kept alive on paper by
+	# the pools of three machines that are not in the building.
 	var reachable := {}
 	for k in TreatmentMachine.COMPLICATION_POOLS:
+		# "" is the fallback pool for a device with an unrecognised id, so it is
+		# only a real source if some installed device could fall through to it.
+		if String(k) != "" and not TreatmentMachine.INSTALLED.has(String(k)):
+			continue
 		for id in TreatmentMachine.COMPLICATION_POOLS[k]:
 			reachable[String(id)] = true
 	for k in TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS:
+		var wt := String(DB.treatment(String(k)).get("tool", ""))
+		var performable: bool = wt == "" or Items.SPECS.has(wt) \
+			or (wt.begins_with("machine_") and TreatmentMachine.INSTALLED.has(wt))
+		if not performable:
+			continue
 		reachable[String(TreatmentSystem.WRONG_TREATMENT_COMPLICATIONS[k])] = true
 	for k in PatientSystem.ENVIRONMENTAL_COMPLICATIONS:
 		reachable[String(PatientSystem.ENVIRONMENTAL_COMPLICATIONS[k])] = true

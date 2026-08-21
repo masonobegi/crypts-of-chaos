@@ -428,15 +428,17 @@ func run_cycle(p) -> Dictionary:
 ## What each machine goes wrong AS. Data rather than a match statement so a test
 ## can read it: a complication no source can produce is dead content, and it
 ## would never show up as anything except a thing that never happened.
+## Keyed by INSTALLED id, plus one fallback for a device with an id nothing
+## recognises. The pools for machine_humour, machine_vibe and machine_dread were
+## left here after those three machines were taken out of the wards, and they
+## were not harmless: `test_no_complication_is_unreachable` marks a complication
+## reachable by TABLE MEMBERSHIP, so four complications were being certified as
+## producible by devices that no longer existed anywhere in the building. The
+## test now only counts pools whose machine is in INSTALLED, which is what makes
+## keeping this table honest matter.
 const COMPLICATION_POOLS := {
 	"": ["ambient_dread", "rebound_hiccups", "ferrous_aura",
 		"post_percussive_ringing", "reactive_shivers", "gravitational_relapse"],
-	"machine_humour": ["rebound_hiccups", "ambient_dread", "chart_fatigue",
-		"escalating_politeness"],
-	"machine_vibe": ["gravitational_relapse", "reactive_shivers", "secondary_beige",
-		"residual_hum"],
-	"machine_dread": ["ambient_dread", "nocturnal_confusion", "ferrous_aura",
-		"delayed_reaction"],
 	"machine_imaging": ["residual_hum", "sympathetic_draft", "spectral_itch"],
 }
 

@@ -82,7 +82,7 @@ func _build() -> void:
 	# Last, and in the colour of a thing you should think about. It is here at
 	# all because it is funny, and it is at the bottom because the game is not
 	# trying to talk you into it.
-	if Brawl.can_fight(_patient):
+	if Brawl.can_fight(_patient) and Brawl.on_the_clock():
 		v.add_child(_choice("Square up", _fight_line(), UIKit.BAD, _square_up))
 	card_footer(UIKit.button("Leave them be", close))
 

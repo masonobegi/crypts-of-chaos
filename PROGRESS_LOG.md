@@ -2757,3 +2757,30 @@ outlet panels, sharps bins, noticeboards, posters, framed art, handrails,
 coloured guide lines on the floor, hanging signs, plants, vents, sprinklers,
 bedside cabinets, over-bed tables, stools, laundry hampers, door mats, wall
 screens, vending machines, water coolers and whiteboards.
+
+### A third verb: taking a joint through an arc
+
+*"A few other ailments that should have different mechanisms for each."* Three
+procedures was two skills and a knowledge check; this is the one that was
+missing, and it is deliberately a **tracking** skill rather than a holding one
+or a clicking one.
+
+A guide travels the path the joint has to follow and your job is to be on it,
+the whole way, at its speed. Which is what a reduction actually is — not force,
+but a particular curve at a particular pace with a person attached to the end
+of it. It is the only manoeuvre in the game where going too fast and going too
+slow are both wrong, and letting go does not stop the joint, it stops *you*.
+
+Treating them takes the limb back the way it came, on an ease-out. Making it
+worse takes it out, over the top and down the far side — the curve a shoulder
+would have taken in a fall. That path is longer, so the dishonest version is
+harder, which is the rule everywhere else in the game too.
+
+Dislocated shoulders, torn knees, escalating posture and latent geometry moved
+onto it.
+
+Also, and this cost a render to notice: a `Control` does not clip its own
+drawing. A limb swung far enough drew over the panel, the heading and the room
+behind it. Every procedure canvas sets `clip_contents` now, and the manipulation
+screen draws at three-quarter size because at full size the top of the arc puts
+a forearm outside the field.

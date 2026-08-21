@@ -99,6 +99,10 @@ func _build_field() -> void:
 	_canvas = Control.new()
 	_canvas.custom_minimum_size = FIELD
 	_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Nothing may escape the field. A limb swung far enough draws over the
+	# panel, the heading and the room behind it, and a Control does not clip
+	# its own drawing unless it is told to.
+	_canvas.clip_contents = true
 	_canvas.draw.connect(_draw_field)
 	v.add_child(_canvas)
 

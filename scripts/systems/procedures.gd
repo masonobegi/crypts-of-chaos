@@ -161,6 +161,52 @@ const OUTCOMES := {
 			},
 		},
 	},
+	"manipulate": {
+		"treat": {
+			"good": {
+				"label": "Reduced under control", "recovery": 0.82, "stay": -1.0,
+				"fee": 1500, "visual": 0.0, "harm": "", "sue": 0.0, "tone": "good",
+				"say": ["Oh — oh that's IT.", "It went back. I felt it go back.",
+					"That's the first time it's been right in a week."],
+			},
+			"fair": {
+				"label": "Reduced, eventually", "recovery": 0.30, "stay": 0.0,
+				"fee": 760, "visual": 0.05, "harm": "", "sue": 0.03, "tone": "info",
+				"say": ["Is it meant to take that long?", "Hnn. Hnnnn. Right.",
+					"You could have warned me it'd click."],
+			},
+			"poor": {
+				"label": "Forced through the arc", "recovery": -0.20, "stay": 1.5,
+				"fee": 320, "visual": 0.54, "harm": "post_percussive_ringing",
+				"sue": 0.32, "tone": "suspicion",
+				"say": ["STOP. STOP.", "That is not the way it bends.",
+					"Get off me. Get OFF."],
+			},
+		},
+		"worsen": {
+			"good": {
+				"label": "Taken the wrong way, smoothly", "recovery": -0.26,
+				"stay": 2.5, "fee": 1400, "visual": 0.04,
+				"harm": "post_percussive_ringing", "sue": 0.05, "tone": "info",
+				"say": ["It gave. It just gave.", "That's how it went the first time.",
+					"Is that supposed to happen twice?"],
+			},
+			"fair": {
+				"label": "Taken the wrong way, roughly", "recovery": -0.15,
+				"stay": 1.5, "fee": 820, "visual": 0.30,
+				"harm": "post_percussive_ringing", "sue": 0.18, "tone": "suspicion",
+				"say": ["Hang on — which way are you going?",
+					"That's not the direction.", "Ow. OW."],
+			},
+			"poor": {
+				"label": "Wrenched, in front of everyone", "recovery": -0.32,
+				"stay": 2.0, "fee": 360, "visual": 0.78,
+				"harm": "post_percussive_ringing", "sue": 0.46, "tone": "suspicion",
+				"say": ["HE WRENCHED IT.", "You did that on purpose.",
+					"Somebody get a nurse. Get anybody."],
+			},
+		},
+	},
 	"dose": {
 		"treat": {
 			"good": {
@@ -292,6 +338,54 @@ static func bone_in_tolerance(intent: String, angle: float, gap: float) -> bool:
 	var t := bone_target(intent)
 	return absf(angle - float(t["angle"])) <= float(t["tol_angle"]) \
 		and absf(gap - float(t["gap"])) <= float(t["tol_gap"])
+
+# ------------------------------------------------------------------ manipulation
+## Taking a joint through an arc.
+##
+## The third distinct verb, and deliberately a TRACKING skill rather than a
+## holding one or a clicking one: a guide travels along the path the joint has
+## to follow and your job is to stay on it. That is what a reduction of a
+## dislocated shoulder actually is — not force, but taking the limb round a
+## particular curve at a particular speed — and it is the one manoeuvre in the
+## game where being too fast and being too slow are both wrong.
+const MANIP_SECONDS := 7.0
+const MANIP_TOL := 0.17           ## radians either side of the guide
+const MANIP_START := 0.62         ## how far out the joint sits to begin with
+
+## The path, as a list of angles the guide passes through. Treating them takes
+## the joint back the way it came; making it worse takes it the other way,
+## round the outside, along a curve a shoulder could plausibly have taken in a
+## fall — longer, and therefore harder to stay on.
+static func manip_path(intent: String) -> Array:
+	var out: Array = []
+	var steps := 48
+	for i in range(steps + 1):
+		var t: float = float(i) / float(steps)
+		if intent == "worsen":
+			# Out, over the top, and down the far side.
+			out.append(MANIP_START + sin(t * PI) * 0.75 - t * 1.34)
+		else:
+			# Back to neutral on an ease-out, which is how a joint goes in.
+			out.append(MANIP_START * (1.0 - t * t * (3.0 - 2.0 * t)))
+	return out
+
+static func manip_angle_at(intent: String, t: float) -> float:
+	var path := manip_path(intent)
+	var idx: int = clampi(int(round(clampf(t, 0.0, 1.0) * float(path.size() - 1))),
+		0, path.size() - 1)
+	return float(path[idx])
+
+## 1.0 dead on the guide, 0.0 a full tolerance-and-a-half away.
+static func manip_closeness(err: float) -> float:
+	return clampf(1.0 - absf(err) / (MANIP_TOL * 2.4), 0.0, 1.0)
+
+## Time on the guide is what is graded, and letting go stops your hand rather
+## than the arc — so a player who panics and releases watches the joint go on
+## without them.
+static func manip_grade(quality_time: float, total_time: float) -> float:
+	if total_time <= 0.0:
+		return 0.0
+	return clampf(quality_time / total_time, 0.0, 1.0)
 
 # ------------------------------------------------------------------ suturing
 const SUTURE_POINTS := 6
@@ -431,6 +525,7 @@ static func procedure_name(kind: String) -> String:
 		"set_bone": return "Set the bone"
 		"prescribe": return "Prescribe something"
 		"suture": return "Close it up"
+		"manipulate": return "Take it through the arc"
 	return "Run a cycle"
 
 ## Which screen does which job.
@@ -439,4 +534,5 @@ static func screen_for(kind: String) -> String:
 		"set_bone": return "setbone"
 		"prescribe": return "medicate"
 		"suture": return "suture"
+		"manipulate": return "manipulate"
 	return ""

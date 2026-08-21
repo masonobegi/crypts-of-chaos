@@ -37,6 +37,8 @@ const UI_SHOTS := [
 	["20f3_medicate_dose", "medicate#dose"],
 	["20g_suture", "suture"],
 	["20g2_suture_field", "suture#treat"],
+	["20h_manipulate", "manipulate"],
+	["20h2_manipulate_field", "manipulate#treat"],
 	["30_court_letter", "court"],
 	["30b_court_lawyers", "court#lawyers"],
 	["30c_court_hearing", "court#hearing"],
@@ -110,7 +112,7 @@ func _stage_ui(screen, screen_id: String, stage: String) -> void:
 			screen.set("_stage", "street")
 			screen.set("_place", NightSystem.PLACES[2])
 			screen.set("_mark_name", "Wendell Tosh")
-		"setbone", "suture":
+		"setbone", "suture", "manipulate":
 			screen.set("_intent", "treat" if stage == "treat" else "worsen")
 		"medicate":
 			screen.set("_intent", "worsen" if stage == "dose" else "treat")
@@ -146,6 +148,13 @@ func _pose_ui(screen, id: String) -> void:
 		"medicate#dose":
 			screen.set("_level", 0.62)
 			screen.set("_drawing", true)
+		"manipulate#treat":
+			# A second and a half into the arc, hand on the guide.
+			screen.set("_elapsed", 1.6)
+			screen.set("_t", 1.6 / Procedures.MANIP_SECONDS)
+			screen.set("_angle", Procedures.manip_angle_at("treat",
+				1.6 / Procedures.MANIP_SECONDS) + 0.06)
+			screen.set("_grip", true)
 		"night#street":
 			# A moment into the evening: partway down the street, one lamp too
 			# close, with somebody's eyeline just clipping you.
@@ -181,13 +190,15 @@ func _ui_context(id: String) -> Dictionary:
 			if pool.is_empty():
 				return {}
 			return {"patient_id": pool[0].id}
-		"setbone", "medicate", "suture", "setbone#treat", "setbone#worsen", \
-		"medicate#shelf", "medicate#dose", "suture#treat":
+		"setbone", "medicate", "suture", "manipulate", "setbone#treat", \
+		"setbone#worsen", "medicate#shelf", "medicate#dose", "suture#treat", \
+		"manipulate#treat":
 			# A patient whose ailment actually calls for this procedure, so the
 			# screenshot is of the thing rather than of a fallback.
 			var base := id.split("#")[0]
 			var want := "set_bone" if base == "setbone" else \
-				("suture" if base == "suture" else "prescribe")
+				("suture" if base == "suture" else
+					("manipulate" if base == "manipulate" else "prescribe"))
 			for cand in game.patient_system.active():
 				if Procedures.procedure_for(cand.condition_id) == want:
 					return {"patient_id": cand.id}
@@ -197,7 +208,8 @@ func _ui_context(id: String) -> Dictionary:
 			if any.is_empty():
 				return {}
 			any[0].condition_id = "fractured_wrist" if want == "set_bone" else \
-				("knuckle_weather" if want == "suture" else "chronic_beige")
+				("knuckle_weather" if want == "suture" else
+					("dislocated_shoulder" if want == "manipulate" else "chronic_beige"))
 			return {"patient_id": any[0].id}
 		"court", "court#lawyers", "court#hearing":
 			# A real claim against a real patient, filed on the spot, so the

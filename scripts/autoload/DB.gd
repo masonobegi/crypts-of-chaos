@@ -393,7 +393,7 @@ const CONDITIONS := {
 	# ---- second wave. Everything here is invented, and deliberately absurd.
 	"escalating_posture": {
 		"name": "Escalating Posture",
-		"procedure": "suture",
+		"procedure": "manipulate",
 		"desc": "Patient is becoming imperceptibly taller. Perceptibly.",
 		"base_days": 2.5, "rate": 0.5, "revenue": 1300,
 		"treats": ["reorientation_walk", "percussive_realign", "rest"],
@@ -456,7 +456,7 @@ const CONDITIONS := {
 	},
 	"latent_geometry": {
 		"name": "Latent Geometry",
-		"procedure": "set_bone",
+		"procedure": "manipulate",
 		"desc": "The angles do not add up. They have been checked twice.",
 		"base_days": 3.0, "rate": 0.42, "revenue": 2100,
 		"treats": ["imaging", "static_discharge", "ultrasonic_dusting"],
@@ -496,7 +496,7 @@ const CONDITIONS := {
 	},
 	"dislocated_shoulder": {
 		"name": "Dislocated Shoulder",
-		"procedure": "set_bone", "injury": true, "part": "shoulder",
+		"procedure": "manipulate", "injury": true, "part": "shoulder",
 		"desc": "Out. Was in this morning.",
 		"base_days": 2.5, "rate": 0.5, "revenue": 1450,
 		"treats": ["reduction", "sling_support", "rest"],
@@ -505,7 +505,7 @@ const CONDITIONS := {
 	},
 	"torn_knee": {
 		"name": "Torn Knee",
-		"procedure": "set_bone", "injury": true, "part": "knee",
+		"procedure": "manipulate", "injury": true, "part": "knee",
 		"desc": "Went one way. Knee went the other.",
 		"base_days": 5.0, "rate": 0.26, "revenue": 1800,
 		"treats": ["splinting", "rest", "pressure_bath"],

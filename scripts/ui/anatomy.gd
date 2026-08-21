@@ -323,27 +323,30 @@ static func _rig_knee() -> Dictionary:
 		"bone_r": 0.036, "wound": [Vector2(0.352, 0.190), Vector2(0.420, 0.430)],
 	}
 
+## Shorter in the arm than a shoulder really is, on purpose: this is the one
+## rig that gets swung through a whole arc, and an anatomically long humerus
+## leaves the field at the top of the curve.
 static func _rig_shoulder() -> Dictionary:
-	var pivot := Vector2(0.440, 0.360)
+	var pivot := Vector2(0.400, 0.330)
 	var prox: Array = [
-		cap(0.090, 0.300, 0.330, 0.560, 0.210, 0.195),           # chest wall
+		cap(0.110, 0.290, 0.300, 0.520, 0.185, 0.170),           # chest wall
 	]
 	var pbone: Array = [
-		cap(0.150, 0.290, 0.420, 0.336, 0.024, 0.020, "bone"),   # clavicle
-		dot(0.352, 0.430, 0.072),                                # scapula
+		cap(0.150, 0.282, 0.384, 0.312, 0.022, 0.018, "bone"),   # clavicle
+		dot(0.322, 0.400, 0.064),                                # scapula
 	]
 	var dist: Array = [
-		cap(pivot.x, pivot.y, 0.760, 0.610, 0.118, 0.092),       # upper arm
-		cap(0.760, 0.610, 0.880, 0.700, 0.090, 0.080),           # elbow onward
+		cap(pivot.x, pivot.y, 0.610, 0.480, 0.104, 0.084),       # upper arm
+		cap(0.610, 0.480, 0.712, 0.556, 0.082, 0.072),           # elbow onward
 	]
 	var dbone: Array = [
-		dot(0.452, 0.376, 0.066),                                # humeral head
-		cap(0.478, 0.396, 0.762, 0.606, 0.032, 0.026, "bone"),
+		dot(0.412, 0.344, 0.058),                                # humeral head
+		cap(0.436, 0.362, 0.612, 0.478, 0.028, 0.023, "bone"),
 	]
 	return {
 		"prox": prox, "dist": dist, "pbone": pbone, "dbone": dbone,
 		"pivot": pivot, "axis": Vector2(1.0, 0.62).normalized(),
-		"bone_r": 0.034, "wound": [Vector2(0.180, 0.330), Vector2(0.400, 0.470)],
+		"bone_r": 0.030, "wound": [Vector2(0.170, 0.320), Vector2(0.360, 0.450)],
 	}
 
 ## A ribcage seen from the side. Each rib is a chain of three capsules, which is

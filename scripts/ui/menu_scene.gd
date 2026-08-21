@@ -63,6 +63,7 @@ func _wall(size: Vector3, at: Vector3, horizontal: bool) -> void:
 func _furnish() -> void:
 	# The patient's chair, which is what a ward has in it now.
 	var bed := PatientBed.new()
+	bed.name = "Chair"
 	add_child(bed)
 	bed.build()
 	# Everything worth looking at is pushed OUT to the sides. The menu panel
@@ -93,14 +94,28 @@ func _furnish() -> void:
 ## One person, standing where a nurse stands. A room with nobody in it reads as
 ## a screenshot of a level; a room with somebody breathing in it reads as a
 ## place with a job going on in it, which is what the game is about.
+var nurse: NPCBody = null
+var sitter: NPCBody = null
+
 func _people() -> void:
-	var n := NPCBody.new()
-	n.display = ""
-	n.set_colours(Color(0.88, 0.73, 0.60), Build.SCRUB_GREEN, Color(0.22, 0.16, 0.13))
-	add_child(n)
-	n.position = Vector3(-3.55, 0, -0.35)
-	# Facing the bed, which is the whole reason to have her in the shot.
-	n.rotation.y = 2.59
+	nurse = NPCBody.new()
+	nurse.display = ""
+	nurse.set_colours(Color(0.88, 0.73, 0.60), Build.SCRUB_GREEN, Color(0.22, 0.16, 0.13))
+	add_child(nurse)
+	nurse.position = Vector3(-3.55, 0, -0.35)
+	# Facing the chair, which is the whole reason to have her in the shot.
+	nurse.rotation.y = 2.59
+
+	# And somebody in the chair. A ward room with an empty chair in it is a
+	# picture of some furniture; the game is about the person in it.
+	sitter = NPCBody.new()
+	sitter.display = ""
+	sitter.set_colours(Color(0.80, 0.62, 0.47), Color(0.62, 0.72, 0.86),
+		Color(0.30, 0.22, 0.16))
+	add_child(sitter)
+	sitter.position = Vector3(-3.05, 0, -1.5)
+	sitter.rotation.y = 0.55
+	sitter.set_seated(true)
 
 func _light() -> void:
 	var we := WorldEnvironment.new()
@@ -158,7 +173,48 @@ func _process(delta: float) -> void:
 	_t += delta
 	_aim(_t)
 
+## Hold still, and look at the people.
+##
+## The drifting shot is composed around a panel in the middle of the screen. A
+## capsule has no panel and wants the room's occupants filling the right two
+## thirds, so this stops the drift and re-frames.
+var _capsule := false
+
+func pose_for_capsule(on: bool) -> void:
+	_capsule = on
+	set_process(not on)
+	if not on:
+		_aim(_t)
+		return
+	if cam == null:
+		return
+	# The people move, not just the camera. A capsule wants its subjects filling
+	# the right two thirds with the title over the quiet left, and the room was
+	# laid out the other way round for a panel in the middle.
+	var chair := get_node_or_null("Chair")
+	if chair == null:
+		for c in get_children():
+			if c is PatientBed:
+				chair = c
+	if chair != null:
+		chair.position = Vector3(2.05, 0, -1.15)
+		chair.rotation.y = -0.67
+	if sitter != null and is_instance_valid(sitter):
+		sitter.position = Vector3(2.05, 0, -1.15)
+		sitter.rotation.y = -0.67
+		sitter.set_seated(true)
+		sitter.set_mood(-0.35)
+	if nurse != null and is_instance_valid(nurse):
+		nurse.position = Vector3(0.62, 0, 0.20)
+		nurse.rotation.y = 2.32
+		nurse.set_mood(0.15)
+	cam.fov = 52.0
+	cam.position = Vector3(-1.15, 1.52, 2.75)
+	cam.look_at(Vector3(1.70, 1.16, -0.85), Vector3.UP)
+
 func _aim(t: float) -> void:
+	if _capsule:
+		return
 	if cam == null:
 		return
 	cam.position = Vector3(

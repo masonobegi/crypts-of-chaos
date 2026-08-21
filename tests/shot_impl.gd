@@ -151,12 +151,56 @@ func _tick_menu() -> bool:
 	# has settled.
 	if settle < 30:
 		return false
-	tree.root.get_texture().get_image().save_png("%s/00_menu.png" % out_dir)
-	print("  shot: 00_menu")
+	if _capsule_posed == 0:
+		tree.root.get_texture().get_image().save_png("%s/00_menu.png" % out_dir)
+		print("  shot: 00_menu")
+	_capsule()
+	if _capsule_posed < 2:
+		settle = 28
+		return false
 	print("captured %d frames to %s" % [
-		SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size() + 1,
+		SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size() + 2,
 		ProjectSettings.globalize_path(out_dir)])
 	return true
+
+## The Steam capsule, cropped out of the title screen.
+##
+## Steam wants 1232x706 for the main capsule and it is the single image that
+## decides whether anybody ever clicks on this. Taking it out of the menu render
+## rather than composing a separate scene is deliberate: the capsule should be a
+## promise the game keeps on the first frame, and the menu IS the first frame.
+##
+## Cropped from the middle of a 16:9 render rather than letterboxed, because the
+## menu's camera is composed for a panel in the centre and the capsule wants the
+## room instead.
+const CAPSULE := Vector2i(1232, 706)
+
+var _capsule_posed := 0
+
+func _capsule() -> void:
+	# Two frames: one to strip the chrome and re-frame, one to render it.
+	if _capsule_posed == 0:
+		if _menu != null and _menu.has_method("set_capsule_mode"):
+			_menu.set_capsule_mode(true)
+		_capsule_posed = 1
+		return
+	var img := tree.root.get_texture().get_image()
+	var want := float(CAPSULE.x) / float(CAPSULE.y)
+	var w := img.get_width()
+	var h := int(round(float(w) / want))
+	if h > img.get_height():
+		h = img.get_height()
+		w = int(round(float(h) * want))
+	# Slightly above centre: the interesting half of a room is the half with
+	# people in it, and that is never the floor.
+	var x := int((img.get_width() - w) * 0.5)
+	var y := int((img.get_height() - h) * 0.38)
+	img.blit_rect(img, Rect2i(x, y, w, h), Vector2i.ZERO)
+	img.crop(w, h)
+	img.resize(CAPSULE.x, CAPSULE.y, Image.INTERPOLATE_LANCZOS)
+	img.save_png("%s/steam_capsule.png" % out_dir)
+	print("  shot: steam_capsule (%dx%d)" % [CAPSULE.x, CAPSULE.y])
+	_capsule_posed = 2
 
 ## name, position, look-at
 func _tick_ui() -> bool:

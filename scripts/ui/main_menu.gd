@@ -3,6 +3,9 @@ extends Control
 ## shared with a number.
 
 var _seed_field: LineEdit = null
+var _panel: PanelContainer = null
+var _scrim: ColorRect = null
+var _scene = null
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -16,6 +19,7 @@ func _ready() -> void:
 	# not a ceiling — the panel is exactly as tall as what is in it, which is
 	# different on a first run and a hundredth.
 	var panel := UIKit.center_panel(660, 420)
+	_panel = panel
 	add_child(panel)
 	var v := UIKit.vbox(10)
 	panel.add_child(v)
@@ -105,7 +109,8 @@ func _backdrop() -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	vp.msaa_3d = Viewport.MSAA_2X
 	holder.add_child(vp)
-	vp.add_child(MenuScene.new())
+	_scene = MenuScene.new()
+	vp.add_child(_scene)
 	# A scrim, because the panel has to be readable over whatever the camera
 	# happens to be pointing at and the camera is deliberately not still.
 	var scrim := ColorRect.new()
@@ -113,6 +118,62 @@ func _backdrop() -> void:
 	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(scrim)
+	_scrim = scrim
+
+## Dress the title screen as a Steam capsule and hold still.
+##
+## The capsule is the single image that decides whether anybody ever clicks on
+## this game, and a screenshot of a menu is not one: it is a picture of some
+## buttons. This strips the chrome, re-frames the camera on the people rather
+## than on the space behind a panel, and lays the title out to the left the way
+## every capsule in the store does.
+##
+## Deliberately built out of the real menu rather than a separate mock, so the
+## capsule is a promise the game keeps on its own first frame.
+func set_capsule_mode(on: bool) -> void:
+	if _panel != null:
+		_panel.visible = not on
+	if _scrim != null:
+		_scrim.color = Color(0.05, 0.08, 0.11, 0.10 if on else 0.18)
+	if _scene != null and _scene.has_method("pose_for_capsule"):
+		_scene.pose_for_capsule(on)
+	if not on:
+		if _capsule_ui != null:
+			_capsule_ui.queue_free()
+			_capsule_ui = null
+		return
+
+	_capsule_ui = Control.new()
+	_capsule_ui.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_capsule_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_capsule_ui)
+	# A slab behind the words. Type over a busy render is unreadable at the
+	# 231x87 size Steam also renders this at.
+	var slab := ColorRect.new()
+	slab.color = Color(0.05, 0.09, 0.11, 0.62)
+	UIKit.place(slab, Control.PRESET_CENTER_LEFT, 0, -240, 640, 480)
+	_capsule_ui.add_child(slab)
+
+	var v := UIKit.vbox(2)
+	UIKit.place(v, Control.PRESET_CENTER_LEFT, 52, -186, 540, 372)
+	var t := UIKit.title("CHRONIC", 92, Color(0.62, 0.96, 0.90))
+	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(t)
+	var t2 := UIKit.title("CARE", 92, Color(0.98, 0.99, 0.99))
+	t2.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(t2)
+	v.add_child(UIKit.spacer(14))
+	var rule := ColorRect.new()
+	rule.color = Color(0.62, 0.96, 0.90, 0.85)
+	rule.custom_minimum_size.y = 3
+	v.add_child(rule)
+	v.add_child(UIKit.spacer(12))
+	var tag := UIKit.label("You are paid by the night.\nNobody is getting better.",
+		27, Color(0.93, 0.96, 0.97), HORIZONTAL_ALIGNMENT_LEFT, true)
+	v.add_child(tag)
+	_capsule_ui.add_child(v)
+
+var _capsule_ui: Control = null
 
 func _new_career() -> void:
 	var s := 0

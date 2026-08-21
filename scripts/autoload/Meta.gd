@@ -120,6 +120,38 @@ func record_ending(ending_id: String) -> void:
 func endings_found() -> int:
 	return endings_seen.size()
 
+# ------------------------------------------------------------------ achievements
+## What this account has ever done, across every career.
+var achievements: Dictionary = {}
+
+## Check the current career against the catalogue and announce anything new.
+##
+## Safe to call as often as you like — `Achievements.earned_now()` is a pure
+## read over the career's own statistics, so this cannot double-fire and cannot
+## drift out of step with a career loaded from a save.
+func check_achievements() -> Array[String]:
+	var fresh: Array[String] = []
+	for id in Achievements.earned_now():
+		if achievements.has(id):
+			continue
+		achievements[id] = true
+		fresh.append(id)
+	if fresh.is_empty():
+		return fresh
+	save_meta()
+	for id in fresh:
+		var spec := Achievements.spec(id)
+		EventBus.toast.emit("%s — %s" % [String(spec.get("name", id)),
+			String(spec.get("desc", ""))], "good")
+	AudioMgr.play("ding", -8.0, 1.2)
+	return fresh
+
+func has_achievement(id: String) -> bool:
+	return achievements.has(id)
+
+func achievements_earned() -> int:
+	return achievements.size()
+
 # ------------------------------------------------------------------ application
 ## Applied immediately after GameState.start_new_career().
 func apply_perk() -> void:
@@ -163,7 +195,7 @@ func save_meta() -> void:
 	f.store_string(JSON.stringify({
 		"endings": endings_seen, "runs": runs_completed,
 		"best": best_earnings, "longest": longest_career, "haul": best_haul,
-		"perk": selected_perk,
+		"perk": selected_perk, "achievements": achievements,
 	}, "  "))
 	f.close()
 
@@ -184,6 +216,7 @@ func load_meta() -> void:
 	best_haul = d.get("haul", {})
 	longest_career = int(d.get("longest", 0))
 	selected_perk = String(d.get("perk", ""))
+	achievements = d.get("achievements", {})
 
 func reset() -> void:
 	endings_seen.clear()
@@ -192,4 +225,5 @@ func reset() -> void:
 	best_haul = {}
 	longest_career = 0
 	selected_perk = ""
+	achievements.clear()
 	save_meta()

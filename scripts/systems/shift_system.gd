@@ -743,6 +743,17 @@ func clock_out() -> Dictionary:
 		"daily_debt": GameState.daily_debt_payment(),
 	}
 	last_statement = report
+	# Two of the achievements are properties of a whole shift rather than of a
+	# single act, so they are stamped here, where the shift is being totted up.
+	if clean:
+		GameState.set_flag("ach_clean_shift", true)
+	if int(report.get("statement", {}).get("missed_debts", 0)) == 0 \
+			and GameState.total_debt() > 0:
+		GameState.set_flag("ach_all_debts_paid", true)
+	if not seen_today.is_empty() and seen_today.size() >= patient_system.active_count() \
+			and patient_system.active_count() > 0:
+		GameState.set_flag("ach_full_round", true)
+	Meta.check_achievements()
 	statement_ready.emit(report)
 	SaveSystem.save_game(SaveSystem.AUTOSAVE)
 	return report

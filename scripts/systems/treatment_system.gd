@@ -466,6 +466,12 @@ func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vecto
 	if sue > 0.0:
 		p.set_meta("sue_risk", float(p.get_meta("sue_risk", 0.0)) + sue)
 
+	# The two achievements that are properties of a single manoeuvre.
+	if band == "good":
+		if intent == "treat":
+			GameState.set_flag("ach_textbook", true)
+		elif kind == "dose":
+			GameState.set_flag("ach_plausible_reaction", true)
 	AudioMgr.play(_sound_for(kind, band), -9.0)
 	EventBus.treatment_applied.emit(p, kind, clampf(rec, -1.0, 1.0))
 	EventBus.toast.emit("%s — %s" % [p.display_name, String(spec.get("label", "Done"))],
@@ -612,6 +618,12 @@ func _record_imaging(p: Patient, deviation: int) -> void:
 		EventBus.toast.emit("%s imaged — the scan came back as noise." % p.display_name, "info")
 		return
 
+	# Imaging somebody you have been quietly working on is a confession you
+	# signed by walking down the corridor, and it deserves a name.
+	for c in p.active_complications():
+		var comp := c as Complication
+		if comp.true_cause in ["examination", "surgical", "machine_deviation", "physician_error"]:
+			GameState.set_flag("ach_imaged_own_work", true)
 	p.imaged_at = GameState.career_minutes
 	p.chart.imaging_done = true
 	p.chart.imaging_day = GameState.day

@@ -244,6 +244,7 @@ func settle(claim: Dictionary) -> Dictionary:
 	GameState.add_heat(0.04, "a settlement")
 	GameState.adjust_rep("patient_sat", -0.02)
 	claim_resolved.emit(claim)
+	Meta.check_achievements()
 	return {"paid": cost, "outcome": "settled"}
 
 ## Going to court. `score` comes out of the hearing itself.
@@ -261,6 +262,8 @@ func verdict(claim: Dictionary, lawyer_id: String, score: float) -> Dictionary:
 	if won:
 		claim["state"] = "won"
 		GameState.stats.lawsuits_won += 1
+		if float(l["shady"]) > 0.4:
+			GameState.set_flag("ach_shady_win", true)
 		GameState.adjust_rep("doctor", 0.04)
 		out["paid"] = 0
 	else:
@@ -284,6 +287,7 @@ func verdict(claim: Dictionary, lawyer_id: String, score: float) -> Dictionary:
 		out["exposed"] = true
 	claim["lawyer"] = lawyer_id
 	claim_resolved.emit(claim)
+	Meta.check_achievements()
 	return out
 
 func _pay(claim: Dictionary, amount: int, why: String) -> void:

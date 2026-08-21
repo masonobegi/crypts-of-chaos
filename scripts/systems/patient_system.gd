@@ -435,6 +435,7 @@ func take_night_admissions() -> Array[Dictionary]:
 			p.mind.add_evidence(ev)
 			p.mind.observance = clampf(p.mind.observance + 0.25, 0.0, 1.0)
 			p.mind.trust = clampf(p.mind.trust - 0.35, 0.0, 1.0)
+			GameState.set_flag("ach_recognised", true)
 		out.append({"name": p.display_name, "condition": p.condition_name(),
 			"outcome": outcome})
 	night_admissions = still

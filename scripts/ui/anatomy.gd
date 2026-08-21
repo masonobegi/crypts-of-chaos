@@ -125,11 +125,11 @@ static func draw_caps(ci: CanvasItem, caps: Array, field: Vector2, tone: Color,
 		if float(p["ra"]) < 9.0 or String(p["slot"]) == "bone":
 			continue
 		var lit := _slot_colour(String(p["slot"]), tone).lightened(0.20)
-		lit.a = 0.42 * alpha
-		var shift := Vector2(-1.5, -1.0).normalized() * float(p["ra"]) * 0.34
+		lit.a = 0.52 * alpha
+		var shift := Vector2(-1.2, -1.0).normalized() * float(p["ra"]) * 0.40
 		ci.draw_colored_polygon(capsule_poly(
 			Vector2(p["a"]) + shift, Vector2(p["b"]) + shift,
-			float(p["ra"]) * 0.34, float(p["rb"]) * 0.34), lit)
+			float(p["ra"]) * 0.40, float(p["rb"]) * 0.40), lit)
 
 ## The broken end. Not a flat cut — three teeth, because a flat cut reads as a
 ## sliced sausage and this is meant to make you wince slightly.
@@ -187,7 +187,7 @@ static func _fingers(base: Vector2, dir: Vector2, span: float, length: float,
 		var l: float = length * (0.80 + 0.24 * sin((float(i) + 0.6) * 1.1))
 		var a: Vector2 = base + n * t
 		var b: Vector2 = a + dir * l + n * t * 0.22
-		out.append(cap(a.x, a.y, b.x, b.y, 0.027, 0.023, slot))
+		out.append(cap(a.x, a.y, b.x, b.y, 0.023, 0.020, slot))
 		var tip: Vector2 = b + dir * 0.006
 		out.append(cap(tip.x, tip.y, tip.x, tip.y, 0.013, 0.013, "nail"))
 	return out
@@ -220,7 +220,7 @@ static func _rig_forearm(brk: float) -> Dictionary:
 	var thumb_a := wristp + d * 0.020 + n * 0.082
 	var thumb_b := thumb_a + (d * 0.5 + n * 0.9).normalized() * 0.072
 	dist.append(cap(thumb_a.x, thumb_a.y, thumb_b.x, thumb_b.y, 0.030, 0.025))
-	dist.append_array(_fingers(palm + d * 0.026, d, 0.130, 0.070))
+	dist.append_array(_fingers(palm + d * 0.026, d, 0.168, 0.078))
 	var dbone: Array = [
 		_bone_between(pivot + d * 0.014 - n * 0.028, wristp - n * 0.024, 0.021, 0.018),
 		_bone_between(pivot + d * 0.014 + n * 0.030, wristp + n * 0.026, 0.017, 0.014),
@@ -229,7 +229,7 @@ static func _rig_forearm(brk: float) -> Dictionary:
 		dot((wristp + d * 0.032 + n * 0.030).x, (wristp + d * 0.032 + n * 0.030).y, 0.017),
 	]
 	for i in 4:
-		var t: float = (float(i) / 3.0 - 0.5) * 0.130
+		var t: float = (float(i) / 3.0 - 0.5) * 0.168
 		var a: Vector2 = palm - d * 0.030 + n * t * 0.6
 		var b: Vector2 = palm + d * 0.026 + n * t
 		dbone.append(_bone_between(a, b, 0.011, 0.009))
@@ -248,20 +248,20 @@ static func _rig_hand() -> Dictionary:
 	var prox: Array = [
 		cap(0.16, 0.52, 0.42, 0.50, 0.115, 0.100),               # wrist
 		cap(0.42, 0.50, pivot.x, pivot.y, 0.100, 0.108),         # palm
-		cap(0.46, 0.600, 0.56, 0.660, 0.032, 0.027),             # thumb
+		cap(0.545, 0.580, 0.640, 0.650, 0.030, 0.025),           # thumb
 	]
 	var pbone: Array = [
 		cap(0.19, 0.505, 0.41, 0.492, 0.030, 0.026, "bone"),
 		cap(0.19, 0.552, 0.41, 0.530, 0.024, 0.021, "bone"),
 		dot(0.45, 0.500, 0.028), dot(0.475, 0.470, 0.022), dot(0.475, 0.532, 0.022),
 	]
-	var dist: Array = _fingers(Vector2(0.645, 0.478), Vector2(1.0, -0.05).normalized(),
-		0.135, 0.100)
+	var dist: Array = _fingers(Vector2(0.645, 0.470), Vector2(1.0, -0.05).normalized(),
+		0.190, 0.115)
 	var dbone: Array = []
 	for i in 4:
-		var t: float = (float(i) / 3.0 - 0.5) * 0.135
-		dbone.append(cap(0.60, 0.478 + t * 0.6, 0.70, 0.478 + t, 0.014, 0.012, "bone"))
-		dbone.append(cap(0.71, 0.478 + t * 1.05, 0.79, 0.478 + t * 1.3, 0.012, 0.010, "bone"))
+		var t: float = (float(i) / 3.0 - 0.5) * 0.190
+		dbone.append(cap(0.60, 0.470 + t * 0.6, 0.70, 0.470 + t, 0.013, 0.011, "bone"))
+		dbone.append(cap(0.71, 0.470 + t * 1.05, 0.79, 0.470 + t * 1.25, 0.011, 0.009, "bone"))
 	return {
 		"prox": prox, "dist": dist, "pbone": pbone, "dbone": dbone,
 		"pivot": pivot, "axis": Vector2(1.0, -0.05).normalized(),

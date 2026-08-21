@@ -143,6 +143,7 @@ func _build_simple(id: String, ctx: Dictionary) -> Control:
 		"settings": return _settings_screen()
 		"controls": return _controls_screen()
 		"credits": return _credits_screen()
+		"achievements": return _achievements_screen()
 		"tutorial": return _tutorial_screen()
 		"game_over": return _game_over_screen(String(ctx.get("ending", "saint")))
 		"vitals": return _vitals_screen(String(ctx.get("patient_id", "")))
@@ -327,6 +328,46 @@ func _input(event: InputEvent) -> void:
 		AudioMgr.play("ding", -14.0)
 	close()
 	open("controls", {})
+
+# ---- achievements
+##
+## A list of sentences about how somebody played, rather than a completion
+## checklist. Hidden entries stay hidden until earned because their names give
+## away things the game would rather you found out by doing them.
+func _achievements_screen() -> Control:
+	var done := Meta.achievements_earned()
+	var parts := _shell(700, 760, "Record of Service")
+	var outer: VBoxContainer = parts[1]
+	outer.add_child(UIKit.label("%d of %d, across every career." % [
+		done, Achievements.LIST.size()], 14, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_CENTER))
+	var v := UIKit.vbox(5)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var scroller := UIKit.scroll(v)
+	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	outer.add_child(scroller)
+	var hidden_left := 0
+	for a in Achievements.LIST:
+		var spec: Dictionary = a
+		var got: bool = Meta.has_achievement(String(spec["id"]))
+		if not got and bool(spec.get("hidden", false)):
+			hidden_left += 1
+			continue
+		var box := UIKit.panel(UIKit.PANEL_LIGHT if got else Color(0.13, 0.15, 0.17, 0.9),
+			6, 2 if got else 0, UIKit.GOOD)
+		var bv := UIKit.vbox(2)
+		bv.add_child(UIKit.label(String(spec["name"]), 16,
+			UIKit.GOOD if got else UIKit.INK_DIM))
+		bv.add_child(UIKit.label(String(spec["desc"]), 13, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		box.add_child(bv)
+		v.add_child(box)
+	if hidden_left > 0:
+		v.add_child(UIKit.label(
+			"%d more you have not done yet, and would rather not be told about."
+				% hidden_left, 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true))
+	outer.add_child(UIKit.button("Back", close))
+	return parts[0]
 
 # ---- credits
 func _credits_screen() -> Control:

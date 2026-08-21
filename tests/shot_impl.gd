@@ -45,6 +45,7 @@ const UI_SHOTS := [
 	["27b_settings", "settings"],
 	["27c_controls", "controls"],
 	["27d_credits", "credits"],
+	["27e_achievements", "achievements"],
 	["28_pause", "pause"],
 	["29_game_over", "game_over"],
 ]

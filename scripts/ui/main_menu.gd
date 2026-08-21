@@ -57,7 +57,8 @@ func _ready() -> void:
 					HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	var opts := UIKit.hbox(8)
-	for entry in [["Settings", "settings"], ["Controls", "controls"], ["Credits", "credits"]]:
+	for entry in [["Settings", "settings"], ["Controls", "controls"],
+			["Record", "achievements"], ["Credits", "credits"]]:
 		var screen_id := String(entry[1])
 		var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
 		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL

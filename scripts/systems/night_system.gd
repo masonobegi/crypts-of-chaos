@@ -161,6 +161,7 @@ func resolve(place_id: String, mark: String, exposure: float, reached: bool) -> 
 
 	last_result = res
 	night_resolved.emit(res)
+	Meta.check_achievements()
 	return res
 
 ## They turn up tomorrow. Held as a booking rather than a patient so the night

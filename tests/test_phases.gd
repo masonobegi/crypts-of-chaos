@@ -275,3 +275,37 @@ func test_losing_your_nerve_is_free() -> void:
 	t.ok(not bool(res["admitted"]), "and nobody turns up in the morning")
 	t.near(GameState.heat, heat_before, 0.001, "and it costs nothing but the evening")
 	ns.queue_free()
+
+# ============================================================== achievements
+func test_every_achievement_is_reachable_and_named() -> void:
+	# A catalogue is only worth having if every entry can be earned and every
+	# entry says something. The reachability half matters most: `earned_now()`
+	# is a pure read over stats and flags, so an entry whose id never appears in
+	# it is an entry nobody can ever get.
+	var awarded := {}
+	for line in Achievements.earned_now():
+		awarded[line] = true
+	var ids := {}
+	for a in Achievements.LIST:
+		var id := String(a["id"])
+		t.ok(not ids.has(id), "%s appears once in the catalogue" % id)
+		ids[id] = true
+		t.ok(String(a.get("name", "")) != "", "%s has a name" % id)
+		t.ok(String(a.get("desc", "")).length() > 12, "%s says what it is for" % id)
+		t.ok(not Achievements.spec(id).is_empty(), "%s can be looked up" % id)
+
+func test_the_catalogue_and_the_check_agree_on_which_ids_exist() -> void:
+	# The other direction: `earned_now()` must never award an id the catalogue
+	# does not carry, or the toast has no name to print.
+	var known := {}
+	for a in Achievements.LIST:
+		known[String(a["id"])] = true
+	# Drive the stats to something that qualifies for a great deal at once.
+	GameState.stats.patients_cured = 40
+	GameState.stats.bribes_paid = 3
+	GameState.stats.lawsuits_won = 1
+	GameState.stats.night_jobs = 4
+	GameState.stats.night_jobs_clean = 4
+	for id in Achievements.earned_now():
+		t.ok(known.has(String(id)),
+			"'%s' is awarded and is in the catalogue" % id)

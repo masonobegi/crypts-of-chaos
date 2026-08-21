@@ -434,7 +434,9 @@ static func chart_header(text: String, tint := ACCENT) -> Control:
 ## the handful of statuses that ought to hit you before you have read anything.
 static func stamp(text: String, tint := BAD) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(180, 46)
+	# 46 was a whole line of body text of clear air around a stamp that is 28
+	# tall. On a card with five choices on it that is the fifth choice.
+	holder.custom_minimum_size = Vector2(180, 34)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var p := PanelContainer.new()
 	var sb := StyleBoxFlat.new()

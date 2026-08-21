@@ -59,7 +59,7 @@ func card_shell(width: float, height: float, heading: String, subheading := "") 
 	# A PanelContainer grows past its minimum size to fit its content, so a card
 	# with one option too many simply ran off the bottom of the screen and took
 	# its last button with it. Cap it against the window and scroll the body.
-	height = minf(height, get_viewport_rect().size.y - 130.0)
+	height = minf(height, get_viewport_rect().size.y - 116.0)
 	var panel := UIKit.side_panel(width, height)
 	add_child(panel)
 

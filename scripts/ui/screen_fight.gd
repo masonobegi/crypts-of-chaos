@@ -217,16 +217,6 @@ func _draw_ring() -> void:
 			# actually carries the timing.
 			ci.draw_rect(half, Color(0.98, 0.62, 0.20, 0.05 + 0.10 * wind))
 			ci.draw_rect(half, Color(1.0, 0.78, 0.34, 0.55 + 0.4 * wind), false, 4.0)
-			# A bar that closes from the outside in. When it reaches the middle,
-			# it has arrived — so "how long have I got" is a distance.
-			var w: float = FIELD.x * 0.5 * wind
-			var bx: float = (FIELD.x * 0.5 - w) if s < 0 else FIELD.x * 0.5
-			ci.draw_rect(Rect2(Vector2(bx, FIELD.y * 0.5 - 9), Vector2(w, 18)),
-				Color(1.0, 0.74, 0.26, 0.9))
-			# The head of it, so the eye has an edge to track.
-			var hx: float = FIELD.x * 0.5 - float(s) * 3.0
-			ci.draw_rect(Rect2(Vector2(hx - 3, FIELD.y * 0.5 - 13),
-				Vector2(6, 26)), Color(1.0, 0.92, 0.70, 0.95))
 	ci.draw_line(Vector2(FIELD.x * 0.5, 0), Vector2(FIELD.x * 0.5, FIELD.y),
 		Color(1, 1, 1, 0.08), 2.0)
 
@@ -249,7 +239,7 @@ func _draw_ring() -> void:
 		var ey := 0.70
 		if live and s == _side:
 			# Draws back over the wind-up, then comes across on the throw.
-			reach = 0.34 + 0.22 * wind - 0.72 * throwing
+			reach = 0.30 + 0.16 * wind - 0.66 * throwing
 			ey = 0.58 - 0.13 * wind + 0.12 * throwing
 		var ex: float = sx + float(s) * reach * ax
 		body.append(Anatomy.cap(sx, 0.47, (sx + ex) * 0.5, (0.47 + ey) * 0.5,
@@ -274,6 +264,24 @@ func _draw_ring() -> void:
 	_bar(ci, Vector2(20, FIELD.y - 32), FIELD.x - 40,
 		float(_your_guard) / float(Brawl.YOUR_GUARD),
 		Color(0.98, 0.56, 0.32), "you")
+
+	# The timing bar goes on TOP of the figure, not behind it. It closes from
+	# the outside in and arrives at the middle, so "how long have I got" is a
+	# distance rather than a number — and the arm it is describing was covering
+	# it up at exactly the moment it mattered.
+	if live:
+		# The LEADING edge travels, from the outside of the frame in toward the
+		# middle, and the middle is where it arrives. First version had the
+		# trailing edge moving instead, which is the same bar growing and reads
+		# as a progress meter rather than as something coming at you.
+		var half: float = FIELD.x * 0.5
+		var hx: float = (half * wind) if _side < 0 else (FIELD.x - half * wind)
+		var from: float = 0.0 if _side < 0 else hx
+		var w: float = hx if _side < 0 else (FIELD.x - hx)
+		ci.draw_rect(Rect2(Vector2(from, FIELD.y * 0.5 - 8), Vector2(w, 16)),
+			Color(1.0, 0.74, 0.26, 0.50))
+		ci.draw_rect(Rect2(Vector2(hx - 4, FIELD.y * 0.5 - 15),
+			Vector2(8, 30)), Color(1.0, 0.94, 0.74, 0.95))
 
 	if _flash > 0.0:
 		var f: Color = Color(0.40, 0.95, 0.65, 0.20 * _flash) if _flash_good \

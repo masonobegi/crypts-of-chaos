@@ -44,7 +44,6 @@ func _build() -> void:
 	elif not _patient.acquired_injuries().is_empty():
 		v.add_child(UIKit.stamp("injured on the ward", UIKit.BAD))
 	v.add_child(_the_complaint())
-	v.add_child(UIKit.spacer(4))
 
 	# The one thing their ailment actually calls for, first and biggest.
 	var kind := Procedures.procedure_for(_patient.condition_id)
@@ -107,14 +106,14 @@ func _room_name() -> String:
 
 func _the_complaint() -> Control:
 	var spec: Dictionary = DB.condition(_patient.condition_id)
-	var box := UIKit.panel(UIKit.NOTE, 6, 1, UIKit.ACCENT)
-	var bv := UIKit.vbox(3)
-	bv.add_child(UIKit.label(_patient.condition_name(), 19, UIKit.INK))
+	var box := UIKit.panel(UIKit.NOTE, 5, 1, UIKit.ACCENT)
+	var bv := UIKit.vbox(2)
+	bv.add_child(UIKit.label(_patient.condition_name(), 17, UIKit.INK))
 	bv.add_child(UIKit.label(String(spec.get("tell", "")), 14, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	# How they are, in words. A percentage would be a lie — you have not
 	# measured anything yet.
-	bv.add_child(UIKit.label(_how_they_are(), 15, _how_they_are_colour()))
+	bv.add_child(UIKit.label(_how_they_are(), 14, _how_they_are_colour()))
 	var hurt: Array = _patient.acquired_injuries()
 	if not hurt.is_empty():
 		var names := PackedStringArray()
@@ -179,8 +178,8 @@ func _discharge_line() -> String:
 func _fight_line() -> String:
 	var who := "They have something to settle. " \
 		if Brawl.has_a_grievance(_patient, _mind) else ""
-	return who + "Win and they stay in for the bruising. Lose and you pay for " \
-		+ "your own stitches, the day is over, and you are going nowhere tonight."
+	return who + "Win and they stay in for the bruising. Lose and the day ends, "\
+		+ "you pay your own bill, and you are going nowhere tonight."
 
 func _talk_line() -> String:
 	if _mind == null:
@@ -196,21 +195,24 @@ func _talk_line() -> String:
 ## Every choice looks the same: a title, a sentence about what happens, and a
 ## button. Four of these, and nothing else on the screen.
 func _choice(title: String, outcome: String, tint: Color, cb: Callable) -> Control:
+	# Tight. Five of these plus a header, a stamp and a complaint box is more
+	# than a screen's worth at the old sizes, and the fifth choice — the one
+	# that starts a fight — was the one that fell off the bottom.
 	var live: bool = cb.is_valid()
 	var p := UIKit.panel(UIKit.PANEL_LIGHT, 3, 2 if live else 0, tint)
-	var bv := UIKit.vbox(4)
+	var bv := UIKit.vbox(2)
 	if live:
 		# The button IS the title. Naming the choice twice — once as a heading
 		# and again on the button under it — is how a four-choice card became a
 		# nine-line card.
 		var b := UIKit.button(title, cb, UIKit.PANEL_LIGHT)
-		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_font_size_override("font_size", 17)
 		b.add_theme_color_override("font_color", tint)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		bv.add_child(b)
 	else:
-		bv.add_child(UIKit.label(title, 19, UIKit.INK_DIM))
-	bv.add_child(UIKit.label(outcome, 14, UIKit.INK_DIM,
+		bv.add_child(UIKit.label(title, 17, UIKit.INK_DIM))
+	bv.add_child(UIKit.label(outcome, 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	p.add_child(bv)
 	return p

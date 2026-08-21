@@ -7,7 +7,7 @@ func _build() -> void:
 	var v := shell(920, 800, "Shift Report — Day %d" % int(ctx.get("day", 1)),
 		String(ctx.get("sanction", "Clean")))
 
-	var head := UIKit.panel(Color(0.16, 0.15, 0.12, 0.95), 6, 1, UIKit.WARN)
+	var head := UIKit.panel(UIKit.NOTE_WARN, 6, 1, UIKit.WARN)
 	var hv := UIKit.vbox(4)
 	hv.add_child(UIKit.label(String(ctx.get("headline", "")), 17, UIKit.WARN,
 		HORIZONTAL_ALIGNMENT_CENTER))

@@ -31,7 +31,7 @@ func _build() -> void:
 	# is advice and nothing here is labelled — it is two numbers and the player
 	# can do what they like with them. This is the moment the whole game is
 	# waiting for a stranger to notice.
-	var money_box := UIKit.panel(Color(0.13, 0.16, 0.14, 0.95), 6, 1, UIKit.MONEY)
+	var money_box := UIKit.panel(UIKit.NOTE, 6, 1, UIKit.MONEY)
 	var bx := UIKit.vbox(3)
 	bx.add_child(UIKit.row("Send them home today", "your bonus is settled at %s"
 		% UIKit.money_str(0), UIKit.INK_DIM))

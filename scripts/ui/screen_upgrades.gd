@@ -19,7 +19,7 @@ func _build() -> void:
 	content.add_child(UIKit.label("AVAILABLE", 13, UIKit.INK_DIM))
 	for id in Upgrades.available():
 		var spec := Upgrades.spec(id)
-		var box := UIKit.panel(Color(0.14, 0.17, 0.19, 0.93), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(4)
 		bv.add_child(UIKit.row(String(spec["name"]),
 			UIKit.money_str(int(spec["cost"])),

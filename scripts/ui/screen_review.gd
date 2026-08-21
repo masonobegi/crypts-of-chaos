@@ -18,8 +18,8 @@ func _build() -> void:
 		colour = UIKit.WARN
 	elif exposure > 0.25:
 		band = "Minor gaps. Probably fine."
-		colour = Color(0.85, 0.82, 0.5)
-	var head := UIKit.panel(Color(0.14, 0.16, 0.19, 0.94), 6, 1, colour)
+		colour = Color(0.58, 0.48, 0.05)
+	var head := UIKit.panel(UIKit.NOTE, 6, 1, colour)
 	var hv := UIKit.vbox(5)
 	hv.add_child(UIKit.label(band, 18, colour))
 	hv.add_child(UIKit.bar(clampf(exposure / 3.0, 0.0, 1.0), colour, 480.0, 10.0))
@@ -47,7 +47,7 @@ func _build() -> void:
 		content.add_child(UIKit.label("SUSTAINED ON THE WARD", 13, UIKit.INK_DIM))
 		for a in acquired:
 			var n := int(a["count"])
-			var box := UIKit.panel(Color(0.18, 0.14, 0.14, 0.9), 6)
+			var box := UIKit.panel(UIKit.NOTE_BAD, 6)
 			var bv := UIKit.vbox(2)
 			bv.add_child(UIKit.row("%s — in with %s" % [String(a["patient"]),
 				String(a["presenting"])],
@@ -67,7 +67,7 @@ func _build() -> void:
 	for f in findings:
 		var w := float(f["weight"])
 		var c := UIKit.WARN if w < 0.5 else UIKit.BAD
-		var box := UIKit.panel(Color(0.15, 0.14, 0.16, 0.9), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.row(String(f["patient"]), String(f["kind"]).replace("_", " "), c))
 		bv.add_child(UIKit.label(String(f["text"]), 13, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))

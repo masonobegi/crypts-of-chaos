@@ -26,6 +26,7 @@ const UI_SHOTS := [
 	["22_chart", "chart"],
 	["23_records", "records"],
 	["24_dialogue", "dialogue"],
+	["24b_patient", "patient"],
 	["25_review", "review"],
 	["26_statement", "statement"],
 	["27_upgrades", "upgrades"],
@@ -227,7 +228,7 @@ func _ui_context(id: String) -> Dictionary:
 			return {"claim": claim}
 		"night", "night#street":
 			return {}
-		"chart", "dialogue":
+		"chart", "dialogue", "patient":
 			var list: Array = game.patient_system.active()
 			if list.is_empty():
 				return {}

@@ -23,7 +23,7 @@ func _build() -> void:
 	v.add_child(row)
 
 func _card(o: Dictionary) -> Control:
-	var box := UIKit.panel(Color(0.15, 0.17, 0.20, 0.95), 8, 1, Color(0.28, 0.42, 0.44))
+	var box := UIKit.panel(UIKit.NOTE, 8, 1, Color(0.28, 0.42, 0.44))
 	var bv := UIKit.vbox(6)
 	bv.custom_minimum_size = Vector2(258, 0)
 

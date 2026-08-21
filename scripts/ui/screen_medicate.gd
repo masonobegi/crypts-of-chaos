@@ -82,8 +82,8 @@ func _build_shelf() -> void:
 		var lines := "Chart, examined: indicated is %s." % _med_name(ind)
 		if not clashes.is_empty():
 			lines += "\nNoted as disagreeing with it: %s." % _med_name(String(clashes[0]))
-		var box := UIKit.panel(Color(0.12, 0.20, 0.18, 0.85), 6, 1, UIKit.ACCENT)
-		box.add_child(UIKit.label(lines, 15, Color(0.80, 0.96, 0.90),
+		var box := UIKit.panel(UIKit.NOTE_GOOD, 6, 1, UIKit.ACCENT)
+		box.add_child(UIKit.label(lines, 15, UIKit.INK,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(box)
 	else:

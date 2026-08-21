@@ -431,6 +431,19 @@ func discharge_and_leave() -> void:
 func prompt(_player) -> Array:
 	if data == null:
 		return ["", ""]
+	# Somebody sitting in the waiting row is one keypress from a bed. The
+	# playtest note was "there should be no friction getting a customer into a
+	# bed unless all my beds are full", and it was right: admitting is the
+	# commonest thing you do all day and it was four clicks down a menu.
+	if not data.admitted and not data.discharged:
+		var ps = get_tree().get_first_node_in_group("patient_system")
+		var free: int = ps.free_wards().size() if ps != null else 0
+		if free > 0:
+			return ["Admit %s" % data.display_name,
+				"%s  ·  %d of five rooms free  ·  [hold E] to look first" % [
+					data.condition_name(), free]]
+		return ["%s is waiting" % data.display_name,
+			"%s  ·  every room is full  ·  [hold E] for options" % data.condition_name()]
 	var sub := data.condition_name()
 	# The three facts that decide what you do next, on the thing you are already
 	# looking at. What a bed earns per night was previously only readable by
@@ -507,4 +520,25 @@ func interact(player, held) -> void:
 			return
 	look_toward(player.global_position if player else global_position)
 	state = State.TALKING
-	EventBus.request_ui.emit("dialogue", {"npc_id": data.id})
+	# A tap admits a waiting patient outright. Everybody already in a bed gets
+	# the card, because there is nothing you would do to them in one keypress.
+	if not data.admitted and not data.discharged:
+		var ps = get_tree().get_first_node_in_group("patient_system")
+		if ps != null and not ps.free_wards().is_empty():
+			if ps.admit(data):
+				AudioMgr.play_at_var("trolley", global_position, -11.0)
+				return
+	_open_card()
+
+## The hold. Always the card, whoever they are — it is the way to see the
+## options for somebody a tap would otherwise admit on the spot.
+func interact_held(player, _held) -> void:
+	if data == null:
+		return
+	wake_up("touched")
+	look_toward(player.global_position if player else global_position)
+	state = State.TALKING
+	_open_card()
+
+func _open_card() -> void:
+	EventBus.request_ui.emit("patient", {"patient_id": data.id, "npc_id": data.id})

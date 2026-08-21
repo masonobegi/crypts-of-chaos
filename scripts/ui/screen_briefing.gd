@@ -18,7 +18,7 @@ func shift_brief() -> VBoxContainer:
 	var content := UIKit.vbox(10)
 
 	# ---- the part that actually motivates the whole game
-	var wallet := UIKit.panel(Color(0.16, 0.13, 0.13, 0.92), 6, 1, Color(0.5, 0.3, 0.3))
+	var wallet := UIKit.panel(UIKit.NOTE_BAD, 6, 1, Color(0.5, 0.3, 0.3))
 	var wv := UIKit.vbox(4)
 	wv.add_child(UIKit.label("PERSONAL FINANCES", 13, UIKit.INK_DIM))
 	wv.add_child(UIKit.row("In your account", UIKit.money_str(GameState.personal_money),
@@ -42,7 +42,7 @@ func shift_brief() -> VBoxContainer:
 		content.add_child(UIKit.rule())
 		content.add_child(UIKit.label("TODAY", 13, UIKit.INK_DIM))
 		for e in events:
-			var box := UIKit.panel(Color(0.15, 0.17, 0.20, 0.92), 6)
+			var box := UIKit.panel(UIKit.NOTE, 6)
 			var bv := UIKit.vbox(3)
 			bv.add_child(UIKit.label(String(e["title"]), 17, UIKit.WARN))
 			bv.add_child(UIKit.label(String(e["body"]), 14, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -57,7 +57,7 @@ func shift_brief() -> VBoxContainer:
 		content.add_child(UIKit.rule())
 		content.add_child(UIKit.label("HANDOVER FROM THE NIGHT DOCTOR", 13, UIKit.INK_DIM))
 		for h in handover:
-			var hb := UIKit.panel(Color(0.13, 0.16, 0.19, 0.92), 6)
+			var hb := UIKit.panel(UIKit.NOTE, 6)
 			var hv := UIKit.vbox(2)
 			hv.add_child(UIKit.row("%s — %s" % [String(h["name"]), String(h["room"]).capitalize()],
 				String(h["condition"]), UIKit.INK, 16))
@@ -103,7 +103,7 @@ func shift_brief() -> VBoxContainer:
 	if arrivals.is_empty():
 		content.add_child(UIKit.label("No beds free. Nobody new today.", 14, UIKit.INK_DIM))
 	for a in arrivals:
-		var box := UIKit.panel(Color(0.13, 0.16, 0.18, 0.92), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.row(String(a["name"]), String(a["condition"]), UIKit.ACCENT, 17))
 		bv.add_child(UIKit.row("Expected stay", "%.1f days" % float(a["stay"])))

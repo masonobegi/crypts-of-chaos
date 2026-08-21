@@ -50,7 +50,7 @@ func _build_list(c: VBoxContainer) -> void:
 	var ps = patient_system()
 	for a in appts.list:
 		var kind := String(a["kind"])
-		var box := UIKit.panel(Color(0.14, 0.17, 0.19, 0.93), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(3)
 		var status := "waiting"
 		var tint := UIKit.INK
@@ -104,7 +104,7 @@ func _build_ward(c: VBoxContainer) -> void:
 		c.add_child(UIKit.label("No patients admitted.", 15, UIKit.INK_DIM))
 		return
 	for p in list:
-		var box := UIKit.panel(Color(0.14, 0.17, 0.19, 0.93), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(3)
 		bv.add_child(UIKit.row(p.display_name, p.condition_name(), UIKit.ACCENT, 17))
 		bv.add_child(UIKit.row("Room", String(p.room).replace("ward_", "Room ")))
@@ -145,7 +145,7 @@ func _build_people(c: VBoxContainer) -> void:
 		return
 	for s in ranked:
 		var m: Mind = sus.mind_of(String(s["id"]))
-		var box := UIKit.panel(Color(0.14, 0.16, 0.19, 0.93), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(3)
 		var r := UIKit.hbox(8)
 		r.add_child(UIKit.label("%s" % String(s["name"]), 17, UIKit.INK))
@@ -210,9 +210,9 @@ func _build_record(c: VBoxContainer) -> void:
 		colour = UIKit.WARN
 	elif exposure > 0.25:
 		band = "Minor gaps. Probably fine."
-		colour = Color(0.85, 0.82, 0.5)
+		colour = Color(0.58, 0.48, 0.05)
 
-	var head := UIKit.panel(Color(0.14, 0.16, 0.19, 0.94), 6, 1, colour)
+	var head := UIKit.panel(UIKit.NOTE, 6, 1, colour)
 	var hv := UIKit.vbox(5)
 	hv.add_child(UIKit.label(band, 17, colour))
 	hv.add_child(UIKit.bar(clampf(exposure / 3.0, 0.0, 1.0), colour, 460.0, 10.0))
@@ -241,7 +241,7 @@ func _build_record(c: VBoxContainer) -> void:
 	for f in findings:
 		var w := float(f["weight"])
 		var fc := UIKit.WARN if w < 0.5 else UIKit.BAD
-		var box := UIKit.panel(Color(0.15, 0.14, 0.16, 0.9), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.row(String(f["patient"]), String(f["kind"]).replace("_", " "), fc))
 		bv.add_child(UIKit.label(String(f["text"]), 13, UIKit.INK,
@@ -292,7 +292,7 @@ func _build_codex(c: VBoxContainer) -> void:
 	var cdx = get_tree().get_first_node_in_group("codex")
 	if cdx:
 		for e in cdx.entries():
-			var box := UIKit.panel(Color(0.14, 0.16, 0.19, 0.93), 6)
+			var box := UIKit.panel(UIKit.NOTE, 6)
 			var bv := UIKit.vbox(3)
 			bv.add_child(UIKit.label(String(e["title"]), 16, UIKit.ACCENT))
 			bv.add_child(UIKit.label(String(e["text"]), 13, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))

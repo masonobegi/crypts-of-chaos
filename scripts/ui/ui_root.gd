@@ -4,6 +4,7 @@ extends CanvasLayer
 
 const SCREEN_SCRIPTS := {
 	"dialogue": "res://scripts/ui/screen_dialogue.gd",
+	"patient": "res://scripts/ui/screen_patient.gd",
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"records": "res://scripts/ui/screen_records.gd",
 	"shift_select": "res://scripts/ui/screen_shift_select.gd",
@@ -477,7 +478,7 @@ func _game_over_screen(ending_id: String) -> Control:
 
 	# The score. Everything below it is detail; this is the number the run was
 	# for, and it is stated as what it is rather than as "final earnings".
-	var haul := UIKit.panel(Color(0.13, 0.17, 0.14, 0.95), 8, 1, UIKit.MONEY)
+	var haul := UIKit.panel(UIKit.NOTE_GOOD, 8, 1, UIKit.MONEY)
 	var hv := UIKit.vbox(2)
 	hv.add_child(UIKit.label("YOU TOOK OUT OF THAT HOSPITAL", 13, UIKit.INK_DIM))
 	hv.add_child(UIKit.title(UIKit.money_str(int(s.personal_earned)), 40, UIKit.MONEY))

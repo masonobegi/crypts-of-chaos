@@ -3,20 +3,51 @@ extends RefCounted
 ## Tiny procedural UI toolkit. Every screen in the game is built from these, so
 ## there are no .tscn UI files to keep in sync with the code.
 
+## PAPER.
+##
+## Every menu in the game used to be the same dark blue-grey box, and the
+## playtest note was simply "the menus are still really boring — spice it up,
+## make it doctory". They are paperwork now: manila card, black ink, a red
+## margin rule down the left and a ruled header band across the top, because
+## that is what everything in a hospital that is not a person is.
+##
+## The HUD stays dark and keeps its own explicit colours — it is an overlay on
+## a lit 3D room, and paper floating in front of a ward reads as a bug.
 const BG := Color(0.09, 0.11, 0.13, 0.96)
 const BG_SOLID := Color(0.09, 0.11, 0.13, 1.0)
-const PANEL := Color(0.14, 0.17, 0.20, 0.97)
-const PANEL_LIGHT := Color(0.19, 0.23, 0.27, 1.0)
-const INK := Color(0.90, 0.93, 0.92)
-const INK_DIM := Color(0.62, 0.67, 0.68)
-const ACCENT := Color(0.35, 0.78, 0.72)
-const GOOD := Color(0.42, 0.80, 0.52)
-const WARN := Color(0.94, 0.70, 0.28)
-const BAD := Color(0.90, 0.36, 0.32)
-const MONEY := Color(0.55, 0.85, 0.60)
-const SUS := Color(0.80, 0.55, 0.90)
+const PANEL := Color(0.93, 0.91, 0.85, 1.0)          ## manila
+const PANEL_LIGHT := Color(0.975, 0.966, 0.938, 1.0) ## a fresh sheet
+const INK := Color(0.12, 0.13, 0.15)
+const INK_DIM := Color(0.40, 0.42, 0.45)
+const ACCENT := Color(0.05, 0.40, 0.40)
+const GOOD := Color(0.10, 0.45, 0.23)
+const WARN := Color(0.66, 0.41, 0.04)
+const BAD := Color(0.68, 0.13, 0.12)
+const MONEY := Color(0.10, 0.40, 0.21)
+const SUS := Color(0.42, 0.18, 0.52)
+## The HUD, and anything painted onto the 3D world, keeps the old light-on-dark
+## palette. Paper belongs in a modal; a manila readout floating in front of a
+## lit ward reads as a bug.
+const HUD_INK := Color(0.90, 0.93, 0.92)
+const HUD_DIM := Color(0.62, 0.67, 0.68)
+const HUD_ACCENT := Color(0.35, 0.78, 0.72)
+const HUD_GOOD := Color(0.42, 0.80, 0.52)
+const HUD_WARN := Color(0.94, 0.70, 0.28)
+const HUD_BAD := Color(0.90, 0.36, 0.32)
+const HUD_MONEY := Color(0.55, 0.85, 0.60)
+const HUD_SUS := Color(0.80, 0.55, 0.90)
 
-static func stylebox(color: Color, radius := 6, border := 0, border_color := ACCENT) -> StyleBoxFlat:
+## The margin rule down every form in the world.
+const MARGIN_RED := Color(0.78, 0.30, 0.28)
+## Tinted paper for the boxes inside a form. Which one a box gets is decided by
+## what it is telling you, not by a colour picked per screen — that is how
+## twenty-eight hand-mixed dark greys happened in the first place.
+const NOTE := Color(0.895, 0.876, 0.812, 1.0)
+const NOTE_GOOD := Color(0.855, 0.900, 0.845, 1.0)
+const NOTE_WARN := Color(0.955, 0.905, 0.775, 1.0)
+const NOTE_BAD := Color(0.955, 0.862, 0.845, 1.0)
+
+static func stylebox(color: Color, radius := 3, border := 0, border_color := ACCENT) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color
 	sb.corner_radius_top_left = radius
@@ -35,7 +66,9 @@ static func stylebox(color: Color, radius := 6, border := 0, border_color := ACC
 		sb.border_color = border_color
 	return sb
 
-static func panel(color := PANEL, radius := 8, border := 0, border_color := ACCENT) -> PanelContainer:
+## A box on a form. Radius is deliberately small everywhere — paper does not
+## have rounded corners, and an 8px radius on a manila card reads as a phone.
+static func panel(color := PANEL, radius := 3, border := 0, border_color := ACCENT) -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", stylebox(color, radius, border, border_color))
 	return p
@@ -71,16 +104,18 @@ static func rich(text: String, size := 15) -> RichTextLabel:
 	r.add_theme_color_override("default_color", INK)
 	return r
 
+## A button is a slip of card with an ink rule round it and a coloured tab down
+## the left, like the tab on a divider in a filing drawer.
 static func button(text: String, cb: Callable, color := PANEL_LIGHT, min_w := 0.0) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.add_theme_font_size_override("font_size", 16)
 	b.add_theme_color_override("font_color", INK)
 	b.add_theme_color_override("font_hover_color", ACCENT)
-	b.add_theme_stylebox_override("normal", stylebox(color, 6))
-	b.add_theme_stylebox_override("hover", stylebox(color.lightened(0.12), 6, 2, ACCENT))
-	b.add_theme_stylebox_override("pressed", stylebox(color.darkened(0.2), 6))
-	b.add_theme_stylebox_override("disabled", stylebox(color.darkened(0.35), 6))
+	b.add_theme_stylebox_override("normal", _slip(color, ACCENT, 4))
+	b.add_theme_stylebox_override("hover", _slip(color.lightened(0.06), ACCENT, 8))
+	b.add_theme_stylebox_override("pressed", _slip(color.darkened(0.10), ACCENT, 8))
+	b.add_theme_stylebox_override("disabled", _slip(color.darkened(0.05), INK_DIM, 4))
 	b.add_theme_color_override("font_disabled_color", INK_DIM)
 	if min_w > 0.0:
 		b.custom_minimum_size.x = min_w
@@ -179,7 +214,7 @@ static func toggle(text: String, value: bool, on_change: Callable) -> Control:
 	row_box.add_child(b)
 	return row_box
 
-static func rule(color := Color(1, 1, 1, 0.12)) -> ColorRect:
+static func rule(color := Color(INK.r, INK.g, INK.b, 0.22)) -> ColorRect:
 	var r := ColorRect.new()
 	r.color = color
 	r.custom_minimum_size.y = 1
@@ -277,7 +312,7 @@ static func full_screen(node: Control) -> Control:
 	return node
 
 static func center_panel(width: float, height: float) -> PanelContainer:
-	var p := panel(BG_SOLID, 10, 2, Color(1, 1, 1, 0.10))
+	var p := panel(PANEL, 3, 2, Color(0.22, 0.23, 0.25))
 	place(p, Control.PRESET_CENTER, -width * 0.5, -height * 0.5, width, height)
 	p.custom_minimum_size = Vector2(width, height)
 	return p
@@ -314,3 +349,90 @@ static func rep_color(track: String, value: float) -> Color:
 	if track == "gov_scrutiny":
 		return BAD if value > 0.4 else (WARN if value > 0.2 else GOOD)
 	return GOOD if value > 0.6 else (WARN if value > 0.35 else BAD)
+
+## The card-with-a-tab stylebox every button uses.
+static func _slip(color: Color, tab: Color, tab_w: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = color
+	sb.corner_radius_top_left = 2
+	sb.corner_radius_top_right = 2
+	sb.corner_radius_bottom_left = 2
+	sb.corner_radius_bottom_right = 2
+	sb.content_margin_left = 16
+	sb.content_margin_right = 14
+	sb.content_margin_top = 9
+	sb.content_margin_bottom = 9
+	sb.border_width_left = tab_w
+	sb.border_width_top = 1
+	sb.border_width_right = 1
+	sb.border_width_bottom = 1
+	sb.border_color = tab
+	sb.set_border_width(SIDE_TOP, 1)
+	sb.set_border_width(SIDE_RIGHT, 1)
+	sb.set_border_width(SIDE_BOTTOM, 1)
+	sb.set_border_width(SIDE_LEFT, tab_w)
+	return sb
+
+## The band across the top of a form: a coloured bar, the title in capitals,
+## and the double rule underneath that every printed record in the world has.
+static func chart_header(text: String, tint := ACCENT) -> Control:
+	var v := vbox(0)
+	var band := ColorRect.new()
+	band.color = tint
+	band.custom_minimum_size.y = 7
+	v.add_child(band)
+	v.add_child(spacer(6))
+	var t := Label.new()
+	t.text = text.to_upper()
+	t.add_theme_font_size_override("font_size", 24)
+	t.add_theme_color_override("font_color", INK)
+	v.add_child(t)
+	v.add_child(spacer(4))
+	var thick := ColorRect.new()
+	thick.color = INK
+	thick.custom_minimum_size.y = 2
+	v.add_child(thick)
+	v.add_child(spacer(2))
+	var thin := ColorRect.new()
+	thin.color = Color(INK.r, INK.g, INK.b, 0.45)
+	thin.custom_minimum_size.y = 1
+	v.add_child(thin)
+	return v
+
+## A rubber stamp: capitals in a box, at an angle, in one flat colour. Used for
+## the handful of statuses that ought to hit you before you have read anything.
+static func stamp(text: String, tint := BAD) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(180, 46)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var p := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(tint.r, tint.g, tint.b, 0.10)
+	sb.border_color = tint
+	sb.set_border_width_all(3)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 4
+	sb.content_margin_bottom = 4
+	p.add_theme_stylebox_override("panel", sb)
+	var l := Label.new()
+	l.text = text.to_upper()
+	l.add_theme_font_size_override("font_size", 20)
+	l.add_theme_color_override("font_color", tint)
+	p.add_child(l)
+	p.rotation = -0.09
+	p.position = Vector2(4, 2)
+	holder.add_child(p)
+	return holder
+
+## A form field: a label, a dotted leader, and a value. The leader is what makes
+## a row of these read as a document rather than as a settings screen.
+static func field(key: String, value: String, value_color := INK, size := 15) -> HBoxContainer:
+	var h := hbox(8)
+	h.add_child(label(key, size, INK_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+	var leader := label(" " + ". ".repeat(60), size, Color(INK.r, INK.g, INK.b, 0.28))
+	leader.clip_text = true
+	leader.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(leader)
+	h.add_child(label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT))
+	return h

@@ -39,7 +39,7 @@ func _build_letter() -> void:
 		"%s · %s" % [String(_claim["patient"]), String(_claim["condition"])])
 
 	first_time_note(v, "court")
-	var box := UIKit.panel(Color(0.20, 0.14, 0.14, 0.9), 6, 1, UIKit.BAD)
+	var box := UIKit.panel(UIKit.NOTE_BAD, 6, 1, UIKit.BAD)
 	var bv := UIKit.vbox(4)
 	bv.add_child(UIKit.label(String(_claim["summary"]), 16, Color(1, 0.88, 0.86),
 		HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -165,8 +165,8 @@ func _build_hearing() -> void:
 			String(LegalSystem.lawyer(_lawyer)["name"]), _exchange + 1,
 			LegalSystem.HEARING_LENGTH])
 
-	var box := UIKit.panel(Color(0.14, 0.16, 0.22, 0.92), 6, 1, UIKit.BAD)
-	var rl := UIKit.label("", 17, Color(0.94, 0.90, 0.88), HORIZONTAL_ALIGNMENT_LEFT, true)
+	var box := UIKit.panel(UIKit.NOTE, 6, 1, UIKit.BAD)
+	var rl := UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
 	rl.custom_minimum_size.y = 56
 	box.add_child(rl)
 	v.add_child(box)

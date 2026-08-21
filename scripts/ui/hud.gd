@@ -68,8 +68,8 @@ func _build() -> void:
 	add_child(_tl_bg)
 	var tl := UIKit.vbox(2)
 	UIKit.place(tl, Control.PRESET_TOP_LEFT, 26, 18, 280, 146)
-	_day = UIKit.label("Day 1", 20, UIKit.INK)
-	_clock = UIKit.label("8:00 AM", 30, UIKit.ACCENT)
+	_day = UIKit.label("Day 1", 20, UIKit.HUD_INK)
+	_clock = UIKit.label("8:00 AM", 30, UIKit.HUD_ACCENT)
 	# A shift that ends at an hour you were never told is not a deadline, it is
 	# a surprise. Everything the player is deciding — whether there is time to
 	# do this now, whether the paperwork can wait — is a question about this
@@ -80,7 +80,7 @@ func _build() -> void:
 	# It used to sit top-centre, where NPC speech labels float over the heads of
 	# whoever is standing in front of you — a rendered play run caught a nurse's
 	# "You know I can see you, right?" printed straight through the countdown.
-	_next_appt = UIKit.label("", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true)
+	_next_appt = UIKit.label("", 13, UIKit.HUD_DIM, HORIZONTAL_ALIGNMENT_LEFT, true)
 	_next_appt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tl.add_child(_day)
 	tl.add_child(_clock)
@@ -104,7 +104,7 @@ func _build() -> void:
 	_ticker.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_ticker)
 
-	_personal = UIKit.label("$0", 26, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_personal = UIKit.label("$0", 26, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_hospital = UIKit.label("Hospital $0", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
 	_census = UIKit.label("0 admitted", 14, Color(0.78, 0.82, 0.84), HORIZONTAL_ALIGNMENT_RIGHT)
 	# Your cut of the shift, as it happens. The player's own money did not move
@@ -113,7 +113,7 @@ func _build() -> void:
 	# survive on sat still while you played. It is not paid until you clock out;
 	# this only says what it is worth so far, which is what makes keeping
 	# somebody another night a thing you can WATCH rather than infer.
-	_today = UIKit.label("", 15, UIKit.MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_today = UIKit.label("", 15, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	for n in [_personal, _today, _hospital, _census]:
 		n.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		tr.add_child(n)
@@ -122,7 +122,7 @@ func _build() -> void:
 	# ---- top centre: objective, and the single most important tell in the game
 	var tc := UIKit.vbox(6)
 	UIKit.place(tc, Control.PRESET_CENTER_TOP, -230, 16, 460, 90)
-	_objective = UIKit.label("", 15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_objective = UIKit.label("", 15, UIKit.HUD_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc.add_child(_objective)
 
@@ -155,8 +155,8 @@ func _build() -> void:
 	_prompt_panel = UIKit.panel(Color(0.08, 0.10, 0.12, 0.86), 6)
 	UIKit.place(_prompt_panel, Control.PRESET_CENTER, -200, 44, 400, 62)
 	var pv := UIKit.vbox(2)
-	_prompt = UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_CENTER)
-	_prompt_sub = UIKit.label("", 13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_prompt = UIKit.label("", 17, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	_prompt_sub = UIKit.label("", 13, UIKit.HUD_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
 	pv.add_child(_prompt)
 	pv.add_child(_prompt_sub)
 	_prompt_panel.add_child(pv)
@@ -166,7 +166,7 @@ func _build() -> void:
 	# ---- subtitles
 	_subtitle_panel = UIKit.panel(Color(0.05, 0.06, 0.08, 0.80), 6)
 	UIKit.place(_subtitle_panel, Control.PRESET_CENTER_BOTTOM, -330, -132, 660, 66)
-	_subtitle = UIKit.label("", 17, UIKit.INK, HORIZONTAL_ALIGNMENT_CENTER, true)
+	_subtitle = UIKit.label("", 17, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_CENTER, true)
 	_subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_subtitle_panel.add_child(_subtitle)
 	_subtitle_panel.visible = false
@@ -322,7 +322,7 @@ func _refresh_static() -> void:
 	_day.text = "Day %d" % GameState.day
 	_sanction.text = GameState.SANCTIONS[GameState.sanction_level]
 	_sanction.add_theme_color_override("font_color",
-		UIKit.INK_DIM if GameState.sanction_level == 0 else UIKit.tier_color(
+		UIKit.HUD_DIM if GameState.sanction_level == 0 else UIKit.tier_color(
 			clampi(GameState.sanction_level / 2, 1, 4)))
 
 func _on_clock(_m: int) -> void:
@@ -352,7 +352,7 @@ func _refresh_deadline() -> void:
 	_left.text = "%s left · ends %s" % [UIKit.span_str(mins),
 		GameState.hour_string(end_hour)]
 	_left.add_theme_color_override("font_color",
-		UIKit.BAD if mins <= 30 else (UIKit.WARN if mins <= 60 else UIKit.INK_DIM))
+		UIKit.HUD_BAD if mins <= 30 else (UIKit.HUD_WARN if mins <= 60 else UIKit.HUD_DIM))
 
 	var appts = get_tree().get_first_node_in_group("appointment_system")
 	if appts == null:
@@ -362,7 +362,7 @@ func _refresh_deadline() -> void:
 	var e: Dictionary = appts.next_due()
 	if e.is_empty():
 		_next_appt.text = "Nothing else booked."
-		_next_appt.add_theme_color_override("font_color", UIKit.INK_DIM)
+		_next_appt.add_theme_color_override("font_color", UIKit.HUD_DIM)
 		_fit_clock_panel()
 		return
 	var until: int = appts.minutes_until(int(e["hour"]))
@@ -370,7 +370,7 @@ func _refresh_deadline() -> void:
 	if until > 0:
 		_next_appt.text = "%s — %s in %s" % [label, String(e["name"]), UIKit.span_str(until)]
 		_next_appt.add_theme_color_override("font_color",
-			UIKit.WARN if until <= 30 else UIKit.INK_DIM)
+			UIKit.HUD_WARN if until <= 30 else UIKit.HUD_DIM)
 	else:
 		# Three hours late is a no-show. Say how much of that is left rather
 		# than only saying "late", which tells you nothing about whether to run.
@@ -378,7 +378,7 @@ func _refresh_deadline() -> void:
 		_next_appt.text = "%s — %s is waiting (%s)" % [label, String(e["name"]),
 			UIKit.span_str(grace)]
 		_next_appt.add_theme_color_override("font_color",
-			UIKit.BAD if grace <= 60 else UIKit.WARN)
+			UIKit.HUD_BAD if grace <= 60 else UIKit.HUD_WARN)
 	_fit_clock_panel()
 
 ## An empty label still takes a line, and the backing panel is a fixed rectangle,
@@ -393,7 +393,7 @@ func _fit_clock_panel() -> void:
 func _on_money(personal: int, hospital: int) -> void:
 	_personal.text = UIKit.money_str(personal)
 	_personal.add_theme_color_override("font_color",
-		UIKit.MONEY if personal >= 0 else UIKit.BAD)
+		UIKit.HUD_MONEY if personal >= 0 else UIKit.HUD_BAD)
 	_hospital.text = "Hospital %s" % UIKit.money_str(hospital)
 
 func _on_objective(text: String) -> void:
@@ -431,7 +431,7 @@ func _on_transaction(label: String, amount: int, is_hospital: bool) -> void:
 	var l := UIKit.label("%s%s  %s" % ["+" if amount > 0 else "−",
 		UIKit.money_str(absi(amount)), label],
 		15 if not is_hospital else 13,
-		(UIKit.MONEY if amount > 0 else UIKit.BAD) if not is_hospital
+		(UIKit.HUD_MONEY if amount > 0 else UIKit.HUD_BAD) if not is_hospital
 			else Color(0.62, 0.72, 0.68), HORIZONTAL_ALIGNMENT_RIGHT)
 	_ticker.add_child(l)
 	if not is_hospital:
@@ -477,12 +477,12 @@ func _drain_toasts(delta: float) -> void:
 	_show_toast(String(next["text"]), String(next["kind"]))
 
 func _show_toast(text: String, kind: String) -> void:
-	var colour := UIKit.INK
+	var colour := UIKit.HUD_INK
 	match kind:
-		"good": colour = UIKit.GOOD
-		"bad": colour = UIKit.BAD
-		"money": colour = UIKit.MONEY
-		"suspicion": colour = UIKit.SUS
+		"good": colour = UIKit.HUD_GOOD
+		"bad": colour = UIKit.HUD_BAD
+		"money": colour = UIKit.HUD_MONEY
+		"suspicion": colour = UIKit.HUD_SUS
 	var p := UIKit.panel(Color(0.08, 0.10, 0.12, 0.88), 5, 0)
 	var l := UIKit.label(text, 14, colour, HORIZONTAL_ALIGNMENT_LEFT, true)
 	l.custom_minimum_size.x = 370

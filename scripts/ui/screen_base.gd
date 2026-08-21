@@ -6,19 +6,35 @@ var ctx: Dictionary = {}
 var ui = null
 var body: VBoxContainer = null
 
+## Every modal screen is a sheet of paper on a clipboard.
+##
+## The red margin rule down the left is doing most of the work: it is the one
+## mark that says "form" before a single word has been read, and it costs three
+## pixels. Above it goes a coloured band and the heading in capitals over a
+## double rule, which is what the top of every printed record in the world
+## looks like.
 func shell(width: float, height: float, heading: String, subheading := "") -> VBoxContainer:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(UIKit.dim_background())
 	var panel := UIKit.center_panel(width, height)
 	add_child(panel)
+
+	var sheet := UIKit.hbox(0)
+	panel.add_child(sheet)
+	var margin := ColorRect.new()
+	margin.color = UIKit.MARGIN_RED
+	margin.custom_minimum_size.x = 3
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sheet.add_child(margin)
+	sheet.add_child(UIKit.spacer(14, false))
+
 	var v := UIKit.vbox(10)
-	panel.add_child(v)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet.add_child(v)
 	if heading != "":
-		v.add_child(UIKit.title(heading, 26, UIKit.ACCENT))
+		v.add_child(UIKit.chart_header(heading))
 	if subheading != "":
 		v.add_child(UIKit.label(subheading, 14, UIKit.INK_DIM))
-	if heading != "":
-		v.add_child(UIKit.rule())
 	body = v
 	return v
 
@@ -98,8 +114,8 @@ func first_time_note(v: VBoxContainer, key: String) -> void:
 	var text := String(TutorialSystem.PHASE_NOTES.get(key, ""))
 	if text == "":
 		return
-	var box := UIKit.panel(Color(0.12, 0.20, 0.24, 0.92), 6, 1, UIKit.ACCENT)
-	box.add_child(UIKit.label(text, 15, Color(0.84, 0.95, 0.96),
+	var box := UIKit.panel(UIKit.NOTE, 6, 1, UIKit.ACCENT)
+	box.add_child(UIKit.label(text, 15, UIKit.INK,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(box)
 

@@ -45,7 +45,7 @@ func _build_speech() -> void:
 	var sub := "%s · %s" % [_mind.role.capitalize(), DB.archetype_name(_mind.archetype)]
 	var v := shell(760, 460, _mind.display_name, sub)
 	v.add_child(UIKit.spacer(10))
-	var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.95), 8, 1, UIKit.ACCENT)
+	var rp := UIKit.panel(UIKit.NOTE, 8, 1, UIKit.ACCENT)
 	var rl := UIKit.label("", 20, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true)
 	rl.custom_minimum_size.y = 128
 	rp.add_child(rl)
@@ -94,7 +94,7 @@ func _build_options() -> void:
 	# What they are currently holding against you, in their words.
 	var worst := _mind.strongest(GameState.career_minutes)
 	if worst != null:
-		var box := UIKit.panel(Color(0.22, 0.13, 0.13, 0.7), 6, 1, UIKit.BAD)
+		var box := UIKit.panel(UIKit.NOTE_BAD, 6, 1, UIKit.BAD)
 		var bv := UIKit.vbox(2)
 		bv.add_child(UIKit.label("They %s: %s" % [worst.source_label(), worst.label()],
 			15, Color(1, 0.86, 0.84), HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -114,7 +114,7 @@ func _build_options() -> void:
 	# The last thing they said, kept on screen while you decide what to say
 	# back. Not typed here — it has already been read, in the speaking beat.
 	if _reply != "":
-		var rp := UIKit.panel(Color(0.12, 0.16, 0.18, 0.9), 6)
+		var rp := UIKit.panel(UIKit.NOTE, 6)
 		rp.add_child(UIKit.label("\"%s\"" % _reply, 15, UIKit.INK_DIM,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(rp)
@@ -217,7 +217,7 @@ func _quiet_word() -> Control:
 	var worst := _mind.strongest(GameState.career_minutes)
 	if worst == null or worst.neutralized:
 		return null
-	var box := UIKit.panel(Color(0.20, 0.17, 0.10, 0.85), 6, 1, UIKit.WARN)
+	var box := UIKit.panel(UIKit.NOTE_BAD, 6, 1, UIKit.WARN)
 	var bv := UIKit.vbox(4)
 	bv.add_child(UIKit.label("Have a quiet word.", 17, UIKit.WARN))
 	bv.add_child(UIKit.label(
@@ -239,7 +239,7 @@ func _quiet_word() -> Control:
 		var colour := UIKit.GOOD
 		if odds < 0.2: colour = UIKit.BAD
 		elif odds < 0.4: colour = UIKit.WARN
-		elif odds < 0.6: colour = Color(0.85, 0.82, 0.5)
+		elif odds < 0.6: colour = Color(0.58, 0.48, 0.05)
 		var l := UIKit.label(Bribery.band(odds), 12, colour, HORIZONTAL_ALIGNMENT_RIGHT)
 		l.custom_minimum_size.x = 190
 		row.add_child(l)
@@ -317,7 +317,7 @@ func _option_button(o) -> Control:
 		var colour := UIKit.GOOD
 		if chance < 0.2: colour = UIKit.BAD
 		elif chance < 0.4: colour = UIKit.WARN
-		elif chance < 0.6: colour = Color(0.85, 0.82, 0.5)
+		elif chance < 0.6: colour = Color(0.58, 0.48, 0.05)
 		var l := UIKit.label(band, 12, colour, HORIZONTAL_ALIGNMENT_RIGHT)
 		l.custom_minimum_size.x = 190
 		h.add_child(l)

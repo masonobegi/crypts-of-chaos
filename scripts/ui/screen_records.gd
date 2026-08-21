@@ -61,7 +61,7 @@ func _build() -> void:
 	if pat.active_complications().is_empty():
 		content.add_child(UIKit.label("None active.", 14, UIKit.INK_DIM))
 	for c in pat.active_complications():
-		var box := UIKit.panel(Color(0.16, 0.18, 0.21, 0.9), 6)
+		var box := UIKit.panel(UIKit.NOTE, 6)
 		var bv := UIKit.vbox(5)
 		bv.add_child(UIKit.row(c.display_name,
 			DB.cause_name(c.documented_cause) if c.documented_cause != "" else "no cause filed",

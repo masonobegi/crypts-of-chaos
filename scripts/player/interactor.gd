@@ -149,6 +149,12 @@ func _handle_input(delta: float) -> void:
 
 	_handle_use(delta)
 
+## How long "held" is, for targets that do one thing on a tap and another on a
+## hold. Short enough that a hold is not a wait, long enough that a decisive tap
+## is never read as one.
+const LONG_PRESS := 0.42
+var _long_fired := false
+
 func _handle_use(delta: float) -> void:
 	var target := _use_hover
 	if target == null or not target.has_method("interact"):
@@ -157,6 +163,26 @@ func _handle_use(delta: float) -> void:
 	var hold_time := 0.0
 	if target.has_method("use_seconds"):
 		hold_time = float(target.call("use_seconds", player, held))
+
+	# Tap-or-hold targets. A tap does the one thing you nearly always want; a
+	# hold opens the options. Somebody sitting in the waiting row is admitted on
+	# a tap and gives you their card on a hold, which is the difference between
+	# "one keypress" and "four clicks down a menu".
+	if hold_time <= 0.0 and target.has_method("interact_held"):
+		if Input.is_action_just_pressed("interact"):
+			_use_target = target
+			_use_progress = 0.0
+			_long_fired = false
+		if Input.is_action_pressed("interact") and _use_target == target:
+			_use_progress += delta / LONG_PRESS
+			if _use_progress >= 1.0 and not _long_fired:
+				_long_fired = true
+				target.call("interact_held", player, held)
+		if Input.is_action_just_released("interact") and _use_target == target:
+			if not _long_fired:
+				target.call("interact", player, held)
+			_cancel_use()
+		return
 
 	if Input.is_action_just_pressed("interact") and hold_time <= 0.0:
 		target.call("interact", player, held)
@@ -185,6 +211,7 @@ func _prompt_title(target: Node) -> String:
 func _cancel_use() -> void:
 	_use_progress = 0.0
 	_use_target = null
+	_long_fired = false
 
 # ------------------------------------------------------------------ grabbing
 func _can_grab(n: Node) -> bool:

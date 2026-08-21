@@ -30,6 +30,9 @@ enum Claim {
 	RESULT_ABNORMAL,
 	ORDER,         ## a request for something to be done
 	ADMIN,         ## a note that claims nothing clinical
+	FIT_FOR_DISCHARGE, ## a colleague's explicit PLAN, not an observation.
+	                   ## Reversing one of these is a professional disagreement
+	                   ## with a named person, and time of day does not soften it.
 }
 
 var id: String = ""
@@ -72,7 +75,7 @@ func supports_stay() -> bool:
 ## ...or that they were fit to go?
 func supports_discharge() -> bool:
 	return claim == Claim.SETTLED or claim == Claim.MOBILISING \
-		or claim == Claim.RESULT_NORMAL
+		or claim == Claim.RESULT_NORMAL or claim == Claim.FIT_FOR_DISCHARGE
 
 ## Two entries are ABOUT THE SAME MOMENT if the windows they describe overlap.
 ## Half an hour either side, because a ward round is not a stopwatch.

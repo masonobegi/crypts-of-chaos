@@ -66,8 +66,17 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		if bool(t.get("held", false)):
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
+		out.append_array(_reversed_a_colleague(pid, list))
 		out.append_array(_addendum_cascade(pid, list))
 
+	out.append_array(pattern_findings(entries, truth))
+	# A file already marked for review is read by somebody whose eyes are open.
+	# The player can find this out; it is written on the record. They have to go
+	# and look, which is the only reason the flag is interesting.
+	for f in out:
+		if f.patient_id != "" and bool(truth.get(f.patient_id, {}).get("flagged", false)):
+			f.severity = minf(0.98, f.severity * 1.6)
+			f.axis = "%s (file already under review)" % f.axis
 	_compound(out)
 	out.sort_custom(func(a, b): return a.severity > b.severity)
 	return out
@@ -311,6 +320,72 @@ static func _compound(findings: Array) -> void:
 			# Capped below certainty on purpose: no single line should ever be
 			# fatal on its own. It is the ACCUMULATION across a patient that convicts.
 			f.severity = minf(0.95, f.severity * (1.0 + 0.30 * float(overlap)))
+
+## Somebody wrote a PLAN and you reversed it. Unlike an observation, a plan is
+## not softened by the clock — Adeyemi said at nine in the morning that this man
+## was going home, and at three in the afternoon you said he was not, and she is
+## going to hear about it either way.
+static func _reversed_a_colleague(pid: String, list: Array) -> Array:
+	var out: Array = []
+	for plan in list:
+		if plan.claim != ChartEntry.Claim.FIT_FOR_DISCHARGE:
+			continue
+		for e in list:
+			if not e.supports_stay() or e.author != ChartEntry.Author.YOU:
+				continue
+			if e.stated_minute < plan.stated_minute:
+				continue
+			var f := Finding.new()
+			f.kind = "reversed_a_colleague"
+			f.patient_id = pid
+			f.entries = PackedStringArray([plan.id, e.id])
+			f.axis = "who decided what"
+			f.severity = 0.55
+			f.question = ("%s had him down for home at %s. You've reversed that. "
+				+ "Did you speak to her?") % [
+				plan.author_id, ChartEntry._hhmm(plan.stated_minute)]
+			f.because = "%s's discharge plan was overturned in writing, by you, without her." % plan.author_id
+			out.append(f)
+	return out
+
+## THE INSTITUTION NOTICING THE DOCTOR, rather than the note.
+##
+## Any single well-timed fabrication is survivable and should be. What is not
+## survivable is the shape of a day in which several people stayed and the only
+## person who ever saw a reason was you. Without this, the money-optimal play —
+## hold three, write two careful notes in the gaps between rounds — was also the
+## safest play in the game, which made it a dominant strategy and no decision at
+## all.
+static func pattern_findings(entries: Array, truth: Dictionary) -> Array:
+	var out: Array = []
+	var solo_holds: Array = []
+	for pid in truth:
+		if not bool(truth[pid].get("held", false)):
+			continue
+		var mine := false
+		var anyone_else := false
+		for e in entries:
+			if e.patient_id != pid or not e.supports_stay():
+				continue
+			if e.author == ChartEntry.Author.YOU:
+				mine = true
+			else:
+				anyone_else = true
+		if mine and not anyone_else:
+			solo_holds.append(pid)
+	if solo_holds.size() < 2:
+		return out
+	var f := Finding.new()
+	f.kind = "pattern_of_holds"
+	f.patient_id = ""
+	f.axis = "the shape of your day"
+	f.severity = clampf(0.35 * float(solo_holds.size()), 0.35, 1.0)
+	f.question = ("%d of them stayed last night and in every case the only person "
+		+ "who saw a reason was you. Is that a fair summary?") % solo_holds.size()
+	f.because = ("%d patients were held on findings nobody but you ever recorded."
+		% solo_holds.size())
+	out.append(f)
+	return out
 
 static func _short(e) -> String:
 	return e.text if e.text.length() < 46 else e.text.substr(0, 43) + "..."

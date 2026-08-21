@@ -137,10 +137,19 @@ static func night_fee(t: int) -> int:
 
 ## Nurse Adeyemi's pre-existing note on Hal, which is on the chart before the
 ## player touches anything. Holding him means writing against a colleague.
+## WHEN ADEYEMI WALKS ROUND, whether you asked her to or not.
+##
+## Without these a fabrication written in the evening was free: nobody else ever
+## wrote anything, so there was nothing for it to disagree with, and the
+## money-optimal play was also the safest one. A ward has rounds. They are at
+## fixed, learnable times, which turns "when do I write this" from flavour into
+## the central skill — the gaps are real and you find them by reading the chart.
+const ROUNDS := [10 * 60, 14 * 60, 18 * 60, 21 * 60]
+
 const PRIOR_ENTRIES := [
 	{
 		"patient": "brennan", "minute": 9 * 60 + 20,
-		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"claim": "FIT_FOR_DISCHARGE", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Obs stable. Eating and drinking. For discharge today.",
 	},
 	{

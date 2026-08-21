@@ -94,12 +94,91 @@ func tick() -> bool:
 		_door_probe_finish()
 	if frames == FRAMES - 300:
 		_test_perception()
+	# The procedure screens, driven for real frames. These are the only screens
+	# in the game with a `_process` loop and polled input, and neither the unit
+	# tests nor the smoke run has frames to give them.
+	if frames == FRAMES - 280:
+		_procedure_screens_open()
+	if frames > FRAMES - 280 and frames < FRAMES - 120:
+		_procedure_screen_tick()
+	if frames == FRAMES - 120:
+		_procedure_screens_report()
 	if frames % 60 == 0:
 		_sample()
 	if frames < FRAMES:
 		return false
 	_finish()
 	return true
+
+## Open every procedure screen in turn, let it run, and check it got somewhere.
+##
+## A screen that reads `Input.is_mouse_button_pressed` and advances on `_process`
+## cannot be tested without frames: the unit tests have no loop and the smoke
+## run has no renderer. What this catches is the whole class of "the clock never
+## ticks", "the canvas never redraws", "the field is laid out before the rig
+## exists" — every one of which would ship as a screen that opens and then does
+## nothing at all.
+var _proc_screens := ["setbone", "suture", "manipulate", "medicate"]
+var _proc_index := 0
+var _proc_elapsed: Dictionary = {}
+var _proc_opened: Dictionary = {}
+
+func _procedure_screens_open() -> void:
+	_proc_index = 0
+	_open_procedure_screen()
+
+func _open_procedure_screen() -> void:
+	if _proc_index >= _proc_screens.size():
+		return
+	var id := String(_proc_screens[_proc_index])
+	var kinds := {"setbone": "set_bone", "suture": "suture",
+		"manipulate": "manipulate", "medicate": "prescribe"}
+	var want := String(kinds.get(id, "dial"))
+	var subject = null
+	for p in game.patient_system.active():
+		if Procedures.procedure_for(p.condition_id) == want:
+			subject = p
+			break
+	if subject == null:
+		var any: Array = game.patient_system.active()
+		if any.is_empty():
+			return
+		subject = any[0]
+		var fallbacks := {"setbone": "fractured_wrist", "suture": "knuckle_weather",
+			"manipulate": "dislocated_shoulder", "medicate": "chronic_beige"}
+		subject.condition_id = String(fallbacks.get(id, "chronic_beige"))
+	if game.ui != null:
+		game.ui.close()
+		game.ui.open(id, {"patient_id": subject.id})
+		_proc_opened[id] = game.ui.current != null
+		# Straight past the intent gate to the part that actually runs.
+		if game.ui.current != null:
+			game.ui.current.set("_intent", "treat")
+			if id == "medicate":
+				game.ui.current.set("_med", "beigeolol")
+			game.ui.current.rebuild()
+
+func _procedure_screen_tick() -> void:
+	if game.ui == null or game.ui.current == null:
+		return
+	var id := String(game.ui.current_id)
+	var e = game.ui.current.get("_elapsed")
+	if e != null:
+		_proc_elapsed[id] = maxf(float(_proc_elapsed.get(id, 0.0)), float(e))
+	# Forty frames each, then on to the next.
+	if frames % 40 == 0:
+		_proc_index += 1
+		_open_procedure_screen()
+
+func _procedure_screens_report() -> void:
+	if game.ui != null:
+		game.ui.close()
+	for id in _proc_screens:
+		var sid := String(id)
+		_ok(bool(_proc_opened.get(sid, false)), "the %s screen opens" % sid)
+		_ok(float(_proc_elapsed.get(sid, 0.0)) > 0.0,
+			"and its clock actually runs (%s reached %.2fs)" % [
+				sid, float(_proc_elapsed.get(sid, 0.0))])
 
 func _begin() -> void:
 	if game.ui != null and game.ui.current != null:

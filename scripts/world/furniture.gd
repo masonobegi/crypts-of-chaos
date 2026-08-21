@@ -100,8 +100,8 @@ static func _dress(h: Hospital, r: Room) -> void:
 	# Air and water, on every ceiling. The ceiling is the top third of every
 	# interior shot and it used to be one unbroken plane with a lamp in it.
 	if w > 4.0 and d > 4.0:
-		Dressing.vent(h, Vector3(c.x + w * 0.26, Hospital.WALL_H - 0.07, c.z - d * 0.24))
-		Dressing.sprinkler(h, Vector3(c.x - w * 0.24, Hospital.WALL_H - 0.09, c.z + d * 0.22))
+		Dressing.vent(h, Vector3(c.x + w * 0.26, Hospital.WALL_H, c.z - d * 0.24))
+		Dressing.sprinkler(h, Vector3(c.x - w * 0.24, Hospital.WALL_H, c.z + d * 0.22))
 	if r.kind != "corridor":
 		Dressing.dispenser(h, _door_wall(r, 0.14, 1.32), _door_rot(r))
 	match r.kind:
@@ -205,7 +205,7 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	var signs := [[-6.0, "◀  RADIOLOGY   ·   INTAKE"], [12.0, "WARDS 101–105  ▶"],
 		[30.0, "SUPPLY  ·  OFFICE  ▶"]]
 	for sgn in signs:
-		Dressing.ceiling_sign(h, Vector3(float(sgn[0]), 2.62, (z0 + z1) * 0.5),
+		Dressing.ceiling_sign(h, Vector3(float(sgn[0]), Hospital.WALL_H, (z0 + z1) * 0.5),
 			String(sgn[1]))
 	# Ward door cards sit 1.12m to the left of each door, so everything hung on
 	# the ward frontage goes on the party walls between rooms — otherwise the
@@ -302,7 +302,7 @@ static func _dress_bathroom(h: Hospital, r: Room) -> void:
 		Color(0.40, 0.62, 0.70))
 
 static func _dress_intake(h: Hospital, r: Room) -> void:
-	Dressing.ceiling_sign(h, Vector3(r.rect.get_center().x, 2.62,
+	Dressing.ceiling_sign(h, Vector3(r.rect.get_center().x, Hospital.WALL_H,
 		r.rect.position.y + 1.6), "EMERGENCY INTAKE", 0.0, Color(0.62, 0.22, 0.22))
 	Dressing.noticeboard(h, _far_wall(r, 0.28, 1.68), _far_rot(r), 1.6, 1.0)
 	Dressing.extinguisher(h, _left_wall(r, 0.30, 1.05), LEFT_ROT)

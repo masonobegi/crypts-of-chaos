@@ -98,6 +98,15 @@ change — five real bugs have been caught only by looking at the game.
     real error — `run_tests.sh` filters it and says why. Reproduce in ten lines:
     add a bare `Label3D` to an empty `SceneTree` and free it.
 
+17. **Godot DISCARDS an explicit name when it collides with a sibling** and
+    substitutes the class name: two nodes both called `"Vent"` under one parent
+    become `Vent` and `@Node3D@5306`. Every dressing piece is added to the
+    Hospital node, so thirteen of the fourteen vents cannot be found by name at
+    all. Two versions of a ceiling-height check searched by name, found exactly
+    one of each kind in a fifteen-room hospital, and reported it correct — three
+    inspected objects reading as coverage. Find sets of things by GROUP
+    (`Dressing.CEILING_GROUP`), never by name.
+
 ## Design rules that are load-bearing
 
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no

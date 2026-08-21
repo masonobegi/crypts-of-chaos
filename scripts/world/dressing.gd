@@ -29,6 +29,17 @@ const STEEL := Color(0.80, 0.85, 0.92)
 ## wall — which is exactly the "things phasing through each other" the second
 ## playtest reported. Pushing the root out by half its depth along its own
 ## facing makes one mounting offset correct for everything.
+## Everything that hangs from the ceiling, so a test can find ALL of it.
+##
+## Not by name: Godot discards an explicit name when it collides with a sibling
+## and substitutes the CLASS name — two nodes both called "Vent" under the same
+## parent become "Vent" and "@Node3D@5306". Every fitting in the building is
+## added to the Hospital node, so thirteen of the fourteen vents are called
+## @Node3D@something and cannot be found by name at all. A check that looked for
+## them by name found exactly one of each kind, in a fifteen-room hospital, and
+## pronounced them all correct.
+const CEILING_GROUP := "ceiling_fitting"
+
 static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0) -> Node3D:
 	h.add_child(n)
 	n.position = pos + Vector3(sin(rot_y), 0.0, cos(rot_y)) * depth * 0.5
@@ -192,23 +203,34 @@ static func clock(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 
 ## A ceiling vent. Four slats in a frame — the thing that stops a ceiling being
 ## an unbroken plane across the top third of every shot.
+## LOCAL ZERO IS THE CEILING PLANE, and callers pass Hospital.WALL_H rather than
+## WALL_H minus a guess. Every ceiling fitting in the building was positioned by
+## its caller subtracting a number that had nothing to do with the piece's own
+## height — the vent by 0.07 against a 0.04 frame, the sprinkler by 0.09 against
+## a 0.05 body — so all of them hung a few centimetres below the plaster with
+## daylight above them. It is the same mistake as mounting a sharps bin with a
+## poster's offset (CLAUDE.md 13), in the other axis: the piece knows how tall it
+## is and the caller does not.
 static func vent(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Vent"
+	root.add_to_group(CEILING_GROUP)
 	root.add_child(Build.box_mi(Vector3(0.62, 0.04, 0.42), Color(0.88, 0.89, 0.87),
-		Vector3.ZERO, 0.5, 0.008))
+		Vector3(0, -0.02, 0), 0.5, 0.008))
 	for i in 4:
 		root.add_child(Build.box_mi(Vector3(0.54, 0.02, 0.055), Color(0.55, 0.58, 0.60),
-			Vector3(0, -0.028, -0.14 + float(i) * 0.093), 0.7, 0.0))
+			Vector3(0, -0.048, -0.14 + float(i) * 0.093), 0.7, 0.0))
 	return _add(h, root, pos, rot_y)
 
+## Also hung from local zero. See vent().
 static func sprinkler(h: Node3D, pos: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Sprinkler"
+	root.add_to_group(CEILING_GROUP)
 	root.add_child(Build.mi(Build.cyl_mesh(0.045, 0.05, 10), Build.mat(STEEL, 0.35, 0.7),
-		Vector3.ZERO))
+		Vector3(0, -0.025, 0)))
 	root.add_child(Build.mi(Build.cyl_mesh(0.018, 0.07, 8),
-		Build.mat(Color(0.85, 0.45, 0.25), 0.4, 0.3), Vector3(0, -0.055, 0)))
+		Build.mat(Color(0.85, 0.45, 0.25), 0.4, 0.3), Vector3(0, -0.085, 0)))
 	return _add(h, root, pos)
 
 ## A rail along a corridor wall, with brackets. Runs from x0 to x1 at a fixed z.
@@ -268,15 +290,20 @@ static func ceiling_sign(h: Node3D, pos: Vector3, text: String, rot_y := 0.0,
 		tint := Color(0.16, 0.42, 0.52)) -> Node3D:
 	var root := Node3D.new()
 	root.name = "CeilingSign"
+	root.add_to_group(CEILING_GROUP)
+	# The hangers RUN FROM THE CEILING to the top of the board, which they did
+	# not: the caller placed the board at a fixed 2.62 and the two 34cm rods sat
+	# above it ending at 3.09, eleven centimetres short of a 3.2m ceiling. Every
+	# corridor sign in the building was suspended from nothing.
 	for dx in [-0.55, 0.55]:
 		root.add_child(Build.mi(Build.cyl_mesh(0.012, 0.34, 6), Build.mat(STEEL, 0.4, 0.6),
-			Vector3(dx, 0.30, 0)))
-	root.add_child(Build.box_mi(Vector3(1.5, 0.34, 0.06), tint, Vector3.ZERO, 0.7, 0.010))
+			Vector3(dx, -0.17, 0)))
+	root.add_child(Build.box_mi(Vector3(1.5, 0.34, 0.06), tint, Vector3(0, -0.51, 0), 0.7, 0.010))
 	var l := Build.label3d(text, 0.17, Color(0.96, 0.98, 0.98), false)
-	l.position = Vector3(0, 0, 0.045)
+	l.position = Vector3(0, -0.51, 0.045)
 	root.add_child(l)
 	var back := Build.label3d(text, 0.17, Color(0.96, 0.98, 0.98), false)
-	back.position = Vector3(0, 0, -0.045)
+	back.position = Vector3(0, -0.51, -0.045)
 	back.rotation.y = PI
 	root.add_child(back)
 	return _add(h, root, pos, rot_y)

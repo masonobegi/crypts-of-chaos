@@ -67,6 +67,7 @@ func tick() -> bool:
 			_check_the_morning_only_happens_once()
 			_check_every_indicated_treatment_can_be_given()
 			_check_a_wrong_site_can_be_revised()
+			_check_nothing_hangs_from_thin_air()
 			_check_a_seated_person_is_still_assembled()
 			_check_the_ward_sleeps_at_night()
 			_check_the_tutorial_can_advance()
@@ -566,6 +567,48 @@ func _check_a_discharged_patient_actually_leaves(gone_id: String) -> void:
 				"and reaching the door actually frees them instead of parking them in the lobby")
 			_ok(not ps.bodies.has(gone_id),
 				"and the ward's body table lets go of them with it")))
+
+## CEILING FITTINGS HAVE TO TOUCH THE CEILING.
+##
+## Every one of them was positioned by its caller subtracting a guess from
+## WALL_H — 0.07 for a vent whose frame is 0.04 thick, 0.09 for a sprinkler
+## whose body is 0.05, and a flat 2.62 for corridor signs whose hangers reach
+## 0.47 above the board — so the whole building's ductwork, sprinklers and
+## signage floated a few centimetres clear of the plaster with daylight above
+## them. It is CLAUDE.md 13 in the vertical axis: the piece knows how tall it is
+## and the caller does not. Local zero is the ceiling plane now, and this is the
+## assertion that keeps it there.
+func _check_nothing_hangs_from_thin_air() -> void:
+	# BY GROUP, not by name. Godot discards an explicit name when it collides
+	# with a sibling and substitutes the class name, so thirteen of the fourteen
+	# vents in this building are called "@Node3D@5306" and cannot be found by
+	# name at all. Two versions of this check looked for them by name, found
+	# exactly one of each kind, and reported the hospital correct — which is
+	# worse than no check, because three inspected objects read as coverage.
+	var checked := 0
+	var floating: Array[String] = []
+	for n in tree.get_nodes_in_group(Dressing.CEILING_GROUP):
+		if not (n is Node3D) or not (n as Node3D).is_inside_tree():
+			continue
+		checked += 1
+		var y: float = (n as Node3D).global_position.y
+		if absf(y - Hospital.WALL_H) > 0.02:
+			floating.append("%s at %.2f" % [n.name, y])
+	if checked == 0:
+		return
+	_ok(floating.is_empty(),
+		"all %d ceiling fittings are fixed to the ceiling%s" % [checked,
+			"" if floating.is_empty() else ": " + ", ".join(floating)])
+
+func _every_node(root: Node) -> Array[Node]:
+	var out: Array[Node] = []
+	var stack: Array[Node] = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		out.append(n)
+		for c in n.get_children():
+			stack.append(c)
+	return out
 
 ## A person sitting in a chair has to still be assembled.
 ##

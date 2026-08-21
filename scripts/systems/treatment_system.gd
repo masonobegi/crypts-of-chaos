@@ -434,8 +434,13 @@ func apply_outcome(p: Patient, spec: Dictionary, kind: String, from_pos := Vecto
 	var stay := float(spec.get("stay", 0.0))
 	if stay != 0.0:
 		p.expected_stay_days = maxf(0.5, p.expected_stay_days + stay)
-		if p.chart != null:
-			p.chart.expected_stay_days = p.expected_stay_days
+		# The chart is NOT updated to match. It has no expected_stay_days —
+		# its version of this is `promised_discharge_day`, a date you put in
+		# writing — and quietly moving that every time a procedure adds a day
+		# would erase the one gap the ward is built on: the record says the
+		# fifth, the patient is still here on the ninth, and somebody asks why.
+		# (This used to assign p.chart.expected_stay_days, which PatientChart
+		# does not have, and RefCounted threw on every single procedure.)
 
 	var comp := String(spec.get("harm", ""))
 	if comp != "" and patient_system != null:

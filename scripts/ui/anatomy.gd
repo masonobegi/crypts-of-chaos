@@ -52,23 +52,40 @@ static func tone_for(who: String) -> Color:
 ## silhouette under a group is drawn.
 static func capsule_poly(a: Vector2, b: Vector2, ra: float, rb: float,
 		pad := 0.0, cap_steps := 12) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	ra += pad
-	rb += pad
-	var d := (b - a)
-	if d.length() < 0.0001:
-		d = Vector2.RIGHT
-	d = d.normalized()
-	var n := Vector2(-d.y, d.x)
+	ra = maxf(ra + pad, 0.05)
+	rb = maxf(rb + pad, 0.05)
+	var d := b - a
+	var dist := d.length()
+	# One end swallows the other. A `dot()` is this by construction (a == b),
+	# and so is any short taper whose radii differ by more than its length —
+	# the tangent construction below has no solution there and the naive
+	# perpendicular version used to emit a self-crossing bow-tie, which is
+	# every "Invalid polygon data, triangulation failed" the anatomy screens
+	# printed. The hull of two nested circles is just the bigger circle.
+	if dist < 0.001 or absf(ra - rb) >= dist:
+		var c: Vector2 = a if ra >= rb else b
+		var r: float = maxf(ra, rb)
+		var ring := PackedVector2Array()
+		var steps := maxi(cap_steps * 2, 10)
+		for i in steps:
+			ring.append(c + Vector2.from_angle(-TAU * float(i) / float(steps)) * r)
+		return ring
 	var ang := d.angle()
-	out.append(a + n * ra)
-	out.append(b + n * rb)
+	# Where the shared tangent touches each circle. For equal radii this is the
+	# perpendicular; for a taper it leans in, which is what makes a finger read
+	# as a cone rather than a pinched tube.
+	var alpha := acos(clampf((ra - rb) / dist, -1.0, 1.0))
+	var out := PackedVector2Array()
+	# Far cap, swept from one tangent point round the tip to the other, then the
+	# near cap swept the long way back. Both go clockwise, so the polygon has a
+	# single consistent winding and no crossings anywhere.
 	for i in range(cap_steps + 1):
-		out.append(b + Vector2.from_angle(ang + PI * 0.5 - PI * float(i) / float(cap_steps)) * rb)
-	out.append(b - n * rb)
-	out.append(a - n * ra)
+		var t: float = float(i) / float(cap_steps)
+		out.append(b + Vector2.from_angle(ang + alpha - 2.0 * alpha * t) * rb)
+	var span: float = TAU - 2.0 * alpha
 	for i in range(cap_steps + 1):
-		out.append(a + Vector2.from_angle(ang - PI * 0.5 - PI * float(i) / float(cap_steps)) * ra)
+		var t: float = float(i) / float(cap_steps)
+		out.append(a + Vector2.from_angle(ang - alpha - span * t) * ra)
 	return out
 
 static func outline_poly(ci: CanvasItem, poly: PackedVector2Array, width := 3.0,

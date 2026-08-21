@@ -44,7 +44,6 @@ const UI_SHOTS := [
 	["30b_court_lawyers", "court#lawyers"],
 	["30c_court_hearing", "court#hearing"],
 	["31_night_choose", "night"],
-	["31b_night_street", "night#street"],
 	["27b_settings", "settings"],
 	["27c_controls", "controls"],
 	["27d_credits", "credits"],
@@ -53,13 +52,57 @@ const UI_SHOTS := [
 	["29_game_over", "game_over"],
 ]
 
+## The evening, photographed on its feet. The street does not exist until you
+## go out, so it cannot be one of the fixed world vantages — it has to be built,
+## walked into, and then taken down again.
+const STREET_SHOTS := [
+	["32_street", Vector3(-26.0, 1.7, 6.0), Vector3(14.0, 1.5, 4.0)],
+	["32b_street_lamp", Vector3(6.0, 1.7, -6.0), Vector3(-10.0, 2.4, 6.0)],
+	["32c_street_mark", Vector3(20.0, 1.7, 6.6), Vector3(-12.0, 1.5, 5.0)],
+]
+var street_index := 0
+var street_ready := false
+
+func _tick_street() -> bool:
+	var night = game.get("night")
+	if night == null:
+		return true
+	if not street_ready:
+		if game.ui != null:
+			game.ui.close()
+		night.enter("the_anchor")
+		street_ready = true
+		settle = 0
+		return false
+	settle += 1
+	if settle < 6:
+		return false
+	if street_index >= STREET_SHOTS.size():
+		night.finish(false)
+		if game.ui != null:
+			game.ui.close()
+		print("captured %d frames to %s" % [
+			SHOTS.size() + UI_SHOTS.size() + STREET_SHOTS.size(),
+			ProjectSettings.globalize_path(out_dir)])
+		return true
+	var shot: Array = STREET_SHOTS[street_index]
+	game.player.camera.global_position = shot[1]
+	game.player.camera.look_at(shot[2], Vector3.UP)
+	if settle < 9:
+		return false
+	var img := tree.root.get_texture().get_image()
+	img.save_png("%s/%s.png" % [out_dir, String(shot[0])])
+	print("  shot: ", String(shot[0]))
+	street_index += 1
+	settle = 6
+	return false
+
 ## name, position, look-at
 func _tick_ui() -> bool:
 	phase = "ui"
 	if ui_index >= UI_SHOTS.size():
-		print("captured %d frames to %s" % [
-			SHOTS.size() + UI_SHOTS.size(), ProjectSettings.globalize_path(out_dir)])
-		return true
+		phase = "street"
+		return false
 	var shot: Array = UI_SHOTS[ui_index]
 	if game.ui.current == null:
 		_set_ceilings_visible(true)
@@ -488,6 +531,8 @@ func tick() -> bool:
 		return false
 	if frames < 45:
 		return false
+	if phase == "street":
+		return _tick_street()
 	if index >= SHOTS.size():
 		return _tick_ui()
 

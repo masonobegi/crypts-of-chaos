@@ -103,6 +103,14 @@ func tick() -> bool:
 		_procedure_screen_tick()
 	if frames == FRAMES - 120:
 		_procedure_screens_report()
+	# The evening, on its feet. Entering it moves the player into a street that
+	# did not exist a frame ago, so it needs real frames or it proves nothing.
+	if frames == FRAMES - 110:
+		_night_enter()
+	if frames == FRAMES - 60:
+		_night_check()
+	if frames == FRAMES - 40:
+		_night_leave()
 	if frames % 60 == 0:
 		_sample()
 	if frames < FRAMES:
@@ -179,6 +187,61 @@ func _procedure_screens_report() -> void:
 		_ok(float(_proc_elapsed.get(sid, 0.0)) > 0.0,
 			"and its clock actually runs (%s reached %.2fs)" % [
 				sid, float(_proc_elapsed.get(sid, 0.0))])
+
+## Walking out of the hospital and down a street.
+##
+## Everything about this only exists at runtime: the street is built when you go
+## out, the player is teleported into it, people are spawned on it, and the
+## whole lot is freed when you come home. Nothing static can check any of that.
+var _night_hospital_hidden := false
+var _night_had_street := false
+var _night_moved := false
+var _night_home := false
+
+func _night_enter() -> void:
+	var night = game.get("night")
+	if night == null:
+		_ok(false, "the night system exists")
+		return
+	if game.ui != null:
+		game.ui.close()
+	_night_before = game.player.global_position
+	night.enter("the_anchor")
+
+var _night_before := Vector3.ZERO
+
+func _night_check() -> void:
+	var night = game.get("night")
+	if night == null:
+		return
+	_night_had_street = night.street != null and is_instance_valid(night.street)
+	var hospital = tree.get_first_node_in_group("hospital")
+	_night_hospital_hidden = hospital != null and not hospital.visible
+	_night_moved = game.player.global_position.distance_to(_night_before) > 5.0
+	_ok(_night_had_street, "going out builds a street")
+	_ok(_night_hospital_hidden, "and puts the hospital away while you are on it")
+	_ok(_night_moved, "and you are standing in it")
+	_ok(night.mark != null and is_instance_valid(night.mark),
+		"with somebody walking home ahead of you")
+	_ok(night.watchers.size() > 0, "and other people about")
+	_ok(game.player.global_position.y > -2.0, "and the street has a floor")
+	# Exposure has to be a live reading rather than a constant.
+	_ok(night.exposure >= 0.0 and night.exposure <= 1.0,
+		"being seen is measured while you walk (%.2f)" % night.exposure)
+
+func _night_leave() -> void:
+	var night = game.get("night")
+	if night == null:
+		return
+	night.finish(false)
+	var hospital = tree.get_first_node_in_group("hospital")
+	_night_home = hospital != null and hospital.visible
+	_ok(_night_home, "and coming home puts the hospital back")
+	_ok(night.street == null, "and takes the street away again")
+	_ok(game.player.global_position.distance_to(_night_before) < 2.0,
+		"and puts you back where you were standing")
+	if game.ui != null:
+		game.ui.close()
 
 func _begin() -> void:
 	if game.ui != null and game.ui.current != null:

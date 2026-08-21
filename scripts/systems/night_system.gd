@@ -103,6 +103,32 @@ const MARK_NAMES := [
 const CLEAN := 0.26
 const MESSY := 0.62
 
+# ------------------------------------------------------------------ the street
+## Everything the evening needs while it is happening, and nothing once it is
+## over. The street is built when you go out and freed when you come home; the
+## hospital is hidden rather than unloaded, because a ward is four thousand
+## nodes and rebuilding it to walk down a road would be absurd.
+var street: Street = null
+var mark: NightMark = null
+var watchers: Array = []
+var active := false
+var exposure := 0.0
+var _place: Dictionary = {}
+var _mark_name := ""
+var _player_was := Transform3D.IDENTITY
+var _hospital_was := true
+var _elapsed := 0.0
+var _hazard_node: Node3D = null
+var _hz_face := 0.0
+var _tram := -1.0
+
+## How far a person can see you, and how wide their attention is. Narrower and
+## shorter than daylight on purpose: it is dark, they are going home, and the
+## whole street is a negotiation with two lamp posts.
+const SIGHT := 17.0
+const CONE := 0.62
+const EXPOSURE_RATE := 0.42
+
 var patient_system: PatientSystem = null
 var legal = null
 ## Set while the evening's result is waiting to be reported in the morning.
@@ -112,8 +138,317 @@ var used_tonight := false
 
 func _ready() -> void:
 	add_to_group("night_system")
+	set_physics_process(false)
 	patient_system = get_tree().get_first_node_in_group("patient_system")
 	legal = get_tree().get_first_node_in_group("legal_system")
+
+# ------------------------------------------------------------------ being seen
+## The same question the ward asks, outdoors: is anybody looking at you, and is
+## there enough light on you for it to matter.
+##
+## Deliberately a plain geometric check rather than the ward's full perception
+## pass. There is no cover story for what happens here, nobody to explain it to
+## afterwards, and no chart — so all that is left is distance, facing, a wall in
+## the way, and how bright it is where you are standing.
+func _physics_process(delta: float) -> void:
+	if not active or street == null:
+		return
+	_elapsed += delta
+	var player = get_tree().get_first_node_in_group("player")
+	if player == null:
+		return
+	var eye: Vector3 = player.global_position + Vector3(0, 1.2, 0)
+
+	var seen := 0.0
+	for i in watchers.size():
+		var w = watchers[i]
+		if not is_instance_valid(w):
+			continue
+		# They look about. A person standing still staring one way for a whole
+		# evening is a turret, not somebody waiting for a taxi.
+		var face: float = float(w.get_meta("facing", 0.0)) \
+			+ sin(_elapsed * 0.7 + float(w.get_meta("phase", 0.0))) \
+				* float(w.get_meta("sweep", 0.6))
+		w.rotation.y = face
+		seen = maxf(seen, _looks_at(w.global_position + Vector3(0, 1.5, 0), face,
+			CONE, SIGHT, eye))
+	seen = maxf(seen, _hazard_sees(eye, delta))
+
+	var light := _light_on(player.global_position)
+	if seen > 0.0:
+		exposure = clampf(exposure + seen * (0.55 + light * 0.9) * EXPOSURE_RATE * delta,
+			0.0, 1.0)
+		if fmod(_elapsed, 0.55) < delta:
+			AudioMgr.play("tick", -26.0, 1.3)
+	else:
+		exposure = maxf(0.0, exposure - delta * 0.04)
+	EventBus.objective_changed.emit("%s  ·  %s" % [
+		"Get next to %s. [hold E]" % _mark_name, exposure_word()])
+
+	# They get home eventually, and then the evening is over whatever you did.
+	if mark != null and is_instance_valid(mark) and mark.home():
+		finish(false)
+
+func exposure_word() -> String:
+	if exposure < 0.12:
+		return "nobody has looked at you"
+	if exposure < CLEAN:
+		return "a glance, maybe"
+	if exposure < MESSY:
+		return "somebody has definitely seen you"
+	return "you are being watched"
+
+## Can somebody at `from`, facing `face`, see `target`? Distance, then cone,
+## then a wall.
+func _looks_at(from: Vector3, face: float, cone: float, reach: float,
+		target: Vector3) -> float:
+	var to := target - from
+	to.y = 0.0
+	var dist := to.length()
+	if dist > reach or dist < 0.05:
+		return 0.0
+	var facing := Vector3(sin(face), 0.0, cos(face))
+	var off: float = acos(clampf(facing.dot(to.normalized()), -1.0, 1.0))
+	if off > cone:
+		return 0.0
+	var space := get_viewport().world_3d.direct_space_state
+	var q := PhysicsRayQueryParameters3D.create(from, target)
+	q.collision_mask = 1
+	if not space.intersect_ray(q).is_empty():
+		return 0.0
+	return clampf((1.0 - off / cone) * (1.0 - dist / reach), 0.0, 1.0)
+
+func _hazard_sees(eye: Vector3, delta: float) -> float:
+	var hz := String(_place.get("hazard", ""))
+	match hz:
+		"camera":
+			if _hazard_node == null:
+				return 0.0
+			_hz_face = PI + sin(_elapsed * 0.38) * 0.7
+			_hazard_node.rotation.y = _hz_face
+			return _looks_at(_hazard_node.global_position, _hz_face, 0.5, 26.0, eye)
+		"dog":
+			if _hazard_node == null or not is_instance_valid(_hazard_node):
+				return 0.0
+			# It comes to you. The only thing out here that closes distance.
+			var to: Vector3 = eye - _hazard_node.global_position
+			to.y = 0.0
+			if to.length() < 22.0 and to.length() > 1.6:
+				_hazard_node.global_position += to.normalized() * 2.2 * delta
+				_hazard_node.rotation.y = atan2(to.x, to.z)
+			return _looks_at(_hazard_node.global_position + Vector3(0, 0.6, 0),
+				_hazard_node.rotation.y, 1.2, 11.0, eye)
+		"drunk":
+			if _hazard_node == null or not is_instance_valid(_hazard_node):
+				return 0.0
+			_hazard_node.global_position += Vector3(
+				sin(_elapsed * 0.6), 0.0, cos(_elapsed * 0.41)) * 1.1 * delta
+			_hz_face = sin(_elapsed * 1.4) * 2.4
+			_hazard_node.rotation.y = _hz_face
+			return _looks_at(_hazard_node.global_position + Vector3(0, 1.5, 0),
+				_hz_face, 0.7, 14.0, eye)
+		"tram":
+			# Every twenty seconds the whole street is daylight for a moment,
+			# and being anywhere at all is being somewhere lit.
+			var phase: float = fposmod(_elapsed, 20.0)
+			_tram = phase if phase < 3.0 else -1.0
+	return 0.0
+
+## How lit you are where you stand. A lamp does not make anybody look at you; it
+## makes what they see usable.
+func _light_on(at: Vector3) -> float:
+	var best := 0.0
+	if _tram >= 0.0:
+		best = clampf(sin(_tram / 3.0 * PI), 0.0, 1.0) * 0.9
+	if street == null:
+		return best
+	for l in street.lamps:
+		var d: float = Vector2(at.x - l.x, at.z - l.z).length()
+		best = maxf(best, clampf(1.0 - d / 8.5, 0.0, 1.0))
+	return best
+
+# ------------------------------------------------------------------ the act
+## They are within reach and you have held the button down.
+func strike() -> void:
+	if not active:
+		return
+	AudioMgr.play("crack", -5.0)
+	AudioMgr.play("gasp", -10.0)
+	finish(true)
+
+## Come home, whatever happened.
+func finish(reached: bool) -> void:
+	if not active:
+		return
+	active = false
+	set_physics_process(false)
+	var res := resolve(String(_place["id"]), _mark_name, exposure, reached)
+	leave()
+	EventBus.request_ui.emit("night", {"result": res})
+
+func leave() -> void:
+	_set_night_look(false)
+	# The daytime sky, put back. The shift look owns it the rest of the time.
+	var game = get_tree().get_first_node_in_group("game")
+	if game != null and game.has_method("apply_shift_look"):
+		game.apply_shift_look()
+	var player = get_tree().get_first_node_in_group("player")
+	if player != null:
+		player.global_transform = _player_was
+		player.velocity = Vector3.ZERO
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	if hospital != null:
+		hospital.visible = _hospital_was
+	watchers.clear()
+	mark = null
+	_hazard_node = null
+	if street != null and is_instance_valid(street):
+		street.queue_free()
+	street = null
+
+
+# ------------------------------------------------------------------ going out
+## Leave the hospital and walk down a street.
+##
+## The evening used to be a top-down screen with dots on it. It is the same game
+## as the ward now — same player, same controls, same question about who can see
+## you — because that question IS the game and drawing it as a diagram threw
+## away the only thing the phase had.
+func enter(place_id: String) -> void:
+	if active:
+		return
+	_place = place(place_id)
+	_mark_name = mark_name(place_id + str(GameState.day))
+	var game = get_tree().get_first_node_in_group("game")
+	var player = get_tree().get_first_node_in_group("player")
+	if game == null or player == null:
+		return
+
+	street = Street.new()
+	street.name = "Street"
+	game.add_child(street)
+	street.build(_place)
+
+	var hospital = get_tree().get_first_node_in_group("hospital")
+	if hospital != null:
+		_hospital_was = hospital.visible
+		hospital.visible = false
+	_player_was = player.global_transform
+	player.global_position = street.player_start
+	player.velocity = Vector3.ZERO
+
+	_spawn_people()
+	_set_night_look(true)
+	exposure = 0.0
+	_elapsed = 0.0
+	_tram = -1.0
+	active = true
+	set_physics_process(true)
+	EventBus.objective_changed.emit(
+		"Get next to %s without being seen. [hold E]" % _mark_name)
+	EventBus.toast.emit("%s. %s" % [String(_place["name"]), String(_place["blurb"])],
+		"info")
+	AudioMgr.play("door", -12.0)
+
+func _spawn_people() -> void:
+	mark = NightMark.new()
+	mark.name = "Mark"
+	mark.display = _mark_name
+	mark.set_colours(Color(0.86, 0.72, 0.60), Color(0.30, 0.28, 0.36),
+		Color(0.22, 0.16, 0.12))
+	street.add_child(mark)
+	mark.start(street.mark_route)
+
+	watchers.clear()
+	for spot in street.watcher_spots:
+		var w := NPCBody.new()
+		w.display = ""
+		w.set_colours(Color(0.80, 0.66, 0.54), Color(0.24, 0.26, 0.32),
+			Color(0.20, 0.18, 0.16))
+		street.add_child(w)
+		w.global_position = Vector3(spot["pos"])
+		w.rotation.y = float(spot["facing"])
+		w.set_meta("facing", float(spot["facing"]))
+		w.set_meta("sweep", 0.5 + randf() * 0.5)
+		w.set_meta("phase", randf() * TAU)
+		watchers.append(w)
+
+	_hazard_node = null
+	var hz := String(_place.get("hazard", ""))
+	if hz == "dog" or hz == "drunk":
+		var h := NPCBody.new()
+		h.display = ""
+		h.set_colours(Color(0.62, 0.48, 0.36), Color(0.36, 0.28, 0.24),
+			Color(0.18, 0.14, 0.12))
+		if hz == "dog":
+			h.height_scale = 0.55
+		street.add_child(h)
+		h.global_position = street.hazard_spot
+		_hazard_node = h
+	elif hz == "camera":
+		var cam := Node3D.new()
+		street.add_child(cam)
+		cam.position = street.hazard_spot + Vector3(0, 4.2, 0)
+		cam.add_child(Build.mi(Build.cyl_mesh(0.07, 4.2, 8),
+			Build.mat(Color(0.18, 0.19, 0.21), 0.6), Vector3(0, -2.1, 0)))
+		cam.add_child(Build.box_mi(Vector3(0.36, 0.26, 0.5), Color(0.30, 0.32, 0.36),
+			Vector3.ZERO, 0.5, 0.010))
+		cam.add_child(Build.mi(Build.sphere_mesh(0.07),
+			Build.unshaded(Color(0.95, 0.24, 0.20)), Vector3(0, 0, 0.28)))
+		_hazard_node = cam
+
+## Night, from a street. The hospital's own lighting is for a lit interior and
+## makes a road at eleven at night look like a car park at noon.
+func _set_night_look(on: bool) -> void:
+	var game = get_tree().get_first_node_in_group("game")
+	if game == null:
+		return
+	var env = game.get("_env")
+	var sun = game.get("_sun")
+	var fill = game.get("_fill")
+	# Cartoon night, not pitch black. The first version was physically plausible
+	# and photographed as a completely black rectangle with two lit windows in
+	# it — a street you cannot see is not a stealth level, it is a screensaver.
+	# Moonlight does the reading and the lamps do the danger.
+	if env != null:
+		# sky_contribution is the whole ball game. The shift look leaves it at
+		# Godot's default of 1.0, which means "take ambient from the sky and
+		# ignore ambient_light_color entirely" — fine at noon under a blue sky,
+		# fatal at night when the sky has just been set to near-black. The first
+		# street rendered as a blown-out white pavement (all key, no ambient)
+		# with pure-black wedges wherever the moon did not reach, because the
+		# only thing lighting anything was the directional. Taking ambient off
+		# the sky is what lets the moon be dim enough for a lamp to matter.
+		env.ambient_light_sky_contribution = 0.0 if on else 1.0
+		env.ambient_light_color = Color(0.30, 0.38, 0.64) if on else Color(0.72, 0.82, 0.92)
+		env.ambient_light_energy = 0.70 if on else 0.30
+		# Sodium lamps are the only bright thing in the frame now, so let them
+		# actually bloom instead of sitting under the daytime threshold.
+		env.glow_hdr_threshold = 0.85 if on else 1.35
+	if sun != null:
+		# A moon, doing the reading. The first pass at this was physically
+		# plausible and photographed as a black rectangle with two lit windows
+		# in it: a street you cannot see is not a stealth level, it is a
+		# screensaver. Blue and bright enough to read, dim enough to be night.
+		# No moon shadow. A directional shadow across a street at night is a
+		# hard black wedge over half the pavement and it is the only thing in
+		# frame competing with the lamps — and the lamps ARE the mechanic. With
+		# it off, the only light contrast left in the street is the pools you
+		# can choose to walk around.
+		sun.shadow_enabled = not on
+		sun.light_energy = 0.30 if on else 0.9
+		sun.light_color = Color(0.62, 0.74, 1.0) if on else Color(1, 0.97, 0.9)
+		if on:
+			sun.rotation_degrees = Vector3(-56, 26, 0)
+	if fill != null:
+		fill.light_energy = 0.12 if on else 0.5
+		fill.light_color = Color(0.42, 0.52, 0.86) if on else Color(1, 1, 1)
+	var sky = game.get("_sky_mat")
+	if sky != null and on:
+		sky.sky_top_color = Color(0.05, 0.07, 0.18)
+		sky.sky_horizon_color = Color(0.16, 0.22, 0.40)
+		sky.ground_bottom_color = Color(0.05, 0.06, 0.10)
+		sky.ground_horizon_color = Color(0.16, 0.22, 0.40)
 
 ## Is there any point going out? A full ward is the one honest reason not to.
 func available() -> bool:

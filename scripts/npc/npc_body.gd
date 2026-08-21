@@ -296,6 +296,16 @@ func goto(target: Vector3, run := false) -> void:
 	_path_i = 0
 	_speed = RUN_SPEED if run else WALK_SPEED
 
+## Walk a route that nothing has pathfound.
+##
+## `goto` asks the hospital's navigation grid, which does not exist anywhere
+## except the hospital. Anybody walking home down a street is following a line
+## somebody drew, and this is how they do it.
+func follow(points: PackedVector3Array, run := false) -> void:
+	_path = points
+	_path_i = 0
+	_speed = RUN_SPEED if run else WALK_SPEED
+
 func stop_moving() -> void:
 	_path = PackedVector3Array()
 	velocity.x = 0.0

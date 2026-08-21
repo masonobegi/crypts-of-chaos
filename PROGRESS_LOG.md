@@ -2784,3 +2784,47 @@ drawing. A limb swung far enough drew over the panel, the heading and the room
 behind it. Every procedure canvas sets `clip_contents` now, and the manipulation
 screen draws at three-quarter size because at full size the top of the arc puts
 a forearm outside the field.
+
+## The evening is a street you walk down
+
+*"The crime minigames should be in 3D as well, the one I just played sucked."*
+
+Correct, and for a reason worth writing down: the ward is a first-person game
+about who can see you, and the evening — the one part of the game where being
+seen is the *entire* mechanic — was a top-down diagram with dots on it. It threw
+away the only thing the phase had.
+
+The evening is now the same game as the ward. Same player, same controls, same
+question. `Street` builds seventy-four metres of road, two pavements, two
+terraces of nine houses with lit windows, a parked van you can put between
+yourself and a witness, wheelie bins, a post box, a phone box and a handful of
+sodium lamps. The mark walks a route that passes through at least one pool of
+lamplight, and the decision the street asks is "do I take them here, or wait".
+Watchers stand where they stand and sweep; exposure accumulates while you are
+inside somebody's cone and their line of sight is clear.
+
+Four things had to be fixed before any of it was visible, and three of them are
+now comments in the source because they will happen again:
+
+- **`ambient_light_sky_contribution` is the whole night look.** Godot defaults
+  it to 1.0, which means *ignore `ambient_light_color`, take ambient from the
+  sky*. Fine at noon. Fatal the moment the night look sets the sky to near
+  black: the only thing lighting anything was the moon, so every lit surface
+  blew out to white and every unlit one clipped to pure black. The moon is at
+  0.30 now and its shadow is off entirely — a hard black wedge across half the
+  pavement was the only thing in frame competing with the lamps, and the lamps
+  are the mechanic.
+- **The houses sat four and a half metres behind the pavement**, because
+  `_terrace()` was handed the building's full depth where it wanted half of it.
+  That photographed as a black trench running the length of the street.
+- **`Anatomy.capsule_poly()` emitted a bow-tie** whenever one end swallowed the
+  other — every `dot()` by construction, and any short taper whose radii differ
+  by more than its length. That was every "Invalid polygon data, triangulation
+  failed" the procedure screens printed. It builds the hull off the shared
+  tangent now, and degenerates to a circle when there isn't one.
+- **`TreatmentSystem.apply_outcome()` wrote `p.chart.expected_stay_days`**,
+  which `PatientChart` does not have — so every single procedure threw. It
+  should never have written it: the chart's version of that is
+  `promised_discharge_day`, a date you put in writing, and quietly moving it
+  every time a procedure adds a day would erase the gap the whole ward is built
+  on.

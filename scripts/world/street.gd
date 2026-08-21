@@ -198,7 +198,9 @@ func _layout_people(watchers: int) -> void:
 	# Everything below is handed straight to global_position, so it carries the
 	# offset. The geometry above does not: it is built around a local zero and
 	# the node itself is what moves.
-	player_start = ORIGIN + Vector3(-LENGTH * 0.44, 1.0, ROAD_HALF + 1.6)
+	# Five metres clear of the way out, so backing up at the start is backing up
+	# rather than leaving.
+	player_start = ORIGIN + Vector3(-LENGTH * 0.40, 1.0, ROAD_HALF + 1.6)
 	mark_route = PackedVector3Array([
 		ORIGIN + Vector3(LENGTH * 0.46, 0.4, ROAD_HALF + 1.8),
 		ORIGIN + Vector3(LENGTH * 0.10, 0.4, ROAD_HALF + 1.8),

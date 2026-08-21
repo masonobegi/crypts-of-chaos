@@ -35,7 +35,10 @@ func _build() -> void:
 	var sus = suspicion()
 	_mind = sus.mind_of(_patient.id) if sus != null else null
 
-	var v := card_shell(560, 690, _patient.display_name, _subtitle())
+	# Tall on purpose: card_shell caps it against the window, and four choices
+	# with a sentence each plus the complaint box is more than 690px of card.
+	# Anything that has to be scrolled to is a choice the player did not make.
+	var v := card_shell(580, 820, _patient.display_name, _subtitle())
 	if _patient.admitted and _patient.ready_for_discharge():
 		v.add_child(UIKit.stamp("fit to go home", UIKit.GOOD))
 	elif not _patient.acquired_injuries().is_empty():
@@ -75,8 +78,7 @@ func _build() -> void:
 
 	v.add_child(_choice("Talk to them", _talk_line(), UIKit.INK,
 		func(): _go("dialogue")))
-	v.add_child(UIKit.spacer(6))
-	v.add_child(UIKit.button("Leave them be", close))
+	card_footer(UIKit.button("Leave them be", close))
 
 # ------------------------------------------------------------------ the header
 func _subtitle() -> String:

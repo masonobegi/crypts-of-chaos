@@ -2851,3 +2851,31 @@ staff are not children of the building, so hiding it left a consultant in a
 white coat with his name over his head walking home down a street eleven miles
 from work. Both are fixed by putting the street somewhere else and taking
 everybody in group `npc` off screen while you are out.
+
+### The moment, and the way out
+
+Two things the street was missing once it existed.
+
+**The act is no longer instant.** Holding E used to play a crack and cut
+straight to a results card, which threw away the only three pieces of feedback
+the phase has: the noise, them going down, and every head in the street coming
+round to look. There is a beat now — the mark pitches over and sinks, and every
+watcher within twenty-six metres turns to face you and resumes their sweep from
+*there*. Whether any of them actually saw anything was decided long before by
+the exposure you walked in with; this is them hearing it, which is a much better
+thing to watch.
+
+**And you can leave.** Walking back past the end you came in at ends the
+evening. Without it, a player who decided halfway down that this was a bad idea
+had nothing to do but stand in the dark waiting for somebody else's walk home to
+finish. The spawn point sits five metres clear of that line so backing up at the
+start is backing up rather than leaving — and there is now a test for that,
+along with one asserting the mark's route passes through a lamp, because "the
+street is laid out so the evening is playable" is a real property and none of it
+announces itself when it is wrong.
+
+**The patient card fits on the screen.** A `PanelContainer` grows past its
+minimum size to fit its content, so a card with one option too many ran off the
+bottom and took its last button with it. The card is capped against the window,
+the body scrolls, and the way out is pinned underneath the scroll — because the
+thing you have to scroll to find is a choice the player did not make.

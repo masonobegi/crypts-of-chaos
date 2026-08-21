@@ -12,6 +12,7 @@ var pauses_world := true
 var ctx: Dictionary = {}
 var ui = null
 var body: VBoxContainer = null
+var _card_outer: VBoxContainer = null
 
 ## Every modal screen is a sheet of paper on a clipboard.
 ##
@@ -55,6 +56,10 @@ func shell(width: float, height: float, heading: String, subheading := "") -> VB
 func card_shell(width: float, height: float, heading: String, subheading := "") -> VBoxContainer:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A PanelContainer grows past its minimum size to fit its content, so a card
+	# with one option too many simply ran off the bottom of the screen and took
+	# its last button with it. Cap it against the window and scroll the body.
+	height = minf(height, get_viewport_rect().size.y - 130.0)
 	var panel := UIKit.side_panel(width, height)
 	add_child(panel)
 
@@ -75,8 +80,23 @@ func card_shell(width: float, height: float, heading: String, subheading := "") 
 	if subheading != "":
 		v.add_child(UIKit.label(subheading, 14, UIKit.INK_DIM,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
-	body = v
-	return v
+	# The header stays put; everything the screen adds goes in the scrolling
+	# part, so `body` is the inner box rather than `v`.
+	var inner := UIKit.vbox(8)
+	v.add_child(UIKit.scroll(inner))
+	_card_outer = v
+	body = inner
+	return inner
+
+## Pin a control below the scrolling part of a card.
+##
+## The way out of a screen must never be the thing you have to scroll to find.
+func card_footer(c: Control) -> void:
+	if _card_outer == null:
+		body.add_child(c)
+		return
+	_card_outer.add_child(UIKit.spacer(6))
+	_card_outer.add_child(c)
 
 func close() -> void:
 	if ui:

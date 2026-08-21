@@ -166,6 +166,19 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	if not active or street == null:
 		return
+	if _striking >= 0.0:
+		_striking -= delta
+		# They go down. A CharacterBody3D does not fall over on its own and
+		# nothing here wants a ragdoll — a pitch and a sink reads as collapsing
+		# from any angle you might be standing at.
+		if mark != null and is_instance_valid(mark):
+			mark.rotation.x = lerpf(mark.rotation.x, -PI * 0.46,
+				clampf(delta * 6.0, 0.0, 1.0))
+			mark.position.y -= delta * 0.55
+		if _striking <= 0.0:
+			_striking = -1.0
+			finish(true)
+		return
 	_elapsed += delta
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
@@ -203,10 +216,18 @@ func _physics_process(delta: float) -> void:
 	else:
 		exposure = maxf(0.0, exposure - delta * 0.04)
 	EventBus.objective_changed.emit("%s  ·  %s" % [
-		"Get next to %s. [hold E]" % _mark_name, exposure_word()])
+		"Get next to %s. [hold E]  ·  back the way you came to go home"
+			% _mark_name, exposure_word()])
 
 	# They get home eventually, and then the evening is over whatever you did.
 	if mark != null and is_instance_valid(mark) and mark.home():
+		finish(false)
+		return
+	# And so can you. Walking back past the end you came in at is the way out —
+	# without one, a player who decided halfway down that this was a bad idea
+	# had nothing to do but stand in the dark waiting for somebody else's walk
+	# home to finish.
+	if street != null and player.global_position.x < Street.ORIGIN.x - Street.LENGTH * 0.47:
 		finish(false)
 
 func exposure_word() -> String:
@@ -289,12 +310,39 @@ func _light_on(at: Vector3) -> float:
 
 # ------------------------------------------------------------------ the act
 ## They are within reach and you have held the button down.
+## The moment itself, and it is not instant.
+##
+## Cutting straight from the button to a results card threw away the only three
+## pieces of feedback the phase has: the noise, them going down, and every head
+## in the street coming round to look. Whether any of those heads actually SAW
+## anything was decided long before this by the exposure you walked in with —
+## this is them hearing it, which is a different and much better beat.
+const STRIKE_BEAT := 1.4
+var _striking := -1.0
+
 func strike() -> void:
-	if not active:
+	if not active or _striking >= 0.0:
 		return
 	AudioMgr.play("crack", -5.0)
 	AudioMgr.play("gasp", -10.0)
-	finish(true)
+	_striking = STRIKE_BEAT
+	var player = get_tree().get_first_node_in_group("player")
+	if mark != null and is_instance_valid(mark):
+		mark.stop_moving()
+	if player == null:
+		return
+	for w in watchers:
+		if not is_instance_valid(w):
+			continue
+		var to: Vector3 = player.global_position - w.global_position
+		if Vector2(to.x, to.z).length() > 26.0:
+			continue
+		var face: float = atan2(to.x, to.z)
+		w.rotation.y = face
+		# Their sweep resumes from where they turned to, not from where they
+		# were standing before the noise.
+		w.set_meta("facing", face)
+		w.startle(1.0)
 
 ## Come home, whatever happened.
 func finish(reached: bool) -> void:
@@ -375,6 +423,7 @@ func enter(place_id: String) -> void:
 	_set_night_look(true)
 	exposure = 0.0
 	_elapsed = 0.0
+	_striking = -1.0
 	_tram = -1.0
 	active = true
 	set_physics_process(true)

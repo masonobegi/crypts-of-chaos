@@ -330,6 +330,45 @@ func test_losing_your_nerve_is_free() -> void:
 	t.near(GameState.heat, heat_before, 0.001, "and it costs nothing but the evening")
 	ns.queue_free()
 
+## The street's own geometry, which is the phase's difficulty in disguise.
+##
+## Every one of these was wrong at some point and none of them announces itself:
+## a spawn point past the way out ends the evening on the first step backwards,
+## and a mark whose route never enters a lamp turns a stealth level into a
+## corridor you jog down.
+func test_the_street_is_laid_out_so_the_evening_is_playable() -> void:
+	var st := Street.new()
+	t.root.add_child(st)
+	st.build(NightSystem.place("the_anchor"))
+
+	var bail: float = Street.ORIGIN.x - Street.LENGTH * 0.47
+	t.gt(st.player_start.x - bail, 4.0,
+		"you start well clear of the way home, so backing up is not leaving")
+	t.ok(absf(st.player_start.z) < Street.ROAD_HALF + Street.PAVE,
+		"and on the pavement rather than in the road")
+
+	t.gt(float(st.mark_route.size()), 2.0, "the mark has somewhere to walk")
+	var ends_past_you := false
+	for p in st.mark_route:
+		if p.x < bail + 2.0:
+			ends_past_you = true
+	t.ok(ends_past_you, "and their walk ends behind you, so waiting has a cost")
+
+	# At least one leg of that walk has to pass through lamplight, because the
+	# decision the street asks is "take them here, or wait for the dark bit".
+	var lit := false
+	for p in st.mark_route:
+		for l in st.lamps:
+			if Vector2(p.x - l.x, p.z - l.z).length() < 8.5:
+				lit = true
+	t.ok(lit, "and it takes them through a lamp on the way")
+
+	for spot in st.watcher_spots:
+		var pos: Vector3 = spot["pos"]
+		t.ok(absf(pos.x - Street.ORIGIN.x) < Street.LENGTH * 0.5,
+			"every watcher is standing in the street")
+	st.queue_free()
+
 # ============================================================== achievements
 func test_every_achievement_is_reachable_and_named() -> void:
 	# A catalogue is only worth having if every entry can be earned and every

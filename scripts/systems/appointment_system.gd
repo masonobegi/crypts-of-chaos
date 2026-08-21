@@ -81,6 +81,18 @@ func build_for_shift() -> void:
 	# finish paperwork you would rather nobody read closely.
 	var first := 1
 	var last := maxi(hours - 1, first)
+	# Eight people do not fit in seven hours. The spreading formula below is a
+	# pigeonhole: the moment `count` exceeds the number of whole hours between
+	# first and last, two consecutive i round to the same offset. The day shift
+	# books eight into offsets 1..7 and so put two patients in the 12:00 slot —
+	# on the briefing screen, in the HUD, and in the seat pool — and left one of
+	# the other hours with nobody in it, every single day. So widen the window
+	# backwards into the handover hour rather than stacking two on one slot: an
+	# appointment waiting for you at the top of the shift is a worse handover,
+	# but a list with two names against the same time reads as broken.
+	var slots := last - first + 1
+	if count > slots:
+		first = maxi(first - (count - slots), 0)
 	for i in count:
 		var offset := first
 		if count > 1:

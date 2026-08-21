@@ -33,6 +33,17 @@ var _distraction := 0.0
 ## threw to move the nurse is the same distraction that turns a ward of sleepers
 ## into a ward of witnesses, and that trade is the reason nights cost anything.
 var suppressed := false
+
+## ...unless nothing can wake them.
+##
+## The paragraph above is right about SLEEP and wrong about being knocked out.
+## A sleeper hears the bang because hearing it is what ends the sleep; somebody
+## out cold cannot be roused by anything — wake_up() explicitly refuses — so
+## leaving their hearing open meant a patient you had put on the floor went on
+## banking HEARD evidence at full weight for the rest of the day, which is the
+## exact opposite of "they cannot remember you fought them". Set by knock_out()
+## and cleared by _come_round(), the only two things that own that state.
+var unrousable := false
 ## Where they are currently looking, if they are deliberately watching something.
 var focus: Vector3 = Vector3.ZERO
 var has_focus := false
@@ -143,7 +154,7 @@ func evaluate(evt: WorldEvent) -> Dictionary:
 			}
 
 	# --- hearing (rarely incriminating on its own, but it moves people)
-	if evt.hear_radius > 0.0 and can_hear(evt.pos, evt.hear_radius):
+	if evt.hear_radius > 0.0 and not unrousable and can_hear(evt.pos, evt.hear_radius):
 		distract(0.55)
 		if body.has_method("on_heard_noise"):
 			body.call("on_heard_noise", evt)

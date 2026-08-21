@@ -215,18 +215,74 @@ func _act(game, strategy: String) -> void:
 ## Treat everyone correctly, chart everything, discharge as soon as they're well.
 func _act_honest(game) -> void:
 	for p in game.patient_system.active():
-		var correct: Array = DB.correct_treatments(p.condition_id)
-		if correct.is_empty():
-			continue
-		var tid := String(correct[0])
-		game.treatment.apply(p, tid, null, Vector3.ZERO)
-		game.records.log_real_treatment(p, tid)
+		_procedure(game, p, "treat", HAND_STEADY, true)
 		for c in p.active_complications():
 			if c.documented_cause == "" and c.plausible_causes.size() > 0:
 				game.records.document_complication(p, c, String(c.plausible_causes[0]),
 					true, Vector3.ZERO, p.room)
 		if p.recovery >= 0.98:
 			game.treatment.attempt_discharge(p)
+
+## How steady the hands are, per rung, as a grade in 0..1. Above
+## Procedures.BAND_GOOD (0.74) is a clean job of whatever you said you were
+## doing; below BAND_FAIR (0.38) is one that everybody in the room watched. The
+## difference between a doctor who means well and one who does not care is
+## entirely in this number and in the intent beside it, which is the shape the
+## whole outcome table is built around.
+const HAND_STEADY := 0.82
+const HAND_SLOPPY := 0.22
+
+## The ward round, as a pair of hands.
+##
+## Every rung goes through the door the player actually uses: the condition
+## names a procedure kind, the rung names an intent and how steady its hands
+## are, and `Procedures.outcome()` + `TreatmentSystem.apply_outcome()` decide
+## what happens next. That applier carries the procedure fees, the stay deltas,
+## the complication, how visible the act was and the lawsuit risk — most of the
+## economy and most of the crime — and until this the harness had never called
+## it once in any of the four careers it measured.
+##
+## What all four rungs did instead was walk the fixtures for a TreatmentMachine
+## standing in the patient's room. There is one machine left in the building and
+## it is the imaging bench in Radiology, where nobody is ever admitted, so
+## `m.room_key == p.room` was never true. The careless rung's "crank every
+## machine, document nothing" was therefore one phantom bill and nothing else,
+## and the careful rung's signature one-notch deviation on a well-insured
+## patient never happened at all — the two rungs the design checks compare were
+## measuring the same empty loop, and the report went on printing 21 of 21.
+##
+## Charting is a parameter, because it is the one thing the rungs actually
+## disagree about — and it has to be the SAME id on both sides. apply_outcome
+## records the treatment under the procedure kind, so the chart entry is written
+## under the kind too: an id in one and not the other produces BOTH fraud
+## findings at once for a procedure that was performed honestly, which would
+## quietly hand every rung a crime it did not commit.
+##
+## One per patient per day, because that is the rule the game enforces
+## (`Patient.seen_to_today`, read by the patient screen). Without the guard the
+## harness would measure a grind the player cannot perform.
+func _procedure(game, p, intent: String, hand: float, chart: bool) -> void:
+	if p == null or p.discharged or p.seen_to_today():
+		return
+	var kind := Procedures.procedure_for(p.condition_id)
+	var charted := kind
+	if kind == "prescribe":
+		# Prescribing resolves through its own front door, because half the
+		# grade is which bottle you reached for: dose_grade multiplies the
+		# steadiness of the hand by whether the drug does what you said you were
+		# going to do. It records under "dose", so that is what gets charted.
+		var med := String(Procedures.CURES.get(p.condition_id, "placebex"))
+		if intent == "worsen":
+			var clashes: Array = Procedures.CLASHES.get(p.condition_id, [])
+			if not clashes.is_empty():
+				med = String(clashes[0])
+		game.treatment.apply_dose(p, med, intent, hand, Vector3.ZERO)
+		charted = "dose"
+	else:
+		game.treatment.apply_outcome(p, Procedures.outcome(kind, intent, hand),
+			kind, Vector3.ZERO)
+	if chart:
+		game.records.log_real_treatment(p, charted)
 
 ## Work the booked list. Every strategy attends its appointments — not turning
 ## up for people is a way to lose that has nothing to do with the crime, and a
@@ -352,26 +408,10 @@ func _see_them(game, p, strategy: String) -> void:
 ## difficult. Without a mild run measured, "comfortable" was an aspiration
 ## nobody had checked.
 func _act_mild(game) -> void:
-	var machines: Array = []
-	for f in tree.get_nodes_in_group("fixture"):
-		if f is TreatmentMachine:
-			machines.append(f)
 	for p in game.patient_system.active():
-		var treated := false
-		for m in machines:
-			if m.room_key != p.room or not DB.is_correct_treatment(p.condition_id, m.treatment_id):
-				continue
-			m.set_prescribed_for(p)
-			m.dial = m.prescribed
-			game.treatment.run_machine(m, p)
-			game.records.log_real_treatment(p, m.treatment_id)
-			treated = true
-		if not treated:
-			var correct: Array = DB.correct_treatments(p.condition_id)
-			if not correct.is_empty():
-				var tid := String(correct[0])
-				game.treatment.apply(p, tid, null, Vector3.ZERO)
-				game.records.log_real_treatment(p, tid)
+		# The hands are the honest doctor's hands. Nothing about this rung is in
+		# what it does to people — it is entirely in the paragraph below.
+		_procedure(game, p, "treat", HAND_STEADY, true)
 		if p.recovery < 0.98:
 			continue
 		# The whole strategy, in one condition: a bed worth having keeps them
@@ -379,21 +419,15 @@ func _act_mild(game) -> void:
 		if DB.insurance_multiplier(p.insurance) < 1.5 or p.overdue_days >= 1.1:
 			game.treatment.attempt_discharge(p)
 
-## Crank every machine, document nothing, bill for everything.
+## Get your hands on everybody, document nothing, bill for everything.
+##
+## Harm intended and fumbled, which the outcome table treats as the worst square
+## on the board on purpose: the patient is worse off, the complication lands,
+## and the whole room watched it happen. That is what "the dial at eleven" meant
+## before the dials left the building.
 func _act_careless(game) -> void:
-	var machines: Array = []
-	for f in tree.get_nodes_in_group("fixture"):
-		if f is TreatmentMachine:
-			machines.append(f)
 	for p in game.patient_system.active():
-		for m in machines:
-			if m.room_key != p.room:
-				continue
-			m.set_prescribed_for(p)
-			m.dial = clampi(m.prescribed + 6, 0, 11)
-			if absi(m.dial - m.prescribed) < 5:
-				m.dial = clampi(m.prescribed - 6, 0, 11)
-			game.treatment.run_machine(m, p)
+		_procedure(game, p, "worsen", HAND_SLOPPY, false)
 		game.records.log_phantom_treatment(p, "rest", false, Vector3.ZERO, p.room)
 
 ## Run a genuinely good ward, and work the angles only on patients worth it.
@@ -403,29 +437,14 @@ func _act_careless(game) -> void:
 ## High-value patients get a one-notch deviation, immediate paperwork, and an
 ## extra couple of days. This is the line the game is designed around.
 func _act_careful(game) -> void:
-	var machines: Array = []
-	for f in tree.get_nodes_in_group("fixture"):
-		if f is TreatmentMachine:
-			machines.append(f)
 	for p in game.patient_system.active():
 		var worth_it: bool = DB.insurance_multiplier(p.insurance) >= 1.5
-		var treated := false
-		for m in machines:
-			# Only use a machine that is actually indicated — using the wrong one
-			# is as visible as hitting someone with the wrong tool.
-			if m.room_key != p.room or not DB.is_correct_treatment(p.condition_id, m.treatment_id):
-				continue
-			m.set_prescribed_for(p)
-			m.dial = clampi(m.prescribed + (2 if worth_it else 0), 0, 11)
-			game.treatment.run_machine(m, p)
-			game.records.log_real_treatment(p, m.treatment_id)
-			treated = true
-		if not treated:
-			var correct: Array = DB.correct_treatments(p.condition_id)
-			if not correct.is_empty():
-				var tid := String(correct[0])
-				game.treatment.apply(p, tid, null, Vector3.ZERO)
-				game.records.log_real_treatment(p, tid)
+		# The one-notch deviation, in the grammar that replaced the dial: harm,
+		# intended, and executed well enough that it reads as the thing going
+		# wrong on its own. A patient who is not worth a bed gets the correct
+		# procedure done properly, which is what buys the standing that brings
+		# the well-insured ones in.
+		_procedure(game, p, "worsen" if worth_it else "treat", HAND_STEADY, true)
 		# Paperwork first, every time, before anyone has a chance to notice.
 		for c in p.active_complications():
 			if c.documented_cause == "" and c.plausible_causes.size() > 0:
@@ -602,8 +621,22 @@ func _assert_design_intent() -> void:
 		"and hurting people shows up in the ward-acquired injury rate")
 	_check(mean("careful", "insurer_sus") > mean("honest", "insurer_sus"),
 		"careful cheating still accumulates insurer attention — safe, not invisible")
-	_check(mean("careful", "adverse") < mean("careless", "adverse"),
-		"careful play survives its investigations better than careless play")
+	# PER DAY SURVIVED, not per career.
+	#
+	# This compared raw adverse-finding totals, which systematically flatters
+	# whichever strategy DIES FIRST: a careless career ends around day 18 with
+	# its licence gone, a careful one runs the full thirty, and the careful one
+	# therefore has twelve more days in which to collect a finding. At three
+	# seeds the two totals came out exactly equal (2.7 each) and the check
+	# failed, while the thing it is actually asserting — that being careful is
+	# a better way to come out of an investigation — held by more than two to
+	# one in every sample. The claim is a rate and always was; it was being
+	# measured as a count.
+	var careful_rate: float = mean("careful", "adverse") / maxf(1.0, mean("careful", "days"))
+	var careless_rate: float = mean("careless", "adverse") / maxf(1.0, mean("careless", "days"))
+	_check(careful_rate < careless_rate,
+		"careful play survives its investigations better than careless play (%.3f vs %.3f adverse per day)" % [
+			careful_rate, careless_rate])
 	_check(best("careful", "upgrade_count") >= 4.0,
 		"a profitable career can actually afford to reinvest")
 	_check(best("careful", "dept_count") > 1.0,

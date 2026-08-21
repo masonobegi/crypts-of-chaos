@@ -43,6 +43,22 @@ func _physics_process(delta: float) -> void:
 
 # ------------------------------------------------------------------ hover
 func _update_hover() -> void:
+	# Anything we were pointing at can be freed out from under us between
+	# frames — the whole street, with the mark and the rig point on it, goes
+	# when the evening ends, and the crosshair is very often still on one of
+	# them at that moment. Godot validates a freed object to null in a
+	# comparison, so a stale `_hover` reads as equal to the null `target` the
+	# raycast returns from the office, the "nothing changed" early return below
+	# matches forever, and the fields are never reassigned: the street's prompt
+	# stays on the HUD, and _handle_use()'s `var target := _use_hover` is then a
+	# TYPED read of a previously freed instance, which raises and ABORTS the
+	# function rather than yielding null (CLAUDE.md gotcha 11) — swallowing
+	# every [E] press for the rest of the run. is_instance_valid() is the only
+	# test that tells a freed object from a null one, and it is happy with null.
+	if not is_instance_valid(_hover):
+		_hover = null
+	if not is_instance_valid(_use_hover):
+		_use_hover = null
 	var hit := get_collider() if is_colliding() else null
 	var target := _resolve_interactable(hit)
 	var use_target := _prefer_person(target)

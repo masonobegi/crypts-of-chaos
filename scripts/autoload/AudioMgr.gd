@@ -310,14 +310,16 @@ var _music_kind := ""
 static func _semitone(root: float, n: float) -> float:
 	return root * pow(2.0, n / 12.0)
 
-## A sine table, because the score is a hundred and fifty seconds of rendered
-## audio and `sin()` in GDScript is the whole cost of it.
+## A sine table, because the score is twenty-three seconds of rendered audio —
+## half a million samples — and `sin()` in GDScript is the whole cost of it.
 ##
-## Measured before writing this: the arrangement took 7.8 seconds to build all
-## three shifts, which is a visible stall on the frame a shift starts. Table
-## lookup for the oscillators and an incremental multiplier for the envelopes
-## (exp(-k*u) becomes env *= exp(-k/SR), which is exact, not an approximation)
-## take it to a fraction of that.
+## Measured before writing this: back when there were three moods the
+## arrangement took 7.8 seconds to build them, which is a visible stall
+## whenever it happens. Table lookup for the oscillators and an incremental
+## multiplier for the envelopes (exp(-k*u) becomes env *= exp(-k/SR), which is
+## exact, not an approximation) take it to a fraction of that. It is still not
+## free — the one score costs about eight tenths of a second — which is why the
+## menu waits until its first frame is on the screen before asking for it.
 const SIN_BITS := 12
 const SIN_SIZE := 1 << SIN_BITS
 const SIN_MASK := SIN_SIZE - 1
@@ -340,7 +342,7 @@ static func _sin_table() -> PackedFloat32Array:
 ## `match voice:` on a String inside the inner loop, and comparing three strings
 ## four hundred thousand times a second cost more than every oscillator and
 ## envelope in the arrangement put together — eight seconds to build the score,
-## which is a visible stall on the frame a shift starts.
+## which is a stall nobody would sit through.
 ##
 ## Oscillators read a sine table and envelopes are incremental multipliers
 ## (exp(-k*u) becomes env *= exp(-k/SR), which is exact rather than an
@@ -356,42 +358,21 @@ func _render(buf: PackedFloat32Array, voice: String, at: float, dur: float,
 	var count := mini(int(dur * float(SR)), n)
 	if count <= 0:
 		return
+	# Four voices, and four is the whole band. There were three more — a walking
+	# bass, a kick and a held pad — and they were removed from the arrangement
+	# when the DUH DUH DUH went and the night mood stopped existing. Their
+	# renderers went with them rather than staying here as arms nothing can
+	# reach: an unreachable oscillator is a trap for whoever next sits down to
+	# tune one, because they can retune it all afternoon and hear nothing
+	# change. That there is no kick drum in this score is a decision, and it is
+	# enforced by _build_music not asking for one.
 	match voice:
-		"bass": _r_bass(buf, start, count, f, gain)
 		"keys": _r_keys(buf, start, count, f, gain)
 		"vibe": _r_vibe(buf, start, count, f, gain)
-		"pad": _r_pad(buf, start, count, f, gain, dur)
 		"hat": _r_hat(buf, start, count, gain, rng)
 		"rim": _r_rim(buf, start, count, gain, rng)
-		"kick": _r_kick(buf, start, count, gain)
 
 const ATTACK_S := 0.003
-
-func _r_bass(buf: PackedFloat32Array, start: int, count: int, f: float, gain: float) -> void:
-	var tab := _sin_table()
-	var n := buf.size()
-	var sr := float(SR)
-	var inc := f / sr * float(SIN_SIZE)
-	var p1 := 0.0
-	var p2 := 0.0
-	var e1 := gain
-	var e2 := gain * 0.22
-	var d1 := exp(-2.1 / sr)
-	var d2 := exp(-5.0 / sr)
-	var attack := int(ATTACK_S * sr)
-	var i := start % n
-	for j in count:
-		var v: float = tab[int(p1) & SIN_MASK] * e1 + tab[int(p2) & SIN_MASK] * e2
-		if j < attack:
-			v *= float(j) / float(attack)
-		buf[i] += v
-		p1 += inc
-		p2 += inc * 2.0
-		e1 *= d1
-		e2 *= d2
-		i += 1
-		if i >= n:
-			i = 0
 
 ## Electric piano: a body, a twin a few cents off for the chorus every one of
 ## these has, and a bell partial that dies first.
@@ -449,25 +430,6 @@ func _r_vibe(buf: PackedFloat32Array, start: int, count: int, f: float, gain: fl
 		if i >= n:
 			i = 0
 
-## Triangle straight off the phase, with a slow swell in and out so a held
-## chord breathes instead of switching on.
-func _r_pad(buf: PackedFloat32Array, start: int, count: int, f: float,
-		gain: float, dur: float) -> void:
-	var n := buf.size()
-	var sr := float(SR)
-	var inc := f / sr
-	var ph := 0.0
-	var i := start % n
-	for j in count:
-		ph = fposmod(ph + inc, 1.0)
-		var u := float(j) / sr
-		var v: float = (4.0 * absf(ph - 0.5) - 1.0) * gain
-		v *= clampf(u / 0.35, 0.0, 1.0) * clampf((dur - u) / 0.6, 0.0, 1.0)
-		buf[i] += v
-		i += 1
-		if i >= n:
-			i = 0
-
 ## Brushed: noise differenced against itself, which is a one-pole high pass and
 ## costs one subtraction.
 func _r_hat(buf: PackedFloat32Array, start: int, count: int, gain: float,
@@ -503,29 +465,7 @@ func _r_rim(buf: PackedFloat32Array, start: int, count: int, gain: float,
 		if i >= n:
 			i = 0
 
-## A pitch envelope from 118 Hz down to 46, which is what turns a sine into a
-## drum.
-func _r_kick(buf: PackedFloat32Array, start: int, count: int, gain: float) -> void:
-	var tab := _sin_table()
-	var n := buf.size()
-	var sr := float(SR)
-	var p1 := 0.0
-	var e1 := gain
-	var e2 := 1.0
-	var d1 := exp(-9.5 / sr)
-	var d2 := exp(-26.0 / sr)
-	var k := float(SIN_SIZE) / sr
-	var i := start % n
-	for j in count:
-		buf[i] += tab[int(p1) & SIN_MASK] * e1
-		p1 += (46.0 + 72.0 * e2) * k
-		e1 *= d1
-		e2 *= d2
-		i += 1
-		if i >= n:
-			i = 0
-
-## `kind` is ignored. It is still in the signature because four call sites pass
+## `kind` is ignored. It is still in the signature because both call sites pass
 ## a shift name, and there being one piece of music is a fact about the score
 ## rather than about them.
 func _build_music(_kind := "") -> AudioStreamWAV:
@@ -618,8 +558,9 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 	_cache[key] = st
 	return st
 
-## Start (or switch) the score. Idempotent for the same shift, so calling it
-## every time a shift starts does not restart the loop mid-bar.
+## Start the score. There is only one, so this is idempotent from anywhere:
+## whoever gets there first starts the loop and nobody else interrupts it
+## mid-bar.
 func play_music(_kind := "") -> void:
 	if DisplayServer.get_name() == "headless":
 		return
@@ -646,8 +587,6 @@ func stop_music() -> void:
 	_music_kind = ""
 
 func refresh_music_volume() -> void:
-	if _music_player == null:
-		return
 	# -4, not -13.
 	#
 	# The chain matters and I got it wrong by about thirteen decibels. Source
@@ -656,7 +595,21 @@ func refresh_music_volume() -> void:
 	# speakers at about -27 dBFS. The first playtester's report was "there's no
 	# background music", and they were effectively right.
 	var g: float = maxf(master_volume * music_volume, 0.0001)
-	_music_player.volume_db = -4.0 + linear_to_db(g)
+	if _music_player != null:
+		_music_player.volume_db = -4.0 + linear_to_db(g)
+	# The room tone is on the same two sliders and has to be re-levelled here
+	# too. start_ambience() runs exactly once, at ward load, and baked the slider
+	# values into volume_db at that moment — so a player who dragged "Ambience"
+	# (or Master) to zero silenced the score and then listened to a 50/74 Hz hum
+	# at its original level for the rest of the run, which is the one sound the
+	# slider is actually named after. Settings only knows to call this function,
+	# so this is where the hum gets told.
+	if _hum_player != null:
+		_hum_player.volume_db = _hum_base_db + linear_to_db(g)
+
+## The hum's level BEFORE the sliders, remembered so refresh_music_volume() can
+## re-apply them to it without start_ambience() being called again.
+var _hum_base_db := -30.0
 
 func start_ambience(volume_db := -30.0) -> void:
 	_ensure_voices()
@@ -665,6 +618,7 @@ func start_ambience(volume_db := -30.0) -> void:
 		_hum_player.name = "Hum"
 		add_child(_hum_player)
 	_hum_player.stream = _build_hum()
+	_hum_base_db = volume_db
 	_hum_player.volume_db = volume_db + linear_to_db(maxf(master_volume * music_volume, 0.0001))
 	_hum_player.play()
 

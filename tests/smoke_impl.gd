@@ -329,6 +329,8 @@ func _check_midshift() -> void:
 	_ok(recovered, "patients recovered over the shift")
 	_ok(GameState.career_minutes > 400, "career clock advanced")
 
+	_check_the_imaging_bench_can_actually_be_used(ps)
+
 	# Exercise the sabotage path end to end: dial a machine off-prescription,
 	# run it, and confirm the truth layer, the log and the evidence all move.
 	# Any machine: the wards no longer have one. What used to be a bedside box
@@ -489,6 +491,50 @@ func _check_intake_overflow(ps) -> void:
 	_ok(ps.free_trolleys() == trolleys_before, "and the trolley is free again")
 
 	_check_wheeling(ps)
+
+## THE BENCH HAS TO FIND SOMEBODY, THROUGH THE BUTTON A PLAYER PRESSES.
+##
+## Every other machine assertion in this suite calls `run_machine()` directly,
+## which is exactly why this shipped: the imaging bench is the last device in
+## the building, it stands in Radiology, and NOTHING in the hospital can bring a
+## patient to it. Beds became static chairs so nobody is wheeled anywhere, a
+## patient who gets up walks to the day room and back, and a re-room is only
+## accepted into a ward or Intake — so `_nearby_patient()` could only ever
+## return null there. Which meant every imaging request a colleague made was
+## impossible to satisfy: unavoidable suspicion plus an insurer hit, and buying
+## Radiology could only ever make the player's position worse. The suite was
+## green throughout, because no test had ever pressed the button.
+func _check_the_imaging_bench_can_actually_be_used(ps) -> void:
+	var button: MachineRunButton = null
+	for f in tree.get_nodes_in_group("fixture"):
+		if f is MachineRunButton and f.machine != null \
+				and f.machine.machine_id == "machine_imaging":
+			button = f
+			break
+	if button == null:
+		_fail("the imaging bench has no run button")
+		return
+	var subject: Patient = null
+	for q in ps.active():
+		if not q.discharged:
+			subject = q
+			break
+	if subject == null:
+		return
+	# Somebody has asked for a scan, which is the only way one is ever booked.
+	subject.imaging_requested_by = "Dr Test"
+	subject.imaging_requested_day = GameState.day
+	_ok(subject.imaging_requested(), "a colleague can ask for a scan")
+	var found = button._target(null)
+	_ok(found != null and String(found.id) == subject.id,
+		"and the bench in Radiology finds the person who was booked, from across the building")
+
+	var real_before: int = subject.actual_treatments.size()
+	button.machine.dial = button.machine.prescribed
+	button.interact(null, null)
+	_ok(subject.actual_treatments.size() > real_before,
+		"and pressing the button actually images them")
+	subject.clear_imaging_request()
 
 ## Being discharged has to end with the body OUT OF THE TREE.
 ##

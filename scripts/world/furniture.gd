@@ -974,8 +974,12 @@ static func _radiology(h: Hospital, r: Room) -> void:
 
 	var img := TreatmentMachine.new()
 	img.room_key = r.key
-	# From the registry, so the installed set and the treatment table cannot drift.
-	img.machine_id = TreatmentMachine.INSTALLED[0]
+	# Named, not indexed. Reading INSTALLED[0] would silently retarget the
+	# radiology unit to something else the day a second device is added ahead of
+	# it in the list. The assertion is the point: this bench is the imaging one,
+	# and imaging had better be installed.
+	img.machine_id = "machine_imaging"
+	assert(TreatmentMachine.INSTALLED.has(img.machine_id))
 	img.treatment_id = "imaging"
 	img.units = "APERTURE DEPTH"
 	h.add_child(img)

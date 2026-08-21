@@ -92,6 +92,12 @@ change — five real bugs have been caught only by looking at the game.
     drew institutional attention at exactly the same rate as a day shift. Grep
     every key of a data table for a reader before trusting the table.
 
+16. **`ERROR: Parameter "m" is null` is Godot, not you.** One line per `Label3D`
+    freed, from the headless dummy rasterizer querying a mesh that backend never
+    builds. A unit run emitted 110 and a smoke run 35, which is enough to bury a
+    real error — `run_tests.sh` filters it and says why. Reproduce in ten lines:
+    add a bare `Label3D` to an empty `SceneTree` and free it.
+
 ## Design rules that are load-bearing
 
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no

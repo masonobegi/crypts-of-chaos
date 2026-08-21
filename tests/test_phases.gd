@@ -343,6 +343,84 @@ func test_being_seen_and_being_caught_are_different_things() -> void:
 	t.gt(caught_cost, seen_cost, "and it costs more than merely being about")
 	ns.queue_free()
 
+## THE EVENING IS SOMETHING A SHIFT CAN COST YOU, AND IT HAS TO SAY SO.
+##
+## Nights were the best of the three shifts in every respect — best pay
+## multiplier, fewest witnesses, and the same evening out afterwards — which is
+## not a choice, it is a right answer. `night_penalty` is what a night costs;
+## the sentence explaining it existed and had no callers, so a player who took
+## the night shift watched the phase they had yesterday simply not occur with
+## nothing anywhere saying why.
+func test_a_night_shift_costs_you_the_evening_and_says_so() -> void:
+	var ns := NightSystem.new()
+	t.root.add_child(ns)
+	var was := GameState.shift_kind
+	ns.used_tonight = false
+	GameState.set_flag("tutorial_active", false)
+
+	GameState.shift_kind = "day"
+	t.ok(ns.available(), "after a day shift there is an evening to have")
+	t.eq(ns.unavailable_because(), "", "and nothing to explain")
+
+	GameState.shift_kind = "night"
+	t.ok(not ns.available(), "after a night shift there is not")
+	t.ok(ns.unavailable_because() != "",
+		"and the game says why rather than silently deleting a phase")
+
+	GameState.shift_kind = was
+	ns.queue_free()
+
+## An evening already under way is not an evening you can be offered.
+##
+## `used_tonight` is only set by resolve(), and a player who walks home without
+## striking never reaches it — so every screen that closes during the evening
+## and calls back into ShiftSystem.after_statement() was told an evening was
+## available and could open a second street over the top of the first.
+func test_you_cannot_go_out_twice_at_once() -> void:
+	var ns := NightSystem.new()
+	t.root.add_child(ns)
+	var was := GameState.shift_kind
+	GameState.shift_kind = "day"
+	ns.used_tonight = false
+	GameState.set_flag("tutorial_active", false)
+	t.ok(ns.available(), "an evening is on offer before it starts")
+
+	ns.active = true
+	t.ok(not ns.available(), "and is not on offer again while you are out in it")
+	t.ok(ns.unavailable_because() != "", "with a reason, not silence")
+
+	ns.active = false
+	GameState.shift_kind = was
+	ns.queue_free()
+
+## Six streets, six different timing questions.
+##
+## `mark_speed` sat in PLACES describing differently paced evenings and was read
+## by nothing: NightMark hands its route to NPCBody.follow() one LEG at a time,
+## and follow() reset the walk to WALK_SPEED at every corner, so a speed written
+## after start() did not survive the first turn. All six streets therefore
+## opened their window at the same second and the diff-1 street asked the same
+## question as the diff-3 street.
+func test_the_streets_are_walked_at_different_speeds() -> void:
+	var paces := {}
+	for spec in NightSystem.PLACES:
+		t.gt(float(spec.get("mark_speed", 0.0)), 0.0,
+			"%s says how fast its mark walks" % String(spec.get("id", "?")))
+		paces[int(spec["mark_speed"])] = true
+	t.gt(float(paces.size()), 2.0, "and they are not all the same walk")
+
+	# And the pace actually reaches the walk. A NightMark applies it at every
+	# leg, which is the only thing that survives a corner.
+	var m := NightMark.new()
+	t.root.add_child(m)
+	m.pace = 3.0
+	m.start(PackedVector3Array([Vector3.ZERO, Vector3(0, 0, 5), Vector3(5, 0, 5)]))
+	t.near(m._speed, 3.0, 0.001, "the mark walks at the pace the street set")
+	m._leg = 2
+	m._walk_on()
+	t.near(m._speed, 3.0, 0.001, "and is still walking at it after a corner")
+	m.queue_free()
+
 func test_losing_your_nerve_is_free() -> void:
 	var ns := NightSystem.new()
 	t.root.add_child(ns)
@@ -428,6 +506,36 @@ func test_only_somebody_who_is_here_can_square_up() -> void:
 	t.ok(Brawl.can_fight(p), "an admitted patient is")
 	p.discharged = true
 	t.ok(not Brawl.can_fight(p), "and somebody who has gone home is not")
+
+## ONCE A DAY, AND IT HAS TO SURVIVE A SAVE.
+##
+## Squaring up to a patient who is already unconscious is +3 stay days against a
+## guaranteed non-witness, which is the best rate in the game for the least work
+## — so the lock that stops you doing it again is load-bearing. It rode on a
+## Patient *meta*, and `Patient.to_dict()` does not serialise metas, so saving
+## and reloading mid-day handed the exploit straight back. Nothing would have
+## noticed: the round-trip tests check the fields they know about.
+func test_you_cannot_fight_the_same_patient_twice_in_a_day() -> void:
+	var p := Patient.new("f2")
+	p.display_name = "Test"
+	p.condition_id = "fractured_wrist"
+	p.admitted = true
+	t.ok(Brawl.can_fight(p), "you can square up to an admitted patient")
+
+	p.out_cold_day = GameState.day
+	t.ok(not Brawl.can_fight(p), "but not to one you already put on the floor today")
+
+	var reloaded := Patient.from_dict(p.to_dict())
+	t.eq(reloaded.out_cold_day, GameState.day,
+		"and the save remembers that you did it")
+	t.ok(not Brawl.can_fight(reloaded),
+		"so reloading does not hand the second fight back")
+
+	# Tomorrow is a different matter. They have forgotten and so has the lock.
+	var was := GameState.day
+	GameState.day = was + 1
+	t.ok(Brawl.can_fight(reloaded), "tomorrow they are fair game again")
+	GameState.day = was
 
 func test_the_bill_for_losing_grows_with_the_career() -> void:
 	# A broken nose costs the same on day one and day thirty, and on day thirty

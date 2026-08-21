@@ -168,6 +168,12 @@ var _hz_face := 0.0
 var _hz_cone: MeshInstance3D = null
 var _hidden: Array = []
 var _tram := -1.0
+## `rig` only: the mark has already walked over the thing and it was never seen
+## to. There is nothing left to do to them, and the objective line has to stop
+## saying otherwise.
+var _rig_missed := false
+## Whether the world-space chevron is currently pointing at something of ours.
+var _marked := false
 
 ## How far a person can see you, and how wide their attention is. Narrower and
 ## shorter than daylight on purpose: it is dark, they are going home, and the
@@ -233,6 +239,8 @@ func _physics_process(delta: float) -> void:
 	var player = get_tree().get_first_node_in_group("player")
 	if player == null:
 		return
+	if _marked and (rigged or _rig_missed):
+		_clear_marker()
 	var eye: Vector3 = player.global_position + Vector3(0, 1.2, 0)
 
 	var seen := 0.0
@@ -269,12 +277,22 @@ func _physics_process(delta: float) -> void:
 
 	# The rig goes off when THEY reach it, not when you do. Everything before
 	# that was preparation; the only question left is where you are standing.
-	if rigged and String(_place.get("act", "")) == "rig" and street != null \
-			and mark != null and is_instance_valid(mark):
-		if mark.global_position.distance_to(street.rig_spot) < 1.5:
+	if String(_place.get("act", "")) == "rig" and street != null \
+			and mark != null and is_instance_valid(mark) \
+			and mark.global_position.distance_to(street.rig_spot) < 1.5:
+		if rigged:
 			rigged = false
 			strike()
 			return
+		if not _rig_missed:
+			# They stepped over it and nothing happened. Said out loud, because
+			# the silent version is an objective line still telling you to see
+			# to a bracket that can no longer be seen to, on a route that never
+			# comes back this way — and then an evening that ends in "you went
+			# home" with nothing anywhere saying what was missed.
+			_rig_missed = true
+			EventBus.toast.emit("%s steps straight over it. Too late for that now."
+				% _mark_name, "warn")
 
 	# They get home eventually, and then the evening is over whatever you did.
 	if mark != null and is_instance_valid(mark) and mark.home():
@@ -296,11 +314,32 @@ func _task_line() -> String:
 				return "NOW — %s is at the kerb. [hold E]" % _mark_name
 			return "Be beside %s at the kerb, and only there." % _mark_name
 		"rig":
+			if _rig_missed:
+				return "Nothing left to do here. Walk back the way you came."
 			if not rigged:
 				return "See to %s, up ahead on their route." % String(
 					_place.get("rig_name", "the thing"))
 			return "Now be nowhere near it when %s gets there." % _mark_name
 	return "Get next to %s. [hold E]" % _mark_name
+
+## How fast tonight's mark walks, from the place's own data. 24 is the divisor
+## that leaves the allotments (44) at very nearly NPCBody.WALK_SPEED, so the
+## easiest street is paced as it always was and the numbers above it mean
+## something.
+func _mark_pace() -> float:
+	return float(_place.get("mark_speed", 44.0)) / 24.0
+
+## The world-space chevron, borrowed from the ward for the one thing out here
+## that has to be found before it can be used.
+func _mark_target(at: Vector3, text: String) -> void:
+	_marked = true
+	EventBus.objective_target_changed.emit(at, text)
+
+func _clear_marker() -> void:
+	if not _marked:
+		return
+	_marked = false
+	EventBus.objective_target_changed.emit(Vector3.INF, "")
 
 func exposure_word() -> String:
 	if exposure < 0.12:
@@ -433,19 +472,48 @@ func strike() -> void:
 	# something happening.
 	var eye: Vector3 = player.global_position + Vector3(0, 1.2, 0)
 	caught_in_the_act = false
+	# A tram is LIGHT, not a witness.
+	#
+	# It used to set `caught` outright the instant its phase was lit, and that
+	# is not what a headlight does: it does not see anything, it makes the
+	# people already facing you able to make out what they are facing. Worse,
+	# both the tram's cycle and the mark's walk are deterministic, so at the
+	# tram stop — which is a BUMP place — the lit stretch landed square on the
+	# middle and the whole back half of the only window the act has. The one
+	# moment the HUD tells you to act was the one moment that could not be
+	# survived, every single run, and the two seconds that could be looked
+	# exactly the same on screen. It widens and lengthens everybody's check
+	# instead: standing in a lit street with four people in it is dreadful, and
+	# standing behind all four of them is still an answer.
+	var lit: bool = _tram >= 0.0
+	var cone: float = CONE * ACT_CONE * (1.6 if lit else 1.0)
+	var reach: float = SIGHT * ACT_REACH * (1.5 if lit else 1.0)
 	for w in watchers:
 		if not is_instance_valid(w):
 			continue
-		var face: float = float(w.get_meta("facing", 0.0))
-		if _looks_at(w.global_position + Vector3(0, 1.5, 0), face,
-				CONE * ACT_CONE, SIGHT * ACT_REACH, eye) > 0.0:
+		# The angle they are ACTUALLY looking along — which is the one drawn on
+		# the pavement under them — and not the base facing in their metadata.
+		# They sweep up to a radian either side of that base, so judging the act
+		# on the stored value meant the cone you were reading was not the cone
+		# you were being caught by. At the tram stop the third watcher's base
+		# angle happens to cover the kerb permanently, so a perfectly timed bump
+		# was a witness statement no matter what the ground was showing you.
+		if _looks_at(w.global_position + Vector3(0, 1.5, 0), w.rotation.y,
+				cone, reach, eye) > 0.0:
 			caught_in_the_act = true
 	if _hazard_node != null and is_instance_valid(_hazard_node):
+		# Same rule, same reason. `_hz_face` is only ever written by the camera
+		# and drunk branches of _hazard_sees(); the dog turns its own node to
+		# face you and never touched it, so a dog closed to a metre and a half
+		# with its cone drawn hot red over you was judged against an angle of
+		# zero — a cone pointing due north — and nothing reset the field between
+		# evenings, so an allotments night after a night at The Anchor decided
+		# the dog's check from the previous evening's drunk's head. The node's
+		# own rotation is what the cone is drawn with and what the hazard is
+		# actually looking along, in every branch.
 		if _looks_at(_hazard_node.global_position + Vector3(0, 1.2, 0),
-				_hz_face, CONE * ACT_CONE, SIGHT * ACT_REACH, eye) > 0.0:
+				_hazard_node.rotation.y, cone, reach, eye) > 0.0:
 			caught_in_the_act = true
-	if _tram >= 0.0:
-		caught_in_the_act = true      # the whole street is lit
 	for w in watchers:
 		if not is_instance_valid(w):
 			continue
@@ -472,6 +540,7 @@ func finish(reached: bool) -> void:
 
 func leave() -> void:
 	_set_night_look(false)
+	_clear_marker()
 	# The daytime sky, put back. The shift look owns it the rest of the time.
 	var game = get_tree().get_first_node_in_group("game")
 	if game != null and game.has_method("apply_shift_look"):
@@ -540,11 +609,23 @@ func enter(place_id: String) -> void:
 	exposure = 0.0
 	caught_in_the_act = false
 	rigged = false
+	_rig_missed = false
 	_elapsed = 0.0
 	_striking = -1.0
 	_tram = -1.0
+	# Scratch state from the last evening. Nothing here should survive going
+	# home, and _hz_face in particular used to: the drunk leaves it wherever his
+	# head was, and the dog never writes it at all.
+	_hz_face = 0.0
 	active = true
 	set_physics_process(true)
+	# The rig point is a five centimetre glow on a dark pavement thirty metres
+	# away, and the act asks you to find it FIRST and be elsewhere afterwards —
+	# so a player who could not spot it lost the evening to a search rather than
+	# to a decision. The ward's own chevron already does this job; the street
+	# simply never asked it to.
+	if String(_place.get("act", "")) == "rig":
+		_mark_target(street.rig_spot, String(_place.get("rig_name", "it")))
 	EventBus.objective_changed.emit(_task_line())
 	EventBus.toast.emit("%s. %s" % [String(_place["name"]), String(_place["blurb"])],
 		"info")
@@ -559,6 +640,11 @@ func _spawn_people() -> void:
 	mark.set_colours(Color(0.86, 0.72, 0.60), Color(0.30, 0.28, 0.36),
 		Color(0.22, 0.16, 0.12))
 	street.add_child(mark)
+	# Before start(), because start() walks the first leg. `mark_speed` sat in
+	# PLACES describing six differently paced evenings and was read by nothing,
+	# so the diff-1 street and the diff-3 street asked exactly the same timing
+	# question and opened their bump window at the same second.
+	mark.pace = _mark_pace()
 	mark.start(street.mark_route)
 
 	watchers.clear()
@@ -719,6 +805,13 @@ func _set_night_look(on: bool) -> void:
 
 ## Is there any point going out? A full ward is the one honest reason not to.
 func available() -> bool:
+	# An evening already under way is not an evening you can be offered. Only
+	# `resolve()` sets `used_tonight`, and a player who walks out of the street
+	# without striking never reaches it — so anything that asked "is there an
+	# evening available?" mid-evening was told yes and could start a second one
+	# on top of the first, over the top of the street already in the scene.
+	if active:
+		return false
 	if used_tonight:
 		return false
 	if GameState.flag("tutorial_active", false):
@@ -730,6 +823,8 @@ func available() -> bool:
 
 ## Why not, in words, for the screen that has to say so.
 func unavailable_because() -> String:
+	if active:
+		return "You are already out."
 	if used_tonight:
 		return "You have been out once tonight. That is enough."
 	if float(DB.shift(GameState.shift_kind).get("night_penalty", 0.0)) >= 0.5:

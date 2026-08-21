@@ -48,6 +48,8 @@ var _seen_door_shut := -1
 
 var _talked_to := ""
 var _talk_took_them_out_of_the_chair := false
+## -1 nobody to sample, 1 they stayed seated for every sampled frame, 0 they did not.
+var _still_sat_through_it := -1
 
 func start() -> void:
 	GameState.start_new_career(555111)
@@ -72,6 +74,8 @@ func tick() -> bool:
 		_seed_conditions()
 	if frames == 300:
 		_talk_to_somebody()
+	if frames > 300 and frames < 700 and frames % 20 == 0:
+		_sample_still_sat()
 	if frames == 760:
 		_check_they_sat_back_down()
 	if frames == FRAMES - 1800:
@@ -719,8 +723,6 @@ func _talk_to_somebody() -> void:
 			continue
 		_talked_to = String(q.id)
 		b.interact(game.player, null)
-		# The pin has to let go while they are facing you, or they cannot turn
-		# their head at all — so the intermediate state is part of the contract.
 		_talk_took_them_out_of_the_chair = b.state == PatientNPC.State.TALKING
 		return
 
@@ -729,6 +731,9 @@ func _check_they_sat_back_down() -> void:
 		return
 	_ok(_talk_took_them_out_of_the_chair,
 		"talking to a patient turns them towards you")
+	if _still_sat_through_it >= 0:
+		_ok(_still_sat_through_it == 1,
+			"and they do it WITHOUT standing up out of the chair to manage it")
 	var b = game.patient_system.get_body(_talked_to)
 	if b == null:
 		# Discharged mid-test. Nothing to prove, and nothing broken.
@@ -739,3 +744,19 @@ func _check_they_sat_back_down() -> void:
 		"and they are back to being a patient (state %d)" % b.state)
 	if b.state == PatientNPC.State.IN_BED:
 		_ok(b.is_seated(), "and the chair has claimed them back")
+
+## Did they stay in the chair for the whole conversation?
+##
+## Sampled across the frames rather than checked once, because the failure this
+## guards against was a pose re-asserted every physics frame — one sample is one
+## frame's opinion, and the thing that broke was a fight between two writers.
+func _sample_still_sat() -> void:
+	if _talked_to == "":
+		return
+	var b = game.patient_system.get_body(_talked_to)
+	if b == null:
+		return
+	if _still_sat_through_it == -1:
+		_still_sat_through_it = 1
+	if not b.is_seated():
+		_still_sat_through_it = 0

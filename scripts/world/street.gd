@@ -217,7 +217,23 @@ func _layout_people(watchers: int) -> void:
 	# past most of the street to reach it and early enough that missing it is
 	# not the end of the evening.
 	bump_spot = ORIGIN + Vector3(-LENGTH * 0.06, 0.4, ROAD_HALF + 2.6)
-	rig_spot = ORIGIN + Vector3(LENGTH * 0.10, 0.3, ROAD_HALF + 1.8)
+	# On the mark's THIRD leg, not on their first corner.
+	#
+	# It used to sit on route[1] — twenty-six metres from where the mark spawns
+	# and thirty-seven from where the player does, so the two of them arrived at
+	# it within a couple of seconds of each other. The rig act is two problems
+	# and the second one is being a long way off when it goes, and a spot the
+	# mark walks over fourteen seconds into the evening hands you that second
+	# problem with no time at all to solve it: rig it just in time and you are
+	# standing next to the thing when it goes, and walk rather than sprint and
+	# the one-shot trigger has already passed — with the route running west from
+	# there and never coming back, and the objective line still promising
+	# something that can no longer happen. Out here the mark is twenty seconds
+	# and two corners away, the walk to it is short, and the rest of the street
+	# is available to be innocent in. A third of the way down that leg rather
+	# than half, because the Ladder Yard's first watcher stands at very nearly
+	# its midpoint and boards laid in his lap are not a decision either.
+	rig_spot = ORIGIN + Vector3(-LENGTH * 0.14, 0.3, ROAD_HALF + 2.5)
 
 	watcher_spots.clear()
 	for i in maxi(watchers, 0):

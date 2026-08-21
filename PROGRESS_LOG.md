@@ -3189,3 +3189,189 @@ Two things it has to get right and does:
 Nothing in it holds a node. Names and strings only — a log that keeps references
 to patients is a log that hits the freed-object-abort trap on the first
 discharge, silently, exactly as CLAUDE.md warns.
+
+---
+
+## An adversarial audit, and the forty-nine things it found
+
+Eight agents read the game against eight different questions — not "does this
+compile" but "what does this code claim, and is the claim true?" They came back
+with forty-nine findings. Eight more agents fixed them, partitioned so that no
+two ever held the same file, and eight more reviewed the fixes and found six
+regressions in them. Most of what follows was invisible to 2,306 assertions, a
+136-check smoke run, a 51-check live run and a balance simulation, all green.
+
+The pattern in almost every one of them is the same: **something was renamed,
+removed or replaced, and a second thing that quietly depended on it was left
+pointing at where it used to be.**
+
+### The ward emptied and nobody left
+
+Discharged patients were never freed. `_tick_state` returned early on
+`data.discharged` *before* it reached the LEAVING branch, so everybody ever sent
+home walked as far as the lobby and stood in it for the rest of the career. That
+does not look like a leak — a hospital lobby with people in it looks correct.
+But each of those nodes went on running a live `NPCPerception`, so the player
+was being watched in the lobby by a fortnight of former patients and suspicion
+climbed from nowhere.
+
+Sleeping patients witnessed everything too: `attention` was recomputed from
+`_distraction` every frame, so `set_asleep()`'s zero was overwritten before
+anything read it. The test that was supposed to catch this asserted
+`attention == 0.0` in the *same frame* as `set_asleep(true)` — before
+`_process` had run once — so it was reading the value the previous frame left
+behind and would have passed whatever `set_asleep()` did.
+
+That is now gotcha 14 in CLAUDE.md, and `smoke_impl.gd` has `_defer(n, callable)`
+so a check can wait for the frame its subject actually changes in. The run
+refuses to report while a deferred assertion is outstanding.
+
+### Talking to somebody broke them
+
+`State.TALKING` had no exit. The only route back into `IN_BED` was
+`_return_to_bed()`, reachable only from `WANDERING`. So pressing E on a
+patient — the single most common thing a player does — took them out of their
+chair permanently: standing, silent (barks fire from the `IN_BED` branch,
+including the line that tells you they are fit to go home), and un-sleepable,
+because the night pass gates on `IN_BED`.
+
+It had to stand them up, too, and that turned out to be a second bug wearing the
+first one as a disguise. `_animate` returned early for anybody seated — before
+it reached the head-look pass — so a patient in a chair could not turn their
+head towards you at all, and the only way to make somebody face you was to take
+them out of the seat. The head-look is its own pass now and every branch runs
+it, so they stay put and look over their shoulder at you, which is what a person
+in a chair does when a doctor walks in.
+
+The same early return froze the head during a fight, at whatever angle it held
+on the last frame before it started — up to the 66° neck clamp, in the one
+scene where the camera is locked and the player cannot look away.
+
+### A floating head above an empty chair
+
+The seated idle pose wrote the breath offset onto the torso from the wrong base:
+`-0.26` instead of `0.95`. The hip drop had moved to the `Body` node when beds
+became chairs, so writing it here as well put every sitting character's trunk
+1.21 m below their own head. Their head, arms and legs are *siblings* of the
+torso, not children, so they stayed exactly where they were.
+
+Nothing failed. No assertion in six suites looks at where a mesh ended up. It
+took a screenshot to see at all, and the note it produced was "guy look weird in
+the chari". There is now a smoke check that reads the torso's actual global Y
+and asserts it is under the head and above the feet.
+
+Every face also had two mouths — the original static dark bar was never removed
+when the three-piece animated one was added, and it sat 3.8 cm behind it.
+
+### Constants that were documented and read by nothing
+
+`SHIFTS[kind]["scrutiny"]` has existed since the shift table was written, is
+documented as "how carefully the paperwork is read afterwards", and was printed
+at the player on both shift cards — night says *"Nobody sees a thing"*, day says
+*"an audience for everything you do"*. It was wired to nothing. Nights paid the
+best multiplier, had the fewest witnesses, **and** drew institutional attention
+at exactly the same rate as a day shift, which is the whole of "there is not as
+much of a trade-off for any shift".
+
+It scales the daily investigation roll now — *relative to a day shift*,
+deliberately. Using the raw numbers would have made the default shift 15% more
+dangerous than it has ever been, which is a silent nerf to everybody rather than
+a choice anybody makes. The thing being modelled is that night is where nobody
+is reading anything, so night is where the discount belongs.
+
+`mark_speed` was the same story: six streets describing six differently paced
+evenings, read by nothing, so the diff-1 street and the diff-3 street asked
+exactly the same timing question. `NightMark` hands its route to
+`NPCBody.follow()` one *leg* at a time, and `follow()` reset the walk to
+`WALK_SPEED` at every corner — so a speed written after `start()` did not
+survive the first turn.
+
+### Sixteen conditions with a cure that could not be performed
+
+The bedside machines were removed — the note was *"take off whatever this little
+machine is"* — and three treatments went on requiring `machine_vibe`,
+`machine_humour` and `machine_dread` for months. They were indicated for sixteen
+conditions, so those sixteen had a correct treatment that existed nowhere in the
+building, and the only symptom was patients who never got better.
+
+The unit test that exists to catch exactly this skipped any tool beginning with
+`machine_`, because when it was written every machine existed. Worse,
+`test_no_complication_is_unreachable` marked a complication reachable by *table
+membership*, so the complication pools of three machines that are not in the
+game were still certifying four complications as producible. Both now check that
+the thing producing a source still exists. Before cutting the dead pools I ran a
+throwaway reachability pass to find out what would be orphaned: nothing was.
+
+The imaging bench had the opposite problem. It is the last device in the
+building, it stands in Radiology, and *nothing in the hospital can bring a
+patient to it* — beds became static chairs so nobody is wheeled anywhere, and a
+re-room is only accepted into a ward or Intake. So every imaging request a
+colleague made was impossible to satisfy: unavoidable suspicion plus an insurer
+hit, and buying Radiology could only ever make the player's position worse.
+Every machine assertion in the suite called `run_machine()` directly, which is
+precisely why nobody noticed. The smoke run presses the button now.
+
+### Two entries moved and the blanket became a weapon
+
+Repointing those three treatments onto real items had a consequence nobody
+typed. `_treatment_for_item` returned the first tool match in dictionary order
+when nothing was indicated, and the repointed treatments were declared *earlier*
+in the table than the comfort treatments that owned the same tools. So putting a
+blanket over the wrong patient stopped being `weighted_blanket` (wrong: +0.03, a
+blanket) and became `dread_extraction` (wrong: -0.10, plus a 45% roll for a
+complication), and the toast said "Ambient Dread Extraction".
+
+Not one number was edited to cause that. The fallback now picks the *least
+harmful* of the candidates rather than the first one listed, because a blanket
+used on somebody who does not need one is still a blanket.
+
+### The fight
+
+Losing destroyed its own result card before it was drawn, so the screen that
+tells you what losing cost never appeared. A fight could be started in — or run
+on into — the chart review and the post-shift. `_finish()` blanked whatever
+objective the shift or tutorial was standing on. And an unconscious patient
+could be squared up to over and over for +3 stay days a time against a
+guaranteed non-witness, which is the best rate in the game for the least work.
+
+The lock that stops that rode on a Patient *meta*, and `Patient.to_dict()` does
+not serialise metas — so saving and reloading mid-day handed the exploit back.
+It is a field now, and there is a round-trip test.
+
+`knock_out()`'s "somebody fought in the corridor stays where they fell" guard
+tested `state` — but every fight is entered through the patient card, which sets
+`state = State.TALKING` first, so the guard could never fire and a patient decked
+in a corridor was teleported across the ward into their chair. And because
+`_finish()` read the body's position *after* knocking them out, the altercation's
+`WorldEvent` was emitted from the chair: an NPC standing over the actual fight
+failed the radius test while the empty ward next door passed it.
+
+Being knocked out also did not stop you hearing. Suppressing sight but not
+hearing is right for a *sleeper* — the bang is what wakes them, and that trade is
+why nights cost anything — but `wake_up()` explicitly refuses to rouse somebody
+out cold, so a patient you had put on the floor went on filing what they heard
+for the rest of the day. `unrousable` is the second flag, and only knock-out
+sets it.
+
+### Eleven lines of engine noise per Label3D
+
+Every headless run emitted `ERROR: Parameter "m" is null` — 110 times in a unit
+run, 35 in a smoke run. It is one line per `Label3D` freed, from Godot's dummy
+rasterizer querying the surface count of a mesh that backend never builds, and
+the game creates and destroys labels constantly. Reproducible in ten lines: add
+a bare `Label3D` to an empty `SceneTree` and free it.
+
+It is engine-side and harmless, and it was burying anything that wasn't. The
+harness filters it now and says exactly why, which matters more than it sounds:
+a log nobody can read is a log nobody reads.
+
+### And a measurement that was measuring the wrong thing
+
+The balance check *"careful play survives its investigations better than careless
+play"* compared raw adverse-finding totals. That systematically flatters whichever
+strategy **dies first**: a careless career ends around day 18 with its licence
+gone, a careful one runs the full thirty, and the careful one therefore has twelve
+more days in which to collect a finding. At three seeds the totals came out
+exactly equal and it failed; the thing it is actually asserting held by more than
+two to one in every sample. The claim is a rate and always was — it was being
+measured as a count.

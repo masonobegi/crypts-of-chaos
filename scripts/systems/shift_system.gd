@@ -35,6 +35,17 @@ var last_review := {}
 ## be dismissed with Escape.
 var last_statement := {}
 
+## Letters put in the drawer today, by claim id, against the day it was done.
+##
+## "Put it in the drawer" has to leave a mark somewhere or after_statement()
+## hands straight back the same letter and the button does nothing at all. It
+## is deliberately only good for the day it was pressed: tomorrow the letter is
+## on the mat again, one day nearer going against you by default, which is what
+## LegalSystem.ANSWER_WINDOW is for and what the screen has always promised.
+## Not saved — a career reloaded on the day of a letter should be handed the
+## letter.
+var _drawered: Dictionary = {}
+
 func _ready() -> void:
 	EventBus.treatment_applied.connect(func(p, _tid, _q):
 		if p != null:
@@ -829,17 +840,45 @@ func _was_clean_shift() -> bool:
 ## morning happens. Each screen calls back here when it closes, so the sequence
 ## is driven by the player finishing with each one rather than by a timer.
 func after_statement() -> void:
+	# NOT WHILE THE PLAYER IS STANDING IN THE STREET.
+	#
+	# This is the join between the three phases of a day, and every screen calls
+	# back into it when it closes — which means anything that closes a screen
+	# during the evening lands here. With the evening already running that used
+	# to fall straight through to next_day(): the day advanced, the ward was
+	# rebuilt, rent was charged and the morning's admissions rolled, all while
+	# the player was still out on Ossory Street in a scene belonging to a day
+	# that no longer existed. The evening ends by resolving or by walking home,
+	# and it says so itself.
+	var out = get_tree().get_first_node_in_group("night_system")
+	if out != null and out.active:
+		return
 	var legal = get_tree().get_first_node_in_group("legal_system")
 	if legal != null:
-		var due: Array = legal.due_claims()
-		if not due.is_empty():
-			EventBus.request_ui.emit("court", {"claim": due[0]})
+		for c in legal.due_claims():
+			if _drawered.get(String(c.get("id", "")), -1) == GameState.day:
+				continue
+			EventBus.request_ui.emit("court", {"claim": c})
 			return
 	var night = get_tree().get_first_node_in_group("night_system")
 	if night != null and night.available():
 		EventBus.request_ui.emit("night", {})
 		return
+	# Why the street did not happen tonight. The gate is new and it was silent:
+	# a player who took the night shift for the pay watched the phase they had
+	# yesterday simply not occur, with nothing anywhere saying why — and the
+	# sentence that explains it already existed and had no callers.
+	if night != null and night.has_method("unavailable_because"):
+		var why := String(night.unavailable_because())
+		if why != "":
+			EventBus.toast.emit(why, "info")
 	next_day()
+
+## A letter deferred until tomorrow. See `_drawered`.
+func drawer_claim(id: String) -> void:
+	if id == "":
+		return
+	_drawered[id] = GameState.day
 
 func next_day() -> void:
 	var legal = get_tree().get_first_node_in_group("legal_system")

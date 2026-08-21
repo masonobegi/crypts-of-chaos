@@ -91,6 +91,13 @@ var complained: bool = false
 var imaging_requested_by: String = ""
 var imaging_requested_day: int = -1
 
+## The day somebody put them on the floor, and the once-a-day lock on doing it
+## again. A FIELD rather than a meta: Patient.to_dict() does not serialise metas,
+## so while this was one, saving and reloading mid-day cleared it — and squaring
+## up to the same unconscious patient is +3 stay days a time against a guaranteed
+## non-witness, which is the best rate in the game for the least work.
+var out_cold_day: int = -1
+
 func _init(p_id: String = "") -> void:
 	id = p_id
 	chart = PatientChart.new()
@@ -393,6 +400,7 @@ func to_dict() -> Dictionary:
 		"dis": discomfort, "mind": mind.to_dict() if mind else {},
 		"ovd": overdue_days, "ked": knows_expected_date, "img": imaged_at,
 		"imgrb": imaging_requested_by, "imgrd": imaging_requested_day,
+		"kod": out_cold_day,
 		"corm": corridor_minutes, "cmpl": complained, "pres": presenting_complaint,
 		"adm": admitted,
 		"exam": examined_at, "bias": read_bias,
@@ -439,6 +447,7 @@ static func from_dict(d: Dictionary) -> Patient:
 	p.complained = bool(d.get("cmpl", false))
 	p.imaging_requested_by = String(d.get("imgrb", ""))
 	p.imaging_requested_day = int(d.get("imgrd", -1))
+	p.out_cold_day = int(d.get("kod", -1))
 	var md: Dictionary = d.get("mind", {})
 	if not md.is_empty():
 		p.mind = Mind.from_dict(md)

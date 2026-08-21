@@ -53,6 +53,12 @@ func _ready() -> void:
 	EventBus.shift_ended.connect(func(_day): cancel())
 
 ## Square up. Returns false if there is nobody to square up to.
+## Where the fight actually took place. Sampled when it starts and again as it
+## finishes, but always BEFORE anybody is moved: this is the position the
+## altercation's WorldEvent carries, and that position is what decides who was
+## near enough to see or hear it.
+var _where_it_happened := Vector3.ZERO
+
 func start(p) -> bool:
 	if active or p == null or not Brawl.can_fight(p):
 		return false
@@ -74,6 +80,8 @@ func start(p) -> bool:
 	patient = p
 	_their_guard = Brawl.THEIR_GUARD
 	_your_guard = Brawl.YOUR_GUARD
+	_where_it_happened = _body.global_position if _body.is_inside_tree() \
+		else _player.global_position
 	_exchange = 0
 	_recover = 0.6
 	_why = ""
@@ -206,8 +214,14 @@ func _finish(won: bool) -> void:
 		return
 	active = false
 	set_physics_process(false)
-	if _player != null:
+	# is_instance_valid, not just != null: `_player` is untyped, so a freed
+	# instance sails past a null check and the property write errors. cancel()
+	# already had this right and these two paths have to agree.
+	if _player != null and is_instance_valid(_player):
 		_player.can_move = _was_can_move
+	# Sampled BEFORE knock_out() moves anybody. See the note at the event below.
+	if _body != null and is_instance_valid(_body) and _body.is_inside_tree():
+		_where_it_happened = _body.global_position
 	if _body != null and is_instance_valid(_body):
 		if _body.has_method("swing_arm"):
 			_body.swing_arm(0, 0.0, 0.0)
@@ -221,15 +235,27 @@ func _finish(won: bool) -> void:
 			_body.stand_down()
 	var res: Dictionary = {}
 	if treatment_system != null and patient != null:
-		var where: Vector3 = _body.global_position if _body != null \
-			and is_instance_valid(_body) else Vector3.ZERO
+		# WHERE THE FIGHT WAS, not where the loser ended up. knock_out() puts
+		# somebody who has a chair back into it before slumping them, so reading
+		# the body afterwards reported a corridor brawl from the patient's own
+		# room — and this position is what decides who could see and hear it. An
+		# NPC standing over the actual fight failed the radius test while the
+		# empty ward next door passed it.
+		var where: Vector3 = _where_it_happened
 		res = treatment_system.apply_brawl(patient, won, where)
 	EventBus.objective_changed.emit(_objective_before)
 	EventBus.request_ui.emit("fight", {
 		"patient_id": patient.id if patient != null else "",
 		"result": res, "won": won,
 	})
-	if not won:
+	# Only when the loss actually PRODUCED something. apply_brawl() returns {}
+	# for a patient who has been discharged, and _physics_process calls
+	# _finish(false) the moment the body goes invalid — which, now that
+	# discharged patients are genuinely freed, is a real path. With no result
+	# there is no bill, no card and nothing said, so an unconditional call here
+	# put the day's end back exactly where it was found: stopping for no stated
+	# reason, which is the thing this was written to remove.
+	if not won and not res.is_empty():
 		_end_the_day_once_the_card_is_read()
 	patient = null
 	_body = null

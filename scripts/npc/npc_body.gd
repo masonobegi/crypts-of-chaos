@@ -331,10 +331,14 @@ func goto(target: Vector3, run := false) -> void:
 ## `goto` asks the hospital's navigation grid, which does not exist anywhere
 ## except the hospital. Anybody walking home down a street is following a line
 ## somebody drew, and this is how they do it.
-func follow(points: PackedVector3Array, run := false) -> void:
+func follow(points: PackedVector3Array, run := false, speed := -1.0) -> void:
 	_path = points
 	_path_i = 0
-	_speed = RUN_SPEED if run else WALK_SPEED
+	# An explicit pace, because follow() is called once PER LEG of a route and
+	# was resetting the walk to WALK_SPEED at every corner — so a caller that
+	# set a speed after handing over the route lost it at the first turn, and
+	# six differently paced evenings all walked at exactly the same speed.
+	_speed = speed if speed > 0.0 else (RUN_SPEED if run else WALK_SPEED)
 
 func stop_moving() -> void:
 	_path = PackedVector3Array()
@@ -648,6 +652,7 @@ func _animate(delta: float) -> void:
 		if _torso:
 			_torso.position.y = 0.95 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
 		_tick_blink(delta)
+		_tick_look(delta)
 		return
 	if _seated:
 		# Seated: breathe and blink, but do not walk. Without this the legs
@@ -665,6 +670,7 @@ func _animate(delta: float) -> void:
 		if _torso:
 			_torso.position.y = 0.95 + sin(_idle_phase * 1.35 + _idle_offset) * 0.008
 		_tick_blink(delta)
+		_tick_look(delta)
 		return
 	var still: float = clampf(1.0 - planar * 1.6, 0.0, 1.0)
 	var breath: float = sin(_idle_phase * 1.35 + _idle_offset) * 0.010 * still
@@ -697,6 +703,21 @@ func _animate(delta: float) -> void:
 		_torso.scale = Vector3(1.0 + breath * 0.8, 1.0, 1.0 + breath * 1.2)
 
 	_tick_blink(delta)
+	_tick_look(delta)
+
+## Where they are looking. ITS OWN PASS, because every early return in _animate
+## used to skip it.
+##
+## A seated character never ran it, so a patient in a chair could not turn their
+## head towards you at all — which is why talking to somebody had to stand them
+## up out of the chair to work, in a game whose wards are chairs. A fighting
+## character never ran it either, so the head froze at whatever offset it held
+## on the last frame before the fight: SuspicionSystem calls look_toward() on
+## anybody who can see you, and a seated person carries that whole offset in
+## their neck, so squaring up to a patient you had walked past left them
+## swinging at you with their head cocked 60 degrees at the wall, in the one
+## scene where the camera is locked and the player cannot look away.
+func _tick_look(delta: float) -> void:
 	if _head and _has_look:
 		var to := _look_at - _head.global_position
 		var local := to.normalized() * global_transform.basis

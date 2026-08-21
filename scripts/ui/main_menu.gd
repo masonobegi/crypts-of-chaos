@@ -10,9 +10,6 @@ var _scene = null
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	# The title screen had no sound at all, which is the first thing anybody
-	# hears of this game and it was nothing.
-	AudioMgr.play_music("evening")
 	_backdrop()
 
 	# Short on purpose. A PanelContainer grows to fit, so this is a floor and
@@ -89,6 +86,23 @@ func _ready() -> void:
 		12, Color(UIKit.INK.r, UIKit.INK.g, UIKit.INK.b, 0.45),
 		HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.button("Quit", func(): get_tree().quit()))
+
+	# The title screen had no sound at all, which is the first thing anybody
+	# hears of this game and it was nothing. But building the score is about
+	# eight tenths of a second of straight-line GDScript, and calling it from
+	# the top of _ready() spent all of that BEFORE anything had been laid out:
+	# roughly fifty frames of an empty black window as the first thing anybody
+	# SEES of this game. Nothing in the project catches it — play_music returns
+	# at once under headless, and --fixed-fps reports the stalled frame as a
+	# sixtieth of a second however long it really took — so it survived every
+	# harness we have. Two waits, because process_frame is emitted during the
+	# idle step and the draw for that frame has not happened yet when the first
+	# one comes back; after the second, the menu is genuinely on the screen and
+	# the hitch happens behind something rather than instead of it.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	if is_inside_tree():
+		AudioMgr.play_music()
 
 ## The title screen looks through a window into the building.
 ##

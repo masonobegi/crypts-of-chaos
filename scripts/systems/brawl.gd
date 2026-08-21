@@ -84,7 +84,7 @@ static func can_fight(p) -> bool:
 		return false
 	if not p.admitted:
 		return false
-	return int(p.get_meta("out_cold_day", -1)) != GameState.day
+	return int(p.out_cold_day) != GameState.day
 
 ## Is there still a shift going on to have a fight during?
 ##

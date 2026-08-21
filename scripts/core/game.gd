@@ -144,13 +144,16 @@ func _build_environment() -> void:
 	_sun = sun
 	_fill = fill
 	EventBus.shift_started.connect(func(_d): apply_shift_look())
-	# The score follows the shift, for the same reason the light does: three
-	# shifts that differ only in a spreadsheet are not three choices.
-	EventBus.shift_started.connect(func(_d): AudioMgr.play_music(GameState.shift_kind))
-	# ...and start it NOW rather than waiting for a shift to begin. The briefing,
-	# the shift-select screen and the whole first minute of a run happen before
-	# shift_started fires, and all of it was silent.
-	AudioMgr.play_music(GameState.shift_kind)
+	# The LIGHT follows the shift. The music does not, and there is deliberately
+	# no shift_started hook for it: there is one score, it starts on the title
+	# screen, and it plays through the briefing, the shift and the evening
+	# without a seam. There used to be a second connection here that called
+	# play_music on every shift_started — which by then could only ever re-level
+	# the volume, because play_music has been a no-op after the first call from
+	# anywhere since the three moods were collapsed into one. A line that fires
+	# every day of a career and does nothing is worse than no line: it reads as
+	# the mechanism by which the music changes, and there isn't one.
+	AudioMgr.play_music()
 	apply_shift_look()
 
 ## What time of day it is, in light.

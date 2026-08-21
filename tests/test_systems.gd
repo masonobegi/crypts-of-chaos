@@ -1123,6 +1123,42 @@ func test_sitting_folds_the_knee() -> void:
 	t.near(p._knees[0].rotation.x, 0.0, 0.001, "standing up straightens them again")
 	p.free()
 
+## No two people booked into the same hour, on any shift.
+##
+## `build_for_shift` spreads `count` slots over the whole hours between the
+## handover and the last hour, and rounds each one to an hour of the day. That
+## is a pigeonhole the moment the count exceeds the number of hours available:
+## the day shift went to eight appointments over a seven-hour window and put two
+## patients in the 12:00 slot and nobody in one of the others, every single day,
+## on the briefing screen and in the HUD alike. Nothing noticed, because the
+## existing roster test only asserts that the slots are not ALL at the same
+## time.
+##
+## (Lives here rather than in test_appointments.gd because this is the file that
+## stands systems up in a tree; the assertion belongs with the roster either
+## way, and should move if that file ever grows a spreading test of its own.)
+func test_no_two_appointments_land_in_the_same_hour() -> void:
+	var was := GameState.shift_kind
+	for kind in DB.SHIFT_ORDER:
+		GameState.shift_kind = kind
+		GameState.minute_of_day = GameState.shift_start_hour() * 60
+		var ps := PatientSystem.new()
+		t.root.add_child(ps)
+		var a := AppointmentSystem.new()
+		t.root.add_child(a)
+		a.patient_system = ps
+		a.economy = null
+		a.build_for_shift()
+		var seen := {}
+		for e in a.list:
+			var hour := int(e["hour"])
+			t.ok(not seen.has(hour), "%s: nobody is double-booked at %s" % [
+				kind, GameState.hour_string(hour)])
+			seen[hour] = true
+		a.free()
+		ps.free()
+	GameState.shift_kind = was
+
 # ------------------------------------------------------------------- the score
 #
 # There was no music at all. A game with none reads as unfinished however good
@@ -1156,36 +1192,44 @@ func test_there_is_one_score_and_it_plays_everywhere() -> void:
 ## present in the file, inaudible in the room. This is the check that would
 ## have caught that, and it also catches the opposite — a gain tweak that
 ## slams the buffer into the rails and turns the pad into a buzz.
+## Measured once, because there is one buffer to measure.
+##
+## This used to loop over ["day", "evening", "night"] and walk half a million
+## samples three times — `_build_music` caches under a single key now, so all
+## three names returned the identical object and the test printed the same peak
+## and rms under three shift names. Worse, it read as coverage: "night is not
+## mostly silence" could only ever mean "the one score is", so a green run said
+## per-shift audio was checked when there is no per-shift audio to check.
+## test_there_is_one_score_and_it_plays_everywhere above is what asserts THAT,
+## and it is the only place that should.
+##
+## (The companion test that asked for an unlisted shift name went with the loop.
+## It was guarding a `MUSIC_MOODS.get(kind, fallback)` lookup that no longer
+## exists — the argument is ignored outright — so it asserted that a cached
+## buffer had bytes in it and nothing else.)
 func test_the_score_sits_in_a_sane_level_window() -> void:
-	for kind in ["day", "evening", "night"]:
-		var st: AudioStreamWAV = AudioMgr._build_music(kind)
-		var d: PackedByteArray = st.data
-		var n := int(d.size() / 2)
-		var peak := 0
-		var sum := 0.0
-		# Every 7th sample: this is a check on level, not a spectrum analysis,
-		# and 350k samples per shift in a unit test is a second of nothing.
-		var counted := 0
-		var i := 0
-		while i < n:
-			var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
-			if v >= 32768:
-				v -= 65536
-			peak = maxi(peak, absi(v))
-			sum += float(v) * float(v)
-			counted += 1
-			i += 7
-		var peak_pct: float = 100.0 * float(peak) / 32767.0
-		var rms_pct: float = 100.0 * sqrt(sum / float(counted)) / 32767.0
-		t.gt(peak_pct, 25.0, "%s is loud enough to be heard (peak %.0f%%)" % [kind, peak_pct])
-		t.lt(peak_pct, 90.0, "%s has headroom left (peak %.0f%%)" % [kind, peak_pct])
-		t.gt(rms_pct, 3.0, "%s is not mostly silence (rms %.1f%%)" % [kind, rms_pct])
-
-func test_an_unknown_shift_still_gets_a_score() -> void:
-	# Adding a fourth shift should not produce silence while somebody remembers
-	# to write it a mood.
-	var odd := AudioMgr._build_music("graveyard_double")
-	t.gt(float(odd.data.size()), 0.0, "an unlisted shift falls back rather than failing")
+	var st: AudioStreamWAV = AudioMgr._build_music()
+	var d: PackedByteArray = st.data
+	var n := int(d.size() / 2)
+	var peak := 0
+	var sum := 0.0
+	# Every 7th sample: this is a check on level, not a spectrum analysis, and
+	# half a million samples in a unit test is a second of nothing.
+	var counted := 0
+	var i := 0
+	while i < n:
+		var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		peak = maxi(peak, absi(v))
+		sum += float(v) * float(v)
+		counted += 1
+		i += 7
+	var peak_pct: float = 100.0 * float(peak) / 32767.0
+	var rms_pct: float = 100.0 * sqrt(sum / float(counted)) / 32767.0
+	t.gt(peak_pct, 25.0, "the score is loud enough to be heard (peak %.0f%%)" % peak_pct)
+	t.lt(peak_pct, 90.0, "and has headroom left (peak %.0f%%)" % peak_pct)
+	t.gt(rms_pct, 3.0, "and is not mostly silence (rms %.1f%%)" % rms_pct)
 
 # ------------------------------------------------- the two playtest blockers
 #

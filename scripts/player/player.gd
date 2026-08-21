@@ -148,8 +148,12 @@ func _handle_movement(delta: float) -> void:
 	_intended_speed = Vector2(target.x, target.z).length()
 	_open_door_ahead()
 	var before := global_position
+	# What move_and_slide is about to be HANDED, as opposed to what we are asking
+	# the body to work up to over the next few frames. The two are the same only
+	# at full speed, and _step_up needs this one.
+	var commanded := Vector2(velocity.x, velocity.z).length()
 	move_and_slide()
-	_step_up(before, dir, delta)
+	_step_up(before, dir, delta, commanded)
 	_push_obstacles()
 
 ## Walking up a kerb.
@@ -166,12 +170,25 @@ func _handle_movement(delta: float) -> void:
 ## building or off a stair edge into the air.
 const STEP_HEIGHT := 0.34
 
-func _step_up(before: Vector3, dir: Vector3, delta: float) -> void:
+func _step_up(before: Vector3, dir: Vector3, delta: float, commanded: float) -> void:
 	if not is_on_floor() or dir.length_squared() < 0.01:
 		return
-	# Did we actually get anywhere? A tenth of what we asked for means blocked.
+	# Did we actually get anywhere? A fraction of what we asked for means blocked.
+	#
+	# Measured against the velocity move_and_slide was handed this frame, NOT
+	# against the target speed. ACCEL lerps velocity toward the target, so a
+	# standing start only commands 18% of WALK_SPEED on its first frame and 33%
+	# on its second — both under 40% of the target — and "blocked" was therefore
+	# true on open, flat floor for the first two frames of every single walk.
+	# The three-move below then found free air at +0.34m with floor beneath it,
+	# which is what a kerb looks like, and teleported the body forward: a
+	# framerate-dependent lurch out of every standing start (two qualifying
+	# frames at 60fps, six at 120), with the bottom third of the capsule swept
+	# through whatever happened to be in front of it. A body that is genuinely
+	# stuck delivers almost none of what it was handed whether it was
+	# accelerating or not, so the ratio against `commanded` is the honest test.
 	var moved := Vector2(global_position.x - before.x, global_position.z - before.z).length()
-	if moved > _intended_speed * delta * 0.4:
+	if commanded < 0.05 or moved > commanded * delta * 0.4:
 		return
 	var want := Vector3(dir.x, 0.0, dir.z).normalized() * maxf(_intended_speed * delta, 0.06)
 	var from := global_transform

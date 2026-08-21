@@ -12,6 +12,11 @@ var route: PackedVector3Array = PackedVector3Array()
 var _leg := 0
 var _done := false
 
+## How fast this person walks home, from the street's own `mark_speed`. Held on
+## the mark rather than written onto `_speed` after start(), because the route
+## is followed one leg at a time and every leg calls follow() again.
+var pace := 0.0
+
 func start(points: PackedVector3Array) -> void:
 	route = points
 	if route.size() > 0:
@@ -22,7 +27,7 @@ func start(points: PackedVector3Array) -> void:
 func _walk_on() -> void:
 	if _done or _leg >= route.size():
 		return
-	follow(PackedVector3Array([route[_leg]]))
+	follow(PackedVector3Array([route[_leg]]), false, pace)
 
 func _physics_process(delta: float) -> void:
 	super._physics_process(delta)

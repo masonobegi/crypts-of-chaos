@@ -36,6 +36,30 @@ func test_slots_are_spread_across_the_shift_rather_than_stacked() -> void:
 		hours[int(e["hour"])] = true
 		t.between(float(int(e["hour"])), 8.0, 16.0, "slot sits inside the shift")
 	t.gt(float(hours.size()), 2.0, "and they are not all at the same time")
+	# "not all at the same time" is a much weaker claim than it reads as, and it
+	# is what let the day shift book EIGHT appointments into the seven hour-slots
+	# the spreading formula could produce: two patients landed in the 12:00 slot
+	# and one hour got nobody, every single day, and this test was green. One
+	# slot per booking, on every shift — the strong form of what it meant to say.
+	for kind in DB.SHIFT_ORDER:
+		GameState.shift_kind = String(kind)
+		GameState.minute_of_day = int(DB.shift(String(kind)).get("start_hour", 8)) * 60
+		var b := _system()
+		b.build_for_shift()
+		var taken := {}
+		var clashes := PackedStringArray()
+		for e in b.list:
+			var h := int(e["hour"])
+			if taken.has(h):
+				clashes.append("%02d:00" % h)
+			taken[h] = true
+		t.ok(clashes.is_empty(), "the %s list books one patient per hour, not two%s" % [
+			String(kind), "" if clashes.is_empty() else " (double-booked " + ", ".join(clashes) + ")"])
+		t.eq(b.list.size(), taken.size(),
+			"and every %s booking got a slot of its own" % String(kind))
+		b.patient_system.free()
+		b.free()
+	GameState.shift_kind = "day"
 	a.patient_system.free()
 	a.free()
 

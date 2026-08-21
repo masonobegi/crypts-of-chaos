@@ -21,12 +21,22 @@ if ! command -v "$GODOT" >/dev/null 2>&1 && [ ! -x "$GODOT" ]; then
   exit 2
 fi
 
-NOISE="RID allocations|PagedAllocator|ObjectDB instances|resources still in use|^ *at: "
+# Engine chatter that is not this project's, filtered so a REAL error is visible.
+#
+# `Parameter "m" is null` is one line per Label3D freed, from Godot's headless
+# dummy rasterizer: it queries the surface count of a mesh that backend never
+# generates. The game creates and destroys Label3Ds constantly — every nametag,
+# speech bubble and floating sign — so a unit run emitted 110 of them and a
+# smoke run 35, and anything genuinely wrong was buried in the middle of it.
+# Verified as engine-side rather than ours: one bare Label3D added and freed in
+# an otherwise empty SceneTree reproduces it exactly, and the labels render
+# correctly under the real backend (see screenshots.sh).
+NOISE="RID allocations|PagedAllocator|ObjectDB instances|resources still in use|^ *at: |Parameter \"m\" is null"
 
 "$GODOT" --headless --path "$DIR" --import >/dev/null 2>&1
 
-"$GODOT" --headless --path "$DIR" --script res://tests/run_tests.gd
-UNIT=$?
+"$GODOT" --headless --path "$DIR" --script res://tests/run_tests.gd 2>&1 | grep -vE "$NOISE"
+UNIT=${PIPESTATUS[0]}
 
 "$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1 | grep -vE "$NOISE"
 SMOKE=${PIPESTATUS[0]}

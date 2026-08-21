@@ -759,14 +759,14 @@ func transfer(p: Patient, ward_key: String) -> bool:
 		old.patient_id = ""
 	body.bind(p, bed)
 	body.global_position = bed.global_position + Vector3(0, 0.5, 0)
-	# Binding a chair is not the same as being in it. Only IN_BED makes
-	# _hold_bed_pose pin the body to mount_point() and hold the chair's yaw;
-	# only IN_BED is a state _on_shift_started will put to sleep on a night
-	# shift, and only IN_BED barks or wanders. A walk-in admitted out of the
-	# waiting row arrives here still SITTING, and SITTING has no case in
-	# _tick_state — so without this they spent the rest of their stay dropped
-	# half a metre above the chair, awake through every night shift with full
-	# attention, silent, and shovable by anybody who walked into them.
+	# Binding a chair is not the same as being in it. SITTING is the WAITING-ROOM
+	# pose: it gets the sit, but it is never pinned to mount_point(), never holds
+	# the chair's yaw, is never eligible for the night-shift sleep pass (which
+	# gates on IN_BED), and never wanders — because none of those is a thing you
+	# want a person queueing in the waiting row to do. A walk-in admitted out of
+	# that row arrives here still SITTING, so without this they spent the rest of
+	# their stay dropped half a metre clear of the chair, awake through every
+	# night shift at full attention, and shovable by anybody who walked into them.
 	body.state = PatientNPC.State.IN_BED
 	p.room = ward_key
 

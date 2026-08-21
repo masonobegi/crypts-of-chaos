@@ -92,8 +92,17 @@ func daily_check() -> void:
 	# It scales the whole roll rather than adding to it, because scrutiny is not
 	# a separate accusation — it is how thoroughly the existing ones get looked
 	# at. A doctor with nothing on file is not investigated by a busy ward.
+	# RELATIVE TO A DAY SHIFT, deliberately. The raw numbers are 1.15 / 0.7 /
+	# 0.35, and using them directly would make the day shift — the one most
+	# players work most of the time, and the default — 15% more dangerous than
+	# it has ever been, which is a silent nerf to everybody rather than a choice
+	# anybody makes. The thing being modelled is that NIGHT is where nobody is
+	# reading anything, so night is where the discount belongs: day stays
+	# exactly as it was, evening is a little quieter, and a night shift draws
+	# institutional attention at about a third the rate.
+	var day_norm: float = float(DB.shift("day").get("scrutiny", 1.0))
 	var watched: float = float(DB.shift(GameState.shift_kind).get("scrutiny", 1.0))
-	chance *= watched
+	chance *= (watched / day_norm) if day_norm > 0.0 else 1.0
 	# Insurers audit money, not morals: rich patients staying long is the signal.
 	var insurer_sus: float = suspicion.suspicion_of("insurer") if suspicion else 0.0
 	chance += insurer_sus * 0.3

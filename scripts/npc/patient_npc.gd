@@ -72,7 +72,16 @@ func _hold_bed_pose(_delta: float) -> void:
 		return
 	# SITTING is the waiting-room pose; IN_BED is now the same pose in the
 	# chair in their own room. Both want the same thing from the rig.
-	var in_chair := state == State.IN_BED and bed != null and is_instance_valid(bed)
+	# TALKING KEEPS THE CHAIR. It did not, and it had to not: _animate returned
+	# before the head-look pass for anybody seated, so a patient in a chair could
+	# not turn their head towards you at all, and the only way to make somebody
+	# face you was to take them out of the seat entirely. So pressing E on a
+	# patient stood them up — in a game whose wards are chairs, and whose note
+	# was "I want them sitting in a chair". The head-look runs in every branch
+	# now, so they stay put and turn to look at you, which is what a person in a
+	# chair does when a doctor walks in.
+	var in_chair := (state == State.IN_BED or state == State.TALKING) \
+		and bed != null and is_instance_valid(bed)
 	var wants_seat := state == State.SITTING or in_chair
 	if wants_seat != is_seated():
 		set_seated(wants_seat)
@@ -118,7 +127,7 @@ func _on_shift_started(_day: int) -> void:
 	# with their eyes shut, and unwakeable, on day nine. Cleared BEFORE the state
 	# gate below, because a fight is started from the patient card and therefore
 	# leaves them in State.TALKING, which the gate would have turned away.
-	if out_cold and GameState.day > int(data.get_meta("out_cold_day", -1)):
+	if out_cold and GameState.day > int(data.out_cold_day):
 		_come_round()
 	if state != State.IN_BED:
 		return
@@ -198,6 +207,11 @@ var out_cold := false
 
 func knock_out() -> void:
 	out_cold = true
+	# Not merely not-looking: not hearing either. set_asleep() leaves hearing
+	# open on purpose, because a bang is what ends sleep — but nothing ends
+	# this, so an unconscious patient was still filing what they heard.
+	if perception != null:
+		perception.unrousable = true
 	stand_down()
 	pinned = true
 	stop_moving()
@@ -208,8 +222,17 @@ func knock_out() -> void:
 	# nothing, a stride in front of an empty chair, visible from the doorway for
 	# the rest of their admission. Only for somebody who has a chair to be in:
 	# a patient fought in the corridor stays where they fell.
+	#
+	# ...and the state to ask about is `_pre_talk`, NOT `state`. Every fight in
+	# the game is started from the patient card, and opening that card runs
+	# _turn_to_talk(), which sets `state = State.TALKING` and stashes what they
+	# were actually doing. So `state` is TALKING at knock-out time, always, and
+	# a test against WANDERING/LEAVING was one that could never fail — meaning a
+	# patient decked in the middle of a corridor was teleported across the ward
+	# into their chair, which is the precise opposite of what this guard says.
+	var doing: State = _pre_talk if state == State.TALKING else state
 	if bed != null and is_instance_valid(bed) \
-			and state != State.WANDERING and state != State.LEAVING:
+			and doing != State.WANDERING and doing != State.LEAVING:
 		global_position = bed.mount_point()
 		rotation.y = bed.rotation.y
 	set_seated(true)
@@ -219,7 +242,7 @@ func knock_out() -> void:
 	if data != null:
 		# They also lose the thread of the day. Whatever they were about to
 		# complain about is gone with the rest of it.
-		data.set_meta("out_cold_day", GameState.day)
+		data.out_cold_day = GameState.day
 
 ## The way back out of out_cold, and the only one — wake_up() deliberately
 ## refuses to do it, because a tray on the floor does not bring somebody round.
@@ -232,6 +255,8 @@ func knock_out() -> void:
 ## that are not sure whether this body was ever knocked out can just call it.
 func _come_round() -> void:
 	out_cold = false
+	if perception != null:
+		perception.unrousable = false
 	pinned = false
 	set_slumped(false)
 	set_seated(false)
@@ -351,10 +376,11 @@ func _tick_state(_delta: float) -> void:
 			# to sleep again. Since talking to patients IS the loop, the whole
 			# ward was standing up and mute by the middle of day one.
 			#
-			# The state only exists so that look_toward() survives, and the chair
-			# pose does not fight it. A few seconds of facing you is all that
-			# needs; the fight owns the body separately and must be allowed to
-			# finish before the chair claims it back.
+			# The state exists so that look_toward() survives and so the barks
+			# and the wander stop while somebody is talking to them. A few
+			# seconds of facing you is all it needs; the fight owns the body
+			# separately and must be allowed to finish before the chair claims
+			# it back.
 			if _timer <= 0.0 and not is_fighting():
 				state = _pre_talk if _pre_talk != State.TALKING else State.IN_BED
 				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
@@ -611,13 +637,29 @@ func _treatment_for_item(held) -> String:
 	# realigns wrist opinions). Prefer whichever is actually indicated for this
 	# patient — otherwise picking up a wrench would silently perform the wrong
 	# procedure depending on dictionary order.
+	#
+	# And when NOTHING it does is indicated, do the least harmful of them —
+	# never "whichever DB.TREATMENTS happens to list first". That was the rule
+	# until three treatments were repointed onto the duster, the compress and
+	# the blanket to get them off machines that no longer exist. Those three
+	# were declared earlier in the table than the comfort treatments that had
+	# owned the same tools, so the fallback silently flipped: putting a blanket
+	# over the wrong patient stopped being `weighted_blanket` (wrong: +0.03, a
+	# blanket) and became `dread_extraction` (wrong: -0.10, plus a 45% roll for
+	# a complication), and the toast said "Ambient Dread Extraction". Nobody
+	# edited a single number to cause that; two entries moved.
+	#
+	# A blanket used on somebody who does not need one is still a blanket.
 	var fallback := ""
+	var kindest := -INF
 	for tid in DB.TREATMENTS:
 		if String(DB.TREATMENTS[tid].get("tool", "")) != item_id:
 			continue
 		if DB.is_correct_treatment(data.condition_id, String(tid)):
 			return String(tid)
-		if fallback == "":
+		var harm: float = float(DB.TREATMENTS[tid].get("wrong", 0.0))
+		if harm > kindest:
+			kindest = harm
 			fallback = String(tid)
 	return fallback
 
@@ -627,11 +669,12 @@ func _treatment_for_item(held) -> String:
 ## deliberately does not pause the world, so this ticks while you read it.
 const TALK_SECONDS := 6.0
 
-## Face whoever is talking to them, and let go of the chair pose while they do.
+## Face whoever is talking to them, without getting out of the chair to do it.
 ##
-## The state exists only so that look_toward() survives: _hold_bed_pose rewrites
-## rotation.y to the chair's yaw every frame for anybody IN_BED, so without a
-## state that opts out of the pin, a patient cannot turn their head to you at all.
+## _hold_bed_pose rewrites rotation.y to the chair's yaw every frame, so the
+## turn is entirely in the neck — which is a clamped 66 degrees, and is why a
+## patient you address from behind their chair looks over their shoulder at you
+## rather than spinning to face you.
 ##
 ## Guarded on `discharged`, because somebody on their way out of the building is
 ## in State.LEAVING and that state is the one that frees them — dropping them

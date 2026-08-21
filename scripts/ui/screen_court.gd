@@ -33,6 +33,32 @@ func _build() -> void:
 		"hearing": _build_hearing()
 		_: _build_verdict()
 
+## Closing a screen in the middle of the chain has to hand the day on.
+##
+## ShiftSystem.after_statement() drives the whole of the evening — letter, then
+## street, then morning — and every other screen in it calls back when it is
+## done with. This one called plain close(), which frees the node and nothing
+## else: the player was left standing in a stopped ward in POST_SHIFT with no
+## interaction anywhere that could advance the day, and the only route on was
+## Escape into the statement and "Go home", which re-opened the same letter.
+## Worse, next_day() is the sole caller of LegalSystem.expire_overdue(), so a
+## day that could not roll over while a claim was pending made the default
+## judgment this very screen promises literally unreachable.
+func _continue() -> void:
+	close()
+	var ss = shift_system()
+	if ss != null:
+		ss.call_deferred("after_statement")
+
+## Deferring has to be RECORDED, or after_statement() hands back the same letter
+## and the button reads as broken. Deferred for today only: it is on the mat
+## again tomorrow, a day closer to going against you by default.
+func _drawer() -> void:
+	var ss = shift_system()
+	if ss != null and ss.has_method("drawer_claim"):
+		ss.drawer_claim(String(_claim.get("id", "")))
+	_continue()
+
 # ------------------------------------------------------------------ the letter
 func _build_letter() -> void:
 	var v := shell(820, 720, "A letter before action",
@@ -91,12 +117,12 @@ func _build_letter() -> void:
 		"Ignore it and it goes against you in default in %d days, for the whole amount."
 			% LegalSystem.ANSWER_WINDOW, 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_CENTER, true))
-	v.add_child(UIKit.button("Put it in the drawer", close))
+	v.add_child(UIKit.button("Put it in the drawer", _drawer))
 
 func _settle() -> void:
 	var lg = legal()
 	if lg == null:
-		close()
+		_continue()
 		return
 	if GameState.personal_money + GameState.hospital_money < LegalSystem.settlement(_claim):
 		EventBus.toast.emit("There is not that much money in the building.", "bad")
@@ -215,7 +241,7 @@ func _say(key: String) -> void:
 func _finish_hearing() -> void:
 	var lg = legal()
 	if lg == null:
-		close()
+		_continue()
 		return
 	_outcome = lg.verdict(_claim, _lawyer, LegalSystem.hearing_score(_scores))
 	AudioMgr.play("ding" if bool(_outcome.get("won", false)) else "suspicion", -6.0)
@@ -257,4 +283,4 @@ func _build_verdict() -> void:
 	box.add_child(bv)
 	v.add_child(box)
 	v.add_child(UIKit.spacer(8))
-	v.add_child(UIKit.button("That's that", close))
+	v.add_child(UIKit.button("That's that", _continue))

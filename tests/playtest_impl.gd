@@ -86,7 +86,14 @@ func _play(name: String, play: Callable, answer: Callable, day := 1) -> Dictiona
 		if CHOSEN.has(k):
 			decisions += 1
 	var row := {
-		"name": name, "cash": int(res["cash"]), "short": bool(res["short"]),
+		# WHAT THE DAY MADE, NOT WHAT IS LEFT IN YOUR POCKET. `res["cash"]` is
+		# `in_hand - handed_over`, and Vinnie takes everything up to what he is
+		# owed — so against a $15,500 debt it is exactly 0 on every night of
+		# every career except the last one. The frontier section below sorted 31
+		# strategies by it and had been printing a column of zeroes in rank
+		# order since the debt rework: the one check that asks "does more money
+		# cost more exposure" was comparing a constant to itself.
+		"name": name, "cash": int(res["earned"]), "short": bool(res["short"]),
 		"findings": findings.size(), "sev": _sev(findings),
 		"verdict": String(out["verdict"]), "beds": beds,
 		"indefensible": int(out["indefensible"]), "solo": int(out["solo"]),
@@ -265,27 +272,66 @@ func run() -> void:
 			int(s[3]) if s.size() > 3 else 1))
 
 	print("\n%-42s %6s %5s %5s %5s %5s %5s %-18s %s"
-		% ["run","cash","owed","nights","held","fab","find","verdict","beds"])
+		% ["run","made","owed","nights","held","fab","find","verdict","beds"])
 	for r in runs:
 		print("%-42s %6d %5d %5d %5d %5d %5d %-18s %s" % [r["name"], r["cash"],
 			r["owed"], r["nights"], r["held_n"], r["fabrications"],
 			r["findings"], r["verdict"], r["beds"]])
 
 	var passed := _criteria(runs)
+	passed = _frontier(runs) and passed
 
-	# The risk/reward frontier: more money must cost more exposure.
-	print("\n=== is there a real frontier? (cash against unresolved severity) ===")
+	print("")
+	if passed:
+		print("PLAYTEST PASSED — all seven criteria met")
+	else:
+		print("PLAYTEST FAILED — a success criterion regressed")
+	failed = not passed
+
+## 7. THE FRONTIER — does the money actually cost anything?
+##
+## This printed a ranked list and asserted nothing for four iterations, which is
+## how it survived being pointed at `res["cash"]`: a field that Vinnie drives to
+## exactly 0 on every night but the last. Thirty-one strategies were ranked by a
+## constant, in ties, and the section still looked like it was working because a
+## sorted column of zeroes is a sorted column.
+##
+## So it checks the two things that make the printout worth printing. The spread
+## has to be real — if the metric ever flatlines again, that is the failure, and
+## it is caught here rather than by somebody noticing the column looks odd. And
+## the best day available has to be a day that got queried: the moment the
+## biggest number in the table is also signed off, honesty strictly dominates
+## and the entire risk side of the game is decorative.
+func _frontier(runs: Array) -> bool:
+	print("\n=== 7 FRONTIER — is more money worth more exposure? ===")
 	var sorted_runs := runs.duplicate()
 	sorted_runs.sort_custom(func(a, b): return int(a["cash"]) < int(b["cash"]))
 	for r in sorted_runs:
 		print("  %6d   %-18s %s" % [r["cash"], r["verdict"], r["name"]])
 
-	print("")
-	if passed:
-		print("PLAYTEST PASSED — all six criteria met")
-	else:
-		print("PLAYTEST FAILED — a success criterion regressed")
-	failed = not passed
+	var top: int = int(sorted_runs[sorted_runs.size() - 1]["cash"])
+	var bottom: int = int(sorted_runs[0]["cash"])
+	var live: bool = top > bottom
+	print("  spread %d..%d %s" % [bottom, top,
+		"" if live else "<- THE METRIC IS FLAT. Nothing here is being measured."])
+
+	var best_clean := -1
+	var best_any := -1
+	var best_any_verdict := ""
+	for r in runs:
+		var c := int(r["cash"])
+		if c > best_any:
+			best_any = c
+			best_any_verdict = String(r["verdict"])
+		if String(r["verdict"]) == ReviewSystem.OUTCOME_CLEAR:
+			best_clean = maxi(best_clean, c)
+	var costly: bool = best_any > best_clean
+	print("  best signed-off day %d, best day of all %d (%s)"
+		% [best_clean, best_any, best_any_verdict])
+	var ok: bool = live and costly
+	print("7 FRONTIER        the biggest day is not a clean one   %s"
+		% ("PASS" if ok else "FAIL"))
+	return ok
 
 ## Returns false if any criterion failed, so the harness can exit non-zero and
 ## a regression in the design shows up in run_tests.sh rather than in a report

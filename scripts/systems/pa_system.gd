@@ -44,9 +44,16 @@ const HEAT_LINES := [
 	"Would the duty physician contact Administration. At their convenience. Today.",
 ]
 
-const PRESS_LINES := [
-	"All staff: there is press in the lobby. Smile with your whole face.",
-	"Please direct all media enquiries to Administration, and then walk away.",
+## THE INSTITUTION MUTTERING ABOUT ITS OWN NUMBERS. The press lines this
+## replaces were weighted at zero — there is no press in this game and there has
+## not been since the redesign. Readmissions there are, and a hospital that has
+## just had one back within the day says exactly this sort of thing about it.
+const READMIT_LINES := [
+	"A reminder that thirty-day readmissions are reported at directorate level.",
+	"Coding would like a word with whoever discharged bed four. At their convenience.",
+	"Would the duty physician review yesterday's discharge summaries. All of them.",
+	"Administration notes that the ward's readmission figure is now above trajectory.",
+	"Bed management asks that beds be emptied thoughtfully rather than quickly.",
 ]
 
 var _next_at := 0
@@ -85,12 +92,13 @@ func _pick() -> String:
 		"idle": 3.0,
 		"heat": 4.0 if watched else 0.0,
 		"inspection": 3.0 if GameState.flag("auditor_present", false) else 0.0,
-		"press": 0.0,
+		"readmit": 3.5 if not PackedStringArray(
+			GameState.flag(Cases.READMIT_FLAG, [])).is_empty() else 0.0,
 	}
 	match String(RNG.pick_weighted("pa_kind", weights)):
 		"heat": return String(RNG.pick("pa_heat", HEAT_LINES))
 		"inspection": return String(RNG.pick("pa_insp", INSPECTION_LINES))
-		"press": return String(RNG.pick("pa_press", PRESS_LINES))
+		"readmit": return String(RNG.pick("pa_readmit", READMIT_LINES))
 	return String(RNG.pick("pa_idle", IDLE_LINES))
 
 func announce(text: String) -> void:

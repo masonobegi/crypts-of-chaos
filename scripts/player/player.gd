@@ -48,8 +48,6 @@ func _ready() -> void:
 	# The two moments where the institution moves against you. A letter opening
 	# an investigation and a sanction landing are the biggest things that can
 	# happen in a career and both of them used to be a line of text.
-	EventBus.investigation_opened.connect(func(_inv): shake(0.55))
-	EventBus.sanction_applied.connect(func(_lvl, _why): shake(0.95))
 	EventBus.item_broke.connect(_on_item_broke)
 	add_to_group("player")
 	collision_layer = 2      # player

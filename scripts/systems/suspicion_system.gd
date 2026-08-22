@@ -374,7 +374,6 @@ func file_complaint(from_id: String, severity: float) -> void:
 	EventBus.complaint_filed.emit("player", from_id, severity)
 	if press:
 		GameState.adjust_rep("gov_scrutiny", severity * 0.10)
-		GameState.set_flag("press_story", true)
 		EventBus.toast.emit(
 			"%s complained. The reporter in the lobby wrote it all down." % who, "bad")
 	else:

@@ -33,7 +33,6 @@ func _ready() -> void:
 	marker.name = "ObjectiveMarker"
 	add_child(marker)
 	_register_saves()
-	EventBus.game_over.connect(_on_game_over)
 	_start()
 
 # ------------------------------------------------------------------ world
@@ -135,7 +134,6 @@ func _build_environment() -> void:
 	add_child(fill)
 	_sun = sun
 	_fill = fill
-	EventBus.shift_started.connect(func(_d): apply_shift_look())
 	# The LIGHT follows the shift. The music does not, and there is deliberately
 	# no shift_started hook for it: there is one score, it starts on the title
 	# screen, and it plays through the briefing, the shift and the evening
@@ -281,6 +279,7 @@ func _seed_social_graph() -> void:
 func _spawn_staff() -> void:
 	_spawn_nurse("rule_follower", 0)
 	_spawn_auditor()
+	_spawn_vinnie()
 	_seed_social_graph()
 
 ## AND THE PROMISE THE GAME MAKES AND DID NOT KEEP.
@@ -297,6 +296,30 @@ func _spawn_staff() -> void:
 ## place in the building where you can write something nobody saw you write —
 ## is not private any more. That is the whole of the mechanic, and it is exactly
 ## what the screen already promised.
+## AND VINNIE, IF HE DID NOT GET WHAT HE WANTED.
+##
+## "He says he will call in — it is on his way" is printed at the end of any
+## short night, and for four iterations nothing happened. `vinnie_visits` was
+## written in three places and read in none. A man nobody on the ward can
+## account for, standing in the corridor all day, is the plainest possible
+## version of what that sentence means — and the witness system already knows
+## what to do with somebody in the building.
+func _spawn_vinnie() -> void:
+	if not GameState.flag("vinnie_visits", false):
+		return
+	var v := NurseNPC.new()
+	v.npc_id = "vinnie"
+	v.archetype = "observant"
+	v.display = "a man in the corridor"
+	v.set_colours(_random_skin(), Color(0.16, 0.15, 0.17), Color(0.12, 0.10, 0.09))
+	v.patrol_rooms = ["corridor"]
+	v.home_room = "corridor"
+	add_child(v)
+	v.global_position = hospital.point_in("corridor", "vinnie_spawn")
+	suspicion.register(DB.make_mind(v.npc_id, v.display, "institution", "observant"), v)
+	EventBus.toast.emit(
+		"There is a man in the corridor. Adeyemi has asked twice who he is.", "bad")
+
 func _spawn_auditor() -> void:
 	if not GameState.flag("auditor_present", false):
 		return

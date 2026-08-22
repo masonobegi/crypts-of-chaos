@@ -25,7 +25,6 @@ var _reclined := false
 var _pre_talk: State = State.IN_BED
 
 func _ready() -> void:
-	EventBus.shift_started.connect(_on_shift_started)
 	role = "patient"
 	outfit = Color(0.72, 0.78, 0.82)     # gown
 	super._ready()

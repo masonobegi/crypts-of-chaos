@@ -54,7 +54,6 @@ var _next_at := 0
 func _ready() -> void:
 	add_to_group("pa_system")
 	GameState.minute_passed.connect(_on_tick)
-	EventBus.shift_started.connect(func(_d): _schedule(8))
 
 func _schedule(gap := 0) -> void:
 	if gap <= 0:

@@ -121,12 +121,11 @@ func _carry(verdict: String, short: bool) -> void:
 	GameState.set_flag("vinnie_visits", short)
 	# The beds she could not corroborate, by name. They open tomorrow with a
 	# note on the file, which is the only reason "noted" costs anything.
-	# The per-bed carry is gone: the wards alternate, so a note on a patient's
-	# file was a note on somebody who would not be on the ward again before it
-	# was overwritten. What carries is the doctor's record, and `WardDay` writes
-	# that at the handover rather than here.
-	GameState.set_flag("remembered_beds", PackedStringArray())
-	GameState.set_flag("carried_debt", absi(ward().cash) if short and ward() else 0)
+	# The per-bed carry and the nightly shortfall are both gone — the wards
+	# alternate, so a note on a patient's file was a note on somebody who would
+	# not be back before it was overwritten; and a short night now compounds the
+	# total rather than inflating tomorrow. What carries is the doctor's record,
+	# which `ReviewSystem.commit` writes at the handover.
 	GameState.day += 1
 	var w = ward()
 	if w != null:

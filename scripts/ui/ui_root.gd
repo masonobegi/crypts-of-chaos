@@ -25,7 +25,6 @@ func _ready() -> void:
 	hud.name = "HUD"
 	add_child(hud)
 	EventBus.request_ui.connect(open)
-	EventBus.close_ui.connect(func(_id): close())
 
 ## The screen a phase could not be left without used to be put back here when
 ## Escape dismissed it. There are no phases left to strand: the day runs on one

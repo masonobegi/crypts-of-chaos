@@ -717,6 +717,12 @@ func test_a_colleague_backs_you_or_buries_you() -> void:
 			peer_sev = f.severity
 	bad.queue_free()
 
+	# BACK TO WARD ONE, which is where Hal Brennan is. Without this the ward was
+	# still the second one, `set_disposition("brennan", ...)` errored on a
+	# patient who is not in any bed, the function aborted — and because the
+	# assertions above it had already run, the runner counted the test as a
+	# pass and the comparison below never happened at all.
+	GameState.day = 1
 	var nurse := _day()                    ## ward one: Adeyemi's plan for Hal
 	nurse.advance_to(15 * 60)
 	nurse.write_entry("brennan", ChartEntry.Claim.UNWELL, "Wound warm.", 14 * 60 + 55)

@@ -186,8 +186,18 @@ func _stage_ui(which: String, w) -> void:
 				{"verdict": ReviewSystem.OUTCOME_ESCALATED})
 		"review":
 			# Back to the first ward: this stage names its patients, and the
-			# ward_two stage before it left the day on the second one.
+			# ward_two stage before it left the day on the second one. Staged
+			# with a fortnight behind it, because the escalation — her opening
+			# line, the running tally, how near the edge you are — is the half
+			# of this screen a first-night shot cannot show.
 			GameState.day = 1
+			DoctorRecord.wipe()
+			var had := DoctorRecord.load_from_state()
+			had.record_night([_mk("uncorroborated_stay")], ReviewSystem.OUTCOME_QUESTIONS)
+			had.record_night([_mk("uncorroborated_stay"), _mk("backdated")],
+				ReviewSystem.OUTCOME_FLAGGED)
+			had.record_night([_mk("uncorroborated_stay")], ReviewSystem.OUTCOME_CLEAR)
+			had.record_night([_mk("backdated")], ReviewSystem.OUTCOME_FLAGGED)
 			if w != null:
 				w.start()
 				var ps3 = tree.get_first_node_in_group("patient_system")

@@ -388,3 +388,33 @@ func _rest_home(w: WardDay) -> void:
 	for c in Cases.ROSTER:
 		if String(w.state[String(c["id"])]["disposition"]) == "":
 			w.set_disposition(String(c["id"]), "discharge")
+
+## THERE IS ONE CLOCK. Every verb costs ward minutes; if those minutes are spent
+## on WardDay.minute alone, the chart and the corner of the screen disagree and
+## drift further apart the more the player does.
+func test_the_ward_and_the_world_keep_the_same_time() -> void:
+	var w := _day()
+	GameState.minute_of_day = 8 * 60
+	w.read_chart("oduya")
+	t.eq(GameState.minute_of_day, w.minute,
+		"reading a chart moves the world's clock, not just the ward's")
+	w.write_entry("oduya", ChartEntry.Claim.ADMIN, "Seen.", w.minute)
+	t.eq(GameState.minute_of_day, w.minute,
+		"and so does writing in it")
+	w.queue_free()
+
+## end_day() advances the ward to handover, which comes straight back through
+## minute_passed and calls end_day() again. Before the guard was moved, the debt
+## came off the takings twice and whichever call lost the race handed its caller
+## an empty dictionary.
+func test_the_day_only_ends_once() -> void:
+	var w := _day()
+	w.set_disposition("marchetti", "hold")
+	_rest_home(w)
+	var first := w.end_day()
+	var after := w.cash
+	var second := w.end_day()
+	t.eq(w.cash, after, "ending the day twice does not pay Vinnie twice")
+	t.ok(second.has("earned"), "and the second caller gets the same answer, not an empty one")
+	t.eq(int(second["cash"]), int(first["cash"]), "which is the same answer")
+	w.queue_free()

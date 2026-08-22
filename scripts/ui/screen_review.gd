@@ -27,10 +27,40 @@ func _build() -> void:
 		return
 
 	var f = _rv.current()
-	v.add_child(UIKit.label("She turns a page.", 12, UIKit.INK_DIM))
+	# WHOSE FOLDER SHE HAS OPEN. Without the name, every question in the room
+	# was about an unnamed patient and an unnamed line, and the most important
+	# screen in the game read as an abstraction — the player could answer five
+	# questions without once knowing which bed was being discussed.
+	var who := String(Cases.by_id(f.patient_id).get("name", ""))
+	v.add_child(UIKit.label("She turns to %s's folder."
+		% (who if who != "" else "the ward's notes"), 12, UIKit.INK_DIM))
 	v.add_child(UIKit.label("\"%s\"" % f.question, 18, UIKit.INK,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.label("— looking at %s" % f.axis, 12, UIKit.INK_DIM))
+
+	# AND THE LINES SHE IS ACTUALLY HOLDING, exactly as they read on the chart.
+	# The player is being asked to defend specific writing; they should be able
+	# to see the writing. This is also the only way the review teaches — you
+	# learn what a reviewer notices by being shown the two lines side by side.
+	var cited := UIKit.vbox(3)
+	var shown := 0
+	for eid in f.entries:
+		var e = w.records.by_id(String(eid))
+		if e == null:
+			continue
+		shown += 1
+		var slip := UIKit.panel(UIKit.NOTE, 3)
+		var sv := UIKit.vbox(0)
+		sv.add_child(UIKit.label(e.as_line(), 14, UIKit.INK,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		sv.add_child(UIKit.label(e.metadata_line(), 11,
+			UIKit.BAD if e.is_backdated() else UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		slip.add_child(sv)
+		cited.add_child(slip)
+	if shown > 0:
+		v.add_child(UIKit.spacer(2))
+		v.add_child(cited)
 	if _last != "":
 		v.add_child(UIKit.rule())
 		v.add_child(UIKit.label(_last, 14, UIKit.ACCENT, HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -73,7 +103,7 @@ func _closing(v: VBoxContainer, w) -> void:
 	var short: bool = w.cash < 0
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD if short else UIKit.MONEY)
 	var mv := UIKit.vbox(2)
-	mv.add_child(UIKit.row("Owed", UIKit.money_str(Cases.DEBT_DUE), UIKit.INK_DIM))
+	mv.add_child(UIKit.row("Owed", UIKit.money_str(w.debt_tonight), UIKit.INK_DIM))
 	mv.add_child(UIKit.row("Left over" if not short else "Still owed",
 		UIKit.money_str(absi(w.cash)), UIKit.MONEY if not short else UIKit.BAD, 17))
 	if short:

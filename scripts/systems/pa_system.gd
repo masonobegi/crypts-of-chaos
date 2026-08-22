@@ -75,13 +75,18 @@ func _on_tick(_minute: int) -> void:
 ## Weighted so the tannoy reflects what is actually going on: it is the
 ## institution talking, and the institution has moods.
 func _pick() -> String:
-	var inv = get_tree().get_first_node_in_group("investigation_system")
-	var inspection_visible: bool = inv != null and not inv.active_titles().is_empty()
+	# What the institution is in the mood to say. The weights used to read
+	# GameState.heat, an investigation system and a press flag, none of which
+	# survived the redesign — and because nothing had emitted a tick since, the
+	# tannoy had never once run the line that would have crashed on it. What
+	# there is now is last night's verdict, which is exactly the right thing
+	# for a building to be muttering about.
+	var watched: bool = GameState.flag("watched", false)
 	var weights := {
 		"idle": 3.0,
-		"heat": GameState.heat * 4.0,
-		"inspection": 3.0 if inspection_visible else 0.0,
-		"press": 2.5 if GameState.flag("press_present", false) else 0.0,
+		"heat": 4.0 if watched else 0.0,
+		"inspection": 3.0 if GameState.flag("auditor_present", false) else 0.0,
+		"press": 0.0,
 	}
 	match String(RNG.pick_weighted("pa_kind", weights)):
 		"heat": return String(RNG.pick("pa_heat", HEAT_LINES))

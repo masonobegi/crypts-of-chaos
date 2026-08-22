@@ -85,6 +85,7 @@ func start() -> void:
 	cash = Cases.STARTING_CASH
 	minute = 8 * 60
 	ended = false
+	_result = {}
 	records = Records.new()
 	state.clear()
 	_read.clear()
@@ -321,6 +322,10 @@ func projected() -> Dictionary:
 func advance_to(m: int) -> void:
 	var from := minute
 	minute = maxi(minute, m)
+	# One clock. GameState re-enters here through `minute_passed`, which is
+	# harmless: by then `minute` is already the destination and `skip_to` is a
+	# no-op for a time it has already reached.
+	GameState.skip_to(minute)
 	for r in rounds_today():
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
@@ -374,9 +379,14 @@ func _routine_round(at: int) -> void:
 	_log("round", {"at": at})
 
 # ------------------------------------------------------------ close of play
+## Cached, because more than one thing legitimately asks how the day went — the
+## office desk that ended it, the review screen, the harnesses — and handing the
+## second caller an empty dictionary made the answer depend on call order.
+var _result: Dictionary = {}
+
 func end_day() -> Dictionary:
 	if ended:
-		return {}
+		return _result
 	# GOING HOME EARLY DOES NOT STOP THE EVENING HAPPENING.
 	#
 	# The office desk ended the day at whatever minute you walked into it, which
@@ -386,8 +396,13 @@ func end_day() -> Dictionary:
 	# whether you are on the ward or not, and she writes it up. What leaving
 	# early actually buys you is not being there when she does — every round
 	# between now and handover lands on the chart with you unable to answer it.
-	advance_to(Cases.DEBT_DUE_MINUTE)
+	# ENDED FIRST, THEN THE EVENING. `advance_to` moves the shared clock, which
+	# comes straight back through `_on_minute` and, past eight, calls end_day()
+	# again — so the debt was taken off the takings twice and whichever call
+	# lost the race handed its caller an empty dictionary. `_on_minute` returns
+	# early once this is set, which makes the re-entry a no-op.
 	ended = true
+	advance_to(Cases.DEBT_DUE_MINUTE)
 	var p := projected()
 	cash = int(p["total"]) - debt_tonight
 	var short: bool = int(p["total"]) < debt_tonight
@@ -404,6 +419,7 @@ func end_day() -> Dictionary:
 	if short:
 		GameState.set_flag("vinnie_visits", true)
 		GameState.set_flag("carried_debt", debt_tonight - int(p["total"]))
+	_result = res
 	money_changed.emit(cash)
 	day_ended.emit(res)
 	return res

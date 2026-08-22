@@ -90,12 +90,18 @@ func _stage_ui(which: String, w) -> void:
 			EventBus.request_ui.emit("patient", {"patient_id": "oduya"})
 		"chart":
 			if w != null:
-				w.advance_to(21 * 60)
+				# A note written on top of the seven o'clock round, backdated by
+				# half an hour: the photograph has to show a chart with
+				# something WRONG in it, or it is a photograph of an empty form.
+				w.advance_to(19 * 60 + 5)
 				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
-					"Reports transient dizziness on standing.", 19 * 60 + 30)
+					"Reports transient dizziness on standing.", 18 * 60 + 35)
 			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
 		"review":
 			if w != null:
+				# The chart stage already left a contradiction in Sam Oduya's
+				# notes; hold him and the reviewer has something to ask about,
+				# which is the only version of this screen worth looking at.
 				w.set_disposition("oduya", "hold")
 				for id in ["marchetti", "kerrigan", "brennan", "blake"]:
 					w.set_disposition(id, "discharge")

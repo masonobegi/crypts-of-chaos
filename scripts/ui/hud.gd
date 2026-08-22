@@ -14,6 +14,7 @@ extends Control
 var _clock: Label
 var _day: Label
 var _cash: Label
+var _owed: Label
 var _tl_bg: PanelContainer
 var _objective: Label
 var _prompt: Label
@@ -49,16 +50,23 @@ func _ready() -> void:
 	# no longer exists — a HUD listening to a signal nobody sends is a clock that
 	# never moves.
 	GameState.minute_passed.connect(_on_clock)
+	# The ward pays out at eight; without this the number never changed on the
+	# one occasion in the day that it does.
+	var wd = get_tree().get_first_node_in_group("ward_day")
+	if wd != null:
+		wd.money_changed.connect(func(_c): _refresh_money())
 	GameState.day_started.connect(func(_d): _refresh_static())
 	_refresh_static()
 	_refresh_money()
 
 func _build() -> void:
 	# HUD text sits over everything from a white ceiling to a dark corridor, so
-	# each block gets a soft dark backing rather than relying on the world
-	# behind it happening to have contrast.
+	# each block gets a dark backing rather than relying on the world behind it
+	# happening to have contrast. Three-quarters opaque rather than a little
+	# under half: at 0.42 a strip lighting fitting behind the money read
+	# straight through it and the second line became guesswork.
 	# ---- top left: when you are
-	_tl_bg = UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
+	_tl_bg = UIKit.panel(Color(0.06, 0.08, 0.10, 0.74), 8)
 	UIKit.place(_tl_bg, Control.PRESET_TOP_LEFT, 12, 10, 210, 92)
 	add_child(_tl_bg)
 	var tl := UIKit.vbox(2)
@@ -70,17 +78,26 @@ func _build() -> void:
 	add_child(tl)
 
 	# ---- top right: money
-	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.42), 8)
-	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -256, 10, 244, 60)
-	add_child(tr_bg)
-	var tr := UIKit.vbox(2)
-	UIKit.place(tr, Control.PRESET_TOP_RIGHT, -252, 18, 232, 54)
-	# One number, because there is one now. The hospital's balance, the running
-	# take and the bed census went with the economy that produced them.
+	# THE LABELS GO INSIDE THE PANEL, not on top of a separately positioned one.
+	# Two absolutely-placed siblings drawn in whichever order they were added is
+	# how the second line ended up behind its own backing plate, half legible.
+	# A PanelContainer sizes itself to its child, so the plate is always exactly
+	# as big as what is written on it.
+	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.74), 8)
+	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -320, 10, 308, 80)
+	var tr := UIKit.vbox(0)
+	tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# What you have, and what tonight looks like from here. The second line is
+	# the only reason the first one is interesting: `cash` does not move until
+	# eight o'clock, so on its own it is a number that sits still all day.
 	_cash = UIKit.label("$0", 26, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_cash.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr.add_child(_cash)
-	add_child(tr)
+	_owed = UIKit.label("", 15, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	_owed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tr.add_child(_owed)
+	tr_bg.add_child(tr)
+	add_child(tr_bg)
 
 	# ---- top centre: objective
 	var tc := UIKit.vbox(6)
@@ -245,6 +262,20 @@ func _refresh_money() -> void:
 	_cash.text = UIKit.money_str(cash)
 	_cash.add_theme_color_override("font_color",
 		UIKit.HUD_MONEY if cash >= 0 else UIKit.HUD_BAD)
+	# WHAT TONIGHT LOOKS LIKE FROM HERE. `cash` does not move until eight
+	# o'clock, so the money readout sat at nine hundred all day and told the
+	# player nothing while they made the only decisions that change it. The
+	# second line is the whole tension of the day in six words.
+	if w == null or w.ended:
+		_owed.visible = false
+		return
+	var p: Dictionary = w.projected()
+	var total: int = int(p["total"])
+	_owed.visible = true
+	_owed.text = "%s against %s owed" % [
+		UIKit.money_str(total), UIKit.money_str(w.debt_tonight)]
+	_owed.add_theme_color_override("font_color",
+		UIKit.HUD_MONEY if total >= w.debt_tonight else UIKit.HUD_BAD)
 
 func _on_objective(text: String) -> void:
 	_objective.text = text

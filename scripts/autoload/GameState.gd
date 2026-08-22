@@ -46,6 +46,24 @@ func _advance_minute() -> void:
 	minute_of_day += 1
 	minute_passed.emit(minute_of_day)
 
+## Jump the clock forward because something took time.
+##
+## THERE MUST ONLY BE ONE CLOCK. Every verb on the ward costs minutes, and those
+## minutes were being spent on `WardDay.minute` while the HUD, the day's end and
+## everything driven by `minute_passed` went on counting real seconds — so the
+## chart said half past seven while the corner of the screen said five past
+## eleven, and the two drifted further apart the more the player did.
+##
+## Emits once for the destination rather than once per minute skipped: the
+## consumers all take an absolute time, and a hundred emissions to cross an
+## hour is a hundred chances to do something a hundred times.
+func skip_to(m: int) -> void:
+	if m <= minute_of_day:
+		return
+	minute_of_day = m
+	_accum = 0.0
+	minute_passed.emit(minute_of_day)
+
 ## Minutes since the career began. `Evidence` decays against this, so it has to
 ## keep counting across days even though the slice is only one.
 var career_minutes: int:

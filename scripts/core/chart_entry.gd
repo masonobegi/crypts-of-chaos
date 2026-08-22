@@ -18,6 +18,12 @@ enum Author {
 	NURSE,     ## independently authored — the strongest kind, and not yours to write
 	PATIENT,   ## "patient reports…". Only as good as the patient's memory of saying it
 	MACHINE,   ## a result. True whatever anybody wanted it to be
+	## A NAMED PEER. The strongest corroboration in the game and the only one
+	## that is a professional OPINION rather than an observation or a number —
+	## which is exactly why disagreeing with it afterwards is so expensive. A
+	## nurse writes what she found; a registrar writes what he thinks, and what
+	## he thinks is arrived at by reading everything already on the chart.
+	DOCTOR,
 }
 
 ## What the entry is claiming, in a form other entries can be compared against.
@@ -106,6 +112,7 @@ func author_label() -> String:
 		Author.NURSE: return author_id
 		Author.PATIENT: return "patient-reported"
 		Author.MACHINE: return "result"
+		Author.DOCTOR: return author_id
 	return "?"
 
 ## How the line reads on a chart, which is how the player and the reviewer both

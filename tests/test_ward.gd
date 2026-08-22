@@ -27,7 +27,7 @@ func _kinds(f: Array) -> Array:
 ## day stops being a decision and becomes a right answer.
 func test_the_money_creates_the_decision() -> void:
 	var w := _day()
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		w.set_disposition(String(c["id"]), "discharge")
 	var lazy: int = int(w.projected()["total"])
 	t.lt(float(lazy), float(Cases.DEBT_DUE),
@@ -49,7 +49,7 @@ func test_the_money_creates_the_decision() -> void:
 
 	# Greed has to be punished by arithmetic before anybody reads a chart.
 	var w3 := _day()
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		w3.set_disposition(String(c["id"]), "hold")
 	var greedy: int = int(w3.projected()["total"])
 	w3.queue_free()
@@ -385,7 +385,7 @@ func test_going_home_early_does_not_stop_the_evening() -> void:
 	early.queue_free()
 
 func _rest_home(w: WardDay) -> void:
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		if String(w.state[String(c["id"])]["disposition"]) == "":
 			w.set_disposition(String(c["id"]), "discharge")
 
@@ -510,3 +510,183 @@ func test_one_ward_lands_where_you_put_it() -> void:
 	t.eq(w.minute, 11 * 60, "eleven o'clock is eleven o'clock")
 	t.eq(GameState.minute_of_day, 11 * 60, "on both clocks")
 	w.queue_free()
+
+# ------------------------------------------------------- the second ward
+func _day_two() -> WardDay:
+	GameState.day = 2
+	var w := WardDay.new()
+	t.root.add_child(w)
+	w.start()
+	return w
+
+## Two authored wards, and the second is a different shape rather than the first
+## one renamed. The property that makes it a second DAY and not a second SKIN:
+## on ward one the honest hold is also the one that pays, and on ward two it is
+## the one you cannot find by reading.
+func test_the_second_ward_is_a_different_problem() -> void:
+	var ids := []
+	for c in Cases.roster(1):
+		ids.append(String(c["id"]))
+	var ids2 := []
+	for c in Cases.roster(2):
+		ids2.append(String(c["id"]))
+	t.eq(ids.size(), 5, "the first ward has five beds")
+	t.eq(ids2.size(), 5, "and so does the second")
+	for id in ids2:
+		t.ok(not ids.has(id), "%s is not on the first ward" % id)
+	t.ok(Cases.roster(3) == Cases.roster(1), "day three comes round to the first ward again")
+
+	# The money. Honesty must clear the debt on BOTH wards or the second one is
+	# a difficulty spike rather than a different problem.
+	var w := _day_two()
+	w.set_disposition("bux", "hold")
+	w.set_disposition("lomax", "hold")
+	_rest_home(w)
+	var honest: int = int(w.projected()["total"])
+	t.gt(float(honest), float(Cases.DEBT_DUE),
+		"holding the two who are genuinely unwell still pays the debt (%d)" % honest)
+	t.lt(float(honest - Cases.DEBT_DUE), 400.0, "...and only just, as on the first ward")
+	w.queue_free()
+
+	# ...but mercy on its own no longer does, which is the escalation.
+	var m := _day_two()
+	m.set_disposition("bux", "hold")
+	_rest_home(m)
+	t.lt(float(int(m.projected()["total"])), float(Cases.DEBT_DUE),
+		"keeping only the woman who is unwell and state-funded does NOT pay it")
+	m.queue_free()
+	GameState.day = 1
+
+## THE REASON THE EXAMINATION EXISTS. Peter Lomax's chart says settled, every
+## number on it has been coming down all week, and he is not fit to go. There
+## has to be a patient the record cannot tell you about, or looking at people
+## is decoration.
+func test_there_is_a_man_the_chart_cannot_tell_you_about() -> void:
+	var w := _day_two()
+	var says_well := true
+	for e in w.records.for_patient("lomax"):
+		if e.supports_stay():
+			says_well = false
+	t.ok(says_well, "nothing written about Peter Lomax says he should stay")
+	t.ok(not bool(Cases.by_id("lomax").get("truly_well", true)),
+		"...and he is the one patient on the ward who genuinely should")
+	var found: String = w.examine("lomax")
+	t.ok(found.length() > 20, "going to look at him tells you so")
+	t.ok(w.has_examined("lomax"), "and the ward remembers that you went")
+	w.queue_free()
+	GameState.day = 1
+
+## A discharge is a decision and it is audited like one. Before this the
+## reviewer only ever asked about beds you KEPT, so the fastest route to a clean
+## handover was to empty the ward — the one thing a doctor must not do.
+func test_sending_somebody_home_is_audited_too() -> void:
+	var w := _day_two()
+	w.examine("lomax")                     ## you looked, and you know
+	w.set_disposition("lomax", "discharge")
+	w.set_disposition("bux", "hold")
+	_rest_home(w)
+	var kinds := _kinds(w.review_findings())
+	t.ok(kinds.has("sent_home_unwell"),
+		"sending home a man you examined and found unwell is a finding")
+	var beds := Contradictions.audit_beds(w.records.entries, w.review_truth(),
+		w.review_findings())
+	var emptied := 0
+	for b in beds:
+		if not b.billed:
+			emptied += 1
+			t.ok(b.indefensible(), "and the bed you emptied is indefensible")
+	t.eq(emptied, 1, "exactly one emptied bed is audited — the one you got wrong")
+	w.queue_free()
+	GameState.day = 1
+
+## ...and it is NOT a finding when the world never told you otherwise.
+func test_a_clean_discharge_is_not_a_finding() -> void:
+	var w := _day_two()
+	w.set_disposition("bux", "hold")
+	w.set_disposition("lomax", "hold")
+	_rest_home(w)                          ## the three who are genuinely well
+	t.ok(not _kinds(w.review_findings()).has("sent_home_unwell"),
+		"sending home three people who are well is not a question")
+	w.queue_free()
+	GameState.day = 1
+
+## THE STRONGEST DEFENCE IN THE GAME, AND THE MOST DANGEROUS REQUEST.
+func test_a_colleague_backs_you_or_buries_you() -> void:
+	var good := _day_two()
+	good.advance_to(11 * 60 + 30)
+	good.ask_colleague("bux")              ## genuinely unwell — he agrees
+	good.set_disposition("bux", "hold")
+	good.set_disposition("lomax", "hold")
+	_rest_home(good)
+	var beds := Contradictions.audit_beds(good.records.entries, good.review_truth(),
+		good.review_findings())
+	var backed := false
+	for b in beds:
+		if b.patient_id == "bux":
+			backed = b.state == Contradictions.Defence.BACKED
+	t.ok(backed, "a peer's opinion makes a bed something nobody can take apart")
+	good.queue_free()
+
+	# The same request about somebody who is well produces a PLAN, and reversing
+	# a named doctor's plan is worse than reversing a nurse's observation.
+	var bad := _day_two()
+	bad.advance_to(11 * 60 + 30)
+	var e := bad.ask_colleague("achebe_fry")
+	t.ok(e != null and e.claim == ChartEntry.Claim.FIT_FOR_DISCHARGE,
+		"about somebody who is well he writes a discharge plan, not an observation")
+	bad.advance_to(12 * 60 + 30)
+	bad.write_entry("achebe_fry", ChartEntry.Claim.UNWELL, "Unsettled.", 12 * 60 + 25)
+	bad.set_disposition("achebe_fry", "hold")
+	var peer_sev := 0.0
+	for f in bad.review_findings():
+		if f.kind == "reversed_a_colleague":
+			peer_sev = f.severity
+	bad.queue_free()
+
+	var nurse := _day()                    ## ward one: Adeyemi's plan for Hal
+	nurse.advance_to(15 * 60)
+	nurse.write_entry("brennan", ChartEntry.Claim.UNWELL, "Wound warm.", 14 * 60 + 55)
+	nurse.set_disposition("brennan", "hold")
+	var nurse_sev := 0.0
+	for f in nurse.review_findings():
+		if f.kind == "reversed_a_colleague":
+			nurse_sev = f.severity
+	nurse.queue_free()
+	t.gt(peer_sev, nurse_sev,
+		"overturning an opinion you asked a doctor for costs more than overturning a nurse's plan (%.2f vs %.2f)"
+			% [peer_sev, nurse_sev])
+	GameState.day = 1
+
+## She has a shift at four and she has asked three times.
+func test_a_bed_with_a_clock_on_it() -> void:
+	var w := _day_two()
+	w.advance_to(17 * 60)
+	t.eq(String(w.state["ferreira"]["disposition"]), "discharge",
+		"a patient you never got to signs herself out")
+	t.ok(bool(w.state["ferreira"]["self_discharged"]), "and the ward knows she did it herself")
+	var last := ""
+	for e in w.records.for_patient("ferreira"):
+		last = e.text
+	t.ok(last.contains("Self-discharged"), "and leaves a note you did not write")
+	w.queue_free()
+
+	# ...and getting to her in time is what stops it.
+	var quick := _day_two()
+	quick.set_disposition("ferreira", "discharge")
+	quick.advance_to(17 * 60)
+	t.ok(not bool(quick.state["ferreira"].get("self_discharged", false)),
+		"deciding before four o'clock means she leaves as your decision, not hers")
+	quick.queue_free()
+	GameState.day = 1
+
+## Forty-one years on Ward F. Winifred Blake's trap was on her file; this one
+## reads the file herself.
+func test_the_patient_who_reads_her_own_notes() -> void:
+	var w := _day_two()
+	w.advance_to(17 * 60 + 30)
+	w.write_entry("voss", ChartEntry.Claim.UNWELL, "Unsettled this evening.", 17 * 60 + 25)
+	w.set_disposition("voss", "hold")
+	t.ok(_kinds(w.review_findings()).has("reads_own_chart"),
+		"writing a symptom into the notes of somebody who reads them is a finding")
+	w.queue_free()
+	GameState.day = 1

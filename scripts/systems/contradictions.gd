@@ -74,7 +74,12 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 			out.append_array(_uncorroborated_stay(pid, list, t))
 		out.append_array(_reversed_a_colleague(pid, list))
 		out.append_array(_written_in_front_of_them(pid, list, t))
+		out.append_array(_reads_own_chart(pid, list, t))
 		out.append_array(_addendum_cascade(pid, list))
+
+	# The other half of the ledger. Everything above asks whether a bed you
+	# BILLED was defensible; this asks whether a bed you emptied was.
+	out.append_array(_sent_home_unwell(by_patient, truth))
 
 	out.append_array(pattern_findings(entries, truth))
 	# A file already marked for review is read by somebody whose eyes are open.
@@ -87,6 +92,77 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 	_compound(out)
 	out.sort_custom(func(a, b): return a.severity > b.severity)
 	return out
+
+## YOU SENT SOMEBODY HOME WHO WAS NOT WELL.
+##
+## THE HOLE THIS CLOSES: for three iterations the reviewer only ever asked about
+## beds you KEPT. Every finding in this file was a question about billing, so the
+## game punished greed and was completely indifferent to haste — and the fastest
+## way to a clean review was to empty the ward, which is the one thing a doctor
+## must not do. A day is a set of decisions about people, and half of those
+## decisions were unexamined.
+##
+## Three ways she can know, in ascending order of how badly it reads:
+##
+##   1. The chart says so. Somebody wrote UNWELL and nobody wrote anything
+##      after it, and you sent them home regardless.
+##   2. A colleague said so. You asked for an opinion, got "not safe to go
+##      today", and went ahead — which is worse than never asking.
+##   3. You examined them. You were at the bedside, you found it, and nobody
+##      needs a document to establish that you knew.
+static func _sent_home_unwell(by_patient: Dictionary, truth: Dictionary) -> Array:
+	var out: Array = []
+	for pid in by_patient:
+		var t: Dictionary = truth.get(pid, {})
+		if bool(t.get("held", false)) or not t.get("discharged", false):
+			continue
+		if bool(t.get("well", true)):
+			continue          ## they were fine. Sending them home was correct.
+		var list: Array = by_patient[pid]
+		# The last word on the chart about whether they could go.
+		var last_stay = null
+		var last_go = null
+		for e in list:
+			if e.supports_stay():
+				last_stay = e
+			elif e.supports_discharge():
+				last_go = e
+		var examined: bool = bool(t.get("examined", false))
+		var peer = null
+		for e in list:
+			if e.author == ChartEntry.Author.DOCTOR and e.supports_stay():
+				peer = e
+		var documented: bool = last_stay != null and (
+			last_go == null or last_stay.stated_minute > last_go.stated_minute)
+		if not documented and not examined and peer == null:
+			continue          ## nothing in the world said otherwise. Bad luck.
+		var f := Finding.new()
+		f.kind = "sent_home_unwell"
+		f.patient_id = pid
+		f.axis = "the bed you emptied"
+		if peer != null:
+			f.entries = PackedStringArray([peer.id])
+			f.severity = 0.85
+			f.question = ("You asked %s to review %s. He said not today. "
+				+ "They went home at teatime.") % [peer.author_id, _who(t)]
+			f.because = "You obtained an opinion that they were not fit to go, and discharged them anyway."
+		elif examined:
+			f.entries = PackedStringArray([last_stay.id]) if last_stay != null \
+				else PackedStringArray()
+			f.severity = 0.72
+			f.question = "You examined %s yourself. Then you sent them home. Talk me through it." % _who(t)
+			f.because = "You were at the bedside, you found what was there, and you discharged them."
+		else:
+			f.entries = PackedStringArray([last_stay.id])
+			f.severity = 0.58
+			f.question = ("The last thing anybody wrote about %s is %s. "
+				+ "Nothing after it. And they went home.") % [_who(t), _short(last_stay)]
+			f.because = "The final entry on the chart said they were unwell, and nobody wrote anything else."
+		out.append(f)
+	return out
+
+static func _who(t: Dictionary) -> String:
+	return String(t.get("name", "them"))
 
 ## Two entries about the same half hour that argue opposite ways.
 static func _conflicting_observations(pid: String, list: Array) -> Array:
@@ -272,20 +348,66 @@ static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
 	for e in list:
 		if e.supports_stay() and e.stated_minute <= 19 * 60:
 			reason_before_seven = true
+	# WHOSE FAMILY. Written for Ruth Kerrigan and hardcoded to her, which was
+	# fine while she was the only relative in the game; the second ward has a
+	# solicitor reading her father's notes and the reviewer was calling her Mrs
+	# Kerrigan's daughter.
+	var who := String(t.get("family", "The family"))
+	var note := String(t.get("family_note", "They read every line."))
 	var f := Finding.new()
 	f.kind = "family_read_it"
 	f.patient_id = pid
 	f.axis = "what the family were told"
 	f.severity = 0.40 if reason_before_seven else 0.75
 	if reason_before_seven:
-		f.question = ("Mrs Kerrigan's daughter rang me. She'd read the notes and "
-			+ "wanted to know how long. Did you speak to her?")
-		f.because = "The daughter read the chart at visiting and followed it up."
+		f.question = ("%s rang me. They'd read the notes and wanted to know "
+			+ "how long. Did you speak to them?") % who
+		f.because = "%s read the chart and followed it up." % who
 	else:
-		f.question = ("Mrs Kerrigan's daughter read the notes at seven and there "
-			+ "was nothing in them about keeping her. She used to do my job.")
-		f.because = ("Ruth Kerrigan read the chart at visiting hours, before there "
-			+ "was any reason written in it, and she knows what she is reading.")
+		f.question = ("%s read the notes and there was nothing in them about "
+			+ "keeping him in. %s") % [who, note]
+		f.because = ("%s read the chart before there was any reason written in "
+			+ "it. %s") % [who, note]
+	out.append(f)
+	return out
+
+## SHE READS HER OWN NOTES.
+##
+## Winifred Blake's trap was a flag on a file, and the player finds it by opening
+## the record. Imelda Voss is the same trap turned inside out: there is nothing
+## on her file at all, and the danger is the woman in the bed, who spent
+## forty-one years reading exactly these documents and reads this one every
+## evening. She does not need a contradiction and she does not need the reviewer
+## to find one. She simply knows what was in her chart yesterday and what is in
+## it now.
+static func _reads_own_chart(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("reads_own_chart", false)):
+		return out
+	var yours = null
+	for e in list:
+		if e.author == ChartEntry.Author.YOU and e.supports_stay():
+			yours = e
+	if yours == null:
+		return out
+	var f := Finding.new()
+	f.kind = "reads_own_chart"
+	f.patient_id = pid
+	f.entries = PackedStringArray([yours.id])
+	f.axis = "what the patient read"
+	# Worse if she was in a position to watch you type it.
+	var watched: bool = not yours.seen_by.is_empty()
+	f.severity = 0.80 if watched else 0.66
+	if watched:
+		f.question = ("%s read what you wrote about her, in front of her, and "
+			+ "asked me what the indication was. She had the wording.") % _who(t)
+		f.because = ("She reads her own chart every evening, and you typed that "
+			+ "line standing where she could see the screen.")
+	else:
+		f.question = ("%s read her own notes last night. She wanted to know who "
+			+ "had observed %s, because nobody had been near her.") % [
+			_who(t), _short(yours)]
+		f.because = "She reads her own chart, and she remembers what was not in it yesterday."
 	out.append(f)
 	return out
 
@@ -582,11 +704,21 @@ static func _reversed_a_colleague(pid: String, list: Array) -> Array:
 			f.patient_id = pid
 			f.entries = PackedStringArray([plan.id, e.id])
 			f.axis = "who decided what"
-			f.severity = 0.55
-			f.question = ("%s had him down for home at %s. You've reversed that. "
-				+ "Did you speak to her?") % [
-				plan.author_id, ChartEntry._hhmm(plan.stated_minute)]
-			f.because = "%s's discharge plan was overturned in writing, by you, without her." % plan.author_id
+			# A REGISTRAR'S PLAN IS NOT A NURSE'S PLAN. Adeyemi wrote down what
+			# she found and what she expected to happen; Dr Costa was asked for
+			# an opinion, gave one, and put his name on it. Overturning the
+			# second one silently is the most expensive single act available,
+			# and it is only available to somebody who went and asked for it.
+			var peer: bool = plan.author == ChartEntry.Author.DOCTOR
+			f.severity = 0.78 if peer else 0.55
+			var them := "them" if peer else "her"
+			f.question = ("%s had %s down for home at %s. You've reversed that. "
+				+ "Did you speak to %s?") % [
+				plan.author_id, "him", ChartEntry._hhmm(plan.stated_minute), them]
+			f.because = "%s's discharge plan was overturned in writing, by you, without %s." % [
+				plan.author_id, them]
+			if peer:
+				f.because += " You asked for that opinion yourself."
 			out.append(f)
 	return out
 
@@ -660,18 +792,36 @@ class BedAudit extends RefCounted:
 	var state: Defence = Defence.NONE
 	var why := ""
 	var findings: Array = []
+	## True for a bed you KEPT and billed, false for one you emptied. The two
+	## are audited by opposite questions — "what was the reason" against "what
+	## did you have that said otherwise" — and the summary line the player reads
+	## has to be able to tell them apart.
+	var billed := true
 
 	func indefensible() -> bool:
 		return state == Defence.NONE or state == Defence.CONTRADICTED
 
-## One verdict per held bed. `findings` are the questions she has about it.
+## One verdict per DECIDED bed — kept or wrongly emptied. `findings` are the
+## questions she has about it.
 static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Array:
 	var out: Array = []
 	for pid in truth:
-		if not bool(truth[pid].get("held", false)):
+		# EVERY DECISION, NOT EVERY BILL. A bed you emptied when the world said
+		# otherwise is a decision she audits exactly as closely as a bed you
+		# kept — and until it was, the fastest route to a clean handover was to
+		# send the whole ward home, which is the single thing a doctor must not
+		# do. The bed still has to have been DECIDED: somebody who walked out
+		# on their own is not on your conscience.
+		var t: Dictionary = truth[pid]
+		var kept: bool = bool(t.get("held", false))
+		var emptied_wrongly: bool = bool(t.get("discharged", false)) \
+			and not bool(t.get("well", true)) \
+			and not bool(t.get("self_discharged", false))
+		if not kept and not emptied_wrongly:
 			continue
 		var a := BedAudit.new()
 		a.patient_id = pid
+		a.billed = kept
 		for f in findings:
 			if f.patient_id == pid:
 				a.findings.append(f)
@@ -686,7 +836,7 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 			match e.author:
 				ChartEntry.Author.YOU:
 					mine = true
-				ChartEntry.Author.NURSE, ChartEntry.Author.MACHINE:
+				ChartEntry.Author.NURSE, ChartEntry.Author.MACHINE, ChartEntry.Author.DOCTOR:
 					backed = true
 				ChartEntry.Author.PATIENT:
 					# Only if he would still say it in the morning. A symptom the
@@ -706,8 +856,25 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"social_hold_is_a_lie", "patient_no_recall",
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at", "reversed_a_colleague",
-					"written_in_front_of_them"]:
+					"written_in_front_of_them", "reads_own_chart"]:
 				contradicted = true
+
+		# A DISCHARGE IS AUDITED THE OTHER WAY UP. There is no "reason for the
+		# bed" to corroborate — the question is whether anything in the world
+		# said they should have stayed, and whether you can show you looked.
+		if not a.billed:
+			var caught := false
+			for f in a.findings:
+				if f.kind == "sent_home_unwell":
+					caught = true
+			if caught:
+				a.state = Defence.CONTRADICTED
+				a.why = "they were not fit to go and you had been told so"
+			else:
+				a.state = Defence.BACKED
+				a.why = "nothing on the record said they should have stayed"
+			out.append(a)
+			continue
 
 		if contradicted:
 			a.state = Defence.CONTRADICTED

@@ -18,7 +18,7 @@ func _ready() -> void:
 
 func populate() -> void:
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		var p := Patient.from_case(c)
 		p.archetype = _archetype_for(c)
 		p.mind = DB.make_mind(p.id, p.display_name, "patient", p.archetype)

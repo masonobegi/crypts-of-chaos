@@ -72,7 +72,7 @@ func _on_minute(now: int) -> void:
 	# at no cost, which is the pressure the design is built on simply absent.
 	if now >= Cases.DEBT_DUE_MINUTE:
 		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
-		for c in Cases.ROSTER:
+		for c in Cases.roster():
 			var pid := String(c["id"])
 			if String(state[pid]["disposition"]) == "":
 				set_disposition(pid, "discharge")
@@ -93,7 +93,7 @@ func start() -> void:
 	records = Records.new()
 	state.clear()
 	_read.clear()
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		state[String(c["id"])] = {
 			"id": String(c["id"]),
 			"disposition": "",        ## "", "hold", "discharge"
@@ -102,11 +102,13 @@ func start() -> void:
 			"recalls": [],            ## entry ids the patient would stand behind
 			"suggested": [],          ## ...and remembers you putting into their head
 			"nurse_checked": 0,
+			"examined": false,        ## you went and looked at them yourself
+			"colleague": 0,           ## times you asked Dr Costa
 			"tests": 0,
 			"discharged_at": -1,
 		}
 	ruth_has_been = false
-	for pe in Cases.PRIOR_ENTRIES:
+	for pe in Cases.prior_entries():
 		var e := ChartEntry.new()
 		e.patient_id = String(pe["patient"])
 		e.claim = ChartEntry.Claim[String(pe["claim"])]
@@ -139,6 +141,8 @@ const WRITE_COST := 8      ## typing it, at a terminal, properly
 const ASK_COST := 10       ## sitting down with somebody and leading them
 const NURSE_COST := 15     ## finding her, asking, waiting to be told
 const ORDER_COST := 5      ## a form
+const EXAMINE_COST := 15   ## curtains round, sleeves up, actually looking
+const COLLEAGUE_COST := 25 ## he covers two wards and you have to find him
 
 ## Charts read so far today, so re-checking something you already looked at is
 ## free. The cost is for LEARNING it, not for remembering it.
@@ -217,6 +221,110 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	entry_written.emit(e)
 	AudioMgr.play("mumble", -13.0)
 	advance_to(minute + ASK_COST)
+	return e
+
+## 5. GO AND LOOK AT THEM.
+##
+## THE ONLY VERB THAT TELLS YOU THE TRUTH, and the only one that cannot be
+## performed from a terminal. Everything else on this ward is a document: the
+## chart is what somebody wrote, the nurse is what somebody found and reported,
+## a test is a number about one thing. An examination is the patient, in front
+## of you, now — and Peter Lomax on the second ward exists entirely so that
+## there is a bed the chart cannot tell you about.
+##
+## IT WRITES NOTHING, deliberately. This is the verb that informs a decision
+## rather than justifying one, and keeping it off the record is what stops it
+## becoming a free corroborating note you can award yourself. What it leaves
+## behind is that you were there, which is why sending home somebody you
+## examined and found unwell is a much harder conversation in the morning.
+func examine(pid: String) -> String:
+	var st: Dictionary = state[pid]
+	# Looking again is free and tells you the same thing. THE COST IS FOR THE
+	# FIRST LOOK — a screen that redraws itself must be able to ask what you
+	# found without charging you another quarter of an hour for it, which is
+	# exactly what the card did on every rebuild until this guard existed.
+	if bool(st.get("examined", false)):
+		return examination_of(pid)
+	st["examined"] = true
+	_log("examine", {"pid": pid,
+		"found_unwell": not bool(Cases.by_id(pid).get("truly_well", true))})
+	AudioMgr.play("mumble_lo", -14.0)
+	advance_to(minute + EXAMINE_COST)
+	return examination_of(pid)
+
+## What you found, for anything that needs to say it again. No cost, no record.
+func examination_of(pid: String) -> String:
+	var c := Cases.by_id(pid)
+	if bool(c.get("truly_well", true)):
+		return String(c.get("exam_well",
+			"Nothing to find. They are as well as the chart says they are."))
+	return String(c.get("exam_unwell",
+		"They are not right, and it is not in the notes."))
+
+func has_examined(pid: String) -> bool:
+	return bool(state.get(pid, {}).get("examined", false))
+
+## 6. ASK A COLLEAGUE.
+##
+## THE STRONGEST CORROBORATION IN THE GAME AND THE MOST DANGEROUS REQUEST.
+##
+## A nurse looks at the patient. A registrar reads the CHART — all of it, every
+## line you have put on it today — and then looks at the patient, and then
+## writes down what he THINKS. If they genuinely need the bed he says so in his
+## own name, and that bed is defended by a peer: the only thing in the game
+## that makes a stay something nobody can take apart.
+##
+## And if they do not need it, he does not write "settled". He writes a PLAN.
+## Disagreeing with a nurse's observation is an argument about a fact.
+## Disagreeing with a named doctor's plan is an argument with a colleague, and
+## the reviewer has both documents in front of her in the morning.
+##
+## He covers two wards. He is here at two points in the day and unreachable
+## otherwise, which makes asking him something you schedule rather than a
+## button you press when it goes wrong.
+const COLLEAGUE := "Dr Costa"
+const COLLEAGUE_HOURS := [[11 * 60, 13 * 60], [15 * 60, 17 * 60]]
+
+static func colleague_available(at: int) -> bool:
+	for w in COLLEAGUE_HOURS:
+		if at >= int(w[0]) and at <= int(w[1]):
+			return true
+	return false
+
+## When he is next about — for a screen that has to say so rather than greying
+## a button out and leaving the player to guess.
+static func colleague_next(after: int) -> int:
+	for w in COLLEAGUE_HOURS:
+		if after < int(w[0]):
+			return int(w[0])
+	return -1
+
+func ask_colleague(pid: String) -> ChartEntry:
+	if not colleague_available(minute):
+		return null
+	var c := Cases.by_id(pid)
+	var st: Dictionary = state[pid]
+	st["colleague"] = int(st.get("colleague", 0)) + 1
+	var well: bool = bool(c.get("truly_well", true))
+	var e := ChartEntry.new()
+	e.patient_id = pid
+	e.author = ChartEntry.Author.DOCTOR
+	e.author_id = COLLEAGUE
+	e.stated_minute = minute
+	e.written_minute = minute + 6
+	e.terminal_id = TERMINAL_STATION
+	e.at_your_request = true
+	if well:
+		e.claim = ChartEntry.Claim.FIT_FOR_DISCHARGE
+		e.text = "Asked to review. Nothing here needing an inpatient bed. For discharge."
+	else:
+		e.claim = ChartEntry.Claim.UNWELL
+		e.text = "Asked to review. Agree, not safe to go today. Continue as inpatient."
+	records.add(e)
+	_log("ask_colleague", {"pid": pid, "backed": not well})
+	entry_written.emit(e)
+	AudioMgr.play("paper", -12.0, 0.9)
+	advance_to(minute + COLLEAGUE_COST)
 	return e
 
 ## 3. ASK A NURSE TO CHECK. Independently authored, which is the strongest kind
@@ -385,11 +493,52 @@ func _advance_locally(m: int) -> void:
 	for r in rounds_today():
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
+	_self_discharges(from)
 	if not ruth_has_been and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
 		ruth_has_been = true
 		EventBus.toast.emit(
 			"Ruth Kerrigan is here to see her mother. She has brought a flask.", "info")
 		_log("ruth_arrived", {})
+
+## A BED WITH A CLOCK ON IT.
+##
+## Tallulah Ferreira has a shift at four and has asked three times. If you have
+## not decided about her by then she decides for herself, and the ward does not
+## stop to ask you first. She is the only pressure in the game that runs the
+## other way from the debt: everything else rewards you for taking your time and
+## getting the timing right, and she punishes you for it.
+##
+## What she leaves behind is a note in her own hand, which is a document you did
+## not write and cannot control — and if you had already written that she was
+## unwell, it is a document that says otherwise.
+func _self_discharges(from: int) -> void:
+	for c in Cases.roster():
+		var at: int = int(c.get("self_discharges_at", 0))
+		if at <= 0 or at <= from or at > minute:
+			continue
+		var pid := String(c["id"])
+		var st: Dictionary = state[pid]
+		if String(st["disposition"]) != "":
+			continue          ## you got to her in time, either way
+		st["disposition"] = "discharge"
+		st["discharged_at"] = at
+		st["self_discharged"] = true
+		var e := ChartEntry.new()
+		e.patient_id = pid
+		e.claim = ChartEntry.Claim.MOBILISING
+		e.author = ChartEntry.Author.PATIENT
+		e.author_id = String(c.get("name", pid))
+		e.text = "Self-discharged against advice. Signed the form. Left at %s." \
+			% ChartEntry._hhmm(at)
+		e.stated_minute = at
+		e.written_minute = at
+		e.terminal_id = TERMINAL_STATION
+		records.add(e)
+		_log("self_discharge", {"pid": pid, "at": at})
+		EventBus.toast.emit("%s has signed herself out." % String(c.get("name", pid)), "bad")
+		AudioMgr.play("door", -10.0)
+		patient_changed.emit(pid)
+		_update_objective()
 
 ## A ward that is already being looked at is a ward with more writing in it.
 ## This is where last night's verdict stops being a paragraph: after a flag,
@@ -412,7 +561,7 @@ func rounds_today() -> Array:
 	return dense
 
 func _routine_round(at: int) -> void:
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		var pid := String(c["id"])
 		var st: Dictionary = state[pid]
 		# Somebody who has gone home is not on the round.
@@ -494,39 +643,45 @@ func is_flagged(pid: String) -> bool:
 		return true
 	return PackedStringArray(GameState.flag("remembered_beds", PackedStringArray())).has(pid)
 
+## ONE BUILDER, NOT TWO. `review_truth` and `review_findings` each assembled
+## their own copy of this dictionary and had already drifted apart by one key —
+## which meant the reviewer's questions and her bed-by-bed audit were reading
+## two different accounts of the same day.
 func review_truth() -> Dictionary:
 	var truth := {}
 	for pid in state:
+		var c := Cases.by_id(pid)
+		var st: Dictionary = state[pid]
+		var disp := String(st["disposition"])
 		truth[pid] = {
-			"well": bool(Cases.by_id(pid).get("truly_well", true)),
-			"name": String(Cases.by_id(pid).get("name", pid)),
-			"held": String(state[pid]["disposition"]) == "hold",
-			"patient_recalls": state[pid]["recalls"],
-			"patient_suggested": state[pid]["suggested"],
+			"well": bool(c.get("truly_well", true)) and not bool(st.get("deteriorated", false)),
+			"name": String(c.get("name", pid)),
+			"held": disp == "hold",
+			## Sent home — by you, or by walking out because you took too long.
+			"discharged": disp == "discharge",
+			"self_discharged": bool(st.get("self_discharged", false)),
+			## You were at the bedside and you know what you found.
+			"examined": bool(st.get("examined", false)),
+			"patient_recalls": st["recalls"],
+			"patient_suggested": st["suggested"],
 			"flagged": is_flagged(pid),
-			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
-			"was_asked": bool(state[pid]["asked_symptom"]),
-			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
-			"no_care_at_home": bool(Cases.by_id(pid).get("no_care_at_home", false)),
+			"tells_everyone": bool(c.get("tells_everyone", false)),
+			"was_asked": bool(st["asked_symptom"]),
+			## Somebody outside the hospital reads this chart. On the first ward
+			## that is Ruth Kerrigan, who arrives at seven; on the second it is
+			## Gordon's daughter, who asked for a copy before you got here.
+			"family_reads_charts": bool(c.get("family_reads_charts", false))
+				or (pid == "kerrigan" and ruth_has_been),
+			## ...and one patient reads it herself.
+			"reads_own_chart": bool(c.get("reads_own_chart", false)),
+			"family": String(c.get("family", "The family")),
+			"family_note": String(c.get("family_note", "They read every line.")),
+			"no_care_at_home": bool(c.get("no_care_at_home", false)),
 		}
 	return truth
 
 func review_findings() -> Array:
-	var truth := {}
-	for pid in state:
-		truth[pid] = {
-			"well": bool(Cases.by_id(pid).get("truly_well", true)),
-			"name": String(Cases.by_id(pid).get("name", pid)),
-			"held": String(state[pid]["disposition"]) == "hold",
-			"patient_recalls": state[pid]["recalls"],
-			"patient_suggested": state[pid]["suggested"],
-			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
-			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
-			"no_care_at_home": bool(Cases.by_id(pid).get("no_care_at_home", false)),
-			"was_asked": bool(state[pid]["asked_symptom"]),
-			"flagged": is_flagged(pid),
-		}
-	return Contradictions.find_all(records.entries, truth, records.placements)
+	return Contradictions.find_all(records.entries, review_truth(), records.placements)
 
 # ------------------------------------------------------- place and time
 ## WHERE YOU WERE, AND WHO COULD SEE YOU BEING THERE.

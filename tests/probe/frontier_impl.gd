@@ -16,8 +16,12 @@ const JUSTIFY := ["nothing", "gap_note", "round_note", "backdate", "lead",
 	"nurse", "test_late", "social"]
 
 func _day() -> WardDay:
+	# Including the debt. A search whose later rows owe more than its earlier
+	# ones is not searching one game, it is searching several.
 	GameState.set_flag("remembered_beds", PackedStringArray())
+	GameState.set_flag("carried_debt", 0)
 	GameState.set_flag("watched", false)
+	GameState.set_flag("auditor_present", false)
 	GameState.minute_of_day = 8 * 60
 	var w := WardDay.new(); tree.root.add_child(w); w.start(); return w
 
@@ -64,7 +68,7 @@ func _answer_policy(name: String) -> Callable:
 func run() -> void:
 	GameState.start_new_career(31337)
 	var ids: Array = []
-	for c in Cases.ROSTER: ids.append(String(c["id"]))
+	for c in Cases.roster(): ids.append(String(c["id"]))
 	var rows: Array = []
 	# Every non-empty subset of the five beds, up to four held (holding all
 	# five earns less than holding fewer — the admissions cover it).
@@ -121,7 +125,7 @@ func run() -> void:
 
 func _run(held: Array, how: String, pol: String) -> Dictionary:
 	var w := _day()
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		var pid := String(c["id"])
 		if held.has(pid):
 			# Ivo Marchetti is genuinely unwell and the night round already says

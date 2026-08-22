@@ -6,12 +6,33 @@ var C = ChartEntry.Claim
 var A = ReviewSystem.Answer
 var failed := false
 
-func _day() -> WardDay:
-	# Each strategy is DAY ONE. Without clearing the carry, run 5's uncorroborated
-	# bed lands on run 6's file and every later measurement is really measuring
-	# the runs above it in the list.
+## EVERY STRATEGY IS A CLEAN FIRST DAY.
+##
+## `remembered_beds` was being cleared and `carried_debt` was not, so the moment
+## one run came up short — run 04 empties the ward and is short by 550 — every
+## run after it owed Vinnie 3,750 instead of 3,200, and the number climbed again
+## each time somebody else fell behind. The frontier tables in three successive
+## audits were measured against a debt that depended on the order of the list.
+func _clean_slate() -> void:
 	GameState.set_flag("remembered_beds", PackedStringArray())
+	GameState.set_flag("carried_debt", 0)
+	GameState.set_flag("watched", false)
+	GameState.set_flag("auditor_present", false)
+	GameState.set_flag("vinnie_visits", false)
+
+## A ward built on top of whatever last night left behind. Only criterion 6
+## wants this; everything else wants a clean first day.
+func _carried_day() -> WardDay:
 	var w := WardDay.new(); tree.root.add_child(w); w.start(); return w
+
+func _day() -> WardDay:
+	_clean_slate()
+	var w := WardDay.new(); tree.root.add_child(w); w.start()
+	# Loud, because a silent version of this cost three audits.
+	if w.debt_tonight != Cases.DEBT_DUE:
+		push_error("playtest: a run started owing %d, not %d — the carry leaked"
+			% [w.debt_tonight, Cases.DEBT_DUE])
+	return w
 
 func _sev(f: Array) -> float:
 	var s := 0.0
@@ -19,21 +40,23 @@ func _sev(f: Array) -> float:
 	return s
 
 func _discharge_rest(w: WardDay, keep: Array) -> void:
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		var id := String(c["id"])
 		if not keep.has(id):
 			w.set_disposition(id, "discharge")
 
 ## A run: play the day, then hold the review, and report everything.
-func _play(name: String, play: Callable, answer: Callable) -> Dictionary:
+func _play(name: String, play: Callable, answer: Callable, day := 1) -> Dictionary:
+	GameState.day = day
 	var w := _day()
 	# EVERY strategy starts by reading the ward, because every strategy has to:
 	# the roster tells you nothing about who is actually unwell. This is the
 	# honest day's real content and it costs an hour of the shift.
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		w.read_chart(String(c["id"]))
 	play.call(w)
 	w.advance_to(Cases.DEBT_DUE_MINUTE)
+	var proj: Dictionary = w.projected()
 	var res := w.end_day()
 	var findings: Array = res["findings"]
 	var rv := ReviewSystem.new()
@@ -52,7 +75,7 @@ func _play(name: String, play: Callable, answer: Callable) -> Dictionary:
 	# leading questions, nurse checks, orders and dispositions are the day being
 	# played. Only the second kind counts towards decision density.
 	const CHOSEN := ["write", "ask_patient", "nurse_check", "order_test",
-		"test_result", "disposition", "read_chart"]
+		"test_result", "disposition", "read_chart", "examine", "ask_colleague"]
 	var decisions := 0
 	for e in w.telemetry:
 		var k := String(e.get("kind", ""))
@@ -68,9 +91,15 @@ func _play(name: String, play: Callable, answer: Callable) -> Dictionary:
 		"because": String(out["because"]), "questions": qs,
 		"fabrications": fabrications, "actions": w.telemetry.size(),
 		"decisions": decisions,
+		"owed": int(w.debt_tonight), "nights": int(proj["nights"]),
+		"held_n": Array(res["held"]).size(),
 		"entries": w.records.entries.size(),
 	}
 	w.queue_free()
+	# ...and only now. Resetting the day before the review meant `end_day` and
+	# the force-discharge loop read the FIRST ward's roster while the WardDay
+	# still held the second ward's patients.
+	GameState.day = 1
 	return row
 
 func run() -> void:
@@ -170,7 +199,7 @@ func run() -> void:
 			w.advance_to(17*60+30)
 			for id in ["kerrigan","brennan","oduya","blake"]:
 				w.write_entry(id,C.UNWELL,"Unsettled this evening.",17*60+25)
-			for c in Cases.ROSTER: w.set_disposition(String(c["id"]),"hold"), stand],
+			for c in Cases.roster(): w.set_disposition(String(c["id"]),"hold"), stand],
 		["18 backdating-heavy", func(w):
 			w.set_disposition("marchetti","hold"); w.advance_to(19*60+45)
 			w.write_entry("oduya",C.UNWELL,"Reports dizziness.",16*60)
@@ -190,17 +219,54 @@ func run() -> void:
 			w.write_entry("brennan",C.UNWELL,"Wound warm.",8*60+5)
 			for id in ["marchetti","oduya","brennan"]: w.set_disposition(id,"hold")
 			_discharge_rest(w,["marchetti","oduya","brennan"]), smart],
+		["23 ward two: honest, but only if you looked", func(w):
+			w.examine("lomax"); w.examine("bux")
+			w.set_disposition("bux","hold"); w.set_disposition("lomax","hold")
+			_discharge_rest(w,["bux","lomax"]), stand, 2],
+		["24 ward two: read the charts and believe them", func(w):
+			w.set_disposition("achebe_fry","hold"); w.set_disposition("voss","hold")
+			_discharge_rest(w,["achebe_fry","voss"]), stand, 2],
+		["25 ward two: get the registrar behind the honest bed", func(w):
+			w.advance_to(11*60+15); w.ask_colleague("lomax")
+			w.set_disposition("lomax","hold"); w.set_disposition("bux","hold")
+			_discharge_rest(w,["bux","lomax"]), smart, 2],
+		["26 ward two: ask the registrar about a well man", func(w):
+			w.advance_to(11*60+15); w.ask_colleague("achebe_fry")
+			w.advance_to(17*60)
+			w.write_entry("achebe_fry",C.UNWELL,"Unsettled this evening.",17*60-5)
+			w.set_disposition("achebe_fry","hold"); w.set_disposition("lomax","hold")
+			_discharge_rest(w,["achebe_fry","lomax"]), smart, 2],
+		["27 ward two: empty the ward and go home", func(w):
+			_discharge_rest(w,[]), stand, 2],
+		["28 ward two: lean on the woman who reads her own notes", func(w):
+			w.advance_to(17*60+20)
+			w.write_entry("voss",C.UNWELL,"Unsettled this evening.",17*60+18)
+			w.set_disposition("voss","hold"); w.set_disposition("lomax","hold")
+			_discharge_rest(w,["voss","lomax"]), stand, 2],
+		["29 ward two: the money-optimal three", func(w):
+			w.advance_to(17*60+20)
+			for id in ["ferreira","voss"]:
+				w.write_entry(id,C.UNWELL,"Unsettled this evening.",17*60+18)
+			for id in ["lomax","ferreira","voss"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["lomax","ferreira","voss"]), stand, 2],
+		["30 ward two: let her walk out", func(w):
+			w.set_disposition("lomax","hold"); w.set_disposition("voss","hold")
+			w.advance_to(17*60)
+			_discharge_rest(w,["lomax","voss"]), stand, 2],
 		["20 fold under questioning", func(w):
 			w.set_disposition("marchetti","hold"); w.advance_to(19*60+5)
 			w.write_entry("oduya",C.UNWELL,"Reports dizziness.",19*60)
 			w.set_disposition("oduya","hold"); _discharge_rest(w,["marchetti","oduya"]), fold],
 	]
 	for s in S:
-		runs.append(_play(String(s[0]), s[1], s[2]))
+		runs.append(_play(String(s[0]), s[1], s[2],
+			int(s[3]) if s.size() > 3 else 1))
 
-	print("\n%-42s %6s %5s %5s %-18s %s" % ["run","cash","fab","find","verdict","beds"])
+	print("\n%-42s %6s %5s %5s %5s %5s %5s %-18s %s"
+		% ["run","cash","owed","nights","held","fab","find","verdict","beds"])
 	for r in runs:
-		print("%-42s %6d %5d %5d %-18s %s" % [r["name"], r["cash"], r["fabrications"],
+		print("%-42s %6d %5d %5d %5d %5d %5d %-18s %s" % [r["name"], r["cash"],
+			r["owed"], r["nights"], r["held_n"], r["fabrications"],
 			r["findings"], r["verdict"], r["beds"]])
 
 	var passed := _criteria(runs)
@@ -349,7 +415,10 @@ func _second_day() -> bool:
 
 	GameState.set_flag("watched", true)
 	GameState.set_flag("carried_debt", 400)
-	var watched := _day(); play.call(watched)
+	# NOT `_day()`. That clears exactly the two flags this measurement exists to
+	# set — the fix for the leaking carry silently turned this criterion into a
+	# comparison of a quiet ward with itself.
+	var watched := _carried_day(); play.call(watched)
 	var watched_rounds: int = watched.rounds_today().size()
 	var watched_sev := _sev(watched.review_findings())
 	var owed: int = watched.debt_tonight

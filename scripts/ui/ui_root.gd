@@ -11,6 +11,7 @@ const SCREEN_SCRIPTS := {
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"review": "res://scripts/ui/screen_review.gd",
 	"day_over": "res://scripts/ui/screen_day_over.gd",
+	"board": "res://scripts/ui/screen_board.gd",
 }
 
 var hud: HUD

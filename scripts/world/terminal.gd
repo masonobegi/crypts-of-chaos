@@ -53,7 +53,7 @@ func interact(_player, _held) -> void:
 	if _is_the_office() and not w.ended:
 		# Anybody you never made a decision about goes home. Nursing is not
 		# going to keep a bed occupied because you did not get round to it.
-		for c in Cases.ROSTER:
+		for c in Cases.roster():
 			var pid := String(c["id"])
 			if String(w.state[pid]["disposition"]) == "":
 				w.set_disposition(pid, "discharge")

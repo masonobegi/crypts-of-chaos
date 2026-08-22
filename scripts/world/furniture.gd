@@ -465,6 +465,16 @@ static func _station(h: Hospital, r: Room) -> void:
 		_occupy(sx, corridor_z, 2.3, 0.9)
 	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 3.0, 1.55, corridor_z + 0.32), 0.0, 0.13)
 
+	# THE BOARD, on the back wall behind the worktop, facing into the room. You
+	# have to be standing IN the station to read it — which is the point: it is
+	# the one piece of information in the game that is somewhere rather than on
+	# a screen you can open from anywhere.
+	var board := HandoverBoard.new()
+	board.room_key = r.key
+	h.add_child(board)
+	board.build()
+	board.position = Vector3(c.x - 1.6, 1.55, r.rect.position.y + 0.14)
+
 	# The station terminal, on the counter with its screen turned into the room:
 	# to use it you stand behind the counter, two metres from a doorway that has
 	# no door on it, with whoever is on duty at your shoulder. Writing a note

@@ -53,6 +53,38 @@ func _build() -> void:
 			_said = String(c["opening"])
 			rebuild()))
 
+	# EXAMINE THEM. The only verb that tells you the truth, and the only one
+	# that cannot be done from a terminal — so it is gated on actually standing
+	# there. Peter Lomax on the second ward is the whole argument for it: every
+	# document about him says improving, and he is not.
+	if w.has_examined(_pid):
+		acts.add_child(_act("You have examined them",
+			String(w.examination_of(_pid)), func(): pass))
+	else:
+		acts.add_child(_act("Examine them",
+			"Fifteen minutes, curtains round. It goes in no notes — but you will know.",
+			func():
+				_said = w.examine(_pid)
+				rebuild()))
+
+	# ASK THE REGISTRAR. The strongest corroboration available and the most
+	# dangerous request in the game: he reads the whole chart before he writes.
+	if WardDay.colleague_available(w.minute):
+		acts.add_child(_act("Ask %s for a second opinion" % WardDay.COLLEAGUE,
+			"A peer, in his own name. He reads everything on the chart first.",
+			func():
+				var e = w.ask_colleague(_pid)
+				_said = ("\"Agreed. I wouldn't send him anywhere today.\""
+					if e != null and e.supports_stay()
+					else "\"There's nothing here. I'd have had him out this morning.\"")
+				rebuild()))
+	else:
+		var nxt: int = WardDay.colleague_next(w.minute)
+		acts.add_child(_act("%s is on the other ward" % WardDay.COLLEAGUE,
+			("Back at %s." % ChartEntry._hhmm(nxt)) if nxt > 0
+				else "Gone for the day. You are the doctor on this ward.",
+			func(): pass))
+
 	# The leading question. Phrased as a clinical enquiry, because that is what
 	# it looks like from the outside — and from the inside, on a good day.
 	acts.add_child(_act("Ask whether they have felt faint at all",

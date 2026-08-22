@@ -16,7 +16,7 @@ func _build() -> void:
 	v.add_child(UIKit.rule())
 
 	var box := UIKit.vbox(4)
-	for c in Cases.ROSTER:
+	for c in Cases.roster():
 		var row := UIKit.panel(UIKit.NOTE, 3)
 		var col := UIKit.vbox(1)
 		col.add_child(UIKit.row("%d.  %s" % [int(c["bed"]), String(c["name"])],

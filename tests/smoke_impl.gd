@@ -92,8 +92,8 @@ func _check_the_ward() -> void:
 	if ps == null:
 		_fail("no patient system")
 		return
-	_ok(ps.active().size() == Cases.ROSTER.size(),
-		"all %d patients are on the ward" % Cases.ROSTER.size())
+	_ok(ps.active().size() == Cases.roster().size(),
+		"all %d patients are on the ward" % Cases.roster().size())
 	var named := 0
 	var bodied := 0
 	for p in ps.active():
@@ -133,6 +133,10 @@ func _check_the_chart_works() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:
 		return
+	# THE MORNING FIRST. `advance_to` only goes forward, so everything that
+	# needs a particular hour has to happen before something walks the day past
+	# it — and the registrar keeps hours.
+	_check_the_new_verbs(w)
 	var before: int = w.records.for_patient("oduya").size()
 	w.advance_to(19 * 60 + 30)
 	var e = w.write_entry("oduya", ChartEntry.Claim.UNWELL,
@@ -159,6 +163,37 @@ func _check_the_verbs_work() -> void:
 	_ok(o.fulfilled_by == r.id, "and the order is answered by it")
 
 	_check_being_seen_somewhere_else(w)
+
+## THE TWO VERBS THAT ARE NOT DOCUMENTS. Both are new and both are the answer to
+## a specific hole: the examination is the only way to learn something the chart
+## does not contain, and the registrar is the only corroboration a bed can have
+## that nobody can take apart.
+func _check_the_new_verbs(w) -> void:
+	var before: int = w.minute
+	var found: String = w.examine("marchetti")
+	_ok(found.length() > 20, "you can go and look at somebody, and it tells you something")
+	_ok(w.minute > before, "and it costs a quarter of an hour of the shift")
+	_ok(w.records.for_patient("marchetti").size() == _entries_for(w, "marchetti"),
+		"and it writes nothing down, which is the point of it")
+	var again: int = w.minute
+	w.examine("marchetti")
+	_ok(w.minute == again, "looking twice is free — the cost is for learning, not remembering")
+
+	# The registrar keeps his own hours, so the harness has to be at one of them.
+	w.advance_to(11 * 60 + 30)
+	_ok(WardDay.colleague_available(w.minute), "%s is on the ward at half eleven" % WardDay.COLLEAGUE)
+	var peer = w.ask_colleague("marchetti")
+	_ok(peer != null and peer.author == ChartEntry.Author.DOCTOR,
+		"a colleague can be asked, and writes in his own name")
+	_ok(peer.supports_stay(),
+		"and about the man who is genuinely unwell, he backs you in writing")
+	w.advance_to(14 * 60)
+	_ok(not WardDay.colleague_available(w.minute),
+		"at two o'clock he is on the other ward and cannot be asked at all")
+	_ok(w.ask_colleague("oduya") == null, "and asking anyway does nothing")
+
+func _entries_for(w, pid: String) -> int:
+	return w.records.for_patient(pid).size()
 
 ## THE CLAIM THE FIRST PERSON EXISTS FOR, tested against the real scene.
 ##

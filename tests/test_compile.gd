@@ -26,6 +26,16 @@ func _walk(dir_path: String) -> Array[String]:
 	var n := d.get_next()
 	while n != "":
 		var full := dir_path.path_join(n)
+		# SCRATCH IS NOT THE PROJECT. `check.sh` writes `tests/_check.gd`, probes
+		# get thrown into `tests/tmpcheck/`, and anything else running in the
+		# repo drops its own working files — all of which this used to walk. The
+		# assertion count then moved between runs (271, 273, 275, 277, all
+		# green), which is a count nobody can read a regression out of. The set
+		# of scripts this test checks is now a naming rule rather than whatever
+		# happened to be on disk at the time.
+		if n.begins_with("_") or n.begins_with("tmp") or n.begins_with("scratch"):
+			n = d.get_next()
+			continue
 		if d.current_is_dir():
 			out.append_array(_walk(full))
 		elif n.ends_with(".gd"):

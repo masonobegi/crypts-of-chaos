@@ -257,6 +257,14 @@ func _refresh_static() -> void:
 
 func _on_clock(_m: int) -> void:
 	_clock.text = GameState.time_string()
+	# THE DAY COMES WITH THE CLOCK. `GameState.day` is a plain int, and the only
+	# thing that ever repainted this label was `start_day()` — so every path that
+	# sets the day directly left the corner of the screen a day behind. It has
+	# already happened once for real (the second ward opened saying Day 1) and
+	# again in the screenshot harness, where the review card said Day 1 under a
+	# HUD still reading Day 3. Repainting a two-character label on a signal that
+	# fires once a minute costs nothing and makes the whole class impossible.
+	_refresh_static()
 	_refresh_money()
 
 ## What you have. The ward day owns the figure while a day is being played; the

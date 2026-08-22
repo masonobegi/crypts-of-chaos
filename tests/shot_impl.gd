@@ -203,6 +203,7 @@ func _stage_ui(which: String, w) -> void:
 			# line, the running tally, how near the edge you are — is the half
 			# of this screen a first-night shot cannot show.
 			GameState.day = 1
+			GameState.start_day()
 			DoctorRecord.wipe()
 			var had := DoctorRecord.load_from_state()
 			had.record_night([_mk("uncorroborated_stay")], ReviewSystem.OUTCOME_QUESTIONS)

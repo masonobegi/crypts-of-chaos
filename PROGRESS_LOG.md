@@ -916,12 +916,41 @@ verdict, no money and no ending. And `backdated` was not in the contradicted
 list and clamped at 0.45, so the headline two-timestamp mechanic could not
 affect a verdict however far apart the two times were.
 
+### A third ward, where nobody is ill
+
+The first ward hides the honest hold in a diagnosis; the second in a body the
+chart cannot describe. The third hides it in a **life**. Nobody on it is
+medically unwell except a man who insists he is fine, and the two beds that
+cannot be emptied cannot be emptied for reasons no investigation will ever
+find — a boiler that went in November, and a nineteen-year-old psychiatry has
+been bleeped about twice with no reply. The only verb that reaches either of
+them is asking somebody how they have been and listening, which is the first
+time that verb has been load-bearing.
+
+And the best-paying bed on the ward is a woman who **asks you to keep her in**.
+Rosalind Fry is well, premium, wants it, and will agree to any symptom you put
+to her — and she remembers every word, and tells the ward sister in the morning
+that she asked. Consent is the one defence that is not a defence. Saying no to
+her costs nothing at all, which is what makes it a decision.
+
+### Where it stands
+
+```
+274 unit assertions · 68 smoke checks · 15 authored people · boot check
+six day-level criteria .................................. 6/6
+six career criteria ..................................... 6/6
+adversarial frontier, 3,300 strategies over three wards . monotone on all three,
+                                                          top figure unreachable
+                                                          while signed off
+```
+
 ### NEXT UP
 
-- A third ward. The shape to aim for: one where the honest hold is somebody's
-  social circumstances rather than their medicine.
-- The registrar is a verb and not yet a person: he has hours and an opinion,
-  but no memory of being asked three times about people who turned out fine.
+- A fourth ward would be the next content, and the shape not yet used is a
+  ward where the honest hold is somebody ELSE's mistake — a patient another
+  doctor should not have admitted, whom you cannot discharge without saying so.
+- The registrar has hours and an opinion but no memory of being asked three
+  times about people who turned out fine.
 - Nothing is randomised, deliberately. If run-to-run variation is ever wanted,
   the honest place for it is which five of a larger written cast are in the
   beds — never generated conditions.

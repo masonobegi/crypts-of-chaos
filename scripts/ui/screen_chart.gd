@@ -203,10 +203,18 @@ func _phrases(claim: int) -> Array:
 				"Wound warm to touch. Query early infection.",
 			]
 		ChartEntry.Claim.SOCIAL:
-			return [
-				"No care at home. Awaiting social work review.",
-				"Unsafe discharge. Nobody available to collect.",
-			]
+			# THEIR REASON, IF THEY HAVE ONE. The two generic lines are the only
+			# thing on offer to somebody with nowhere to go, and the specific
+			# truth — a boiler that went in November, a psychiatrist who has not
+			# been bleeped back — is what actually makes the note honest. It is
+			# also the only place the game rewards having listened to them.
+			var mine: Array = []
+			var reason := String(Cases.by_id(_pid).get("social_reason", ""))
+			if reason != "":
+				mine.append(reason)
+			mine.append("No care at home. Awaiting social work review.")
+			mine.append("Unsafe discharge. Nobody available to collect.")
+			return mine
 		ChartEntry.Claim.SETTLED:
 			return [
 				"Comfortable. No concerns.",

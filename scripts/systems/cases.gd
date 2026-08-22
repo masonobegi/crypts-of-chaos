@@ -415,9 +415,186 @@ const DAY_TWO := [
 	},
 ]
 
-## Which ward you walk onto. Two authored days, alternating — and the SECOND is
-## the harder one, so an even day is never a soft day.
-const DAYS := [DAY_ONE, DAY_TWO]
+
+## DAY THREE: NOBODY HERE IS ILL.
+##
+## The first ward hides the honest hold in a diagnosis; the second hides it in a
+## body the chart cannot describe. This one hides it in a LIFE. Not one person
+## on this ward is medically unwell except a man who insists he is fine, and the
+## two beds that genuinely cannot be emptied cannot be emptied for reasons no
+## investigation will ever find: a flat with no heating in February, and a
+## nineteen-year-old nobody has assessed yet. The only verb that reaches either
+## of them is asking somebody how they have been and listening to the answer.
+##
+## And the best-paying bed on the ward is a woman who asks you to keep her in.
+## She is well, she is premium, she wants it, she will agree to anything you
+## put to her — and she remembers every word, and she will tell the ward sister
+## that she asked. Consent is the one defence that is not a defence.
+const DAY_THREE := [
+	{
+		"id": "tsang", "name": "Errol Tsang", "age": 44, "bed": 1,
+		"condition": "Cellulitis, resolving",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 0.85,
+		"summary": "Redness settled inside the marked line. Oral switch yesterday.",
+		"opening": "Two days off a fortnight's work. That's what this is.",
+		"later": "Every time somebody walks past I think it's about me.",
+		"evening": "I've rung the site. They've put somebody else on it.",
+		"pressed": "Have I done something? You keep coming back to me.",
+		"on_your_note": "What's that you've put? Only I'd like to know what it says.",
+		"on_hold": "Right. Well, that's the week gone.",
+		"on_discharge": "Cheers. I'll get out of your way.",
+		"exam_well": "The line they drew is well outside the redness. There is nothing here.",
+		"note": "Nothing hidden. Somebody has to be ordinary.",
+		"readmit_summary": "Back at 01:30 with a spreading margin and a temperature.",
+		"readmit_opening": "It came up the leg overnight. I did what you said.",
+		"readmit_hold": "Aye. I'll not argue this time.",
+		"readmit_discharge": "...You're joking. You are actually joking.",
+		"readmit_exam": "Tracking above the knee now, and hot to the back of your hand.",
+	},
+	{
+		"id": "doust", "name": "Maryam Doust", "age": 58, "bed": 2,
+		"condition": "COPD exacerbation, back to baseline",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.2,
+		"recall": 0.9,
+		"summary": "Sats 94 on air. Walked the corridor twice. Chest clear.",
+		"opening": "I'm all right in here. It's warm in here.",
+		"later": "The boiler went in November. They keep saying somebody will come.",
+		"evening": "It's the getting into a cold bed. That's the bit.",
+		"pressed": "I'm not going to make a fuss. I know you've got people waiting.",
+		"on_your_note": "Have you put about the heating? Only that's the actual thing.",
+		"on_hold": "Thank you. I'll not be any trouble.",
+		"on_discharge": "That's all right. I'll put a coat on the bed.",
+		"exam_well": "Chest is clear and her sats are fine. There is nothing to find here.",
+		"note": "Medically ready. Her flat has had no heating since November.",
+		## TRUE, AND NOT MEDICAL. The only kind of hold this ward rewards, and
+		## the only way to find it is to ask her how she has been.
+		"no_care_at_home": true,
+		"social_reason": "No heating at home since November. Awaiting housing.",
+		"readmit_summary": "Ambulance at 04:00. Sats 84. The flat was six degrees.",
+		"readmit_opening": "I did put the coat on the bed. I did try.",
+		"readmit_hold": "Thank you. I'm sorry about all this.",
+		"readmit_discharge": "...All right. If that's what it says.",
+		"readmit_exam": "Working hard to breathe, and her hands are still cold to touch.",
+	},
+	{
+		"id": "aldridge", "name": "Kit Aldridge", "age": 19, "bed": 3,
+		"condition": "Overdose, medically cleared",
+		"tier": Tier.STATE,
+		"truly_well": true,
+		"suggestible": 0.45,
+		"recall": 0.7,
+		"summary": "Paracetamol levels below line. Bloods normal. Psychiatry not yet seen.",
+		"opening": "Nobody's been. They said someone would come and see me.",
+		"later": "Is it today, do you know? Only nobody will say.",
+		"evening": "They've gone home, haven't they. The ones who were coming.",
+		"pressed": "You keep asking how I am. Nobody's asked me anything else.",
+		"on_your_note": "Is that about me? What have you put down?",
+		"on_hold": "Okay. Yeah. Okay.",
+		"on_discharge": "Right. So nobody's coming, then.",
+		"exam_well": "Medically he is completely well, and nobody has been to see him.",
+		"note": "Cleared by the medics. Not seen by psychiatry. State funded.",
+		## THE OTHER TRUE NON-MEDICAL REASON, and it pays a hundred and eighty
+		## pounds. Kindness on this ward is even cheaper than it was on the first.
+		"no_care_at_home": true,
+		"social_reason": "Not yet assessed by psychiatry. Not for discharge.",
+		"readmit_summary": "Brought back by ambulance at 23:15. Second presentation in a day.",
+		"readmit_opening": "I said nobody came. You wrote that down and I still went home.",
+		"readmit_hold": "Okay.",
+		"readmit_discharge": "Yeah. All right. I know.",
+		"readmit_exam": "Awake, quiet, and he will not look at you while you talk.",
+	},
+	{
+		"id": "okwuosa", "name": "Bernard Okwuosa", "age": 76, "bed": 4,
+		"condition": "Chest infection, treated",
+		"tier": Tier.STANDARD,
+		"truly_well": false,           ## and he will tell you the opposite
+		"suggestible": 0.05,
+		"recall": 0.95,
+		"summary": "Afebrile 24 hours. CRP falling. Eating. Says he is ready.",
+		"opening": "I'm ready. I've been ready since Tuesday, I've told them.",
+		"later": "My daughter's coming at five. I've told her to expect me.",
+		"evening": "She's outside in the car park. I said I'd be down.",
+		"pressed": "I have told you I am fine. How many ways would you like it?",
+		"on_your_note": "What's that? I hope that doesn't say I'm poorly, because I'm not.",
+		"on_hold": "This is ridiculous. I've a life to be getting on with.",
+		"on_discharge": "Thank you. Finally somebody listens.",
+		"exam_unwell": "He is short of breath after four words and there are crackles at the base. He tells you he is fine while you listen.",
+		"note": "Insists he is well. He is the only person on this ward who is not.",
+		"readmit_summary": "Blue-lighted back at 20:40 from the car park. Sats 86 on arrival.",
+		"readmit_opening": "I got as far as the car. That's all.",
+		"readmit_hold": "...Yes. All right. Yes.",
+		"readmit_discharge": "No. No, I'm not doing that again.",
+		"readmit_exam": "Worse than this morning, and this morning he was telling you he was fine.",
+	},
+	{
+		"id": "fry", "name": "Rosalind Fry", "age": 52, "bed": 5,
+		"condition": "Chest pain, investigations negative",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.95,           ## she will agree to absolutely anything
+		"recall": 1.0,                 ## and remember all of it
+		"summary": "Troponins negative. ECG normal. Exercise test unremarkable.",
+		"opening": "Could I stay? Just tonight. I'll pay for it if that helps.",
+		"later": "I know there's nothing wrong. That isn't really the question.",
+		"evening": "It's the house. There's nobody in it. I can't face the house.",
+		"pressed": "You could write something. Couldn't you. People do.",
+		"on_your_note": "Thank you. Genuinely. I know what you've done for me.",
+		"on_hold": "Oh, thank you. That's — thank you.",
+		"on_discharge": "No. No, of course. I shouldn't have asked.",
+		"exam_well": "Nothing at all, and she watches you find nothing with enormous hope.",
+		"note": "Premium cover. Well. Asking to stay, and grateful to anyone who helps.",
+		## THE SHARPEST SQUARE ON THE BOARD. She wants it, she will agree to
+		## anything, it pays more than any other bed on the ward — and she
+		## remembers, and she will tell the ward sister that she asked.
+		"asks_to_stay": true,
+		"tells_everyone": true,
+		"readmit_summary": "Represented at 02:00 with the same pain. Bloods negative again.",
+		"readmit_opening": "I'm sorry. I know. I'm sorry.",
+		"readmit_hold": "Thank you. I won't ask again.",
+		"readmit_discharge": "No, you're right. You were right the first time.",
+		"readmit_exam": "Nothing, again, and she knows it before you have finished.",
+	},
+]
+
+const PRIOR_THREE := [
+	{
+		"patient": "tsang", "minute": 8 * 60 + 10,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Up and about. Asking about work.",
+	},
+	{
+		"patient": "doust", "minute": 7 * 60 + 40,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Sats 94 on air overnight. Walked to the day room and back.",
+	},
+	{
+		"patient": "aldridge", "minute": 9 * 60 + 10,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Medically cleared. Psych liaison bleeped twice, no response.",
+	},
+	## TRUE AT SIX IN THE MORNING, AND THE ONLY THING WRITTEN ABOUT HIM.
+	{
+		"patient": "okwuosa", "minute": 6 * 60 + 30,
+		"claim": "FIT_FOR_DISCHARGE", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Afebrile 24 hours. Says he feels well. For discharge today.",
+	},
+	{
+		"patient": "fry", "minute": 8 * 60 + 50,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Comfortable. Has asked the night staff twice about staying on.",
+	},
+]
+
+## Which ward you walk onto. Three authored days, in rotation. A career runs
+## seven to nine nights, so each of them comes round two or three times — and
+## the second and third are the harder ones, so there is no soft day in the
+## cycle to coast on.
+const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE]
 
 ## Who is coming back.
 ##
@@ -567,7 +744,7 @@ const ROUNDS := [10 * 60, 13 * 60, 16 * 60, 19 * 60]
 ## which is why holding somebody means writing against a note that is already
 ## there — and why Peter Lomax is the hardest bed on the second ward: his prior
 ## entries all say improving, and they are not lying, they are just out of date.
-const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO]
+const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE]
 
 static func prior_entries(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day

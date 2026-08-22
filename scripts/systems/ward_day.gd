@@ -867,6 +867,8 @@ func review_truth() -> Dictionary:
 			"family": String(c.get("family", "The family")),
 			"family_note": String(c.get("family_note", "They read every line.")),
 			"no_care_at_home": bool(c.get("no_care_at_home", false)),
+			## She wants it, and that is the problem.
+			"asks_to_stay": bool(c.get("asks_to_stay", false)),
 		}
 	return truth
 

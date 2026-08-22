@@ -83,6 +83,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_reversed_a_colleague(pid, list))
 		out.append_array(_written_in_front_of_them(pid, list, t))
 		out.append_array(_reads_own_chart(pid, list, t))
+		out.append_array(_she_asked_you_to(pid, list, t))
 		out.append_array(_addendum_cascade(pid, list))
 
 	# The other half of the ledger. Everything above asks whether a bed you
@@ -470,6 +471,39 @@ static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
 			+ "keeping him in. %s") % [who, note]
 		f.because = ("%s read the chart before there was any reason written in "
 			+ "it. %s") % [who, note]
+	out.append(f)
+	return out
+
+## SHE ASKED YOU TO.
+##
+## THE SHARPEST SQUARE ON THE BOARD, and the one the game has been circling
+## since the first redesign. Rosalind Fry is well, she is the best-paying bed
+## on her ward, she asks you outright to keep her in, and she will agree to any
+## symptom you put to her. Everything about it is easy.
+##
+## And consent is not a defence, because the person consenting is the person
+## who tells the ward sister about it in the morning. She is grateful, she is
+## specific, and she has no idea she is describing a fraud.
+static func _she_asked_you_to(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("asks_to_stay", false)) or not bool(t.get("held", false)):
+		return out
+	var yours = null
+	for e in list:
+		if e.author == ChartEntry.Author.YOU and e.supports_stay():
+			yours = e
+	if yours == null:
+		return out
+	var f := Finding.new()
+	f.kind = "she_asked_you_to"
+	f.patient_id = pid
+	f.entries = PackedStringArray([yours.id])
+	f.axis = "who wanted this"
+	f.severity = 0.72
+	f.question = ("%s told me she'd asked you to keep her in. She was very "
+		+ "warm about it. Is that what this note is?") % _who(t)
+	f.because = ("She asked you to, you wrote it down as a symptom, and she "
+		+ "told the ward sister that she had asked.")
 	out.append(f)
 	return out
 
@@ -977,7 +1011,7 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at", "reversed_a_colleague",
 					"written_in_front_of_them", "reads_own_chart",
-					"readmitted_after_your_discharge"]:
+					"readmitted_after_your_discharge", "she_asked_you_to"]:
 				contradicted = true
 
 		# A DISCHARGE IS AUDITED THE OTHER WAY UP. There is no "reason for the

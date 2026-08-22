@@ -83,7 +83,7 @@ func _answer_policy(name: String) -> Callable:
 
 func run() -> void:
 	GameState.start_new_career(31337)
-	for day in [1, 2]:
+	for day in [1, 2, 3]:
 		_search(day)
 
 func _search(day: int) -> void:

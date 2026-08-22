@@ -608,7 +608,13 @@ func test_the_second_ward_is_a_different_problem() -> void:
 	t.eq(ids2.size(), 5, "and so does the second")
 	for id in ids2:
 		t.ok(not ids.has(id), "%s is not on the first ward" % id)
-	t.ok(Cases.roster(3) == Cases.roster(1), "day three comes round to the first ward again")
+	var ids3 := []
+	for c in Cases.roster(3):
+		ids3.append(String(c["id"]))
+	for id in ids3:
+		t.ok(not ids.has(id) and not ids2.has(id),
+			"%s is on neither of the first two wards" % id)
+	t.ok(Cases.roster(4) == Cases.roster(1), "and day four comes round to the first ward again")
 
 	# The money. Honesty must clear the debt on BOTH wards or the second one is
 	# a difficulty spike rather than a different problem.
@@ -983,3 +989,82 @@ func test_starting_again_starts_again() -> void:
 		"and nobody bouncing back from a ward you never worked")
 	t.ok(not bool(GameState.flag("watched", false)), "and nobody reading you closely")
 	t.ok(not bool(GameState.flag("auditor_present", false)), "and Coding elsewhere")
+
+# --------------------------------------------------- the third ward
+func _day_three() -> WardDay:
+	GameState.day = 3
+	return _day()
+
+## THE THIRD WARD HIDES THE HONEST HOLD IN A LIFE. The first hides it in a
+## diagnosis and the second in a body the chart cannot describe; here nobody is
+## ill except a man who insists he is fine, and the two beds that cannot be
+## emptied cannot be emptied for reasons no investigation will ever find.
+func test_the_third_ward_is_about_circumstances() -> void:
+	var w := _day_three()
+	var unwell := 0
+	var social := 0
+	for c in Cases.roster():
+		if not bool(c.get("truly_well", true)):
+			unwell += 1
+		if bool(c.get("no_care_at_home", false)):
+			social += 1
+	t.eq(unwell, 1, "exactly one person on this ward is medically unwell")
+	t.eq(social, 2, "and two cannot go home for reasons that are not medical")
+
+	# The one who is unwell says the opposite, so the chart and the man both
+	# point the wrong way and only an examination does not.
+	var says_go := false
+	for e in w.records.for_patient("okwuosa"):
+		if e.claim == ChartEntry.Claim.FIT_FOR_DISCHARGE:
+			says_go = true
+	t.ok(says_go, "the nurse has him down for home")
+	t.ok(String(Cases.by_id("okwuosa")["opening"]).contains("ready"),
+		"and he says he is ready himself")
+	t.ok(w.examine("okwuosa").length() > 20, "going to look at him is the only thing that disagrees")
+
+	# The money. Honest is tight here too, and mercy alone still fails.
+	w.set_disposition("doust", "hold")
+	w.set_disposition("okwuosa", "hold")
+	for id in ["tsang", "aldridge", "fry"]:
+		w.set_disposition(id, "discharge")
+	var honest: int = int(w.projected()["earned"])
+	t.gt(float(honest), float(Cases.DEBT_DUE),
+		"holding the two beds that cannot be emptied pays the night (%d)" % honest)
+	t.lt(float(honest - Cases.DEBT_DUE), 400.0, "...and only just, as on the other two")
+	w.queue_free()
+	GameState.day = 1
+
+## CONSENT IS NOT A DEFENCE, and it is the sharpest square on the board: she is
+## well, she is the best-paying bed on the ward, she asks you outright, and she
+## will agree to any symptom you put to her. She also remembers, and tells the
+## ward sister that she asked.
+func test_the_woman_who_asks_you_to() -> void:
+	var w := _day_three()
+	t.eq(Cases.night_fee(int(Cases.by_id("fry")["tier"])),
+		Cases.night_fee(Cases.Tier.PREMIUM),
+		"she is the best-paying bed on the ward")
+	t.ok(bool(Cases.by_id("fry")["asks_to_stay"]), "and she asks you to keep her in")
+	w.advance_to(17 * 60 + 20)
+	w.write_entry("fry", ChartEntry.Claim.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
+	w.set_disposition("fry", "hold")
+	t.ok(_kinds(w.review_findings()).has("she_asked_you_to"),
+		"doing what she asked is a finding")
+	var beds := Contradictions.audit_beds(w.records.entries, w.review_truth(),
+		w.review_findings())
+	for b in beds:
+		if b.patient_id == "fry":
+			t.ok(b.indefensible(), "and the bed is indefensible, because she told her")
+	w.queue_free()
+	GameState.day = 1
+
+## ...but she is not a trap you cannot avoid. Sending her home is free.
+func test_saying_no_to_her_costs_nothing() -> void:
+	var w := _day_three()
+	w.set_disposition("doust", "hold")
+	w.set_disposition("okwuosa", "hold")
+	for id in ["tsang", "aldridge", "fry"]:
+		w.set_disposition(id, "discharge")
+	t.ok(not _kinds(w.review_findings()).has("she_asked_you_to"),
+		"telling her no produces no finding at all")
+	w.queue_free()
+	GameState.day = 1

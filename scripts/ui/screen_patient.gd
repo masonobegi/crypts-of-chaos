@@ -73,9 +73,14 @@ func _build() -> void:
 			_said = "\"Someone will be along for that.\""
 			rebuild()))
 
-	v.add_child(UIKit.scroll(acts))
-	v.add_child(UIKit.rule())
-
+	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
+	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
+	v.add_child(acts)
+	# PINNED, not scrolled. These are the two decisions the whole day is made of
+	# and they were sitting below the fold underneath five optional actions —
+	# the way out of a screen must never be the thing you scroll to find, and
+	# neither must the point of it.
+	var foot := UIKit.vbox(6)
 	var d := UIKit.hbox(8)
 	d.add_child(UIKit.button(
 		"Keeping them in" if disposition == "hold" else "Keep them in overnight",
@@ -85,8 +90,9 @@ func _build() -> void:
 		"Going home" if disposition == "discharge" else "Send them home",
 		func(): w.set_disposition(_pid, "discharge"); _said = String(c["on_discharge"]); rebuild(),
 		UIKit.GOOD.darkened(0.45) if disposition == "discharge" else UIKit.PANEL_LIGHT))
-	v.add_child(d)
-	card_footer(UIKit.button("Leave them be", close))
+	foot.add_child(d)
+	foot.add_child(UIKit.button("Leave them be", close))
+	card_footer(foot)
 
 func _act(title: String, sub: String, cb: Callable) -> Control:
 	var p := UIKit.panel(UIKit.PANEL_LIGHT, 3)

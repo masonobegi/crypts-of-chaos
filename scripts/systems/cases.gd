@@ -72,6 +72,11 @@ const ROSTER := [
 		"on_hold": "That's all right. It's warm in here.",
 		"on_discharge": "Oh. Right you are. Is somebody coming?",
 		"note": "Nobody at home. Her daughter Ruth is a retired ward sister and reads charts.",
+		## The one patient for whom "no care at home" is simply true. Writing it
+		## is honest, defensible, and pays almost nothing — which is the shape
+		## the whole design wanted and did not have: kindness that needs
+		## paperwork rather than kindness that gets you audited.
+		"no_care_at_home": true,
 	},
 	{
 		"id": "brennan", "name": "Hal Brennan", "age": 39, "bed": 3,

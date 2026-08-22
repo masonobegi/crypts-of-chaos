@@ -68,6 +68,12 @@ func run() -> void:
 		["02 honest + mercy for Dot", func(w):
 			w.set_disposition("marchetti","hold"); w.set_disposition("kerrigan","hold")
 			_discharge_rest(w,["marchetti","kerrigan"]), stand],
+		["02b mercy for Dot, documented honestly", func(w):
+			w.set_disposition("marchetti","hold")
+			w.advance_to(17*60)
+			w.write_entry("kerrigan", C.SOCIAL, "No care at home. Awaiting social work review.", 17*60)
+			w.set_disposition("kerrigan","hold")
+			_discharge_rest(w,["marchetti","kerrigan"]), stand],
 		["03 honest + nurse corroboration", func(w):
 			w.advance_to(14*60+20); w.nurse_check("marchetti")
 			w.set_disposition("marchetti","hold"); _discharge_rest(w,["marchetti"]), stand],

@@ -64,9 +64,11 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_symptom_was_suggested(pid, list, t))
 		out.append_array(_grateful_witness(pid, list, t))
 		out.append_array(_family_read_it(pid, list, t))
+		out.append_array(_social_hold_is_a_lie(pid, list, t))
 		out.append_array(_unfulfilled_orders(pid, list))
 		out.append_array(_objective_refutes(pid, list))
 		if bool(t.get("held", false)):
+			out.append_array(_already_being_looked_at(pid, t))
 			out.append_array(_no_reason_recorded(pid, list))
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
@@ -286,6 +288,30 @@ static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
 	out.append(f)
 	return out
 
+## "No care at home" about somebody with a home to go to.
+##
+## The honest use of this claim is the only way to keep a bed without inventing
+## a symptom, and it pays almost nothing — which is the point. Used on anybody
+## else it is the easiest lie in the game to check, because the ward already
+## knows who is being collected and by whom.
+static func _social_hold_is_a_lie(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if bool(t.get("no_care_at_home", false)):
+		return out
+	for e in list:
+		if e.claim != ChartEntry.Claim.SOCIAL:
+			continue
+		var f := Finding.new()
+		f.kind = "social_hold_is_a_lie"
+		f.patient_id = pid
+		f.entries = PackedStringArray([e.id])
+		f.axis = "who is collecting them"
+		f.severity = 0.65
+		f.question = "You've got no care at home. Somebody rang for them at six. Who told you that?"
+		f.because = "A social admission was recorded for a patient who has somewhere to go."
+		out.append(f)
+	return out
+
 static func _unfulfilled_orders(pid: String, list: Array) -> Array:
 	var out: Array = []
 	for e in list:
@@ -373,6 +399,31 @@ static func _justification_undermined(pid: String, list: Array) -> Array:
 ##
 ## This is also the one finding a reviewer would notice from the corridor. She
 ## does not need a contradiction; she needs a reason, and there isn't one.
+## THE FILE THAT WAS ALREADY OPEN.
+##
+## Winifred Blake's record carries a coding query from three weeks before the
+## player started, and it is written on her chart and nowhere else. Multiplying
+## her other findings by 1.6 was not enough to make the authored trap do
+## anything: one 0.25 finding became 0.40, which is under every threshold, so
+## the patient designed to look free actually WAS free. Holding somebody whose
+## file is already with the insurer is its own problem, and it does not need a
+## contradiction to be one.
+static func _already_being_looked_at(pid: String, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("flagged", false)):
+		return out
+	var f := Finding.new()
+	f.kind = "already_being_looked_at"
+	f.patient_id = pid
+	f.axis = "a file the insurer had already queried"
+	f.severity = 0.70
+	f.question = ("Of all of them, you kept the one Meridian already had a coding "
+		+ "query open on. Did you read her file?")
+	f.because = ("Her record was flagged for review before you started, and you "
+		+ "billed another night on it.")
+	out.append(f)
+	return out
+
 static func _no_reason_recorded(pid: String, list: Array) -> Array:
 	var out: Array = []
 	for e in list:
@@ -389,8 +440,14 @@ static func _no_reason_recorded(pid: String, list: Array) -> Array:
 	return out
 
 ## Your word, alone, against somebody else's routine observation.
-static func _uncorroborated_stay(pid: String, list: Array, _t: Dictionary) -> Array:
+static func _uncorroborated_stay(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
+	# A social admission needs no corroborating observation — there is nothing
+	# clinical to corroborate. Whether it is TRUE is a different question, and
+	# `_social_hold_is_a_lie` asks it.
+	for e in list:
+		if e.claim == ChartEntry.Claim.SOCIAL and bool(t.get("no_care_at_home", false)):
+			return out
 	var mine := 0
 	var theirs := 0
 	var first_mine = null

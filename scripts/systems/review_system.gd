@@ -151,6 +151,20 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				effect = "\"That isn't what I asked you.\""
 
 		Answer.DEFER:
+			# YOU CANNOT DEFER TO A NURSING NOTE ABOUT A PATTERN. Deferring is
+			# "her observation over mine", which only answers a question about
+			# one observation — it says nothing about why three people stayed,
+			# or why a bed was billed with nothing written down at all. Those
+			# used to clear for free, which is why five findings totalling 2.69
+			# could be talked to zero.
+			if f.patient_id == "" or f.kind == "no_reason_recorded":
+				effect = "\"That isn't an answer to what I asked.\""
+				transcript.append({
+					"kind": f.kind, "question": f.question, "answer": choice,
+					"effect": effect, "cleared": false, "because": f.because,
+					"severity": f.severity,
+				})
+				return {"cleared": false, "effect": effect}
 			cleared = true
 			effect = "She accepts it, and writes that down."
 			# ...and if the bed was billed, you have just removed its reason.
@@ -167,17 +181,30 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				effect += " Then she looks up."
 
 		Answer.POINT_AT_NURSE:
-			cleared = true
-			effect = "\"I'll ask her.\" She does, later, and it holds."
+			# Only about the patient she actually reviewed. Pointing at Adeyemi
+			# answers "did anybody else see this", not "why did three people
+			# stay" — and the option is only on the menu when a supporting
+			# nursing note exists for that patient in the first place.
+			if f.patient_id == "":
+				effect = "\"She reviewed one of them. I'm asking about all of them.\""
+			else:
+				cleared = true
+				effect = "\"I'll ask her.\" She does, later, and it holds."
 
 		Answer.RECONCILE:
 			cleared = true
 			effect = "\"...All right. Yes. That happens.\""
 
 		Answer.BLAME_SYSTEM:
-			if times == 0:
+			# It is an answer about TIMESTAMPS. It used to clear anything of any
+			# severity on its first use — a conflicting observation, a normal
+			# result, an entire pattern — which made it a free pass out of the
+			# worst question in the folder.
+			if times == 0 and (f.kind == "backdated" or f.kind == "addendum_cascade"):
 				cleared = true
 				effect = "\"Hm. I'll raise it with IT.\""
+			elif times == 0:
+				effect = "\"The clocks have nothing to do with this one.\""
 			else:
 				# The same excuse twice is not an excuse, it is a pattern.
 				var g := Contradictions.Finding.new()

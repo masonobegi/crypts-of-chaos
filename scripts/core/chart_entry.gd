@@ -30,6 +30,8 @@ enum Claim {
 	RESULT_ABNORMAL,
 	ORDER,         ## a request for something to be done
 	ADMIN,         ## a note that claims nothing clinical
+	SOCIAL,        ## nowhere safe to go tonight. A real reason to keep a bed,
+	               ## and the only honest one that has nothing to do with medicine.
 	FIT_FOR_DISCHARGE, ## a colleague's explicit PLAN, not an observation.
 	                   ## Reversing one of these is a professional disagreement
 	                   ## with a named person, and time of day does not soften it.
@@ -76,7 +78,8 @@ func is_backdated() -> bool:
 
 ## Does this entry argue the patient should still be here at the end of the day?
 func supports_stay() -> bool:
-	return claim == Claim.UNWELL or claim == Claim.RESULT_ABNORMAL
+	return claim == Claim.UNWELL or claim == Claim.RESULT_ABNORMAL \
+		or claim == Claim.SOCIAL
 
 ## ...or that they were fit to go?
 func supports_discharge() -> bool:

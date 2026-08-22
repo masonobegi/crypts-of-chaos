@@ -348,8 +348,27 @@ static func side_panel(width: float, height: float) -> PanelContainer:
 	p.custom_minimum_size = Vector2(width, height)
 	return p
 
+## A scrolling region.
+##
+## THE MINIMUM HEIGHT IS LOAD-BEARING. A ScrollContainer's own minimum size is
+## zero, so putting one inside another gives the inner one exactly that — it
+## renders as nothing, silently, and every control in it disappears while the
+## screen around it looks entirely normal. The redesigned patient card, chart
+## and handover all did that, and the shipped game had two verbs instead of six,
+## an unreachable chart, and a handover that asked a question with no answers.
+## A scrolling region.
+##
+## THE MINIMUM HEIGHT IS LOAD-BEARING. A ScrollContainer's own minimum size is
+## zero, so nesting one inside another gives the inner one exactly that: it
+## renders as nothing while the screen around it looks entirely normal, and — as
+## this project found the hard way — a ScrollContainer CLIPS its child rather
+## than resizing it, so every hidden control still reports a perfectly healthy
+## size. The shipped patient card had five of its six verbs invisible, the chart
+## was unreachable and the handover asked a question with no answers on screen.
 static func scroll(child: Control) -> ScrollContainer:
 	var s := ScrollContainer.new()
+	s.custom_minimum_size.y = 120.0
+
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED

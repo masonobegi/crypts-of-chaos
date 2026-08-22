@@ -34,8 +34,47 @@ var telemetry: Array = []
 const RUTH_ARRIVES := 19 * 60
 var ruth_has_been := false
 
+## How long a result takes to come back. Long enough that ordering one is a
+## commitment rather than a lookup, and short enough to land inside the shift.
+const TEST_TURNAROUND := 75
+
+## Orders waiting on a result: entry id -> the minute it lands.
+var _pending: Dictionary = {}
+
 func _ready() -> void:
 	add_to_group("ward_day")
+	# THE WARD CLOCK IS THE GAME CLOCK. Without this the day was frozen at eight
+	# in the morning: `advance_to` had no callers anywhere outside the tests, so
+	# Adeyemi never walked a round, Ruth never arrived, no ordered test ever came
+	# back, and the "+15 min" control on the chart could never move because it
+	# clamps to a `minute` that never changed. Every measurement in the twenty
+	# playthroughs drove the clock by hand and therefore never noticed.
+	GameState.minute_passed.connect(_on_minute)
+
+func _on_minute(now: int) -> void:
+	if ended:
+		return
+	advance_to(now)
+	for eid in _pending.keys():
+		if now < int(_pending[eid]):
+			continue
+		_pending.erase(eid)
+		var order := records.by_id(String(eid))
+		if order != null and order.fulfilled_by == "":
+			var r := resolve_test(order)
+			EventBus.toast.emit("%s is back." % order.order_kind.capitalize(), "info")
+	# Vinnie does not wait, and neither does the day. The whole pitch is a
+	# number owed at eight o'clock, and until this existed nothing anywhere
+	# read DEBT_DUE_MINUTE — a player could wander until three in the morning
+	# at no cost, which is the pressure the design is built on simply absent.
+	if now >= Cases.DEBT_DUE_MINUTE:
+		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
+		for c in Cases.ROSTER:
+			var pid := String(c["id"])
+			if String(state[pid]["disposition"]) == "":
+				set_disposition(pid, "discharge")
+		end_day()
+		EventBus.request_ui.emit("review", {})
 
 func start() -> void:
 	cash = Cases.STARTING_CASH
@@ -162,7 +201,8 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 	o.author = ChartEntry.Author.YOU
 	o.terminal_id = TERMINAL_WARD
 	records.add(o)
-	_log("order_test", {"pid": pid, "kind": kind})
+	_pending[o.id] = minute + TEST_TURNAROUND
+	_log("order_test", {"pid": pid, "kind": kind, "due": minute + TEST_TURNAROUND})
 	entry_written.emit(o)
 	return o
 
@@ -305,6 +345,7 @@ func review_findings() -> Array:
 			"patient_suggested": state[pid]["suggested"],
 			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
 			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
+			"no_care_at_home": bool(Cases.by_id(pid).get("no_care_at_home", false)),
 			"was_asked": bool(state[pid]["asked_symptom"]),
 			"flagged": Cases.by_id(pid).has("audit_flag"),
 		}

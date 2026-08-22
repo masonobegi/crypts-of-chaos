@@ -44,7 +44,9 @@ func _build() -> void:
 		box.add_child(_entry_row(e))
 	if w.records.for_patient(_pid).is_empty():
 		box.add_child(UIKit.label("Nothing recorded.", 14, UIKit.INK_DIM))
-	v.add_child(UIKit.scroll(box))
+	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
+	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
+	v.add_child(box)
 
 	v.add_child(UIKit.rule())
 	if _writing:
@@ -85,6 +87,7 @@ func _write_form(v: VBoxContainer, w) -> void:
 	var kinds := [
 		[ChartEntry.Claim.UNWELL, "Something is wrong", UIKit.WARN],
 		[ChartEntry.Claim.SETTLED, "Comfortable, no concerns", UIKit.GOOD],
+		[ChartEntry.Claim.SOCIAL, "Nowhere to go tonight", UIKit.ACCENT],
 		[ChartEntry.Claim.ADMIN, "Administrative note", UIKit.INK_DIM],
 	]
 	var kb := UIKit.hbox(6)
@@ -152,6 +155,11 @@ func _phrases(claim: int) -> Array:
 				"Complains of pain at the site this evening.",
 				"Appears unsettled. Not right yet.",
 				"Wound warm to touch. Query early infection.",
+			]
+		ChartEntry.Claim.SOCIAL:
+			return [
+				"No care at home. Awaiting social work review.",
+				"Unsafe discharge. Nobody available to collect.",
 			]
 		ChartEntry.Claim.SETTLED:
 			return [

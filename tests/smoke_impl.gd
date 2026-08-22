@@ -29,7 +29,10 @@ var _walk_since := 0
 func start() -> void:
 	GameState.start_new_career(20260821)
 	GameState.set_flag("tutorial_done", true)
-	GameState.set_flag("headless_sim", true)
+	# NOT headless_sim. Game._spawn_ui() returns early under that flag, so `ui`
+	# is null and every screen check silently passes by never running — which is
+	# how a build with five invisible buttons went out with a green smoke run.
+	GameState.set_flag("tutorial_done", true)
 	var packed: PackedScene = load("res://scenes/Game.tscn")
 	if packed == null:
 		_fail("Game.tscn failed to load")
@@ -50,6 +53,9 @@ func tick() -> bool:
 		"walk":
 			if Engine.get_physics_frames() - _walk_since >= 20:
 				_check_the_player_can_walk()
+				stage = "screens"
+		"screens":
+			if frames % 6 == 0 and not _check_screens_actually_draw():
 				stage = "work"
 		"work":
 			_check_the_chart_works()
@@ -172,6 +178,73 @@ func _check_the_day_closes() -> void:
 	var o := rv.outcome()
 	_ok(String(o["because"]).length() > 10,
 		"and the outcome always names what caused it")
+
+## EVERY CONTROL ON EVERY SCREEN HAS TO HAVE A SIZE.
+##
+## The one class of bug six suites have never been able to see. A screen whose
+## body renders at zero height looks completely normal — heading, subheading,
+## footer, panel — and simply has nothing in the middle of it. The redesigned
+## patient card shipped with five of its six verbs invisible, the chart
+## unreachable and the handover asking a question with no answers on screen, and
+## everything was green, because no test had ever asked a Button how tall it was.
+##
+## Cheap, general, and it would have caught it in the first frame.
+var _screen_queue: Array = []
+var _screen_started := false
+
+func _check_screens_actually_draw() -> bool:
+	var ui = game.get("ui")
+	if ui == null:
+		return false
+	if not _screen_started:
+		_screen_started = true
+		_screen_queue = [
+			["morning", {}],
+			["patient", {"patient_id": "oduya"}],
+			["chart", {"patient_id": "oduya"}],
+		]
+		EventBus.request_ui.emit(String(_screen_queue[0][0]), _screen_queue[0][1])
+		return true
+	if _screen_queue.is_empty():
+		return false
+	var name := String(_screen_queue[0][0])
+	var buttons: Array = []
+	_collect_buttons(ui, buttons)
+	# CHECK THE ANCESTORS, NOT THE BUTTON.
+	#
+	# The first version of this check asked each Button for its own size and
+	# passed with the bug still in — a ScrollContainer CLIPS its child, it does
+	# not resize it, so every invisible button reported a perfectly healthy
+	# 180x28 while rendering as nothing. What makes a control unreachable is an
+	# ancestor with no height, so that is what has to be measured.
+	var dead: Array[String] = []
+	for b in buttons:
+		if b.size.y < 6.0 or b.size.x < 6.0:
+			dead.append("%s (itself %.0fx%.0f)" % [b.text, b.size.x, b.size.y])
+			continue
+		var a: Node = b.get_parent()
+		while a != null and a is Control and a != ui:
+			if (a as Control).size.y < 6.0:
+				dead.append("%s (inside a %s of height %.0f)" % [
+					b.text, a.get_class(), (a as Control).size.y])
+				break
+			a = a.get_parent()
+	_ok(not buttons.is_empty(), "the %s screen has controls on it" % name)
+	_ok(dead.is_empty(), "and every control on %s has a size%s" % [name,
+		"" if dead.is_empty() else ": " + ", ".join(dead)])
+	_screen_queue.pop_front()
+	if _screen_queue.is_empty():
+		if ui.has_method("close"):
+			ui.call("close")
+		return false
+	EventBus.request_ui.emit(String(_screen_queue[0][0]), _screen_queue[0][1])
+	return true
+
+func _collect_buttons(n: Node, out: Array) -> void:
+	if n is Button:
+		out.append(n)
+	for c in n.get_children():
+		_collect_buttons(c, out)
 
 func _fail(msg: String) -> void:
 	errors.append(msg)

@@ -48,7 +48,9 @@ func _build() -> void:
 					_done = true
 				rebuild(),
 			UIKit.PANEL_LIGHT))
-	v.add_child(UIKit.scroll(opts))
+	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
+	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
+	v.add_child(opts)
 
 ## The part that has to be legible. Verdict, the line that caused it, and the
 ## whole conversation underneath so it can be read back.
@@ -97,7 +99,9 @@ func _closing(v: VBoxContainer, w) -> void:
 			UIKit.GOOD if bool(t["cleared"]) else UIKit.WARN,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 		box.add_child(row)
-	v.add_child(UIKit.scroll(box))
+	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
+	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
+	v.add_child(box)
 	card_footer(UIKit.button("Go home", func():
 		EventBus.request_ui.emit("day_over", {"verdict": verdict})
 		close()))

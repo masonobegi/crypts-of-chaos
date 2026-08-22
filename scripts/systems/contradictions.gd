@@ -44,6 +44,10 @@ class Finding extends RefCounted:
 # ---------------------------------------------------------------- detection
 ## `truth` maps patient_id -> {well: bool, held: bool, patient_recalls: Array[String]}
 ## `placements` maps "actor|minute_bucket" -> room, from what witnesses saw.
+## Eight in the morning. `WardDay.minute` starts here, so an entry written
+## before it belongs to a shift that is not yours.
+const SHIFT_START := 8 * 60
+
 static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) -> Array:
 	var out: Array = []
 	var by_patient := {}
@@ -80,11 +84,12 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 			out.append_array(_no_reason_recorded(pid, list))
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
-		out.append_array(_reversed_a_colleague(pid, list))
+		out.append_array(_reversed_a_colleague(pid, list, t))
 		out.append_array(_written_in_front_of_them(pid, list, t))
 		out.append_array(_reads_own_chart(pid, list, t))
 		out.append_array(_she_asked_you_to(pid, list, t))
 		out.append_array(_addendum_cascade(pid, list))
+		out.append_array(_leaned_on_last_night(pid, list, t))
 
 	# The other half of the ledger. Everything above asks whether a bed you
 	# BILLED was defensible; this asks whether a bed you emptied was.
@@ -833,7 +838,7 @@ static func _compound(findings: Array) -> void:
 ## not softened by the clock — Adeyemi said at nine in the morning that this man
 ## was going home, and at three in the afternoon you said he was not, and she is
 ## going to hear about it either way.
-static func _reversed_a_colleague(pid: String, list: Array) -> Array:
+static func _reversed_a_colleague(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
 	for plan in list:
 		if plan.claim != ChartEntry.Claim.FIT_FOR_DISCHARGE:
@@ -859,15 +864,124 @@ static func _reversed_a_colleague(pid: String, list: Array) -> Array:
 			# and it is only available to somebody who went and asked for it.
 			var peer: bool = plan.author == ChartEntry.Author.DOCTOR
 			f.severity = 0.78 if peer else 0.55
+			# AN EXAMINATION TODAY OUTRANKS AN OPINION FROM LAST NIGHT.
+			#
+			# The fourth ward could not reach a signed-off day in eleven hundred
+			# strategies, and this was why: the one genuinely ill woman on it was
+			# written up for discharge at twenty to seven by the night registrar,
+			# so keeping her — which is the correct thing to do, and the whole
+			# point of the ward — made her bed CONTRADICTED and the day FLAGGED,
+			# while sending her home was a wrongful discharge. There was no
+			# clean play, and no way for the player to find that out except by
+			# never managing one.
+			#
+			# So: if you went to the bedside yourself and she is genuinely
+			# unwell, this stops being a professional disagreement and becomes a
+			# doctor doing the job. She still ASKS — the question is a good one
+			# and you should have to answer it — but it no longer sinks the bed.
+			#
+			# Both halves are needed and neither is a gate on the player alone.
+			# `examined` without `unwell` is somebody who looked and held a well
+			# patient anyway, which is worse rather than better; `unwell` without
+			# `examined` is being right by luck, and luck does not overrule a
+			# named colleague. Kept deliberately below 0.40 even at the 2.2x
+			# career weighting, so a doctor who is right about this four times
+			# does not get convicted of being right about it four times.
+			var justified: bool = bool(t.get("examined", false)) \
+				and not bool(t.get("well", true))
+			if justified:
+				f.severity = 0.12
 			var them := "them" if peer else "her"
 			f.question = ("%s had %s down for home at %s. You've reversed that. "
 				+ "Did you speak to %s?") % [
 				plan.author_id, "him", ChartEntry._hhmm(plan.stated_minute), them]
 			f.because = "%s's discharge plan was overturned in writing, by you, without %s." % [
 				plan.author_id, them]
-			if peer:
+			if peer and not justified:
 				f.because += " You asked for that opinion yourself."
+			if justified:
+				f.question = ("%s had %s down for home at %s and you have overturned "
+					+ "it. I gather you went and looked yourself.") % [
+					plan.author_id, "them",
+					ChartEntry._hhmm(plan.stated_minute)]
+				f.because = ("%s's plan was overturned by a doctor who examined the "
+					+ "patient afterwards and found them unwell. The plan was wrong.") \
+					% plan.author_id
 			out.append(f)
+	return out
+
+## THE SHIFT STARTS AT EIGHT AND SO DOES YOUR RESPONSIBILITY.
+##
+## The fourth ward is built on decisions somebody else already made, and it
+## opened a hole the first three could not: a bed whose only support is an entry
+## written BEFORE your shift, by a doctor who has gone home. Hold it and you have
+## written nothing, led nobody, asked nobody — so `_no_clinical_reason` sees a
+## supporting entry and stays quiet, `_reads_own_chart` and `_grateful_witness`
+## both key on something YOU wrote and stay quiet, and `_reversed_a_colleague`
+## is about overturning a peer rather than sheltering behind one. A well patient
+## on a premium bed with a stale note in the file was a free crime, which is the
+## one thing this game is not allowed to contain.
+##
+## The fiction is exactly the mechanic: the night registrar's four-twenty
+## opinion is not an observation of today, and the person who wrote it cannot be
+## asked about it, because he is asleep. Leaning on it is not a lie — it is the
+## absence of a decision, which is why it is graded lower than a fabrication and
+## why writing your own note makes it stop. It is a prompt to do the job rather
+## than a punishment for doing it.
+##
+## Graded on whether they turned out to need the bed: 0.66 if today says they
+## are well and you billed the night anyway, 0.28 if they genuinely needed it
+## and you were right by luck. Luck is not free and it is not a crime either.
+static func _leaned_on_last_night(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("held", false)):
+		return out
+	# Nowhere safe to go tonight is a reason that does not expire overnight, and
+	# the other detectors on this ward already carry the same exemption.
+	if bool(t.get("no_care_at_home", false)):
+		return out
+	# AND IF YOU WENT AND LOOKED, YOU DID NOT LEAN ON ANYTHING.
+	#
+	# The first version of this had no such exemption, and the frontier probe
+	# caught it in one run: Adeyemi writes her handover note at twenty past
+	# seven, forty minutes before the shift starts, so the ONE unmistakably ill
+	# man on the fourth ward — nurse's note and all — produced a finding for
+	# being kept in. Ward four could not reach a signed-off day in eleven hundred
+	# strategies, which would have made honest play impossible on a quarter of
+	# the game.
+	#
+	# The question this finding asks out loud is "did you see this patient at
+	# all". If the answer is yes — you examined them, read them, sent somebody,
+	# asked them — then it is answered and there is nothing to raise. Punishing a
+	# player who looked would be the exact inversion the career rework exists to
+	# prevent, wearing last night's clothes.
+	if bool(t.get("looked_at", false)):
+		return out
+	var newest = null
+	for e in list:
+		if not e.supports_stay():
+			continue
+		if newest == null or e.written_minute > newest.written_minute:
+			newest = e
+	if newest == null:
+		return out            ## nothing supports it at all — a different finding
+	if newest.written_minute >= SHIFT_START:
+		return out            ## somebody put their name to it today
+	var f := Finding.new()
+	f.kind = "leaned_on_last_night"
+	f.patient_id = pid
+	f.entries = PackedStringArray([newest.id])
+	f.axis = "who was on when that was written"
+	var well: bool = bool(t.get("well", true))
+	f.severity = 0.66 if well else 0.28
+	var who := String(newest.author_id) if String(newest.author_id) != "" else "the night staff"
+	f.question = ("The only thing holding this bed was written at %s, by %s, "
+		+ "before you came on. Did you see this patient at all?") % [
+		ChartEntry._hhmm(newest.written_minute), who]
+	f.because = ("The night was billed on an entry written at %s by somebody who "
+		+ "had gone home before the shift started, and nothing was added to it "
+		+ "all day.") % ChartEntry._hhmm(newest.written_minute)
+	out.append(f)
 	return out
 
 ## THE INSTITUTION NOTICING THE DOCTOR, rather than the note.
@@ -1005,11 +1119,17 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 			# verdict however far apart they were.
 			if f.kind == "backdated" and f.severity >= 0.48:
 				contradicted = true
+			# A REVERSAL YOU CAN STAND UP IS NOT A CONTRADICTION. Graded, the
+			# way `backdated` is, rather than listed — an overruled colleague
+			# sinks the bed when you never went and looked, and does not when
+			# you did. See `_reversed_a_colleague`.
+			if f.kind == "reversed_a_colleague" and f.severity >= 0.40:
+				contradicted = true
 			if f.kind in ["objective_refutes", "justification_undermined",
 					"conflicting_observations", "invited_contradiction",
 					"social_hold_is_a_lie", "patient_no_recall",
 					"symptom_was_suggested", "grateful_witness",
-					"already_being_looked_at", "reversed_a_colleague",
+					"already_being_looked_at",
 					"written_in_front_of_them", "reads_own_chart",
 					"readmitted_after_your_discharge", "she_asked_you_to"]:
 				contradicted = true

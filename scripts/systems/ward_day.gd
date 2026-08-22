@@ -386,6 +386,28 @@ func ask_colleague(pid: String) -> ChartEntry:
 	var st: Dictionary = state[pid]
 	st["colleague"] = int(st.get("colleague", 0)) + 1
 	var well: bool = bool(c.get("truly_well", true))
+	# THE REGISTRAR IS NOT AN ORACLE, AND ON THE FOURTH WARD HE IS THE PROBLEM.
+	#
+	# This verb read `truly_well` and returned it, which made asking Dr Costa a
+	# free and perfectly accurate truth detector that also happened to be the
+	# strongest defence in the game. Twenty-five minutes bought certainty. The
+	# only reason it was not a dominant strategy is that his hours are short.
+	#
+	# A doctor who has already written his opinion at twenty past four in the
+	# morning does not enjoy being asked for it again at half eleven, and he does
+	# not go and look a second time — he restates it. On a patient carrying
+	# `colleague_wrong` that is exactly what you get: his morning opinion, in his
+	# name, on the wrong side, at your request, and now there are two of them in
+	# the notes. The tell is in the text, and it is fair: he says when he saw
+	# them, and it was before you came on.
+	#
+	# What this makes true is the point of the ward. `examine` is the only verb
+	# in the game that cannot be wrong, and it is the one that writes nothing —
+	# so the ward where the paperwork is most confident is the ward where you
+	# have to go and look at people yourself.
+	var stale: bool = bool(c.get("colleague_wrong", false))
+	if stale:
+		well = not well
 	var e := ChartEntry.new()
 	e.patient_id = pid
 	e.author = ChartEntry.Author.DOCTOR
@@ -397,9 +419,15 @@ func ask_colleague(pid: String) -> ChartEntry:
 	if well:
 		e.claim = ChartEntry.Claim.FIT_FOR_DISCHARGE
 		e.text = "Asked to review. Nothing here needing an inpatient bed. For discharge."
+		if stale:
+			e.text = ("Asked to review again. I saw this patient at %s and my "
+				+ "opinion is unchanged. For discharge.") % String(c.get("colleague_seen", "06:40"))
 	else:
 		e.claim = ChartEntry.Claim.UNWELL
 		e.text = "Asked to review. Agree, not safe to go today. Continue as inpatient."
+		if stale:
+			e.text = ("Asked to review again. As per my note at %s. Not for "
+				+ "discharge today.") % String(c.get("colleague_seen", "04:20"))
 	records.add(e)
 	_log("ask_colleague", {"pid": pid, "backed": not well})
 	entry_written.emit(e)
@@ -493,6 +521,25 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 func resolve_test(order: ChartEntry) -> ChartEntry:
 	var c := Cases.by_id(order.patient_id)
 	var well: bool = reads_as_well(order.patient_id)
+	# THE MACHINE DOES NOT CARE HOW WELL SOMEBODY LOOKS.
+	#
+	# `only_visible_in_person` makes a patient read as well to the rounds, the
+	# nurse AND the laboratory, which is right for the second ward — Peter Lomax
+	# is a man whose numbers are fine and who is plainly not — and wrong for the
+	# fourth. Gwen Ashworth was written up for home by the night registrar, the
+	# nurse cannot see it either, and asking Costa again gets his morning
+	# opinion back, so there was NO route to corroborating her: the correct hold
+	# on the ward was uncorroboratable by construction, and the best honest day
+	# available on a quarter of the game was NOTED. The probe found it; eleven
+	# hundred strategies could not reach a clean stamp.
+	#
+	# `test_reveals` is the one route, and it costs what it should: five minutes
+	# to order and seventy-five to come back, which has to be spent before
+	# lunchtime or it lands after you have had to decide. The night registrar
+	# did not repeat her bloods. You do, and they are worse.
+	if well and bool(c.get("test_reveals", false)) \
+			and not bool(c.get("truly_well", true)):
+		well = false
 	var r := ChartEntry.new()
 	r.patient_id = order.patient_id
 	r.author = ChartEntry.Author.MACHINE

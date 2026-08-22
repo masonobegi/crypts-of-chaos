@@ -614,7 +614,7 @@ func test_the_second_ward_is_a_different_problem() -> void:
 	for id in ids3:
 		t.ok(not ids.has(id) and not ids2.has(id),
 			"%s is on neither of the first two wards" % id)
-	t.ok(Cases.roster(4) == Cases.roster(1), "and day four comes round to the first ward again")
+	t.ok(Cases.roster(5) == Cases.roster(1), "and day five comes round to the first ward again")
 
 	# The money. Honesty must clear the debt on BOTH wards or the second one is
 	# a difficulty spike rather than a different problem.

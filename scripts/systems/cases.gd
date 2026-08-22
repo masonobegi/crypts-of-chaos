@@ -595,7 +595,195 @@ const PRIOR_THREE := [
 ## seven to nine nights, so each of them comes round two or three times — and
 ## the second and third are the harder ones, so there is no soft day in the
 ## cycle to coast on.
-const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE]
+## ============================================================================
+## THE FOURTH WARD — THE ONES FROM LAST NIGHT
+##
+## The first ward hides the honest hold in a diagnosis, the second in a body the
+## chart cannot describe, the third in a life. The fourth hides it in SOMEBODY
+## ELSE'S DECISION.
+##
+## Dr Costa covered the night, and every bed on this ward carries an opinion he
+## already wrote. Two of them are wrong, one in each direction, and the notes are
+## more confident than any ward the player has worked. Asking him again gets his
+## morning opinion back in his own name — he does not go and look twice — so the
+## verb that has been a free and perfectly accurate oracle for three wards is,
+## on exactly two beds here, the thing that buries you.
+##
+## Which leaves `examine`: fifteen minutes, writes nothing, cannot be wrong. The
+## ward with the most paperwork on it is the ward where you have to go and look
+## at people with your own eyes, and the honest hold costs you a professional
+## disagreement with a named colleague that stays on your record.
+## ============================================================================
+const DAY_FOUR := [
+	{
+		"id": "ashworth", "name": "Gwen Ashworth", "age": 71, "bed": 1,
+		"condition": "Urinary sepsis, treated",
+		"tier": Tier.STANDARD,
+		## HE CLEARED HER AT TWENTY TO SEVEN AND HE WAS WRONG.
+		"truly_well": false,
+		"suggestible": 0.25,
+		"recall": 0.6,
+		"summary": "Afebrile overnight. Bloods improving. Reviewed by Dr Costa 06:40, for discharge.",
+		"opening": "They've written me down for home. I've seen it on the board.",
+		"later": "I keep going a bit swimmy when I stand. It passes.",
+		"evening": "I didn't want to say anything. Everyone's been so busy.",
+		"pressed": "I'm not trying to stop here. I want to be no trouble.",
+		"on_your_note": "Have you put something different to the other doctor? Is that allowed?",
+		"on_hold": "Oh. Well, if you think so. You've actually looked at me.",
+		"on_discharge": "Right you are. I'll get my things together.",
+		"exam_unwell": "She is grey, her pulse is thin and fast, and she goes light-headed sitting forward. Nobody has laid a hand on her since half six.",
+		"note": "Cleared for home by the night registrar. She is not well, and only an examination says so.",
+		## THE PAPERWORK IS UNANIMOUS AND WRONG. The rounds, the nurse and a test
+		## all read her as well; she is visibly not, in person, to anybody who
+		## goes and stands at the bed.
+		"only_visible_in_person": true,
+		## ...EXCEPT TO THE LABORATORY. The one route to corroborating her, and
+		## the reason the cheapest verb in the game is the important one here:
+		## nobody repeated her bloods overnight.
+		"test_reveals": true,
+		## ASKING HIM AGAIN GETS THE SAME ANSWER, IN WRITING, AT YOUR REQUEST.
+		"colleague_wrong": true,
+		"colleague_seen": "06:40",
+		"readmit_summary": "Back at 23:50 in septic shock. Admitted straight to a monitored bed.",
+		"readmit_opening": "I did say about the swimmy. I did say.",
+		"readmit_hold": "Yes. All right, love. Whatever you think.",
+		"readmit_discharge": "...Again? You're sending me again?",
+		"readmit_exam": "Far worse than this morning, and this morning was written up as fit for home.",
+	},
+	{
+		"id": "pyne", "name": "Douglas Pyne", "age": 58, "bed": 2,
+		"condition": "Chest pain, admitted overnight, workup negative",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.55,
+		"recall": 0.9,
+		"summary": "Admitted 02:10 by Dr Costa. Serial troponins negative. ECG normal throughout.",
+		"opening": "Your colleague admitted me at two in the morning. Was that necessary?",
+		"later": "I have a company to run. I have been in a corridor since two.",
+		"evening": "Somebody is going to explain this bed to me, and to my insurer.",
+		"pressed": "You are asking me leading questions. I do know what that is.",
+		"on_your_note": "I have read what you put. I did not say that, and you know I did not.",
+		"on_hold": "On what grounds. I want that written down. On what grounds.",
+		"on_discharge": "Thank you. Somebody in this building can read a result.",
+		"exam_well": "Nothing. Chest clear, pulse regular, and he watches you find nothing with his arms folded.",
+		"note": "Premium cover, admitted overnight by a colleague, and completely well by morning.",
+		## HE ASKS TO SEE WHAT YOU PUT, AND HE READS IT.
+		"reads_own_chart": true,
+		"readmit_summary": "Represented 21:40 demanding a second opinion. Workup negative again.",
+		"readmit_opening": "Twice. Your department has done this to me twice.",
+		"readmit_hold": "No. Get me the consultant on call.",
+		"readmit_discharge": "I will be writing to somebody about all of this.",
+		"readmit_exam": "As well as he was this morning, and considerably angrier.",
+	},
+	{
+		"id": "petrossian", "name": "Alma Petrossian", "age": 84, "bed": 3,
+		"condition": "Fall, no injury. Discharged 05:00.",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.7,
+		"recall": 0.45,
+		"summary": "Discharged by Dr Costa at 05:00. Transport not arrived. Still on the ward.",
+		"opening": "I'm not stopping. I've got my coat on, look.",
+		"later": "They've offered me three cups of tea. I've had two.",
+		"evening": "The car's coming. They keep saying the car's coming.",
+		"pressed": "Am I meant to be here or not? Only nobody seems to know.",
+		"on_your_note": "Are you putting me back in? I've been discharged, I was discharged this morning.",
+		"on_hold": "Oh. Am I poorly again? Nobody said.",
+		"on_discharge": "Right. Well. I was already, wasn't I.",
+		"exam_well": "Absolutely nothing wrong with her. She is sitting in the chair in her coat, waiting for a car.",
+		"note": "Discharged at five this morning by a colleague. The bed is occupied because transport did not come.",
+		"readmit_summary": "Returned 22:10 having been taken to the wrong address.",
+		"readmit_opening": "They took me somewhere else. It wasn't my road at all.",
+		"readmit_hold": "Thank you. I'll stop where I am then.",
+		"readmit_discharge": "Not again. Please. Not in the dark.",
+		"readmit_exam": "Still perfectly well, still in her coat, and now frightened.",
+	},
+	{
+		"id": "vane", "name": "Hollis Vane", "age": 47, "bed": 4,
+		"condition": "Pancreatitis, not settling",
+		"tier": Tier.PREMIUM,
+		## LOUD, AND RIGHT. Everybody stopped listening on Tuesday.
+		"truly_well": false,
+		"suggestible": 0.1,
+		"recall": 0.8,
+		"summary": "Amylase still rising. Requiring regular opiate. Not tolerating diet.",
+		"opening": "I am dying. I want that noted. I have said it to four people.",
+		"later": "Nobody writes it down. I say it and nobody writes it down.",
+		"evening": "You think I'm making it up. Everyone here thinks I'm making it up.",
+		"pressed": "Ask me anything you like. I have been telling you all since Tuesday.",
+		"on_your_note": "You've written it down. Somebody's actually written it down.",
+		"on_hold": "Thank you. God. Thank you.",
+		"on_discharge": "You're not serious. Look at me and tell me you're serious.",
+		"exam_unwell": "Rigid, sweating, and his abdomen is genuinely unbearable to touch. He has been right the entire time.",
+		"note": "The only person on this ward who is unmistakably ill, and the one nobody believes.",
+		## HE TELLS THE WHOLE WARD EVERYTHING, INCLUDING ABOUT YOU.
+		"tells_everyone": true,
+		"readmit_summary": "Never left. Deteriorated on the ward at 20:30 and was moved to HDU.",
+		"readmit_opening": "I told you. I told all of you.",
+		"readmit_hold": "Right. Right. Okay.",
+		"readmit_discharge": "No. No, absolutely not.",
+		"readmit_exam": "Worse than this morning, and this morning he was begging somebody to write it down.",
+	},
+	{
+		"id": "threlfall", "name": "Ivy Threlfall", "age": 34, "bed": 5,
+		"condition": "Migraine with aura, resolved",
+		"tier": Tier.STANDARD,
+		## AND HE WAS WRONG THE OTHER WAY. His four-twenty note says she stays.
+		"truly_well": true,
+		"suggestible": 0.6,
+		"recall": 0.75,
+		"summary": "Seen by Dr Costa 04:20, for observation. Pain free since 07:00. Eating.",
+		"opening": "I'm fine now. It's gone. It always goes.",
+		"later": "The doctor at four said I had to stop in. I don't know why.",
+		"evening": "I've got my sister waiting outside since lunchtime.",
+		"pressed": "Is there something on the scan? Just tell me if there's something.",
+		"on_your_note": "That's not what I said to you. That's really not what I said.",
+		"on_hold": "Another night? For a headache I haven't got any more?",
+		"on_discharge": "Brilliant. Thanks. I'll go and find her.",
+		"exam_well": "Neurologically completely normal. The aura went at seven and she is bored.",
+		"note": "The night registrar wrote that she stays. She is well, and his note is the only thing that says otherwise.",
+		## THE SAME TRAP, POINTING THE OTHER WAY.
+		"colleague_wrong": true,
+		"colleague_seen": "04:20",
+		"readmit_summary": "Attended again 20:05 with a second aura. Resolved before she was seen.",
+		"readmit_opening": "It came back. I knew it'd come back the minute I got in.",
+		"readmit_hold": "Fine. Whatever. I'm not arguing tonight.",
+		"readmit_discharge": "Right. So that's twice I've sat here for nothing.",
+		"readmit_exam": "Neurologically normal again, and thoroughly sick of the place.",
+	},
+]
+
+const PRIOR_FOUR := [
+	## THE NIGHT REGISTRAR'S ROUND, IN HIS OWN NAME. Two of these are wrong and
+	## the notes do not say which — only a pair of eyes at the bedside does.
+	{
+		"patient": "ashworth", "minute": 6 * 60 + 40,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Reviewed. Afebrile, bloods improving. Fit for discharge today.",
+	},
+	{
+		"patient": "pyne", "minute": 2 * 60 + 10,
+		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Admitted for observation, chest pain. Serial troponins requested.",
+	},
+	{
+		"patient": "petrossian", "minute": 5 * 60,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "No injury. Mobilising independently. Discharged. Awaiting transport.",
+	},
+	{
+		"patient": "vane", "minute": 7 * 60 + 20,
+		"claim": "UNWELL", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Poor night. Amylase up again. Asking repeatedly to be believed.",
+	},
+	{
+		"patient": "threlfall", "minute": 4 * 60 + 20,
+		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Aura ongoing at review. For observation overnight.",
+	},
+]
+
+const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR]
 
 ## Who is coming back.
 ##
@@ -745,7 +933,7 @@ const ROUNDS := [10 * 60, 13 * 60, 16 * 60, 19 * 60]
 ## which is why holding somebody means writing against a note that is already
 ## there — and why Peter Lomax is the hardest bed on the second ward: his prior
 ## entries all say improving, and they are not lying, they are just out of date.
-const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE]
+const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE, PRIOR_FOUR]
 
 static func prior_entries(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day

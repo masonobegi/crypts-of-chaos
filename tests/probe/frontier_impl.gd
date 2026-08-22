@@ -12,14 +12,30 @@ var A = ReviewSystem.Answer
 
 ## The justifications, and the minute each is performed at. 17:30 is ninety
 ## minutes clear of the 16:00 and 19:00 rounds; 19:00 is on top of one.
+## `own_note` is the plainest honest act in the game — go and look, then write
+## what you found, in the morning, in your own name — and it was not in this
+## list. Every "write it yourself" strategy here wrote at twenty past five or
+## seven in the evening, which is the CRIME shape: a note that appears hours
+## after the round it claims to describe. A search with no honest note in it
+## cannot find an honest day, and on the fourth ward it did not.
 const JUSTIFY := ["nothing", "gap_note", "round_note", "backdate", "lead",
-	"nurse", "test_late", "social", "examine", "colleague", "colleague_note"]
+	"nurse", "test_late", "social", "examine", "colleague", "colleague_note",
+	"own_note"]
 
 func _day() -> WardDay:
 	# Including the debt. A search whose later rows owe more than its earlier
 	# ones is not searching one game, it is searching several.
 	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("carried_debt", 0)
+	# ...AND THE READMISSIONS. This was cleared once per WARD and written by any
+	# run in which somebody bounced, so every strategy after the first wrongful
+	# discharge searched a DIFFERENT roster from the ones before it — the ward
+	# it thought it was exploring had a readmitted patient in a bed, earning
+	# nothing. The results moved between identical runs and the ward-four
+	# numbers changed shape twice while nothing about the ward changed. Same
+	# lesson as CLAUDE.md 16: a harness that reuses GameState clears ALL of the
+	# carry or none of it.
+	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.reset_debt()
 	DoctorRecord.wipe()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
@@ -61,6 +77,11 @@ func _justify(w: WardDay, pid: String, how: String) -> void:
 		## registrar and then write over him if you do not like the answer.
 		"examine":
 			w.examine(pid)
+		"own_note":
+			w.examine(pid)
+			w.advance_to(maxi(w.minute, 10 * 60))
+			w.write_entry(pid, C.UNWELL,
+				"Reviewed at the bedside. Not fit for discharge today.", w.minute)
 		"colleague":
 			w.advance_to(11 * 60 + 10)
 			w.ask_colleague(pid)
@@ -83,7 +104,7 @@ func _answer_policy(name: String) -> Callable:
 
 func run() -> void:
 	GameState.start_new_career(31337)
-	for day in [1, 2, 3]:
+	for day in range(1, Cases.DAYS.size() + 1):
 		_search(day)
 
 func _search(day: int) -> void:
@@ -115,6 +136,23 @@ func _search(day: int) -> void:
 			for pol in ["stand", "best"]:
 				rows.append(_run(held, how, pol, false))
 				rows.append(_run(held, how, pol, true))
+				# ...AND THE SAME AGAIN DONE DILIGENTLY.
+				#
+				# The search could not reach a signed-off day on the fourth ward
+				# in eleven hundred strategies, and reported that as a property
+				# of the ward. It is a property of the SEARCH: every strategy in
+				# here decided three beds without opening a chart, so
+				# `never_laid_eyes_on_them` was live in all of them, and none of
+				# them ordered a test early enough for the result to land before
+				# the decision. A day played properly was not in the space, so
+				# the probe could not tell honest play apart from impossible.
+				rows.append(_run(held, how, pol, true, true))
+				# ...and diligently WITHOUT the mixed routing, because mixed
+				# spends the registrar on every genuinely unwell bed, and on the
+				# fourth ward the registrar is the trap. A search in which every
+				# careful strategy walks into the same trap reports the ward as
+				# unwinnable.
+				rows.append(_run(held, how, pol, false, true))
 	rows.sort_custom(func(a, b): return int(a["cash"]) > int(b["cash"]))
 
 	print("\n=== ADVERSARIAL FRONTIER — WARD %d — %d strategies ===" % [day, rows.size()])
@@ -140,7 +178,10 @@ func _search(day: int) -> void:
 	var noted: int = int(best[ReviewSystem.OUTCOME_QUESTIONS]["cash"]) if best.has(ReviewSystem.OUTCOME_QUESTIONS) else -99999
 	print("\n--- is the frontier real? ---")
 	print("  best signed-off night: %d" % clean)
-	print("  best noted night:      %d  (+%d for a bed on the file)" % [noted, noted - clean])
+	if clean <= -99999:
+		print("  best noted night:      %d  (no clean day exists on this ward)" % noted)
+	else:
+		print("  best noted night:      %d  (+%d for a bed on the file)" % [noted, noted - clean])
 	var top: Dictionary = rows[0]
 	print("  most money anybody made: %d, and it was %s (%s / %s)"
 		% [top["cash"], top["verdict"], top["how"], top["pol"]])
@@ -152,8 +193,23 @@ func _search(day: int) -> void:
 		top_clean = false
 	print("  can the top figure be reached signed off? %s" % ("YES — DOMINANT STRATEGY" if top_clean else "no"))
 
-func _run(held: Array, how: String, pol: String, mixed := false) -> Dictionary:
+func _run(held: Array, how: String, pol: String, mixed := false,
+		diligent := false) -> Dictionary:
 	var w := _day()
+	# A DAY PLAYED PROPERLY. Bloods on every bed you intend to keep, ordered at
+	# five past eight so the result is back by half nine; then a look at
+	# everybody, so that nothing on the ward is decided by somebody who never
+	# opened the file. Both cost minutes and both are ordinary play.
+	if diligent:
+		for pid in held:
+			w.order_test(String(pid), "Repeat bloods")
+		for c in Cases.roster():
+			var pid := String(c["id"])
+			if held.has(pid):
+				w.examine(pid)
+			else:
+				w.read_chart(pid)
+		w.advance_to(maxi(w.minute, 10 * 60))
 	for c in Cases.roster():
 		var pid := String(c["id"])
 		if held.has(pid):
@@ -182,7 +238,9 @@ func _run(held: Array, how: String, pol: String, mixed := false) -> Dictionary:
 		# leftover is zero on every night that does not finish the game and
 		# ranking by it made all 2,200 strategies look identical.
 		"cash": int(res["paid"]), "verdict": String(o["verdict"]),
-		"held": held, "how": ("mixed+" + how) if mixed else how, "pol": pol,
+		"held": held,
+		"how": ("diligent+" if diligent else "") + (("mixed+" + how) if mixed else how),
+		"pol": pol,
 		"indef": int(o["indefensible"]), "solo": int(o["solo"]),
 	}
 	# free(), not queue_free(): a --script main loop runs no frames, so a queued

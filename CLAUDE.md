@@ -6,10 +6,11 @@ primitives at runtime and every sound is synthesised on first play.
 ## Always
 
 ```bash
-GODOT=/path/to/godot ./run_tests.sh      # 665 assertions + a full headless shift
+GODOT=/path/to/godot ./run_tests.sh      # 271 assertions, a headless shift, 31 playtests, the data check
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
-BALANCE_DAYS=30 godot --headless --path . --script res://tests/balance_sim.gd
+godot --headless --path . --script res://tests/probe/career_run.gd    # a whole career, eight ways
+godot --headless --path . --script res://tests/probe/frontier_run.gd  # ~12 min, 3,300 strategies
 ```
 
 Run the tests before committing. Run the screenshots after any UI or world
@@ -27,7 +28,8 @@ change — five real bugs have been caught only by looking at the game.
 3. **Calling `.new()` on a script with parse errors HANGS the process** rather
    than erroring. Always gate on `can_instantiate()` — the test runner does.
 4. **Autoloads are not resolvable at compile time from a `--script` main loop.**
-   `smoke_run.gd`, `balance_sim.gd` and `shot.gd` are thin runners that
+   `smoke_run.gd`, `playtest_run.gd`, `shot.gd` and everything in
+    `tests/probe/` are thin runners that
    `load()` their implementation at runtime for exactly this reason.
 5. **Nodes added during a SceneTree's `_initialize()` are NOT inside the tree**,
    so every `global_position` read errors. The test runner waits three frames;
@@ -61,14 +63,15 @@ change — five real bugs have been caught only by looking at the game.
     the player, so the entire stealth game switched itself off partway through
     every shift and nothing failed loudly.
 
-12. **A treatment recorded under one id and charted under another produces
-    BOTH fraud findings at once.** `Patient.record_treatment(id)` and
-    `Chart.log_treatment(id)` are matched by string in `Chart.audit()`: an id
-    in one and not the other is "billed with no record of it being performed"
-    (weight 0.55) *plus* "administered but never charted". Every hand-procedure
-    got this wrong on the way in, so performing one honestly generated the two
-    findings the game reserves for fraud. If you add a verb, use ONE id for
-    both sides of it, and give it a name in `DB.OFF_MENU_TREATMENTS`.
+12. **An entry recorded under one id and charted under another produces BOTH
+    findings at once.** `Contradictions.audit_beds()` matches what you did
+    against what the chart says by string: an id in one and not the other reads
+    as "billed with no record of it" *and* "done but never written up", so one
+    honest act generates the two findings the game reserves for fraud. If you
+    add a verb, use ONE id for both sides of it. (This was first written about
+    a treatment system that has since been cut; the failure mode outlived it,
+    because it is a property of matching two lists by string.)
+
 13. **One wall-mounting offset does not fit a poster and a sharps bin.** A 3cm
     poster sits fine 9cm proud of the plaster; a 20cm-deep box mounted the same
     way is half inside it. `Dressing._add()` takes the piece's own depth and
@@ -116,51 +119,68 @@ change — five real bugs have been caught only by looking at the game.
 - **Suspicion is derived, never stored.** It is a read over the `Evidence` a
   `Mind` holds. Never add a "suspicion += x" anywhere; emit a `WorldEvent` and
   let perception decide who noticed.
-- **Three layers are allowed to disagree**: truth (`Patient.recovery`), record
-  (`PatientChart`), belief (`Mind`). All the comedy is in the gaps.
-- **`EconomySystem.ADMISSION_COST` is the most load-bearing constant.** Without
-  it, turnover beats duration on a five-bed ward and the premise inverts. There
-  is a balance check for this.
-- **A day has three phases and they are separate systems.** The ward
-  (`ShiftSystem`, ends at the office desk), the evening (`NightSystem`, a
-  street with cones of vision on it), and the post (`LegalSystem`, a claim to
-  settle or fight). `ShiftSystem.after_statement()` is the join: each screen
-  calls back into it when it closes, so the sequence is driven by the player
-  finishing with one rather than by a timer.
-- **Every hand-procedure declares intent first and is graded against it.**
-  `Procedures.OUTCOMES[kind][intent][band]`. Doing either job well is rewarded
-  and doing either badly is punished — there is no safe option and no free
-  crime, and intending harm and fumbling it is the worst square on the board.
-  Add a procedure by adding a `kind` to that table and a screen that grades a
-  manoeuvre 0..1; `TreatmentSystem.apply_outcome()` does the rest.
-- **The minigames are performed on a drawing of the actual body part.**
-  `Anatomy` builds nine rigs out of one primitive (a tapered capsule), drawn
-  grown-dark-first and then filled so a hand reads as one object. A new part is
-  a `_rig_*()` returning `prox`/`dist`/`pbone`/`dbone`/`pivot`/`axis`/`wound`.
+- **Three layers are allowed to disagree**: truth (what the `Cases` entry says
+  the person is actually like), record (the `ChartEntry` list in `Records`),
+  and belief (what `Mind` holds, and what Sister Nkemelu asks you about). All
+  the comedy is in the gaps, and the whole audit is a read across them.
+- **`Cases.ADMISSION_FEE` against `Cases.DEBT_DUE` is the load-bearing pair.**
+  Turnover must not beat duration on a five-bed ward or the premise inverts —
+  the whole game is *this bed is worth more with somebody in it*. The data
+  check asserts the inequality directly, per ward: five beds held honestly earn
+  less than the best three. If that ever flips, the game is about discharging
+  people quickly and there is no story in it.
+- **A day is one place and one clock.** There is no evening phase and no legal
+  phase; both were cut. The ward runs 08:00 to 20:00, every verb costs minutes
+  off one clock in `GameState`, and the day ends at the office desk with the
+  handover. `ShiftSystem`, `NightSystem` and `LegalSystem` are gone — if you are
+  reading about them somewhere, that document is older than this one.
+- **Six verbs, and every one of them costs time.** Write it yourself (8 min),
+  lead the patient (10), send a nurse (15), order a test (5, back in 75),
+  examine them (15, and it writes NOTHING), ask the registrar (25, and only
+  during his hours). The costs are the game: the day is not long enough to do
+  all six on all five beds, so a day is a budget rather than a checklist. Add a
+  verb by adding a cost constant and a `WardDay` method that writes a
+  `ChartEntry` with an honest `author` and `written_minute`.
+- **Information must never have negative expected value.** This is the rule the
+  career rework exists to enforce, and it was broken for three iterations:
+  examining a patient wrote nothing to the chart, so the only thing looking at
+  somebody did was manufacture the knowledge that convicted you of ignoring it.
+  Anything that makes the player *less* willing to find out what is true has
+  inverted the game. `_never_laid_eyes_on_them` is the counterweight — three
+  blind decisions is itself a finding.
+- **A finding is a severity, not a gate.** `_sent_home_unwell` is a ladder
+  (0.85 if a peer said otherwise, 0.72 if you examined them, 0.58 if it was
+  merely documented, 0.55 if you never looked). A boolean gate is a cliff the
+  player learns to stand exactly one inch from.
 - **Decoration has no collision and no navigation footprint.** Everything in
   `Dressing` is scenery; if it needs to be usable it belongs in `Furniture`
   with an `_occupy()`. That rule is what lets there be a lot of it.
-- **Achievements are a pure read over `GameState.stats` and flags.** A system
-  that has to remember to award one is a system with an achievement bug in it.
-- Content lives in data (`DB`, `Items`, `Upgrades`, `Meta.PERKS`). Adding a
-  condition, item, complication, event or perk should not require touching a
-  system. Tests walk all of it and assert referential integrity.
+- **The career score is a pure read over `DoctorRecord`.** A system that has to
+  remember to escalate is a system with an escalation bug in it. Her opening
+  line, the weight of a repeated finding, which excuses she will still hear,
+  and whether you are still a doctor are all derived from four counters and a
+  strike total that never reset. There are no achievements and no stats
+  dictionary — both existed, both were read by nothing, and both were cut.
+- **Content lives in `Cases`, and adding a patient must not require touching a
+  system.** Fifteen people across three wards, each a dictionary of authored
+  strings; `tests/probe/data_run.gd` walks every one and fails on any field a
+  system would otherwise silently default. If a new kind of patient needs a new
+  `if` in `WardDay`, the data model is wrong, not the patient.
 
 ## Testing philosophy
 
-`tests/` has four layers, and each has caught things the others could not:
+`tests/` has seven layers, and each has caught things the others could not:
 
 | Layer | Catches |
 |---|---|
-| unit + integration | maths, serialisation, floor connectivity |
+| unit + integration | maths, serialisation, the audit rules, floor connectivity |
 | `smoke_run.gd` | "everything compiles and nothing works" |
-| `live_run.gd` | anything that only breaks with real frames — it found that every ward door was welded shut and no member of staff could enter any patient room |
-| `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
+| `playtest_run.gd` | design inversions, over 31 authored strategies on all three wards. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `screenshots.sh` | anything you can only see |
 | overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
 | `tests/probe/data_run.gd` | the authored content itself — fifteen people across three wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
-| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays a week five ways (honest, honest+corroborated, one lie, greedy, adaptive) and asks three questions: does honest play clear every night, is greed caught, and is one bad night recoverable. It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. |
-| `tests/probe/frontier_run.gd` | dominant strategies. Two thousand two hundred plays — both wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
+| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays twenty nights eight ways (coast, honest, honest+corroborated, restrained, skilled, one lie, greedy, adaptive). It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. |
+| `tests/probe/frontier_run.gd` | dominant strategies. Three thousand three hundred plays — all three wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
 
 `playtest_run.gd` exits non-zero when a success criterion regresses, so a
 design inversion fails `run_tests.sh` rather than printing a report nobody

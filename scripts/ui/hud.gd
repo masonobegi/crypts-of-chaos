@@ -33,6 +33,7 @@ var _crosshair: Control
 var _subtitle_timer := 0.0
 
 func _ready() -> void:
+	add_to_group("hud")
 	# ...and_offsets_, not set_anchors_preset(). The latter sets anchors only and
 	# leaves a freshly created Control at zero size, so every child anchored to
 	# the right or bottom edge resolves against a zero-width parent and lands

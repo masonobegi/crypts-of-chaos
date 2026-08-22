@@ -161,14 +161,27 @@ func _stage_ui(which: String, w) -> void:
 				"remembered": PackedStringArray(["oduya"])})
 		"paid":
 			# THE WAY OUT. Nothing in the game had an ending until this session.
+			# Staged with a plausible career behind it, or the card documents a
+			# doctor who paid off fifteen thousand pounds in no shifts at all.
+			DoctorRecord.wipe()
+			var won := DoctorRecord.load_from_state()
+			for i in 8:
+				won.record_night([], ReviewSystem.OUTCOME_CLEAR)
+			won.record_night([], ReviewSystem.OUTCOME_QUESTIONS)
 			GameState.set_flag("debt_remaining", 0)
 			EventBus.request_ui.emit("day_over",
 				{"verdict": ReviewSystem.OUTCOME_CLEAR})
 		"struck_off":
 			GameState.reset_debt()
+			DoctorRecord.wipe()
 			var rec := DoctorRecord.load_from_state()
-			for i in 3:
-				rec.record_night([], ReviewSystem.OUTCOME_ESCALATED)
+			rec.record_night([_mk("uncorroborated_stay")], ReviewSystem.OUTCOME_QUESTIONS)
+			rec.record_night([_mk("uncorroborated_stay"), _mk("backdated")],
+				ReviewSystem.OUTCOME_FLAGGED)
+			rec.record_night([_mk("uncorroborated_stay"), _mk("sent_home_unwell")],
+				ReviewSystem.OUTCOME_ESCALATED)
+			rec.record_night([_mk("backdated")], ReviewSystem.OUTCOME_FLAGGED)
+			GameState.set_flag("debt_remaining", 9240)
 			EventBus.request_ui.emit("day_over",
 				{"verdict": ReviewSystem.OUTCOME_ESCALATED})
 		"review":
@@ -211,6 +224,12 @@ func _frame_a_person(cam: Camera3D, how: String) -> void:
 		eye = head + Vector3(0.85, 0.45, -1.7)
 	cam.global_position = eye
 	cam.look_at(head, Vector3.UP)
+
+## A finding of a given kind, for staging a record that took a few weeks.
+func _mk(kind: String):
+	var f = Contradictions.Finding.new()
+	f.kind = kind
+	return f
 
 func _save(name: String) -> void:
 	var img := tree.root.get_texture().get_image()

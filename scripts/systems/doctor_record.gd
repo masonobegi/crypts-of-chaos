@@ -27,12 +27,23 @@ const FLAG := "doctor_record"
 
 ## The kinds she counts. Deliberately not every finding — these are the four
 ## habits that describe a way of working rather than a bad Tuesday.
+## kind -> [one of them, more than one of them]. Two forms because the tally is
+## read out loud on two screens and "1 people sent home" is a sentence written
+## by a spreadsheet.
 const COUNTED := {
-	"uncorroborated_stay": "beds nobody but you ever saw a reason for",
-	"backdated": "notes written up after the fact",
-	"reversed_a_colleague": "times you have overruled somebody in writing",
-	"sent_home_unwell": "people sent home against what was on the chart",
+	"uncorroborated_stay": ["a bed nobody but you ever saw a reason for",
+		"beds nobody but you ever saw a reason for"],
+	"backdated": ["a note written up after the fact",
+		"notes written up after the fact"],
+	"reversed_a_colleague": ["time you overruled somebody in writing",
+		"times you have overruled somebody in writing"],
+	"sent_home_unwell": ["somebody sent home against what was on the chart",
+		"people sent home against what was on the chart"],
 }
+
+static func _phrase(kind: String, n: int) -> String:
+	var pair: Array = COUNTED.get(kind, ["", ""])
+	return String(pair[0] if n == 1 else pair[1])
 
 var counts: Dictionary = {}     ## kind -> times, across the whole career
 var referrals := 0              ## REFERRED verdicts, for the record and the tally
@@ -149,7 +160,7 @@ func opening_line() -> String:
 			% _ordinal(worst_n)
 	if worst_n == 3:
 		return "This is the third time I've had to ask you about %s." \
-			% String(COUNTED.get(worst, "this"))
+			% _phrase(worst, 2)
 	if referrals >= 1:
 		return "You know coding are still on last week."
 	return ""
@@ -160,7 +171,7 @@ func summary_lines() -> Array:
 	for k in COUNTED:
 		var n := times(k)
 		if n > 0:
-			out.append("%d  %s" % [n, String(COUNTED[k])])
+			out.append("%d  %s" % [n, _phrase(String(k), n)])
 	return out
 
 static func _ordinal(n: int) -> String:

@@ -19,6 +19,9 @@ func _build() -> void:
 	# THE CAREER ENDS HERE OR IT DOES NOT END AT ALL. A probe that played seven
 	# days found a player being referred on six consecutive nights and simply
 	# carrying on, because there was nothing to carry on TO.
+	var hud = get_tree().get_first_node_in_group("hud")
+	if hud != null and hud.has_method("_refresh_money"):
+		hud.call("_refresh_money")
 	var ending := GameState.ending()
 	if ending != "":
 		_ending_card(ending)

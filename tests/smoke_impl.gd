@@ -158,6 +158,46 @@ func _check_the_verbs_work() -> void:
 		"a test on somebody who is well comes back normal, whatever you wanted")
 	_ok(o.fulfilled_by == r.id, "and the order is answered by it")
 
+	_check_being_seen_somewhere_else(w)
+
+## THE CLAIM THE FIRST PERSON EXISTS FOR, tested against the real scene.
+##
+## "I observed this at the bedside at half past five" is checkable against where
+## the player was standing at half past five, and the only thing that makes it
+## checkable is somebody having seen them somewhere else. Every part of that is
+## live wiring — Game's placement tick, the nurse's perception cone, the rooms
+## the hospital thinks it has — and none of it was tested anywhere. A silent
+## break here does not fail: it just quietly makes the game top-down.
+func _check_being_seen_somewhere_else(w) -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	var player = tree.get_first_node_in_group("player")
+	if h == null or player == null:
+		_fail("no player or hospital to test being seen")
+		return
+	# THE TWO TERMINALS HAVE TO MEAN WHAT THE GAME SAYS THEY MEAN: the one in
+	# the bay is in full view of the ward, the one in your office has a door on
+	# it. Both are read off where the player is standing, so both are testable.
+	player.global_position = h.point_in("ward") + Vector3(0, 0.1, 0)
+	var in_ward: PackedStringArray = w._who_can_see_me()
+	_ok(not in_ward.is_empty(),
+		"writing at the ward terminal happens in front of people (%s)" % ", ".join(in_ward))
+	player.global_position = h.point_in("office") + Vector3(0, 0.1, 0)
+	_ok(w._who_can_see_me().is_empty(),
+		"and writing in your office with the door shut happens in front of nobody")
+
+	# Stood in the corridor, writing up a bedside observation for right now.
+	player.global_position = h.point_in("corridor") + Vector3(0, 0.1, 0)
+	var at: int = w.minute
+	w.observe_player("corridor", PackedStringArray(["Adeyemi"]))
+	w.write_entry("blake", ChartEntry.Claim.UNWELL, "Headache recurred.", at)
+	w.set_disposition("blake", "hold")
+	var kinds: Array = []
+	for f in w.review_findings():
+		kinds.append(f.kind)
+	_ok(kinds.has("author_elsewhere"),
+		"and a bedside note timed for a minute you were seen in the corridor is a finding")
+	w.set_disposition("blake", "")
+
 func _check_the_day_closes() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:

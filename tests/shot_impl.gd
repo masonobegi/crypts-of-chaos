@@ -26,7 +26,8 @@ const SHOTS := [
 	["10_morning", "ui:morning"],
 	["11_patient", "ui:patient"],
 	["12_chart", "ui:chart"],
-	["13_review", "ui:review"],
+	["13_write", "ui:write"],
+	["14_review", "ui:review"],
 ]
 
 func start() -> void:
@@ -97,6 +98,20 @@ func _stage_ui(which: String, w) -> void:
 				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
 					"Reports transient dizziness on standing.", 18 * 60 + 35)
 			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
+		"write":
+			# The form itself, standing in the bay: the note being composed, the
+			# gap it will record, and who is in the room while you compose it.
+			var pl = tree.get_first_node_in_group("player")
+			var h = tree.get_first_node_in_group("hospital")
+			if pl != null and h != null:
+				pl.global_position = h.point_in("ward") + Vector3(0, 0.1, 0)
+			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
+			var ui = game.ui
+			if ui != null and ui.current != null:
+				ui.current.set("_writing", true)
+				ui.current.set("_stated", 18 * 60 + 35)
+				if ui.current.has_method("rebuild"):
+					ui.current.rebuild()
 		"review":
 			if w != null:
 				# The chart stage already left a contradiction in Sam Oduya's

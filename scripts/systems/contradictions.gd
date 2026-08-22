@@ -73,6 +73,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
 		out.append_array(_reversed_a_colleague(pid, list))
+		out.append_array(_written_in_front_of_them(pid, list, t))
 		out.append_array(_addendum_cascade(pid, list))
 
 	out.append_array(pattern_findings(entries, truth))
@@ -440,6 +441,51 @@ static func _no_reason_recorded(pid: String, list: Array) -> Array:
 	return out
 
 ## Your word, alone, against somebody else's routine observation.
+## YOU WROTE IT IN THE ROOM, AND THE ROOM WAS FULL.
+##
+## THE REASON THIS GAME IS IN FIRST PERSON. `seen_by` was recorded on every
+## entry and read by nothing, so which terminal you walked to made no difference
+## to anything — the ward's "in full view of the ward" and the office's "door's
+## shut, nobody's looking" were two pieces of flavour text describing the same
+## act. A note claiming somebody is unwell, typed where they could see you type
+## it, about somebody who is not, is a note the reviewer can check by walking
+## four metres and asking them. Going somewhere private to write it is the crime
+## the game is about, and it costs the minutes it takes to get there and back.
+static func _written_in_front_of_them(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if bool(t.get("well", true)) == false:
+		return out            ## it is true, so it does not matter who saw it
+	var who := String(t.get("name", ""))
+	for e in list:
+		if e.author != ChartEntry.Author.YOU or not e.supports_stay():
+			continue
+		if e.seen_by.is_empty():
+			continue
+		var by_the_patient: bool = who != "" and Array(e.seen_by).has(who)
+		var f := Finding.new()
+		f.kind = "written_in_front_of_them"
+		f.patient_id = pid
+		f.entries = PackedStringArray([e.id])
+		f.axis = "who was in the room"
+		f.severity = 0.62 if by_the_patient else 0.34
+		if by_the_patient:
+			f.question = "You typed this standing at the bed. %s was awake. I asked." % who
+			f.because = "%s watched you write it and says the conversation in it never happened." % who
+		else:
+			f.question = "%s were in the room while you wrote this up. None of them saw the examination." % \
+				_and_list(e.seen_by)
+			f.because = "The people who were in the room when you wrote %s did not see it happen." % _short(e)
+		out.append(f)
+	return out
+
+static func _and_list(names: PackedStringArray) -> String:
+	var a := Array(names)
+	if a.size() == 1:
+		return String(a[0])
+	if a.size() == 2:
+		return "%s and %s" % [a[0], a[1]]
+	return "%s and %d others" % [a[0], a.size() - 1]
+
 static func _uncorroborated_stay(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
 	# A social admission needs no corroborating observation — there is nothing
@@ -659,7 +705,8 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"conflicting_observations", "invited_contradiction",
 					"social_hold_is_a_lie", "patient_no_recall",
 					"symptom_was_suggested", "grateful_witness",
-					"already_being_looked_at", "reversed_a_colleague"]:
+					"already_being_looked_at", "reversed_a_colleague",
+					"written_in_front_of_them"]:
 				contradicted = true
 
 		if contradicted:

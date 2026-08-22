@@ -343,6 +343,12 @@ static func center_panel(width: float, height: float) -> PanelContainer:
 ## stay in the middle, and you can watch them react to what you pick.
 static func side_panel(width: float, height: float) -> PanelContainer:
 	var p := panel(PANEL, 3, 2, Color(0.22, 0.23, 0.25))
+	# A PanelContainer grows past its minimum to fit its content in BOTH
+	# directions, and the width had no cap: one row of four wide buttons pushed
+	# the whole card off the right-hand edge of the screen and took its author
+	# column with it. Clip the child instead — a row that will not fit is a
+	# layout to fix, not a card to lose.
+	p.clip_contents = true
 	# Nudged down so the top of the card clears the money panel in the corner.
 	place(p, Control.PRESET_CENTER_RIGHT, -width - 36.0, -height * 0.5 + 52.0, width, height)
 	p.custom_minimum_size = Vector2(width, height)

@@ -418,3 +418,32 @@ func test_the_day_only_ends_once() -> void:
 	t.ok(second.has("earned"), "and the second caller gets the same answer, not an empty one")
 	t.eq(int(second["cash"]), int(first["cash"]), "which is the same answer")
 	w.queue_free()
+
+## Who was in the room when you wrote it has to CHANGE something, or the two
+## terminals are two pieces of flavour text describing the same act — which is
+## what they were for three iterations, because `seen_by` was written on every
+## entry and read by nothing.
+func test_where_you_write_it_is_also_the_skill() -> void:
+	var private := _day()
+	private.advance_to(17 * 60 + 30)
+	var a := private.write_entry("oduya", ChartEntry.Claim.UNWELL,
+		"Reports dizziness.", 17 * 60 + 25, WardDay.TERMINAL_OFFICE)
+	private.set_disposition("oduya", "hold")
+	var alone := _sev(private.review_findings())
+	private.queue_free()
+
+	var public := _day()
+	public.advance_to(17 * 60 + 30)
+	var b := public.write_entry("oduya", ChartEntry.Claim.UNWELL,
+		"Reports dizziness.", 17 * 60 + 25, WardDay.TERMINAL_WARD)
+	# The harnesses have no scene, so nobody is in any room; state the witness
+	# list directly, which is what standing at the bay terminal produces.
+	b.seen_by = PackedStringArray(["Sam Oduya", "Hal Brennan"])
+	public.set_disposition("oduya", "hold")
+	var watched := _sev(public.review_findings())
+	public.queue_free()
+
+	t.ok(a.seen_by.is_empty(), "the office terminal records no witnesses")
+	t.gt(watched, alone * 1.8,
+		"and writing the same line where the patient could watch you do it costs far more (%.2f vs %.2f)"
+			% [watched, alone])

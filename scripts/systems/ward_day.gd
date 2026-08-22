@@ -469,6 +469,7 @@ func review_truth() -> Dictionary:
 	for pid in state:
 		truth[pid] = {
 			"well": bool(Cases.by_id(pid).get("truly_well", true)),
+			"name": String(Cases.by_id(pid).get("name", pid)),
 			"held": String(state[pid]["disposition"]) == "hold",
 			"patient_recalls": state[pid]["recalls"],
 			"patient_suggested": state[pid]["suggested"],
@@ -485,6 +486,7 @@ func review_findings() -> Array:
 	for pid in state:
 		truth[pid] = {
 			"well": bool(Cases.by_id(pid).get("truly_well", true)),
+			"name": String(Cases.by_id(pid).get("name", pid)),
 			"held": String(state[pid]["disposition"]) == "hold",
 			"patient_recalls": state[pid]["recalls"],
 			"patient_suggested": state[pid]["suggested"],
@@ -512,6 +514,21 @@ func observe_player(room: String, witnesses: PackedStringArray) -> void:
 	# `author_elsewhere` is looking for.
 	records.place("player", minute, room, String(witnesses[0]), "ward")
 
+## WHO COULD SEE YOU DOING THIS.
+##
+## A VISION CONE IS THE WRONG TEST FOR WRITING A NOTE. `can_see` answers "is
+## this person looking at that point right now", which is exactly right for a
+## thing that happens in an instant and exactly wrong for standing at a terminal
+## typing for five minutes: five people lying in a row all face the same way, so
+## from any one bedside four of them were outside a 112-degree cone and the only
+## witness to anything was whoever you happened to be standing in front of. In
+## the corridor the answer was nobody at all, which quietly switched off the
+## entire reason the game is in first person.
+##
+## Being in the room is the test. You turn round, they look up, it takes
+## minutes. That is also what makes the two terminals mean what the game says
+## they mean: the one in the bay is in full view of the ward, and the one in
+## your office has a door on it.
 func _who_can_see_me() -> PackedStringArray:
 	var out := PackedStringArray()
 	# CLAUDE.md 5: a node added during a SceneTree's _initialize() is not inside
@@ -521,13 +538,19 @@ func _who_can_see_me() -> PackedStringArray:
 		return out
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
 	var player = get_tree().get_first_node_in_group("player")
+	var h = get_tree().get_first_node_in_group("hospital")
 	if sus == null or player == null:
 		return out
+	var mine: String = String(h.room_at(player.global_position)) if h != null else ""
 	for m in sus.all_minds():
 		var b = sus.body_of(m.id)
 		if b == null or not is_instance_valid(b) or not b.is_inside_tree():
 			continue
-		if b.perception != null and b.perception.can_see(player.global_position):
+		if b.perception == null or b.perception.suppressed:
+			continue          ## asleep, or out cold
+		# Same room, or watching you from another one.
+		if (mine != "" and b.current_room() == mine) \
+				or b.perception.sees_player():
 			out.append(m.display_name)
 	return out
 

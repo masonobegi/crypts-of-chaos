@@ -3375,3 +3375,115 @@ more days in which to collect a finding. At three seeds the totals came out
 exactly equal and it failed; the thing it is actually asserting held by more than
 two to one in every sample. The claim is a rate and always was — it was being
 measured as a count.
+
+---
+
+## Session 12 — 2026-08-22 — the third pass over the redesign
+
+The redesign shipped in session 11 and the second re-audit found it was a good
+design that was not, on a running machine, being played. This session was the
+gap between those two things.
+
+### The ward clock was an hour and a half out
+
+The day force-ends at 20:00. The last routine round was at 21:00. Every test
+and every one of the twenty-three playtest strategies was written against
+times an hour to three hours after the ward shuts — so *"one lie, in the gap"*
+was measured on top of a round and *"one lie, on top of the round"* was
+measured on an empty evening. The central skill of the game was inverted in
+the instrumentation and every number the second audit quoted was measuring
+something else. Rounds are now 10:00 / 13:00 / 16:00 / 19:00 and nothing
+happens after eight.
+
+Two clocks, as well. Every verb costs ward minutes, and those minutes were
+being spent on `WardDay.minute` while the HUD, the force-end and everything
+else driven by `minute_passed` counted real seconds. The chart said half past
+seven and the corner of the screen said five past eleven, and the gap widened
+the more the player did. `advance_to()` moves `GameState` with it now — which
+made `end_day()` re-entrant, and it had been taking the debt off the takings
+twice.
+
+### The honest day was five clicks, and the measurement was right
+
+Criterion 1 (decision density) had never been implemented. Implemented, it
+failed: *"hold the unwell man, discharge four"* is five dispositions, clears
+the debt and is signed off. The answer was not to soften the criterion — the
+honest day's real content is **reading five records to find out which man is
+the unwell one**, and reading was free. It costs twelve minutes of a
+twelve-hour shift now, and so does every other verb (write 8, ask 10, nurse
+15, order 5). The criterion is now the sharper claim: *there is no five-click
+way to win.*
+
+### Going home early was the safest shift on the ward
+
+The office desk ended the day at whatever minute you walked into it. Hold
+three beds at five past eight, sign off before Adeyemi has walked a round,
+full money, out by nine. She works the evening whether you are there or not;
+`end_day()` runs the ward forward to handover, so leaving early buys absence
+rather than silence. That strategy now measures as **referred**.
+
+### The reason the game is in first person was switched off
+
+`seen_by` was recorded on every entry and read by **nothing**. Worse, it was
+usually empty: `_who_can_see_me()` used a 112-degree vision cone, which is the
+right test for an instant act and the wrong one for standing at a terminal
+typing for five minutes — five people lying in a row all face the same way, so
+from any bedside four of them were outside the cone, and in the corridor the
+answer was nobody at all.
+
+Being in the room is the test now. Writing at the bay terminal is witnessed by
+all five patients; writing in your office is witnessed by nobody. And it does
+something: `written_in_front_of_them` is a contradiction-class finding, worth
+more when the witness is the patient the note is about. The write form says
+who is in the room **before** the button is pressed — a cost the player cannot
+see before paying it is not a decision.
+
+### An adversarial search instead of an author's imagination
+
+`tests/probe/frontier_run.gd` plays 400 strategies: every subset of beds up to
+three, crossed with eight ways of justifying a hold, crossed with how you
+answer in the room. Twenty-three hand-written strategies test the plays a
+designer thought of, which is exactly the set that will not contain the
+exploit.
+
+```
+signed off          150   hold Marchetti only
+noted               820   + one note in the gap
+flagged for audit  1140   + a third bed
+referred           1140   three beds, nothing written
+can the top figure be reached signed off?   no
+```
+
+### Smaller things that were not working
+
+- `EventBus.clock_tick` was emitted by nothing, so gossip, rumour decay and
+  the tannoy had been silently off. Wiring it up ran the tannoy's weighting
+  for the first time and it crashed on `GameState.heat`, deleted two
+  redesigns ago.
+- The objective line was set once by the morning card and never touched; the
+  3D marker listened to a signal nobody sent. A player who put the morning
+  card down had a building, five strangers and no instruction.
+- The nurse patrolled ten rooms of which three exist. `point_in()` returned
+  the world origin for the other seven without complaining.
+- The handover asked *"Nobody but you ever saw this"* without naming the
+  patient or the note. It now reproduces the lines she is holding.
+- A unit test that asserts nothing now fails. Reading a key a dictionary no
+  longer has aborts the function without erroring, so the assertions after it
+  never run and the suite reports green — which
+  `test_abandoning_your_story_is_worse_than_defending_it` had been doing for
+  three iterations.
+- The "58% of the patient card is below the fold" finding was an artefact of
+  the 64-pixel window every Control lays out against under `--headless`.
+  Measured in the rendered harness at the shipping resolution it was 15%.
+
+### NEXT UP
+
+- Day two is the same five people. The carry (`remembered_beds`, `watched`,
+  `auditor_present`, carried debt) makes tomorrow a harder ward, but not a
+  different one. A second roster is the highest-value content work there is.
+- `Defence.BACKED` is reachable only through a nurse, a machine or a patient
+  who remembers. There is no way to earn it from a *colleague* — a second
+  doctor's opinion — and that is the obvious missing verb.
+- The frontier probe cannot see the witness axis: it has no scene, so
+  `seen_by` is always empty in it. Whatever the strongest play involving the
+  office terminal is, nothing has searched for it.

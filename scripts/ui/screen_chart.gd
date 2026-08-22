@@ -42,10 +42,26 @@ func _build() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.rule())
 
+	# THE FORM HAS TO FIT ON THE SCREEN WITH THE CHART IT IS BEING ADDED TO.
+	# Six entries and a six-control form is a card a third of which is below the
+	# fold, and the third that goes is the half you came here to use. While a
+	# note is being composed the list collapses to the last few lines, which is
+	# also the only part that matters: what you are about to write has to sit
+	# next to what is already there at that hour.
+	var all: Array = w.records.for_patient(_pid)
+	var shown: Array = all
+	if _writing and all.size() > 3:
+		shown = all.slice(all.size() - 3, all.size())
 	var box := UIKit.vbox(6)
-	for e in w.records.for_patient(_pid):
+	if shown.size() < all.size():
+		box.add_child(UIKit.label(
+			"%d earlier %s. Close the form to read them."
+				% [all.size() - shown.size(),
+					"entry" if all.size() - shown.size() == 1 else "entries"],
+			12, UIKit.INK_DIM))
+	for e in shown:
 		box.add_child(_entry_row(e))
-	if w.records.for_patient(_pid).is_empty():
+	if all.is_empty():
 		box.add_child(UIKit.label("Nothing recorded.", 14, UIKit.INK_DIM))
 	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
 	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
@@ -93,14 +109,22 @@ func _write_form(v: VBoxContainer, w) -> void:
 		[ChartEntry.Claim.SOCIAL, "Nowhere to go tonight", UIKit.ACCENT],
 		[ChartEntry.Claim.ADMIN, "Administrative note", UIKit.INK_DIM],
 	]
-	var kb := UIKit.hbox(6)
+	# TWO COLUMNS, not one row of four. Four buttons of that width have a
+	# combined minimum wider than the card, and a PanelContainer grows to fit
+	# its content — so the whole chart slid off the right of the screen.
+	var kb := GridContainer.new()
+	kb.columns = 2
+	kb.add_theme_constant_override("h_separation", 6)
+	kb.add_theme_constant_override("v_separation", 6)
 	for k in kinds:
 		var claim: int = k[0]
-		kb.add_child(UIKit.button(String(k[1]),
+		var btn := UIKit.button(String(k[1]),
 			func():
 				_claim = claim as ChartEntry.Claim
 				rebuild(),
-			(k[2] as Color).darkened(0.55) if _claim != claim else (k[2] as Color).darkened(0.2)))
+			(k[2] as Color).darkened(0.55) if _claim != claim else (k[2] as Color).darkened(0.2))
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kb.add_child(btn)
 	v.add_child(kb)
 
 	# The time control. Stepping it backwards is backdating, and the screen says
@@ -122,6 +146,25 @@ func _write_form(v: VBoxContainer, w) -> void:
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 	else:
 		v.add_child(UIKit.label("It is %s now." % ChartEntry._hhmm(w.minute), 12, UIKit.INK_DIM))
+
+	# WHERE YOU ARE STANDING, AND WHO IS IN THE ROOM. This has to be on the
+	# screen BEFORE the button is pressed, not discovered at handover: the whole
+	# choice between the terminal in the bay and the one in your office is which
+	# of these two lines you would rather the note carry, and a cost the player
+	# cannot see before paying it is not a decision.
+	var here := PackedStringArray(w._who_can_see_me())
+	if here.is_empty():
+		v.add_child(UIKit.label(
+			"You are at %s. Nobody can see the screen." % _terminal(),
+			12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	else:
+		# Named up to three, counted after that: five names is a paragraph, and
+		# what the player needs to know is that the room is not empty.
+		var who := ", ".join(here) if here.size() <= 3 else \
+			"%s and %d others" % [", ".join(Array(here).slice(0, 2)), here.size() - 2]
+		v.add_child(UIKit.label(
+			"You are at %s. In the room: %s." % [_terminal(), who],
+			12, UIKit.WARN, HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	var texts := _phrases(_claim)
 	var pb := UIKit.vbox(4)

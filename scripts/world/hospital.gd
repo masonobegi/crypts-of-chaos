@@ -392,6 +392,25 @@ func wards() -> Array[Room]:
 	return out
 
 ## A sensible spot inside a room to stand, walk to, or drop something.
+## The doorway of a room, at head height, for pointing at from a corridor.
+##
+## `point_in` returns a random floor tile, which is a fine place to send a nurse
+## and a poor place to put a marker: from the corridor it reads as a chevron
+## halfway up a wall, and it moves every time it is asked.
+func door_point(key: String) -> Vector3:
+	for entry in LAYOUT:
+		if String(entry["key"]) != key or not entry.has("door"):
+			continue
+		var rect: Rect2 = entry["rect"]
+		var north: bool = rect.position.y > 0.0
+		var z := 4.0 if north else 0.0
+		return Vector3(float(entry["door"]), 1.7, z)
+	var r: Room = rooms.get(key, null)
+	if r == null:
+		push_error("door_point: no room named '%s'" % key)
+		return Vector3.ZERO
+	return Vector3(r.rect.get_center().x, 1.7, r.rect.get_center().y)
+
 func point_in(key: String, stream := "nav") -> Vector3:
 	var r: Room = rooms.get(key, null)
 	if r == null:

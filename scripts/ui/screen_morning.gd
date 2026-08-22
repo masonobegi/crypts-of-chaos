@@ -46,5 +46,9 @@ func _build() -> void:
 
 	card_footer(UIKit.button("Start the round", func():
 		GameState.start_day()
-		EventBus.objective_changed.emit("Five beds. Decide who goes home.")
+		# The day owns the objective from here: it changes as beds are decided,
+		# and it carries a place as well as a sentence.
+		var w = get_tree().get_first_node_in_group("ward_day")
+		if w != null:
+			w._update_objective()
 		close()))

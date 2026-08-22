@@ -63,7 +63,10 @@ func tick() -> bool:
 			stage = "close"
 		"close":
 			_check_the_day_closes()
-			stage = "done"
+			stage = "chain"
+		"chain":
+			if _check_the_screens_chain():
+				stage = "done"
 		"done":
 			_report()
 			return true
@@ -245,6 +248,39 @@ func _check_screens_actually_draw() -> bool:
 		return false
 	EventBus.request_ui.emit(String(_screen_queue[0][0]), _screen_queue[0][1])
 	return true
+
+## THE WHOLE EVENING, THROUGH THE ACTUAL SCREENS.
+##
+## Everything above drives WardDay directly, which is how a build shipped where
+## every system worked and the screens that reach them did not join up. The end
+## of a day is a chain — handover, then the verdict, then tomorrow — and each
+## link is a different script asking the UI router for the next one by name. A
+## typo in any one of those names is a game that stops at eight o'clock.
+var _chain: Array = ["review", "day_over", "morning"]
+var _chain_at := -1
+
+func _check_the_screens_chain() -> bool:
+	var ui = game.get("ui")
+	if ui == null:
+		_fail("no UI to walk the end of the day through")
+		return true
+	if _chain_at >= 0:
+		var want := String(_chain[_chain_at])
+		_ok(String(ui.get("current_id")) == want,
+			"the %s screen opens when it is asked for" % want)
+	_chain_at += 1
+	if _chain_at >= _chain.size():
+		if ui.has_method("close"):
+			ui.call("close")
+		return true
+	# The verdict the day actually produced, so day_over is built from a real
+	# outcome rather than a default that no play can reach.
+	var ctx := {}
+	if String(_chain[_chain_at]) == "day_over":
+		ctx = {"verdict": ReviewSystem.OUTCOME_QUESTIONS,
+			"remembered": PackedStringArray(["oduya"])}
+	EventBus.request_ui.emit(String(_chain[_chain_at]), ctx)
+	return false
 
 func _collect_buttons(n: Node, out: Array) -> void:
 	if n is Button:

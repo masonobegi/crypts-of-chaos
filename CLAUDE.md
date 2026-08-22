@@ -158,9 +158,29 @@ change — five real bugs have been caught only by looking at the game.
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
 | overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
+| `tests/probe/frontier_run.gd` | dominant strategies. Four hundred plays — every subset of beds up to three, crossed with every way of justifying a hold, crossed with how you answer in the room — reported as the most money made at each verdict. Slow (minutes), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules or the bed audit. The property it exists to defend: **the top figure must not be reachable signed off.** |
 
-`live_run.gd` must use `--fixed-fps`, or a frame is however long the host took
-and the result is flaky.
+`playtest_run.gd` exits non-zero when a success criterion regresses, so a
+design inversion fails `run_tests.sh` rather than printing a report nobody
+reads. A test that asserts NOTHING is failed by the runner: reading a key a
+dictionary no longer has aborts the function without erroring, so the
+assertions after it never run and the suite reports green.
 
 Where a fix corrects a subtle behaviour, add the test that would have caught it
 and say in the comment *why* the obvious thing was wrong.
+
+14. **There is ONE clock, and it lives in `GameState`.** Every verb on the ward
+    costs minutes (`WardDay.READ_COST` and friends) and those minutes were
+    being spent on `WardDay.minute` alone, while the HUD, the force-end and
+    everything else driven by `minute_passed` went on counting real seconds —
+    so the chart said half past seven and the corner of the screen said five
+    past eleven, and the gap widened the more the player did. `advance_to()`
+    calls `GameState.skip_to()`, which re-enters `_on_minute` immediately;
+    anything that advances the clock must therefore be re-entrancy safe.
+    `end_day()` was not, and took the debt off the takings twice.
+15. **Under `--headless` the root Window is 64 pixels tall.** Every Control
+    lays out against it, so a card capped at `viewport height - 116` gets a
+    negative height and reports as three-quarters below the fold. Layout
+    measurements belong in `screenshots.sh`, which runs a real 1600x900 window
+    under Xvfb. Setting `tree.root.size` does not help — the dummy display
+    driver ignores it.

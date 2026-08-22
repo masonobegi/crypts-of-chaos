@@ -114,6 +114,7 @@ func start() -> void:
 		e.terminal_id = TERMINAL_WARD
 		records.add(e)
 	_log("day_start", {"cash": cash, "due": debt_tonight})
+	_update_objective()
 
 ## Reading a chart properly takes time you do not have. THE HONEST DAY IS AN
 ## INVESTIGATION: the only way to know Marchetti is the one who genuinely needs
@@ -285,6 +286,32 @@ func set_disposition(pid: String, what: String) -> void:
 	if before != what:
 		_log("disposition", {"pid": pid, "from": before, "to": what})
 	patient_changed.emit(pid)
+	_update_objective()
+
+## WHAT TO DO NEXT, AND WHERE IT IS.
+##
+## The HUD line was set once by the morning card and never touched again, and
+## the 3D marker listened to a signal nobody sent — so a player who put the
+## morning card down had a building, five strangers and no idea what the game
+## wanted. Both are driven from the day's actual state now.
+func _update_objective() -> void:
+	if ended:
+		return
+	var undecided := 0
+	for pid in state:
+		if String(state[pid]["disposition"]) == "":
+			undecided += 1
+	var h = get_tree().get_first_node_in_group("hospital") if is_inside_tree() else null
+	if undecided > 0:
+		EventBus.objective_changed.emit("Five beds. %s to decide." % (
+			"All five" if undecided == 5 else "%d still" % undecided))
+		if h != null:
+			EventBus.objective_target_changed.emit(h.door_point("ward"), "Ward C")
+		return
+	EventBus.objective_changed.emit(
+		"All five decided. Sign off in your office before eight.")
+	if h != null:
+		EventBus.objective_target_changed.emit(h.door_point("office"), "Your office")
 
 func held_ids() -> Array:
 	var out: Array = []

@@ -99,13 +99,17 @@ func _build() -> void:
 	tr_bg.add_child(tr)
 	add_child(tr_bg)
 
-	# ---- top centre: objective
-	var tc := UIKit.vbox(6)
-	UIKit.place(tc, Control.PRESET_CENTER_TOP, -230, 16, 460, 90)
-	_objective = UIKit.label("", 15, UIKit.HUD_DIM, HORIZONTAL_ALIGNMENT_CENTER, true)
+	# ---- top centre: objective.
+	# Inside its own plate, like the other two. It used to be a bare wrapping
+	# label in a 90-tall box anchored 16 from the top, which rendered as a line
+	# of grey text half off the top of the screen over whatever the ceiling
+	# happened to be.
+	var tc_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.74), 6)
+	UIKit.place(tc_bg, Control.PRESET_CENTER_TOP, -250, 14, 500, 34)
+	_objective = UIKit.label("", 15, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tc.add_child(_objective)
-	add_child(tc)
+	tc_bg.add_child(_objective)
+	add_child(tc_bg)
 
 	# ---- crosshair
 	_crosshair = Control.new()

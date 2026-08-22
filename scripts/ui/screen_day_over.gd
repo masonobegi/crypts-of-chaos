@@ -13,6 +13,14 @@ func _build() -> void:
 	var w = ward()
 	var short: bool = w != null and w.cash < 0
 
+	# THE CAREER ENDS HERE OR IT DOES NOT END AT ALL. A probe that played seven
+	# days found a player being referred on six consecutive nights and simply
+	# carrying on, because there was nothing to carry on TO.
+	var ending := GameState.ending()
+	if ending != "":
+		_ending_card(ending)
+		return
+
 	var v := card_shell(720, 620, "END OF SHIFT",
 		"Day %d  ·  Ward C" % GameState.day)
 
@@ -26,11 +34,15 @@ func _build() -> void:
 	# The money, flatly.
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD if short else UIKit.MONEY)
 	var mv := UIKit.vbox(2)
-	mv.add_child(UIKit.row("Owed tonight",
-		UIKit.money_str(w.debt_tonight if w else Cases.DEBT_DUE), UIKit.INK_DIM))
-	mv.add_child(UIKit.row("Left over" if not short else "Still owed",
-		UIKit.money_str(absi(w.cash) if w else 0),
+	var res: Dictionary = w.end_day() if w != null else {}
+	mv.add_child(UIKit.row("He wanted",
+		UIKit.money_str(int(res.get("wanted", Cases.DEBT_DUE))), UIKit.INK_DIM))
+	mv.add_child(UIKit.row("He got",
+		UIKit.money_str(int(res.get("paid", 0))),
 		UIKit.MONEY if not short else UIKit.BAD, 18))
+	mv.add_child(UIKit.rule())
+	mv.add_child(UIKit.row("Still owed",
+		UIKit.money_str(GameState.debt_remaining()), UIKit.BAD, 18))
 	m.add_child(mv)
 	v.add_child(m)
 
@@ -110,6 +122,68 @@ func _carry(verdict: String, short: bool) -> void:
 	# the day number, the money, and what the ward sister remembers — all of
 	# which are in GameState by the time this runs.
 	SaveSystem.save_game(SaveSystem.AUTOSAVE)
+
+## THE TWO WAYS OUT.
+##
+## Neither existed until this session: `game_over` was a signal connected to a
+## handler and emitted by nobody, and the debt was a constant the loan shark
+## asked for every night forever. A game whose worst outcome is "denser nurse
+## rounds, indefinitely" has nothing at the top of its own risk curve.
+func _ending_card(ending: String) -> void:
+	var won: bool = ending == GameState.ENDING_PAID
+	var v := card_shell(760, 640, "THE END OF IT",
+		"Day %d  ·  Ward C" % GameState.day)
+	v.add_child(UIKit.stamp("PAID" if won else "STRUCK OFF",
+		UIKit.GOOD if won else UIKit.BAD))
+	var rec := DoctorRecord.load_from_state()
+
+	if won:
+		v.add_child(UIKit.label(
+			"Vinnie counts it twice, the way he always does, and then he shakes your "
+			+ "hand. He says you were never any trouble. On the way back up you pass "
+			+ "the board and somebody has already rubbed your name off it.",
+			15, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
+	else:
+		v.add_child(UIKit.label(
+			"It is not a hearing. It is a letter, and a woman from Coding who does "
+			+ "not look up, and a form asking you to confirm the address they should "
+			+ "send things to. Vinnie will find you either way; that was never the "
+			+ "part that depended on this.",
+			15, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
+
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("%d SHIFTS" % rec.nights, 12, UIKit.INK_DIM))
+	var stats := UIKit.vbox(2)
+	stats.add_child(UIKit.row("Signed off", str(rec.clean_nights), UIKit.GOOD))
+	stats.add_child(UIKit.row("Queried or flagged", str(rec.flagged_nights), UIKit.WARN))
+	stats.add_child(UIKit.row("Referred", str(rec.referrals), UIKit.BAD))
+	stats.add_child(UIKit.row("Still owed",
+		UIKit.money_str(GameState.debt_remaining()),
+		UIKit.MONEY if won else UIKit.BAD))
+	v.add_child(stats)
+
+	# WHAT SHE WROTE DOWN ABOUT YOU. The only score the game keeps, and it is
+	# a description rather than a number.
+	var tally: Array = rec.summary_lines()
+	if not tally.is_empty():
+		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label("ON YOUR RECORD", 12, UIKit.INK_DIM))
+		for line in tally:
+			v.add_child(UIKit.label("· " + String(line), 13, UIKit.INK,
+				HORIZONTAL_ALIGNMENT_LEFT, true))
+	elif won:
+		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label(
+			"Nothing on your record at all. She never once had to ask you twice.",
+			14, UIKit.GOOD, HORIZONTAL_ALIGNMENT_LEFT, true))
+
+	var foot := UIKit.vbox(6)
+	foot.add_child(UIKit.button("Start again", func():
+		GameState.start_new_career()
+		get_tree().change_scene_to_file("res://scenes/Game.tscn")))
+	foot.add_child(UIKit.button("Main menu", func():
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
+	card_footer(foot)
 
 func ward():
 	return get_tree().get_first_node_in_group("ward_day")

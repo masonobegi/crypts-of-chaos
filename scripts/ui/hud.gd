@@ -276,8 +276,9 @@ func _refresh_money() -> void:
 	var p: Dictionary = w.projected()
 	var total: int = int(p["total"])
 	_owed.visible = true
-	_owed.text = "%s against %s owed" % [
-		UIKit.money_str(total), UIKit.money_str(w.debt_tonight)]
+	# Tonight's number and the whole thing, because the whole thing is the game.
+	_owed.text = "%s tonight  ·  %s to go" % [
+		UIKit.money_str(total), UIKit.money_str(GameState.debt_remaining())]
 	_owed.add_theme_color_override("font_color",
 		UIKit.HUD_MONEY if total >= w.debt_tonight else UIKit.HUD_BAD)
 

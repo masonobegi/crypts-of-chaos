@@ -76,6 +76,9 @@ func start_new_career(with_seed: int = 0) -> void:
 	minute_of_day = 8 * 60
 	clock_running = false
 	cash = 0
+	reset_debt()
+	DoctorRecord.wipe()
+	set_flag(Cases.READMIT_FLAG, [])
 	flags.clear()
 	active_covers.clear()
 	Log.i("new day, seed %d" % seed_value, "GameState")
@@ -89,6 +92,41 @@ func start_new_career(with_seed: int = 0) -> void:
 ## meant the top of the punishment scale was a plateau and there was nothing to
 ## be afraid of.
 const REFERRALS_TO_STRIKE_OFF := 3
+
+## THE TWO ENDINGS, and until this session the game had neither.
+const ENDING_PAID := "paid"
+const ENDING_STRUCK_OFF := "struck_off"
+
+## What is left of what Vinnie is owed. Counts down; at zero you are out.
+func debt_remaining() -> int:
+	var d = flag("debt_remaining", null)
+	return Cases.DEBT_TOTAL if d == null else int(d)
+
+func pay_vinnie(amount: int) -> int:
+	var left: int = maxi(0, debt_remaining() - maxi(0, amount))
+	set_flag("debt_remaining", left)
+	return left
+
+## A FRESH CAREER'S WORTH OF DEBT. Every harness that ends a day now drains the
+## career total, so anything reusing this autoload between runs has to put it
+## back — the same class of leak that had three audits measuring a frontier
+## against a debt that depended on the order of the list.
+func reset_debt() -> void:
+	set_flag("debt_remaining", Cases.DEBT_TOTAL)
+	set_flag("carried_debt", 0)
+	set_flag("vinnie_visits", false)
+
+func paid_off() -> bool:
+	return debt_remaining() <= 0
+
+## Non-empty once the career is over, either way. Read by the day-over screen,
+## which stops offering tomorrow.
+func ending() -> String:
+	if paid_off():
+		return ENDING_PAID
+	if struck_off():
+		return ENDING_STRUCK_OFF
+	return ""
 
 func struck_off() -> bool:
 	var d: Dictionary = flag(DoctorRecord.FLAG, {})

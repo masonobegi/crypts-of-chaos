@@ -628,6 +628,12 @@ func stop_ambience() -> void:
 
 # ------------------------------------------------------------------ playback
 func play(name: String, volume_db: float = -6.0, pitch: float = 1.0) -> void:
+	# Nothing to play to. The headless harnesses call every verb in the game a
+	# few thousand times and each one wanted a sound, which buried the actual
+	# output of a probe under eighteen identical engine errors per simulated
+	# day. There is no audio device in a `--headless` run and there never was.
+	if DisplayServer.get_name() == "headless":
+		return
 	_ensure_voices()
 	var st := _build(name)
 	var p := _players[_next]

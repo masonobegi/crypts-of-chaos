@@ -16,6 +16,9 @@ var failed := false
 func _clean_slate() -> void:
 	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("carried_debt", 0)
+	GameState.reset_debt()
+	DoctorRecord.wipe()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.set_flag("watched", false)
 	GameState.set_flag("auditor_present", false)
 	GameState.set_flag("vinnie_visits", false)
@@ -414,22 +417,25 @@ func _second_day() -> bool:
 	quiet.queue_free()
 
 	GameState.set_flag("watched", true)
-	GameState.set_flag("carried_debt", 400)
+	# A NIGHT THAT CAME UP SHORT. Vinnie no longer asks for more tomorrow — he
+	# adds his interest to the total, so what a bad night costs you is a longer
+	# career rather than a harder morning.
+	GameState.set_flag("debt_remaining", Cases.DEBT_TOTAL + Cases.SHORTFALL_VIG)
 	# NOT `_day()`. That clears exactly the two flags this measurement exists to
 	# set — the fix for the leaking carry silently turned this criterion into a
 	# comparison of a quiet ward with itself.
 	var watched := _carried_day(); play.call(watched)
 	var watched_rounds: int = watched.rounds_today().size()
 	var watched_sev := _sev(watched.review_findings())
-	var owed: int = watched.debt_tonight
+	var owed: int = GameState.debt_remaining()
 	watched.queue_free()
 	GameState.set_flag("watched", false)
 	GameState.set_flag("carried_debt", 0)
 
 	var harder: bool = watched_rounds > quiet_rounds and watched_sev > quiet_sev \
-		and owed > Cases.DEBT_DUE
-	print("6 A SECOND DAY    rounds %d -> %d, same lie costs %.2f -> %.2f, owed %d -> %d   %s"
-		% [quiet_rounds, watched_rounds, quiet_sev, watched_sev, Cases.DEBT_DUE, owed,
+		and owed > Cases.DEBT_TOTAL
+	print("6 A SECOND DAY    rounds %d -> %d, same lie costs %.2f -> %.2f, still owed %d -> %d   %s"
+		% [quiet_rounds, watched_rounds, quiet_sev, watched_sev, Cases.DEBT_TOTAL, owed,
 			"PASS" if harder else "FAIL"])
 	return harder
 

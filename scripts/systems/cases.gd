@@ -41,7 +41,33 @@ const BEDS := 5
 ## and holding everybody is punished by arithmetic before it is punished by the
 ## ward sister. The greedy optimum is two fabrications, not five.
 const STARTING_CASH := 900
+
+## WHAT VINNIE IS OWED IN TOTAL, and the reason a career has a shape.
+##
+## It used to be $3,200 a night, forever, and a probe that played a week found
+## exactly what that is: a loop. He asked for the same number on night seven as
+## on night one, nothing ever ended, and a player could be referred six nights
+## running and simply carry on.
+##
+## Now it is a sum with an end on it. He takes everything you have at eight
+## o'clock, the remainder is what you still owe, and clearing it is the way out
+## — the only winning ending the game has. Simulated before it was built, at
+## the measured per-night earnings of each policy:
+##
+##   honest, signed off .............. 12 nights
+##   one well-timed lie a night ...... 10 nights
+##   the money-optimal three ......... 9 nights
+##
+## Which is the shape the design wanted: dishonesty is meaningfully faster and
+## not overwhelmingly so, and the three nights it saves have to be weighed
+## against a referral ladder that ends a career at three.
+const DEBT_TOTAL := 30000
+
+## What he expects on any given night. Less than this and he does not break
+## anything — he stands in the corridor being pleasant, adds his interest, and
+## asks Adeyemi who you are.
 const DEBT_DUE := 3200
+const SHORTFALL_VIG := 450
 const DEBT_DUE_MINUTE := 20 * 60
 
 ## `truly_well` is the simulation's own opinion and is never shown. It decides

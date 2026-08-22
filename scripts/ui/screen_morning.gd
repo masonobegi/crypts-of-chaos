@@ -40,6 +40,8 @@ func _build() -> void:
 	# what they owe before they start making decisions about it.
 	mv.add_child(UIKit.row("Vinnie, in person, at eight",
 		UIKit.money_str(w.debt_tonight if w != null else Cases.DEBT_DUE), UIKit.BAD, 17))
+	mv.add_child(UIKit.row("Still owed, all in",
+		UIKit.money_str(GameState.debt_remaining()), UIKit.BAD, 15))
 	mv.add_child(UIKit.row("In your account",
 		UIKit.money_str(w.cash if w != null else Cases.STARTING_CASH),
 		UIKit.MONEY, 17))

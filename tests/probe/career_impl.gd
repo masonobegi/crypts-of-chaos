@@ -16,26 +16,32 @@ var tree: SceneTree = null
 var C = ChartEntry.Claim
 var A = ReviewSystem.Answer
 
-const DAYS := 7
+const DAYS := 20
 
 func _fresh_career() -> void:
 	GameState.start_new_career(31337)
 	GameState.day = 1
-	for f in ["remembered_beds", "carried_debt", "watched", "auditor_present",
-			"vinnie_visits"]:
-		GameState.set_flag(f, PackedStringArray() if f == "remembered_beds" else 0)
 	GameState.set_flag("watched", false)
 	GameState.set_flag("auditor_present", false)
 	GameState.set_flag("vinnie_visits", false)
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.reset_debt()
+	DoctorRecord.wipe()
 
 ## One day, played by `policy`, then the review, then the carry — exactly what
 ## screen_day_over._carry does, because that is the only place a verdict becomes
 ## state and a probe that reimplements it is measuring its own copy.
 func _one_day(policy: String) -> Dictionary:
+	# One ward at a time: a finished day disconnects from the clock, but a day
+	# that never ended would still be force-closing itself and paying Vinnie out
+	# of the same career debt the moment anything else advanced the clock.
+	for n in tree.root.get_children():
+		if n is WardDay:
+			tree.root.remove_child(n)
+			n.free()
 	var w := WardDay.new()
 	tree.root.add_child(w)
 	w.start()
-	var owed: int = w.debt_tonight
 	for c in Cases.roster():
 		w.read_chart(String(c["id"]))
 	_play(w, policy)
@@ -51,21 +57,24 @@ func _one_day(policy: String) -> Dictionary:
 				pick = A.RECONCILE
 		rv.answer(pick, res["held"])
 	var out := rv.outcome()
+	rv.commit(res["findings"])
 	var row := {
-		"day": GameState.day, "owed": owed, "cash": int(res["cash"]),
+		"day": GameState.day, "owed": int(res.get("paid", 0)), "cash": int(res["cash"]),
 		"short": bool(res["short"]), "verdict": String(out["verdict"]),
 		"indef": int(out["indefensible"]), "solo": int(out["solo"]),
 		"watched": bool(GameState.flag("watched", false)),
 		"rounds": w.rounds_today().size(),
+		"left": GameState.debt_remaining(),
+		"ending": GameState.ending(),
+		"readmits": Array(res.get("readmitted", [])).size(),
 	}
 	# THE CARRY, as the game does it.
 	GameState.set_flag("watched", row["verdict"] == ReviewSystem.OUTCOME_FLAGGED
 		or row["verdict"] == ReviewSystem.OUTCOME_ESCALATED)
 	GameState.set_flag("auditor_present", row["verdict"] == ReviewSystem.OUTCOME_ESCALATED)
-	GameState.set_flag("remembered_beds", PackedStringArray(out.get("remembered", [])))
-	GameState.set_flag("carried_debt", absi(int(res["cash"])) if bool(res["short"]) else 0)
 	GameState.day += 1
-	w.queue_free()
+	tree.root.remove_child(w)
+	w.free()
 	return row
 
 ## The genuinely unwell, found the only way they can be found.
@@ -107,6 +116,19 @@ func _play(w: WardDay, policy: String) -> void:
 					continue
 				w.write_entry(pid, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 				w.set_disposition(pid, "hold")
+		"skilled":
+			# What a good dishonest player does: spend the registrar on the bed
+			# that deserves it, so it is BACKED and only ONE bed is on your word
+			# alone — the difference between "noted" and "referred".
+			w.advance_to(11 * 60 + 10)
+			for pid in honest:
+				w.ask_colleague(pid)
+				w.set_disposition(pid, "hold")
+			var mark := _safest_well(w, honest)
+			if mark != "":
+				w.advance_to(17 * 60 + 20)
+				w.write_entry(mark, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
+				w.set_disposition(mark, "hold")
 		"adaptive":
 			# Lie only on a ward nobody is already reading.
 			for pid in honest:
@@ -121,6 +143,32 @@ func _play(w: WardDay, policy: String) -> void:
 		var pid := String(c["id"])
 		if String(w.state[pid]["disposition"]) == "":
 			w.set_disposition(pid, "discharge")
+
+## The best-paying well patient who is NOT a trap: nobody who reads their own
+## notes, nobody whose family reads them, nobody already under review. Choosing
+## the target is most of the skill and the naive policy above does it by price.
+func _safest_well(w: WardDay, skip: Array) -> String:
+	var best := ""
+	var best_fee := -1
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if skip.has(pid) or not bool(c.get("truly_well", true)):
+			continue
+		# ONLY THE TRAPS THAT ARE ACTUALLY FATAL. A patient who reads her own
+		# notes, or whose file is already under review, produces a finding in
+		# the CONTRADICTED class — the bed is gone whatever you say about it.
+		# A family who reads the chart and a man who praises you loudly are
+		# severity, not contradiction, and a good player takes that trade. The
+		# first version of this excluded all of them and concluded the second
+		# ward has no survivable lie on it, which was the probe being timid
+		# rather than the game being binary.
+		if w.is_flagged(pid) or bool(c.get("reads_own_chart", false)):
+			continue
+		var fee: int = Cases.night_fee(int(c["tier"]))
+		if fee > best_fee:
+			best_fee = fee
+			best = pid
+	return best
 
 ## The best-paying well patient who is not already flagged on their file.
 func _richest_well(w: WardDay, skip: Array) -> String:
@@ -139,60 +187,82 @@ func _richest_well(w: WardDay, skip: Array) -> String:
 	return best
 
 func run() -> void:
-	var policies := ["honest", "honest_corroborated", "one_lie", "greedy", "adaptive"]
+	var policies := ["honest", "honest_corroborated", "skilled", "one_lie",
+		"greedy", "adaptive"]
 	print("\n=== A WEEK ON WARD C — %d days per policy ===" % DAYS)
 	var verdicts := {}
 	for policy in policies:
 		_fresh_career()
 		print("\n--- %s" % policy)
-		print("  %3s %6s %7s %-18s %6s %6s" % ["day", "owed", "left", "verdict", "rounds", "flags"])
+		print("  %3s %7s %8s %-18s %5s %4s %s"
+			% ["day", "paid", "to go", "verdict", "rnds", "re", "state"])
 		var survived := 0
 		var shorts := 0
+		var nights_played := 0
 		var seen: Array = []
 		for i in DAYS:
+			if GameState.ending() != "":
+				break
 			var r := _one_day(policy)
+			nights_played += 1
 			seen.append(String(r["verdict"]))
 			if not bool(r["short"]):
 				survived += 1
 			else:
 				shorts += 1
-			print("  %3d %6d %7d %-18s %6d %6s" % [r["day"], r["owed"], r["cash"],
-				r["verdict"], r["rounds"],
-				"watched" if bool(r["watched"]) else ""])
-		verdicts[policy] = {"survived": survived, "shorts": shorts, "seen": seen}
+			print("  %3d %7d %8d %-18s %5d %4d %s" % [r["day"], int(r["owed"]) - 0,
+				int(r["left"]), r["verdict"], r["rounds"], int(r["readmits"]),
+				(String(r["ending"]).to_upper() if String(r["ending"]) != ""
+					else ("watched" if bool(r["watched"]) else ""))])
+			if String(r["ending"]) != "":
+				break
+		verdicts[policy] = {"survived": survived, "shorts": shorts, "seen": seen,
+			"ending": GameState.ending(), "nights": nights_played}
 
 	print("\n=== does a career hold together? ===")
 	var ok := true
 	for policy in policies:
 		var v: Dictionary = verdicts[policy]
-		print("  %-22s cleared %d of %d nights" % [policy, v["survived"], DAYS])
-	# 1. HONESTY SURVIVES A WEEK. If it does not, the honest path is a stunt.
+		print("  %-22s %-12s after %d night(s)"
+			% [policy, String(v["ending"]) if String(v["ending"]) != "" else "unfinished",
+				int(v["nights"])])
+
+	# 1. HONESTY FINISHES. If the clean route cannot pay the debt, it is a stunt.
 	var h: Dictionary = verdicts["honest_corroborated"]
-	var honest_ok: bool = int(h["survived"]) == DAYS
-	print("\n  honest play clears every night for a week ......... %s"
-		% ("PASS" if honest_ok else "FAIL"))
+	var honest_ok: bool = String(h["ending"]) == GameState.ENDING_PAID
+	print("\n  documented honest play pays it off ................ %s (%d nights)"
+		% ["PASS" if honest_ok else "FAIL", int(h["nights"])])
 	ok = ok and honest_ok
-	# 2. GREED DOES NOT. A policy that farms the ward forever has no tension.
+
+	# 2. AND SO CAN A GOOD DISHONEST PLAYER — faster, at real risk. If crime
+	#    cannot finish at all it is not a choice, it is a trap.
+	var sk: Dictionary = verdicts["skilled"]
+	var skilled_ok: bool = String(sk["ending"]) == GameState.ENDING_PAID \
+		and int(sk["nights"]) < int(h["nights"])
+	print("  a careful liar pays it off FASTER ................. %s (%d against %d)"
+		% ["PASS" if skilled_ok else "FAIL", int(sk["nights"]), int(h["nights"])])
+	ok = ok and skilled_ok
+
+	# 3. GREED DOES NOT. A policy that farms the ward has no tension in it.
 	var g: Dictionary = verdicts["greedy"]
-	var caught := 0
-	for s in Array(g["seen"]):
-		if String(s) == ReviewSystem.OUTCOME_ESCALATED \
-				or String(s) == ReviewSystem.OUTCOME_FLAGGED:
-			caught += 1
-	var greed_ok: bool = caught >= DAYS - 1
-	print("  greed is caught on %d of %d nights ................ %s"
-		% [caught, DAYS, "PASS" if greed_ok else "FAIL"])
+	var greed_ok: bool = String(g["ending"]) == GameState.ENDING_STRUCK_OFF
+	print("  greed is struck off before it finishes ............ %s (night %d)"
+		% ["PASS" if greed_ok else "FAIL", int(g["nights"])])
 	ok = ok and greed_ok
-	# 3. NO DEATH SPIRAL. One bad night must be recoverable.
+
+	# 4. NO DEATH SPIRAL. One bad night must be recoverable.
 	_fresh_career()
-	_one_day("greedy")                      ## a disaster on night one
+	_one_day("greedy")
 	var recovered := 0
-	for i in DAYS - 1:
+	var n := 0
+	while GameState.ending() == "" and n < 20:
+		n += 1
 		var r := _one_day("honest_corroborated")
 		if not bool(r["short"]):
 			recovered += 1
-	var recover_ok: bool = recovered >= DAYS - 2
-	print("  a bad night is recoverable by honest play ......... %s (%d of %d)"
-		% ["PASS" if recover_ok else "FAIL", recovered, DAYS - 1])
+	var recover_ok: bool = GameState.ending() == GameState.ENDING_PAID
+	print("  a bad first night is still recoverable ............ %s (%s after %d)"
+		% ["PASS" if recover_ok else "FAIL", GameState.ending(), n + 1])
 	ok = ok and recover_ok
+
 	print("\n%s" % ("CAREER PROBE PASSED" if ok else "CAREER PROBE FAILED"))

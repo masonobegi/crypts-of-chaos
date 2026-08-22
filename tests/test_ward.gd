@@ -4,7 +4,34 @@ extends RefCounted
 ## a player who sequences their day well talk their way out of it.
 var t
 
+## BEFORE EVERY TEST, THE WARD IS EMPTY.
+##
+## `queue_free()` never actually frees anything in this runner — it drives the
+## suite from `_process` on frame three and quits, so nothing is ever collected
+## and every ward any test has ever built is still sitting in the tree, still
+## connected to `GameState.minute_passed`. The moment one test advanced its
+## clock to eight o'clock, every one of those zombies force-discharged its own
+## ward and paid Vinnie out of the same career debt: a test that handed him
+## $2,650 watched $11,100 leave the account.
+##
+## The runner calls this before each test. `free()`, not `queue_free()`.
+func setup() -> void:
+	for n in t.root.get_children():
+		if n is WardDay:
+			t.root.remove_child(n)
+			n.free()
+
+## THERE IS ONE WARD. A test that wants a second day wants the ward it already
+## had, reset — not another one alive beside it holding a second set of five
+## patients and a second connection to the world clock.
 func _day() -> WardDay:
+	setup()
+	# A CLEAN CAREER PER TEST. Ending a day now pays down a career-long debt and
+	# writes to the doctor's record, both of which live in GameState — so a test
+	# that does not put them back is measuring whatever the tests above it did.
+	GameState.reset_debt()
+	DoctorRecord.wipe()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
 	var w := WardDay.new()
 	t.root.add_child(w)
 	w.start()
@@ -500,9 +527,25 @@ func test_what_survives_the_night() -> void:
 	# ...and the ward reads them on the way in.
 	GameState.day = 1
 	var w := _day()
-	t.eq(w.debt_tonight, Cases.DEBT_DUE + 640,
-		"a short night makes tomorrow's number bigger, not the same")
+	t.eq(w.debt_tonight, Cases.DEBT_DUE,
+		"he wants his usual number tomorrow")
 	w.queue_free()
+
+	# A SHORT NIGHT MAKES THE WHOLE THING LONGER. He does not ask for more
+	# tomorrow; he adds his interest to what is left, which is what falling
+	# behind to somebody like Vinnie actually does.
+	GameState.reset_debt()
+	var before: int = GameState.debt_remaining()
+	var lean := _day()
+	for c in Cases.roster():
+		lean.set_disposition(String(c["id"]), "discharge")
+	var res := lean.end_day()
+	t.ok(bool(res["short"]), "sending the whole ward home does not cover the night")
+	t.gt(float(GameState.debt_remaining()),
+		float(before - int(res["paid"])),
+		"and what is left of the debt grows by his interest (%d owed, %d paid, %d left)"
+			% [before, int(res["paid"]), GameState.debt_remaining()])
+	lean.queue_free()
 	GameState.set_flag("carried_debt", 0)
 	GameState.set_flag("watched", false)
 	DoctorRecord.wipe()
@@ -518,8 +561,12 @@ func test_what_survives_the_night() -> void:
 ## deliberate — there is one clock — but nothing may push it past the ward that
 ## actually moved.
 func test_two_wards_do_not_drag_each_other_forward() -> void:
+	# DELIBERATELY TWO, which is the only test in here that wants them: `_day()`
+	# frees the previous ward precisely so nothing else has to think about this.
 	var early := _day()
-	var late := _day()          ## a new day resets the world to eight o'clock
+	var late := WardDay.new()
+	t.root.add_child(late)
+	late.start()                ## a new day resets the world to eight o'clock
 	late.advance_to(19 * 60)
 	t.eq(GameState.minute_of_day, 19 * 60, "the ward that moved moved the world")
 	t.eq(early.minute, 19 * 60, "and the other ward follows the world, because there is one clock")
@@ -528,8 +575,8 @@ func test_two_wards_do_not_drag_each_other_forward() -> void:
 	t.eq(GameState.minute_of_day, 19 * 60,
 		"a ward advancing to a time already past does not move the world at all")
 	t.eq(late.minute, 19 * 60, "and nobody gets dragged past where they were")
-	early.queue_free()
-	late.queue_free()
+	t.root.remove_child(late)
+	late.free()
 
 ## And one ward on its own lands exactly where it is put, which is what every
 ## measurement in the game depends on.
@@ -543,10 +590,7 @@ func test_one_ward_lands_where_you_put_it() -> void:
 # ------------------------------------------------------- the second ward
 func _day_two() -> WardDay:
 	GameState.day = 2
-	var w := WardDay.new()
-	t.root.add_child(w)
-	w.start()
-	return w
+	return _day()
 
 ## Two authored wards, and the second is a different shape rather than the first
 ## one renamed. The property that makes it a second DAY and not a second SKIN:
@@ -822,9 +866,12 @@ func test_not_every_discharge_comes_back() -> void:
 
 ## A readmission does not bounce forever. Once round is the point being made.
 func test_a_readmission_does_not_readmit() -> void:
-	GameState.set_flag(Cases.READMIT_FLAG, ["marchetti"])
 	GameState.day = 2
 	var w := _day_two()
+	# Set AFTER the clean slate: `_day()` wipes the career, which is what every
+	# other test wants and this one has to undo.
+	GameState.set_flag(Cases.READMIT_FLAG, ["marchetti"])
+	w.start()
 	t.ok(bool(Cases.by_id("marchetti").get("readmitted", false)),
 		"he is on the ward as a readmission")
 	w.set_disposition("marchetti", "discharge")
@@ -834,5 +881,65 @@ func test_a_readmission_does_not_readmit() -> void:
 	t.eq(PackedStringArray(res["readmitted"]).size(), 0,
 		"sending him home again does not start it over")
 	w.queue_free()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.day = 1
+
+# --------------------------------------------------------- the two endings
+## Until this session the game had neither. `game_over` was a signal connected
+## to a handler and emitted by nobody, and Vinnie asked for the same number on
+## night seven as on night one.
+func test_paying_it_off_is_the_way_out() -> void:
+	GameState.reset_debt()
+	DoctorRecord.wipe()
+	t.eq(GameState.debt_remaining(), Cases.DEBT_TOTAL, "you start owing the whole thing")
+	t.eq(GameState.ending(), "", "and the career is not over")
+	GameState.pay_vinnie(Cases.DEBT_TOTAL - 100)
+	t.eq(GameState.debt_remaining(), 100, "he takes what you hand him")
+	t.eq(GameState.ending(), "", "and a hundred short is still short")
+	GameState.pay_vinnie(100)
+	t.eq(GameState.debt_remaining(), 0, "and then it is nothing")
+	t.eq(GameState.ending(), GameState.ENDING_PAID, "which is the way out")
+	GameState.reset_debt()
+
+## A night that comes up short does not make tomorrow more expensive — it makes
+## the whole thing longer, which is what falling behind to somebody like Vinnie
+## actually does.
+func test_a_short_night_lengthens_the_whole_thing() -> void:
+	GameState.reset_debt()
+	var w := _day()
+	for c in Cases.roster():
+		w.set_disposition(String(c["id"]), "discharge")
+	var res := w.end_day()
+	t.ok(bool(res["short"]), "sending the whole ward home does not cover the night")
+	t.eq(GameState.debt_remaining(),
+		Cases.DEBT_TOTAL - int(res["paid"]) + Cases.SHORTFALL_VIG,
+		"and his interest goes on the total")
+	t.eq(w.debt_tonight, Cases.DEBT_DUE, "he still wants his usual number, not more")
+	w.queue_free()
+	GameState.reset_debt()
+
+## A bed you emptied by mistake earns you nothing all day. Without this the
+## people who bounce back keep their insurance tier, so sending a premium
+## patient home wrongly handed you a premium bed you could then hold entirely
+## honestly — a mistake that PAID.
+func test_a_readmitted_bed_is_not_reimbursed() -> void:
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	var normal := _day()
+	normal.set_disposition("marchetti", "hold")
+	_rest_home(normal)
+	var full: int = int(normal.projected()["nights"])
+	normal.queue_free()
+	t.gt(float(full), 0.0, "an ordinary premium night is worth something (%d)" % full)
+
+	GameState.day = 2
+	var back := _day()
+	GameState.set_flag(Cases.READMIT_FLAG, ["marchetti"])
+	back.start()
+	back.set_disposition("marchetti", "hold")
+	_rest_home(back)
+	t.eq(int(back.projected()["nights"]), 0,
+		"the bed you emptied by mistake earns nothing at all")
+	t.eq(back.night_value("marchetti"), 0, "and the ward says so by name")
+	back.queue_free()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.day = 1

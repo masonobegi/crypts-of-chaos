@@ -80,8 +80,14 @@ func _on_minute(now: int) -> void:
 		EventBus.request_ui.emit("review", {})
 
 func start() -> void:
+	# ...and starts listening again, because `start()` is also how tomorrow
+	# begins on the same node.
+	if not GameState.minute_passed.is_connected(_on_minute):
+		GameState.minute_passed.connect(_on_minute)
 	# Anything Vinnie did not get last night is on top of tonight.
-	debt_tonight = Cases.DEBT_DUE + int(GameState.flag("carried_debt", 0))
+	# What he wants tonight, which is his usual number unless there is less than
+	# that left of the whole thing — nobody hands over more than they owe.
+	debt_tonight = mini(Cases.DEBT_DUE, GameState.debt_remaining())
 	cash = Cases.STARTING_CASH
 	minute = 8 * 60
 	# One clock, and a new shift starts at eight. Without this, a day begun
@@ -484,12 +490,27 @@ func admissions_taken() -> int:
 func projected() -> Dictionary:
 	var nights := 0
 	for pid in held_ids():
-		nights += Cases.night_fee(int(Cases.by_id(pid)["tier"]))
+		nights += night_value(pid)
 	var d: int = discharged_ids().size() * Cases.DISCHARGE_FEE
 	var adm: int = admissions_taken() * Cases.ADMISSION_FEE
 	return {"nights": nights, "discharges": d, "admissions": adm,
 		"earned": nights + d + adm, "total": cash + nights + d + adm,
 		"due": debt_tonight}
+
+## WHAT A NIGHT IN THIS BED IS ACTUALLY WORTH.
+##
+## Nothing, if the person in it is back within a day of a discharge you signed.
+## An early readmission is not reimbursed, which is true of real coding and is
+## also the only thing that stops readmission being a REWARD — the people who
+## bounce keep their insurance tier, so without this, sending a premium patient
+## home wrongly handed you a premium bed you could then hold entirely honestly.
+## Instead the bed you emptied by mistake sits there earning you nothing all
+## day, which costs an honest player the best part of six nights of progress.
+func night_value(pid: String) -> int:
+	var c := Cases.by_id(pid)
+	if bool(c.get("readmitted", false)):
+		return 0
+	return Cases.night_fee(int(c["tier"]))
 
 ## Time passes, and Adeyemi walks her round when she walks it. Anything she
 ## finds goes in the chart in her name, truthfully, whether it suits you or not.
@@ -633,12 +654,26 @@ func end_day() -> Dictionary:
 	# lost the race handed its caller an empty dictionary. `_on_minute` returns
 	# early once this is set, which makes the re-entry a no-op.
 	ended = true
+	# A FINISHED DAY STOPS LISTENING. `ended` guarded `_on_minute` but the
+	# connection stayed, and a ward that is over still reacted to every tick the
+	# world sent — which in the harnesses, where several days are alive at once,
+	# meant each of them force-discharging its ward and paying Vinnie out of the
+	# same career debt when any ONE of them advanced the clock to eight. In the
+	# game there is one ward, which is the only reason this was survivable.
+	if GameState.minute_passed.is_connected(_on_minute):
+		GameState.minute_passed.disconnect(_on_minute)
 	advance_to(Cases.DEBT_DUE_MINUTE)
 	var p := projected()
-	cash = int(p["total"]) - debt_tonight
-	var short: bool = int(p["total"]) < debt_tonight
+	# HE TAKES EVERYTHING. What you made tonight goes against what is left of
+	# what you owe, and the remainder is the only score the game keeps.
+	var in_hand: int = int(p["total"])
+	var handed_over: int = mini(in_hand, GameState.debt_remaining())
+	var still_owed: int = GameState.pay_vinnie(handed_over)
+	cash = in_hand - handed_over
+	var short: bool = handed_over < debt_tonight and still_owed > 0
 	var res := {
-		"earned": p["earned"], "paid": debt_tonight, "cash": cash,
+		"earned": p["earned"], "paid": handed_over, "cash": cash,
+		"still_owed": still_owed, "wanted": debt_tonight,
 		"short": short, "held": held_ids(), "discharged": discharged_ids(),
 		"findings": review_findings(),
 	}
@@ -649,7 +684,11 @@ func end_day() -> Dictionary:
 	# he is. A new pair of eyes in your workplace, permanently.
 	if short:
 		GameState.set_flag("vinnie_visits", true)
-		GameState.set_flag("carried_debt", debt_tonight - int(p["total"]))
+		# He adds his interest to the total rather than to tonight. Falling
+		# behind makes the whole thing longer, which is what falling behind
+		# to somebody like Vinnie does.
+		GameState.set_flag("debt_remaining", still_owed + Cases.SHORTFALL_VIG)
+		GameState.set_flag("carried_debt", 0)
 	# WHO IS COMING BACK. Anybody you sent home who was not fit to go is in a bed
 	# tomorrow — not as a punishment the reviewer hands out, but because that is
 	# what happens. It is the only consequence in the game that arrives before

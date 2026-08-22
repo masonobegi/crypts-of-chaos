@@ -20,6 +20,9 @@ func _day() -> WardDay:
 	# ones is not searching one game, it is searching several.
 	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("carried_debt", 0)
+	GameState.reset_debt()
+	DoctorRecord.wipe()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.set_flag("watched", false)
 	GameState.set_flag("auditor_present", false)
 	GameState.minute_of_day = 8 * 60

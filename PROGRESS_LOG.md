@@ -936,13 +936,44 @@ her costs nothing at all, which is what makes it a decision.
 ### Where it stands
 
 ```
-274 unit assertions · 68 smoke checks · 15 authored people · boot check
-six day-level criteria .................................. 6/6
+271 unit assertions · 68 smoke checks · 15 authored people · boot check
+seven day-level criteria ................................ 7/7
 six career criteria ..................................... 6/6
 adversarial frontier, 3,300 strategies over three wards . monotone on all three,
                                                           top figure unreachable
                                                           while signed off
 ```
+
+### The measurement that was measuring nothing
+
+The playtest has printed a risk/reward frontier for four iterations, ranked by
+`res["cash"]`. Vinnie takes everything up to what he is owed, so against a
+$15,500 debt that field is exactly 0 on every night of every career except the
+last one. Thirty-one strategies were being ranked by a constant, in ties, and it
+looked fine, because a sorted column of zeroes is a sorted column. The one check
+that asks *does more money cost more exposure* had been comparing 0 to 0 since
+the debt rework landed.
+
+It reads what the day earned now, and it is a criterion rather than a printout —
+the seventh. It fails if the spread goes flat, so a metric that dies again dies
+loudly, and it fails if the biggest day in the table is also a clean one, which
+is the moment honesty starts strictly dominating and the whole risk side of the
+game goes decorative. Currently 1,750..3,450, best signed-off day 2,480, best day
+of all 3,450 and flagged for audit.
+
+Three smaller things, two of them found by looking at screenshots rather than at
+tests: the ward connected to the clock twice whenever `start()` ran before the
+node entered the tree (a red ERROR at the end of every headless run, there long
+enough to read as furniture); a tannoy line that landed just before a modal
+opened sat clipped in half behind the card for the rest of its timer, with the
+HUD paused and unable to clear it; and the day label was only ever repainted by
+`start_day()`, so any path that set `GameState.day` directly left the corner of
+the screen a day behind — it now repaints on the clock.
+
+And `test_all_scripts_compile` walked every `.gd` under `tests/`, including the
+temp runner `check.sh` writes, so its assertion count wandered between runs —
+271, 273, 275, 277, all green. A count that moves is a count nobody can read a
+regression out of. What it checks is a naming rule now.
 
 ### NEXT UP
 

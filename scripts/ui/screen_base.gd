@@ -59,7 +59,10 @@ func card_shell(width: float, height: float, heading: String, subheading := "") 
 	# A PanelContainer grows past its minimum size to fit its content, so a card
 	# with one option too many simply ran off the bottom of the screen and took
 	# its last button with it. Cap it against the window and scroll the body.
-	height = minf(height, get_viewport_rect().size.y - 116.0)
+	# Clear of the HUD plates, which are about ninety tall, and no more. The old
+	# margin of 116 left fifty pixels of nothing above and below a card that had
+	# a row of itself under the fold.
+	height = minf(height, get_viewport_rect().size.y - 84.0)
 	var panel := UIKit.side_panel(width, height)
 	add_child(panel)
 

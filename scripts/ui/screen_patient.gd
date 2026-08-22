@@ -25,7 +25,7 @@ func _build() -> void:
 	# WIDER, because six verbs is a lot of card. At 660 in a 1600-wide window
 	# every subtitle wrapped onto a second line and the last two verbs sat
 	# below the fold; the window has the room and the card was not using it.
-	var v := card_shell(820, 760, String(c["name"]).to_upper(),
+	var v := card_shell(820, 830, String(c["name"]).to_upper(),
 		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
 			Cases.tier_name(int(c["tier"]))])
 
@@ -50,6 +50,12 @@ func _build() -> void:
 	v.add_child(UIKit.rule())
 	var acts := UIKit.vbox(4)
 
+	# TWO KINDS OF VERB, and the card should say so. Three of these tell you
+	# something and go in no notes; four of them put something on the record in
+	# somebody's name. Which group a verb is in is the whole decision, and six
+	# undifferentiated rows did not say it.
+	acts.add_child(UIKit.label("FINDING OUT", 11, UIKit.INK_DIM))
+
 	acts.add_child(_act("Read the chart",
 		"Everything written today, and when it was written.",
 		func(): _go("chart")))
@@ -73,8 +79,10 @@ func _build() -> void:
 				_said = w.examine(_pid)
 				rebuild()))
 
-	# ASK THE REGISTRAR. The strongest corroboration available and the most
-	# dangerous request in the game: he reads the whole chart before he writes.
+	acts.add_child(UIKit.spacer(4))
+	acts.add_child(UIKit.label("PUTTING IT ON THE RECORD", 11, UIKit.INK_DIM))
+
+	# ASK THE REGISTRAR. He is in the second group: he writes, in his own name.
 	if WardDay.colleague_available(w.minute):
 		acts.add_child(_act("Ask %s for a second opinion" % WardDay.COLLEAGUE,
 			"A peer, in his own name. He reads the whole chart first.",
@@ -89,6 +97,7 @@ func _build() -> void:
 		acts.add_child(_note("%s is on the other ward." % WardDay.COLLEAGUE,
 			("Back at %s." % ChartEntry._hhmm(nxt)) if nxt > 0
 				else "Gone for the day. You are the doctor on this ward."))
+
 
 	# The leading question. Phrased as a clinical enquiry, because that is what
 	# it looks like from the outside — and from the inside, on a good day.

@@ -103,6 +103,8 @@ pause={
 
 [rendering]
 
+textures/vram_compression/import_etc2_astc=true
+
 renderer/rendering_method="forward_plus"
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.13, 0.15, 0.18, 1)

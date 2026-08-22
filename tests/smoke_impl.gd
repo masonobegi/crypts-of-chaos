@@ -149,6 +149,7 @@ func _check_the_chart_works() -> void:
 	# needs a particular hour has to happen before something walks the day past
 	# it — and the registrar keeps hours.
 	_check_the_new_verbs(w)
+	_check_the_room_is_watching(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
 	# from half past seven that is enough to walk the shift past eight o'clock,
@@ -185,6 +186,41 @@ func _check_the_verbs_work() -> void:
 	_ok(o.fulfilled_by == r.id, "and the order is answered by it")
 
 	_check_being_seen_somewhere_else(w)
+
+## THE REASON THIS GAME IS IN FIRST PERSON, CHECKED AGAINST THE ACTUAL BUILDING.
+##
+## `_written_in_front_of_them` is the finding that makes the ward a place rather
+## than a menu: a note claiming somebody is unwell, typed where they can watch
+## you type it, is a note the reviewer can check by walking four metres. There is
+## a unit test for the RULE, but it states the witness list by hand — every
+## headless harness builds its WardDay outside the tree, where `_who_can_see_me`
+## returns empty by design, so nothing anywhere exercised the wiring from the
+## world to the rule.
+##
+## That wiring is four things that can each fail silently: the `player` and
+## `suspicion_system` groups, `Hospital.room_at` returning a key rather than "",
+## and every patient body being in the room the game thinks it is. If any one of
+## them broke, `seen_by` would come back empty on every entry, the sharpest
+## finding in the audit would switch itself off, and all 271 assertions would
+## still be green — which is CLAUDE.md 11's lesson wearing a different hat.
+func _check_the_room_is_watching(w) -> void:
+	var p = tree.get_first_node_in_group("player")
+	var h = tree.get_first_node_in_group("hospital")
+	if p == null or h == null:
+		_fail("no player or hospital to stand in")
+		return
+	# Standing at the bay, where the people you are writing about are lying.
+	p.global_position = h.point_in("ward")
+	var watched: PackedStringArray = w._who_can_see_me()
+	_ok(not watched.is_empty(),
+		"standing in the bay, somebody can see you type (%s)" % ", ".join(watched))
+
+	# ...and the office, which is the whole reason the walk costs minutes.
+	p.global_position = h.point_in("office")
+	var alone: PackedStringArray = w._who_can_see_me()
+	_ok(alone.size() < watched.size(),
+		"and walking to the office is what buys the privacy (%d watching, was %d)"
+			% [alone.size(), watched.size()])
 
 ## THE TWO VERBS THAT ARE NOT DOCUMENTS. Both are new and both are the answer to
 ## a specific hole: the examination is the only way to learn something the chart

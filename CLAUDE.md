@@ -158,6 +158,7 @@ change — five real bugs have been caught only by looking at the game.
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
 | overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
+| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays a week five ways (honest, honest+corroborated, one lie, greedy, adaptive) and asks three questions: does honest play clear every night, is greed caught, and is one bad night recoverable. It found that `remembered_beds` is dead across a roster change and that `auditor_present` does nothing at all. |
 | `tests/probe/frontier_run.gd` | dominant strategies. Two thousand two hundred plays — both wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
 
 `playtest_run.gd` exits non-zero when a success criterion regresses, so a

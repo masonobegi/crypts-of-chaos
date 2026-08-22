@@ -680,7 +680,7 @@ func review_truth() -> Dictionary:
 		var st: Dictionary = state[pid]
 		var disp := String(st["disposition"])
 		truth[pid] = {
-			"well": bool(c.get("truly_well", true)) and not bool(st.get("deteriorated", false)),
+			"well": bool(c.get("truly_well", true)),
 			"name": String(c.get("name", pid)),
 			"held": disp == "hold",
 			## Sent home — by you, or by walking out because you took too long.

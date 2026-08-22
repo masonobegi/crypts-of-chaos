@@ -330,9 +330,14 @@ func _pause_screen() -> Control:
 	v.add_child(UIKit.label("Day %d · %s" % [GameState.day, GameState.time_string()], 15, UIKit.INK_DIM))
 	v.add_child(UIKit.spacer(8))
 	v.add_child(UIKit.button("Resume", close))
-	v.add_child(UIKit.button("Save", func():
-		SaveSystem.save_game(SaveSystem.AUTOSAVE)
-		EventBus.toast.emit("Saved.", "good")))
+	# NO MID-SHIFT SAVE. The save carries GameState and the chart; it does not
+	# carry the day — who you have decided about, who you asked, what you sent
+	# for, which records you have read. A player who used this and pressed
+	# Continue got their notes back and none of their decisions, silently, which
+	# is worse than not offering it. The autosave happens at the handover, where
+	# a day is genuinely over and the only thing that carries is the carry.
+	v.add_child(UIKit.label("A shift is one sitting. It saves at the handover.",
+		12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true))
 	v.add_child(UIKit.button("Settings", func(): open("settings", {})))
 	v.add_child(UIKit.button("Controls", func(): open("controls", {})))
 	v.add_child(UIKit.spacer(8))

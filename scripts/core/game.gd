@@ -325,6 +325,16 @@ func _register_saves() -> void:
 ## now is the chart, and the chart is saved with the records above.
 
 func _start() -> void:
+	# CONTINUE. The main menu set this flag and NOTHING READ IT — pressing
+	# Continue restarted the career from day one, with the day number and the
+	# money from the save still printed on the button that did it. Loading has
+	# to happen before the ward starts, because what carries out of a save is
+	# exactly what `WardDay.start()` reads: the day, the carried debt, and the
+	# beds the ward sister could not stand up last night.
+	if GameState.flag("continue_save", false):
+		GameState.set_flag("continue_save", false)
+		if not SaveSystem.load_game(SaveSystem.AUTOSAVE):
+			Log.e("Continue pressed with no readable save; starting fresh", "Game")
 	patient_system.populate()
 	ward.start()
 	if GameState.flag("headless_sim", false):

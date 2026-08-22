@@ -99,14 +99,19 @@ func flag(key: String, fallback = false):
 func set_flag(key: String, value) -> void:
 	flags[key] = value
 
+## COPIES, NOT REFERENCES. `flags` was handed out live: a caller holding the
+## dictionary from to_dict() was holding this one, so a snapshot taken before a
+## change and restored after it restored nothing. The JSON path hid it — going
+## through a file deep-copies for free — and the in-memory path, which is what
+## every test and every carry uses, silently aliased.
 func to_dict() -> Dictionary:
 	return {"day": day, "minute": minute_of_day, "cash": cash, "seed": seed_value,
-		"flags": flags, "covers": active_covers}
+		"flags": flags.duplicate(true), "covers": active_covers.duplicate(true)}
 
 func from_dict(d: Dictionary) -> void:
 	day = int(d.get("day", 1))
 	minute_of_day = int(d.get("minute", 8 * 60))
 	cash = int(d.get("cash", 0))
 	seed_value = int(d.get("seed", 0))
-	flags = Dictionary(d.get("flags", {}))
-	active_covers = Dictionary(d.get("covers", {}))
+	flags = Dictionary(d.get("flags", {})).duplicate(true)
+	active_covers = Dictionary(d.get("covers", {})).duplicate(true)

@@ -93,6 +93,10 @@ func _carry(verdict: String, short: bool) -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	if ps != null and ps.has_method("reset_day"):
 		ps.reset_day()
+	# THE ONLY POINT A SAVE IS HONEST. A day is one sitting; what survives it is
+	# the day number, the money, and what the ward sister remembers — all of
+	# which are in GameState by the time this runs.
+	SaveSystem.save_game(SaveSystem.AUTOSAVE)
 
 func ward():
 	return get_tree().get_first_node_in_group("ward_day")

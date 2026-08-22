@@ -73,6 +73,11 @@ func _build() -> void:
 		opts.add_child(UIKit.button(String(o["text"]),
 			func():
 				var r := _rv.answer(choice, held)
+				# She turns a page whatever you say. Whether it worked is the
+				# difference between a page and a page and a pen.
+				AudioMgr.play("page", -13.0)
+				if not bool(r.get("cleared", false)):
+					AudioMgr.play("beep_low", -16.0)
 				_last = String(r.get("effect", ""))
 				if _rv.finished():
 					_done = true
@@ -95,6 +100,8 @@ func _closing(v: VBoxContainer, w) -> void:
 
 	v.add_child(UIKit.label(ReviewSystem.closing(verdict), 17, UIKit.INK,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
+	AudioMgr.play("stamp", -6.0,
+		0.7 if verdict != ReviewSystem.OUTCOME_CLEAR else 1.0)
 	v.add_child(UIKit.stamp(verdict.to_upper(), tint))
 
 	# The money, and what it did or did not cover. Vinnie came at eight; this is

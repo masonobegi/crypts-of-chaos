@@ -447,3 +447,66 @@ func test_where_you_write_it_is_also_the_skill() -> void:
 	t.gt(watched, alone * 1.8,
 		"and writing the same line where the patient could watch you do it costs far more (%.2f vs %.2f)"
 			% [watched, alone])
+
+## What a save has to carry, given a day is one sitting: the day number, the
+## money, and what the ward sister remembers. If any of those is dropped,
+## Continue is a button that quietly restarts the career.
+func test_what_survives_the_night() -> void:
+	GameState.day = 4
+	GameState.set_flag("carried_debt", 640)
+	GameState.set_flag("remembered_beds", PackedStringArray(["oduya"]))
+	GameState.set_flag("watched", true)
+	var d := GameState.to_dict()
+	GameState.day = 1
+	GameState.set_flag("carried_debt", 0)
+	GameState.set_flag("remembered_beds", PackedStringArray())
+	GameState.set_flag("watched", false)
+	GameState.from_dict(d)
+	t.eq(GameState.day, 4, "the day number survives a round trip")
+	t.eq(int(GameState.flag("carried_debt", 0)), 640, "and so does what Vinnie did not get")
+	t.ok(PackedStringArray(GameState.flag("remembered_beds", PackedStringArray())).has("oduya"),
+		"and the bed she could not stand up")
+	t.ok(bool(GameState.flag("watched", false)), "and that you are being read closely")
+	# ...and the ward reads them on the way in.
+	GameState.day = 1
+	var w := _day()
+	t.eq(w.debt_tonight, Cases.DEBT_DUE + 640,
+		"a short night makes tomorrow's number bigger, not the same")
+	t.ok(w.is_flagged("oduya"), "and yesterday's bed opens with a note on the file")
+	w.queue_free()
+	GameState.set_flag("carried_debt", 0)
+	GameState.set_flag("remembered_beds", PackedStringArray())
+	GameState.set_flag("watched", false)
+
+## Two wards alive at once must not drag each other's clocks FURTHER FORWARD.
+##
+## Every WardDay both listens to `minute_passed` and (through advance_to) emits
+## into it. Before `_advance_locally` existed that was a feedback loop: a ward
+## advancing to half past four woke one sitting at half past six, which pushed
+## the shared clock to half past six, which woke the first one back. Every test
+## that kept a second day alive silently ran three hours late and measured a
+## scenario nobody had written. Following the world clock forward is correct and
+## deliberate — there is one clock — but nothing may push it past the ward that
+## actually moved.
+func test_two_wards_do_not_drag_each_other_forward() -> void:
+	var early := _day()
+	var late := _day()          ## a new day resets the world to eight o'clock
+	late.advance_to(19 * 60)
+	t.eq(GameState.minute_of_day, 19 * 60, "the ward that moved moved the world")
+	t.eq(early.minute, 19 * 60, "and the other ward follows the world, because there is one clock")
+	# The thing that must NOT happen: the ward left behind shoving the clock on.
+	early.advance_to(11 * 60)
+	t.eq(GameState.minute_of_day, 19 * 60,
+		"a ward advancing to a time already past does not move the world at all")
+	t.eq(late.minute, 19 * 60, "and nobody gets dragged past where they were")
+	early.queue_free()
+	late.queue_free()
+
+## And one ward on its own lands exactly where it is put, which is what every
+## measurement in the game depends on.
+func test_one_ward_lands_where_you_put_it() -> void:
+	var w := _day()
+	w.advance_to(11 * 60)
+	t.eq(w.minute, 11 * 60, "eleven o'clock is eleven o'clock")
+	t.eq(GameState.minute_of_day, 11 * 60, "on both clocks")
+	w.queue_free()

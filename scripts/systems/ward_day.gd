@@ -57,7 +57,7 @@ func _ready() -> void:
 func _on_minute(now: int) -> void:
 	if ended:
 		return
-	advance_to(now)
+	_advance_locally(now)
 	for eid in _pending.keys():
 		if now < int(_pending[eid]):
 			continue
@@ -84,6 +84,10 @@ func start() -> void:
 	debt_tonight = Cases.DEBT_DUE + int(GameState.flag("carried_debt", 0))
 	cash = Cases.STARTING_CASH
 	minute = 8 * 60
+	# One clock, and a new shift starts at eight. Without this, a day begun
+	# after a handover (or loaded from a save taken at one) opened with the ward
+	# at eight in the morning and the HUD at eight at night.
+	GameState.minute_of_day = 8 * 60
 	ended = false
 	_result = {}
 	records = Records.new()
@@ -145,6 +149,7 @@ func read_chart(pid: String) -> void:
 		return
 	_read[pid] = true
 	_log("read_chart", {"pid": pid})
+	AudioMgr.play("page", -14.0)
 	advance_to(minute + READ_COST)
 
 func has_read(pid: String) -> bool:
@@ -170,6 +175,12 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 		"backdated": e.backdated_by(), "terminal": terminal,
 		"supports_stay": e.supports_stay(), "explains": explains})
 	entry_written.emit(e)
+	# THE LOOP WAS SILENT. Every sound in this game is synthesised and there
+	# were twenty-eight of them, and not one fired on the four verbs the player
+	# spends the entire day inside. A note lands on the record with a paper
+	# sound; a backdated one lands with a lower, flatter version of it, which is
+	# the only tell in the game that is not written down somewhere.
+	AudioMgr.play("paper", -12.0, 0.8 if e.is_backdated() else 1.0)
 	advance_to(minute + WRITE_COST)
 	return e
 
@@ -183,6 +194,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	st["agreed"] = agreed
 	_log("ask_patient", {"pid": pid, "symptom": symptom, "agreed": agreed})
 	if not agreed:
+		AudioMgr.play("mumble_lo", -13.0)
 		advance_to(minute + ASK_COST)
 		return null
 	var e := ChartEntry.new()
@@ -203,6 +215,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 		(st["recalls"] as Array).append(e.id)
 		(st["suggested"] as Array).append(e.id)
 	entry_written.emit(e)
+	AudioMgr.play("mumble", -13.0)
 	advance_to(minute + ASK_COST)
 	return e
 
@@ -230,6 +243,7 @@ func nurse_check(pid: String) -> ChartEntry:
 	records.add(e)
 	_log("nurse_check", {"pid": pid, "corroborated": not well})
 	entry_written.emit(e)
+	AudioMgr.play("paper", -13.0, 1.15)
 	advance_to(minute + NURSE_COST)
 	return e
 
@@ -250,6 +264,7 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 	_pending[o.id] = minute + TEST_TURNAROUND
 	_log("order_test", {"pid": pid, "kind": kind, "due": minute + TEST_TURNAROUND})
 	entry_written.emit(o)
+	AudioMgr.play("beep", -13.0)
 	advance_to(minute + ORDER_COST)
 	return o
 
@@ -285,6 +300,8 @@ func set_disposition(pid: String, what: String) -> void:
 		st["discharged_at"] = minute
 	if before != what:
 		_log("disposition", {"pid": pid, "from": before, "to": what})
+		# A bed decided sounds like a rubber stamp, because that is what it is.
+		AudioMgr.play("stamp", -11.0, 1.0 if what == "discharge" else 0.85)
 	patient_changed.emit(pid)
 	_update_objective()
 
@@ -346,13 +363,25 @@ func projected() -> Dictionary:
 
 ## Time passes, and Adeyemi walks her round when she walks it. Anything she
 ## finds goes in the chart in her name, truthfully, whether it suits you or not.
+## Move this ward's own clock, and let the world's follow.
+##
+## THE WRITE-BACK IS SEPARATE FROM THE READ, and it has to be. When `_on_minute`
+## called this, every WardDay in memory both listened to `minute_passed` and
+## emitted through it, so two of them alive at once dragged each other forward:
+## ward A advancing to half past four woke ward B, which was at half past six,
+## which pushed the shared clock to half past six, which woke ward A. The tests
+## keep several days alive at once and every one of them silently ran three
+## hours late; in the game there is one ward, which is the only reason this had
+## not been noticed.
 func advance_to(m: int) -> void:
+	_advance_locally(m)
+	GameState.skip_to(minute)
+
+## The same thing without touching the world clock — what a ward does when the
+## world clock is what moved.
+func _advance_locally(m: int) -> void:
 	var from := minute
 	minute = maxi(minute, m)
-	# One clock. GameState re-enters here through `minute_passed`, which is
-	# harmless: by then `minute` is already the destination and `skip_to` is a
-	# no-op for a time it has already reached.
-	GameState.skip_to(minute)
 	for r in rounds_today():
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
@@ -447,6 +476,7 @@ func end_day() -> Dictionary:
 		GameState.set_flag("vinnie_visits", true)
 		GameState.set_flag("carried_debt", debt_tonight - int(p["total"]))
 	_result = res
+	AudioMgr.play("money" if not short else "error", -8.0)
 	money_changed.emit(cash)
 	day_ended.emit(res)
 	return res

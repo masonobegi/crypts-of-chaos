@@ -1068,3 +1068,30 @@ func test_saying_no_to_her_costs_nothing() -> void:
 		"telling her no produces no finding at all")
 	w.queue_free()
 	GameState.day = 1
+
+## THE SCREEN MUST SAY WHAT THE GAME DOES. The last audit caught the game
+## promising an auditor and never producing one; this is the same error the
+## other way up — she is gated on FLAGGED now, so a flagged night has to say so.
+func test_the_end_of_day_screen_promises_what_actually_happens() -> void:
+	for verdict in [ReviewSystem.OUTCOME_FLAGGED, ReviewSystem.OUTCOME_ESCALATED]:
+		GameState.set_flag("auditor_shifts", 0)
+		GameState.set_flag("auditor_present", false)
+		# Exactly what screen_day_over._carry does.
+		var bad: bool = verdict == ReviewSystem.OUTCOME_FLAGGED \
+			or verdict == ReviewSystem.OUTCOME_ESCALATED
+		var left: int = maxi(int(GameState.flag("auditor_shifts", 0)) - 1, 0)
+		if bad:
+			left = 2
+		GameState.set_flag("auditor_shifts", left)
+		GameState.set_flag("auditor_present", left > 0)
+		t.ok(bool(GameState.flag("auditor_present", false)),
+			"a %s night puts Coding on the ward" % verdict)
+	# ...and two clean shifts later she is gone again.
+	for i in 2:
+		var left2: int = maxi(int(GameState.flag("auditor_shifts", 0)) - 1, 0)
+		GameState.set_flag("auditor_shifts", left2)
+		GameState.set_flag("auditor_present", left2 > 0)
+	t.ok(not bool(GameState.flag("auditor_present", false)),
+		"and two shifts later she has gone")
+	GameState.set_flag("auditor_shifts", 0)
+	GameState.set_flag("auditor_present", false)

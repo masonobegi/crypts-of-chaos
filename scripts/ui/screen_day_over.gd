@@ -80,12 +80,18 @@ func _consequences(verdict: String, short: bool) -> Array:
 			out.append("Nothing was queried. Adeyemi is on again and so are you.")
 		ReviewSystem.OUTCOME_QUESTIONS:
 			out.append("Sister Nkemelu has made a note. She will read your charts first tomorrow.")
+		# THE SAME TWO CONSEQUENCES, because the auditor is gated on FLAGGED
+		# now and not on REFERRED — she was expensive content behind a trigger
+		# the money-optimal play never once reached. The screen has to say what
+		# the game does; the reverse of that mismatch is what the last audit
+		# caught, and this is the same error the other way up.
 		ReviewSystem.OUTCOME_FLAGGED:
 			out.append("Coding are looking at last night. Adeyemi has started writing her rounds up twice.")
-			out.append("Every note you make tomorrow is read by somebody who is already curious.")
+			out.append("Ms Ferrand from Coding is on the ward for the next two shifts. She is not there to help.")
+			out.append("Your office has somebody in it. Anything you write, you write in front of her.")
 		ReviewSystem.OUTCOME_ESCALATED:
-			out.append("There is an auditor on the ward tomorrow. She is not there to help.")
-			out.append("You will be asked to put things in writing while somebody watches you do it.")
+			out.append("This is going upstairs. Adeyemi is writing her rounds up twice and Coding are here for two shifts.")
+			out.append("Your office has somebody in it. Anything you write, you write in front of her.")
 	# The beds she could not stand up, by name. This is the part that carries
 	# regardless of the stamp: a "noted" day still puts somebody on a list.
 	var remembered := PackedStringArray(ctx.get("remembered", PackedStringArray()))

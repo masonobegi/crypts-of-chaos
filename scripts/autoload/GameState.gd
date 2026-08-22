@@ -75,23 +75,30 @@ func start_new_career(with_seed: int = 0) -> void:
 	day = 1
 	minute_of_day = 8 * 60
 	clock_running = false
+	# CLEAR FIRST, THEN SET. `flags.clear()` used to run AFTER reset_debt(),
+	# DoctorRecord.wipe() and the readmission list — all three of which write
+	# flags — so a new career was arriving at the right state entirely by
+	# accident, via the defaults of the getters that read them.
+	flags.clear()
+	active_covers.clear()
 	# The float, once. From here it is your own money.
 	cash = Cases.STARTING_CASH
 	reset_debt()
 	DoctorRecord.wipe()
 	set_flag(Cases.READMIT_FLAG, [])
-	flags.clear()
-	active_covers.clear()
+	set_flag("auditor_shifts", 0)
+	set_flag("auditor_present", false)
+	set_flag("watched", false)
 	Log.i("new day, seed %d" % seed_value, "GameState")
 
 ## THE LOSING ENDING.
 ##
-## Three REFERRED verdicts across a career and the Board takes your licence.
-## Before this existed the worst thing the ward sister could do cost you denser
-## nurse rounds and nothing else — a probe that played seven days found a greedy
-## player being referred on six consecutive nights and simply carrying on, which
-## meant the top of the punishment scale was a plateau and there was nothing to
-## be afraid of.
+## Five strikes and the Board takes your licence — see `DoctorRecord.STRIKE_FOR`
+## for what a night is worth. Before this existed, the worst thing the ward
+## sister could do cost you denser nurse rounds and nothing else: a probe that
+## played seven days found a greedy player being referred on six consecutive
+## nights and simply carrying on, so the top of the punishment scale was a
+## plateau and there was nothing to be afraid of.
 
 
 ## THE TWO ENDINGS, and until this session the game had neither.

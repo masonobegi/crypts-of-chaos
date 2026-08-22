@@ -950,3 +950,30 @@ func test_a_bounce_costs_you_the_admission_not_the_bed() -> void:
 	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.day = 1
 
+
+## A NEW CAREER IS ACTUALLY NEW. `flags.clear()` used to run after the three
+## calls that write the flags a career starts with, so the right state was being
+## reached by accident through the defaults of the getters that read them — and
+## any one of those getters gaining a different default would have started every
+## new game mid-career.
+func test_starting_again_starts_again() -> void:
+	GameState.set_flag("debt_remaining", 42)
+	GameState.set_flag(Cases.READMIT_FLAG, ["oduya"])
+	GameState.set_flag("watched", true)
+	GameState.set_flag("auditor_present", true)
+	var dirty := DoctorRecord.load_from_state()
+	for i in 4:
+		dirty.record_night([], ReviewSystem.OUTCOME_ESCALATED)
+	t.ok(GameState.struck_off(), "the old career is finished")
+
+	GameState.start_new_career(4242)
+	t.eq(GameState.debt_remaining(), Cases.DEBT_TOTAL, "the whole debt is back")
+	t.eq(GameState.cash, Cases.STARTING_CASH, "and the float, once")
+	t.eq(GameState.day, 1, "on day one")
+	t.eq(DoctorRecord.load_from_state().strikes, 0, "with nothing against your name")
+	t.eq(DoctorRecord.load_from_state().nights, 0, "and no shifts behind you")
+	t.eq(GameState.ending(), "", "and a career to have")
+	t.eq(PackedStringArray(GameState.flag(Cases.READMIT_FLAG, [])).size(), 0,
+		"and nobody bouncing back from a ward you never worked")
+	t.ok(not bool(GameState.flag("watched", false)), "and nobody reading you closely")
+	t.ok(not bool(GameState.flag("auditor_present", false)), "and Coding elsewhere")

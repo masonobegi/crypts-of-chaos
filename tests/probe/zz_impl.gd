@@ -19,59 +19,67 @@ func _ward() -> WardDay:
 	w.start()
 	return w
 
-## Exactly what screen_review._build does: recompute findings AND truth from the
-## ward AFTER end_day() has run.
-func _review(w: WardDay, res: Dictionary) -> Dictionary:
+func _review(w: WardDay, res: Dictionary, label: String) -> void:
 	var truth := w.review_truth()
 	var finds := w.review_findings()
-	print("   -- truth as the reviewer sees it")
-	for pid in truth:
-		print("      %-12s name=%-18s well=%s held=%s disc=%s bounced=%s flagged=%s" % [
-			pid, String(truth[pid]["name"]), str(truth[pid]["well"]), str(truth[pid]["held"]),
-			str(truth[pid]["discharged"]), str(truth[pid]["bounced_back"]), str(truth[pid]["flagged"])])
-	for f in finds:
-		print("      FINDING %-34s %.2f %s" % [f.kind, f.severity, f.patient_id])
 	var rv := ReviewSystem.new()
 	rv.begin(finds, w.records.entries, truth)
 	while not rv.finished():
 		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])
 	var o := rv.outcome()
-	for b in Contradictions.audit_beds(w.records.entries, truth, finds):
-		print("      BED %-12s billed=%s state=%d %s" % [b.patient_id, str(b.billed), int(b.state), b.why])
-	print("   -- VERDICT %s (indef=%d solo=%d)" % [o["verdict"], o["indefensible"], o["solo"]])
 	rv.commit(finds)
-	return o
+	var names := ""
+	for f in finds:
+		names += "%s/%.2f " % [f.kind, f.severity]
+	print("  %s earned=%d verdict=%s indef=%d solo=%d strikes=%d" % [label,
+		res["earned"], o["verdict"], o["indefensible"], o["solo"],
+		DoctorRecord.load_from_state().strikes])
+	print("      findings: %s" % ("(none)" if names == "" else names))
 
-func run() -> void:
-	_fresh()
-	print("=== DAY 1: discharge everyone ===")
+func _day(policy: String) -> void:
 	var w := _ward()
-	for c in Cases.roster():
-		w.set_disposition(String(c["id"]), "discharge")
-	w.advance_to(Cases.DEBT_DUE_MINUTE)
-	var r1 := w.end_day()
-	print("  earned=%d paid=%d readmits=%s" % [r1["earned"], r1["paid"], str(r1["readmitted"])])
-	_review(w, r1)
-	GameState.day += 1
-	tree.root.remove_child(w); w.free()
-
-	print("")
-	print("=== DAY 2: RE-DISCHARGE the man who bounced back ===")
-	var w2 := _ward()
 	var back := ""
 	for c in Cases.roster():
 		if bool(c.get("readmitted", false)):
 			back = String(c["id"])
-	print("  bouncer on the ward = %s (well=%s)" % [back, str(Cases.by_id(back).get("truly_well", true))])
 	for c in Cases.roster():
 		var pid := String(c["id"])
-		w2.read_chart(pid)
-		w2.examine(pid)
-		w2.set_disposition(pid, "discharge")
-	w2.advance_to(Cases.DEBT_DUE_MINUTE)
-	var r2 := w2.end_day()
-	print("  earned=%d paid=%d readmits=%s" % [r2["earned"], r2["paid"], str(r2["readmitted"])])
-	print("  findings CACHED by end_day: %d" % Array(r2["findings"]).size())
-	for f in r2["findings"]:
-		print("      CACHED %-34s %.2f %s" % [f.kind, f.severity, f.patient_id])
-	_review(w2, r2)
+		w.read_chart(pid)
+		w.examine(pid)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		match policy:
+			"honest":
+				w.set_disposition(pid, "hold" if not bool(c.get("truly_well", true)) else "discharge")
+			"dump_the_bouncer":
+				if pid == back:
+					w.set_disposition(pid, "discharge")
+				else:
+					w.set_disposition(pid, "hold" if not bool(c.get("truly_well", true)) else "discharge")
+	w.advance_to(Cases.DEBT_DUE_MINUTE)
+	var res := w.end_day()
+	_review(w, res, "day %d [%s] bouncer=%s" % [GameState.day, policy, back if back != "" else "-"])
+	GameState.day += 1
+	tree.root.remove_child(w); w.free()
+
+func run() -> void:
+	print("### A: honest every night")
+	_fresh()
+	for i in 4:
+		_day("honest")
+	print("")
+	print("### B: honest, but the man who bounces back is sent home again")
+	_fresh()
+	# night 1: honest, except send the one unwell man home so he bounces.
+	var w := _ward()
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		w.read_chart(pid); w.examine(pid)
+		w.set_disposition(pid, "discharge")
+	w.advance_to(Cases.DEBT_DUE_MINUTE)
+	var r := w.end_day()
+	_review(w, r, "day 1 [dump everyone]  bouncer=-")
+	GameState.day += 1
+	tree.root.remove_child(w); w.free()
+	for i in 3:
+		_day("dump_the_bouncer")

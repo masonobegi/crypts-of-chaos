@@ -52,7 +52,13 @@ func _ready() -> void:
 	# back, and the "+15 min" control on the chart could never move because it
 	# clamps to a `minute` that never changed. Every measurement in the twenty
 	# playthroughs drove the clock by hand and therefore never noticed.
-	GameState.minute_passed.connect(_on_minute)
+	# GUARDED, BECAUSE `start()` CAN RUN FIRST. A WardDay built with `.new()` and
+	# started before it is added to the tree connects in `start()` and then
+	# connects again here when `_ready()` finally fires — two ticks per minute on
+	# the same node, and a red ERROR at the end of every headless run. `_ready()`
+	# is not the only entry point, so it does not get to assume it is the first.
+	if not GameState.minute_passed.is_connected(_on_minute):
+		GameState.minute_passed.connect(_on_minute)
 
 func _on_minute(now: int) -> void:
 	if ended:

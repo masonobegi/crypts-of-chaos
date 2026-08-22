@@ -15,3 +15,12 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+
+# Scratch. `check.sh` writes tests/_check.gd, and a throwaway probe wants
+# somewhere to live that is not the suite. Both were being picked up by
+# test_all_scripts_compile — which walks every .gd under tests/ — so the
+# assertion count moved between runs depending on what had been left lying
+# around, and `git add -A` would happily commit them.
+tests/_check.gd
+tests/tmpcheck/
+tests/scratch/

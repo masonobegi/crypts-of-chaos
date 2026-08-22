@@ -94,6 +94,11 @@ func _set_modal(on: bool, pauses := true) -> void:
 		GameState.clock_running = _clock_was_running
 		_froze_clock = false
 	get_tree().paused = on and pauses
+	# Half a tannoy line behind the card is worse than no tannoy line.
+	if on:
+		var hud = get_tree().get_first_node_in_group("hud")
+		if hud != null and hud.has_method("drop_subtitle"):
+			hud.call("drop_subtitle")
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
 	var p = get_tree().get_first_node_in_group("player")
 	if p:

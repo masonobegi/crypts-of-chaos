@@ -306,6 +306,18 @@ func _on_prompt(text: String, sub: String) -> void:
 func _on_prompt_cleared() -> void:
 	_prompt_panel.visible = false
 
+## A CARD IS NOT A THING YOU READ PAST. The subtitle panel is centre-bottom and
+## 660 wide; every modal screen is drawn on a layer above it and covers the right
+## half, so a tannoy line that landed a second before the end-of-shift card
+## opened sat there reading `Would whoever keeps setting the` ... `stop."` for
+## the rest of its timer. Found by looking at the screenshot — the HUD is paused
+## with the world, so its own timer cannot clear it either, and it would have
+## stayed clipped until the player closed the card.
+func drop_subtitle() -> void:
+	_subtitle_timer = 0.0
+	if _subtitle_panel != null:
+		_subtitle_panel.visible = false
+
 func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
 	# Off means off. Somebody who turned subtitles off did not mean "except
 	# for the barks", which are most of what this panel ever shows.

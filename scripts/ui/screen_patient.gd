@@ -57,7 +57,7 @@ func _build() -> void:
 	acts.add_child(_act("Ask how they have been",
 		"Whatever they say goes no further unless you write it down.",
 		func():
-			_said = String(c["opening"])
+			_said = w.what_they_say(_pid)
 			rebuild()))
 
 	# EXAMINE THEM. The only verb that tells you the truth, and the only one

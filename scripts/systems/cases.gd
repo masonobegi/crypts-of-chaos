@@ -91,6 +91,13 @@ const DAY_ONE := [
 		"readmit_hold": "Aye. I'll not argue with you today.",
 		"readmit_discharge": "...You're the doctor. You keep saying.",
 		"readmit_exam": "The redness is four inches above where somebody drew the line on Tuesday.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Still there. I keep having a look at it when nobody's about.",
+		"evening": "It's worse at night. Everything's worse at night, isn't it.",
+		"pressed": "You've asked me that three times. Is there something you're not saying?",
+		"on_your_note": "The nurse read me what you put. I didn't say it was worse. I said it was the same.",
 		"note": "Talks to everyone. Whatever you tell him, the night staff hear it too.",
 	},
 	{
@@ -110,6 +117,13 @@ const DAY_ONE := [
 		"readmit_hold": "That's all right. It's warm in here.",
 		"readmit_discharge": "Oh. Right you are. Is somebody coming this time?",
 		"readmit_exam": "Cold to the touch and she has been on that floor a while.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Have you seen my cardigan? The blue one. Ruth knitted it.",
+		"evening": "It gets dark so early now. They'll be wanting the beds.",
+		"pressed": "You've been ever so good. Have we met before?",
+		"on_your_note": "Ruth read it out to me. She said, Mum, did you tell him that. I said I don't know, love.",
 		"note": "Nobody at home. Her daughter Ruth is a retired ward sister and reads charts.",
 		"family": "Mrs Kerrigan's daughter",
 		"family_note": "She used to do my job.",
@@ -136,6 +150,13 @@ const DAY_ONE := [
 		"readmit_hold": "Yeah. Yeah, all right.",
 		"readmit_discharge": "You're joking. You are actually joking.",
 		"readmit_exam": "The wound is open and there is more coming out of it than should be.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Any word? Only the nurse said this morning.",
+		"evening": "It's gone six. Is somebody going to tell me either way?",
+		"pressed": "Right, look. Am I going home or not. It's a simple question.",
+		"on_your_note": "Warm? It's not warm. Feel it. Go on, feel it.",
 		"note": "Adeyemi documented 'for discharge today' at 09:20. It is already on the chart.",
 	},
 	{
@@ -155,6 +176,13 @@ const DAY_ONE := [
 		"readmit_hold": "Thank you. I'd rather be here.",
 		"readmit_discharge": "No. No, I'm not going. I'm sorry. I'm not.",
 		"readmit_exam": "Grey, sweating, and the number that was negative twice is not negative now.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "I've been thinking about what you said. About it not being the heart.",
+		"evening": "It's the getting home in the dark I think about. The flat's cold.",
+		"pressed": "You keep coming back. Is that a good sign or a bad sign?",
+		"on_your_note": "Dizzy? Did I say dizzy? I might have done. I've said a lot of things today.",
 		"note": "Will praise you loudly and specifically to anybody who asks.",
 		## And "specifically" is the problem. A grateful patient who describes
 		## his care in detail is describing YOUR CONVERSATION in detail.
@@ -177,6 +205,13 @@ const DAY_ONE := [
 		"readmit_hold": "Right. Yes. Thank you.",
 		"readmit_discharge": "Are you sure? Only — no. All right.",
 		"readmit_exam": "Photophobic, and she will not open her eyes while you talk to her.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "I'm still fine. I've been fine for about eighteen hours now.",
+		"evening": "I've missed the whole day. I did say.",
+		"pressed": "Is there a form? There's usually a form.",
+		"on_your_note": "It says here I've had a recurrence. I haven't had a recurrence.",
 		"note": "",
 		## The trap. This is in her file and nowhere else — the player only finds
 		## it by opening the record and reading it. The one that looks free is
@@ -218,6 +253,13 @@ const DAY_TWO := [
 		"readmit_hold": "Thank you. I'd rather be sure, with her at home.",
 		"readmit_discharge": "If you're sure. You're sure?",
 		"readmit_exam": "Thirty-nine one, and a rigor while you have your hand on her arm.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "It's the shivering that gets me. Comes over me all at once.",
+		"evening": "My sister's got her till Thursday. After that I don't know.",
+		"pressed": "Am I all right? You'd say, wouldn't you.",
+		"on_your_note": "You've written it all down. Good. I want it written down.",
 		"note": "State funded. A night in this bed is worth almost nothing to you.",
 	},
 	{
@@ -237,6 +279,13 @@ const DAY_TWO := [
 		"readmit_hold": "Oh, that's a relief. Yemi's outside.",
 		"readmit_discharge": "No, no. You're the doctor. I'll manage.",
 		"readmit_exam": "Rate is 140 and irregular and there is a haematoma over his hip.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Yemi's coming at six. She'll want to know what the plan is.",
+		"evening": "She's outside now. She's asked for the notes, I hope that's all right.",
+		"pressed": "You'll have to tell her, not me. I never remember the words.",
+		"on_your_note": "She's read it. She says what does 'unsettled' mean, exactly.",
 		"note": "His daughter Yemi has already requested a copy of the notes.",
 		"family": "Mr Achebe-Fry's daughter",
 		"family_note": "She is a solicitor, and she asked for the notes before you got here.",
@@ -262,6 +311,13 @@ const DAY_TWO := [
 		"readmit_hold": "Fine. Whatever. Fine.",
 		"readmit_discharge": "No. I'm staying. I'm not doing that again.",
 		"readmit_exam": "Dry, breathing hard, and her breath is unmistakable across the bed.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "It's half one. I said four.",
+		"evening": "I've missed it. I've missed the shift. That's it now.",
+		"pressed": "Are you going to discharge me or am I signing something?",
+		"on_your_note": "I've read what you put. I'm not unsettled. I'm annoyed. There's a difference.",
 		"note": "Has been asking to leave since breakfast. She will not wait forever.",
 		## A BED WITH A CLOCK ON IT. If you have not decided by mid-afternoon she
 		## discharges herself, which frees the bed and pays the admission — and
@@ -298,6 +354,13 @@ const DAY_TWO := [
 		"readmit_hold": "Aye. Probably for the best.",
 		"readmit_discharge": "Right. Right you are. Cheers.",
 		"readmit_exam": "Seizing intermittently, and nothing about this is a surprise.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Is there — no. It's nothing. What did you say your name was?",
+		"evening": "There's a fella been sat in that chair all afternoon. Is he waiting for me?",
+		"pressed": "I'm all right. I keep telling you. I'm all right.",
+		"on_your_note": "Aye. Whatever you think's best. You're the doctor.",
 		"note": "The numbers on his chart have been coming down all week.",
 		## THE ONE YOU CANNOT FIND BY READING. Every note on him says improving.
 		## Standing in front of him says otherwise, and the only way to stand in
@@ -321,6 +384,13 @@ const DAY_TWO := [
 		"readmit_hold": "Do I. And what's the indication for that, doctor?",
 		"readmit_discharge": "Sensible. Somebody wants this bed more than I do.",
 		"readmit_exam": "Bradycardic, and she tells you the rate before you have finished counting.",
+				## What they say when you keep coming back. A ward is people you
+		## walk past all day, and until these existed every one of them
+		## answered the same sentence forever.
+		"later": "Your handwriting is better than most. That is not a compliment, it is a low bar.",
+		"evening": "I've read this morning's. Whoever wrote 'no further episode' was optimistic about 'further'.",
+		"pressed": "You're circling. I did that too, when I didn't want to say something.",
+		"on_your_note": "I've read it. When was I unsettled, doctor? Give me the time.",
 		"note": "Retired ward sister, forty-one years. Reads her own notes daily.",
 		## WINIFRED BLAKE'S TRAP, INSIDE OUT. Hers was a flag on a file you had to
 		## open. This one reads the file herself, every evening, and remembers
@@ -360,6 +430,11 @@ static func readmission_of(c: Dictionary) -> Dictionary:
 	r["on_discharge"] = String(c.get("readmit_discharge", "...Right. Again."))
 	r["exam_unwell"] = String(c.get("readmit_exam",
 		"Worse than yesterday, and yesterday you had the chance to see it."))
+	# The middle of yesterday's conversation does not survive the ambulance.
+	for k in ["later", "evening", "pressed", "on_your_note"]:
+		r.erase(k)
+	r["pressed"] = String(c.get("readmit_pressed",
+		"You did ask me this yesterday. I said the same thing."))
 	r["note"] = "Discharged by you yesterday. Back within the day."
 	r["audit_flag"] = ("Readmitted within 24 hours of a discharge you authorised. "
 		+ "AUTOMATIC CODING REVIEW.")

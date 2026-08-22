@@ -943,3 +943,29 @@ func test_a_readmitted_bed_is_not_reimbursed() -> void:
 	back.queue_free()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.day = 1
+
+## A ward is people you keep walking past. "Ask how they have been" returned the
+## same sentence every time it was pressed, all day, forever — so every person
+## in the game was four lines long and the third conversation was identical to
+## the first.
+func test_they_have_something_else_to_say_the_third_time() -> void:
+	var w := _day()
+	var said := {}
+	for i in 3:
+		said[w.what_they_say("oduya")] = true
+	t.gt(float(said.size()), 1.0,
+		"asking somebody three times gets more than one answer (%d distinct)" % said.size())
+
+	# And what you have WRITTEN about them beats everything else they might say.
+	# `_day()` frees the previous ward, so this reuses the one already open.
+	w.advance_to(17 * 60)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60)
+	t.eq(w.what_they_say("oduya"), String(Cases.by_id("oduya")["on_your_note"]),
+		"and once it is in the notes, that is what they want to talk about")
+	w.queue_free()
+
+	# Every authored patient has the middle, on both wards.
+	for day in [1, 2]:
+		for c in Cases.roster(day):
+			for k in ["later", "evening", "pressed", "on_your_note"]:
+				t.ok(c.has(k), "%s has something to say when %s" % [c["id"], k])

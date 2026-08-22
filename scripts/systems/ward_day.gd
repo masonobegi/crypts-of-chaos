@@ -108,6 +108,7 @@ func start() -> void:
 			"recalls": [],            ## entry ids the patient would stand behind
 			"suggested": [],          ## ...and remembers you putting into their head
 			"nurse_checked": 0,
+			"asked_count": 0,         ## how many times you have been back
 			"examined": false,        ## you went and looked at them yourself
 			"colleague": 0,           ## times you asked Dr Costa
 			"tests": 0,
@@ -228,6 +229,36 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	AudioMgr.play("mumble", -13.0)
 	advance_to(minute + ASK_COST)
 	return e
+
+## WHAT THEY SAY WHEN YOU COME BACK.
+##
+## "Ask how they have been" returned the same sentence every time it was
+## pressed, all day, forever — so every person on this ward was four lines long
+## and the third conversation was identical to the first. A ward is people you
+## keep walking past. Sam Oduya asking whether it is his heart for the third
+## time at seven in the evening is worth more than a seventh verb would be.
+##
+## Chosen from what has actually happened to them, in order of how much it says:
+## what you have WRITTEN about them beats how many times you have been back,
+## which beats what time it is.
+func what_they_say(pid: String) -> String:
+	var c := Cases.by_id(pid)
+	var st: Dictionary = state[pid]
+	st["asked_count"] = int(st.get("asked_count", 0)) + 1
+	var asked: int = int(st["asked_count"])
+
+	# You have written that they are unwell. Some of them read it.
+	for e in records.for_patient(pid):
+		if e.author == ChartEntry.Author.YOU and e.supports_stay() \
+				and c.has("on_your_note"):
+			return String(c["on_your_note"])
+	if asked >= 3 and c.has("pressed"):
+		return String(c["pressed"])
+	if minute >= 17 * 60 and c.has("evening"):
+		return String(c["evening"])
+	if asked >= 2 and c.has("later"):
+		return String(c["later"])
+	return String(c.get("opening", ""))
 
 ## 5. GO AND LOOK AT THEM.
 ##
@@ -378,10 +409,41 @@ func nurse_check(pid: String) -> ChartEntry:
 		e.text = "Reviewed at doctor's request. Agree, not right yet."
 	records.add(e)
 	_log("nurse_check", {"pid": pid, "corroborated": not well})
+	# SHE SAYS SOMETHING. Adeyemi has been on this ward since six, she writes
+	# every round in it, she is the only reason a fabrication is dangerous — and
+	# she had not spoken once in the entire game. Being asked to go and confirm
+	# something about a man she wrote up as comfortable an hour ago is the
+	# moment she would.
+	EventBus.subtitle.emit("Adeyemi", _adeyemi_on(pid, well), 4.5)
 	entry_written.emit(e)
 	AudioMgr.play("paper", -13.0, 1.15)
 	advance_to(minute + NURSE_COST)
 	return e
+
+## What she says when you send her to look at somebody. Never a mechanic and
+## never a warning — she is not the game's conscience, she is a colleague who
+## has been here since six and has an opinion about being sent back.
+func _adeyemi_on(pid: String, well: bool) -> String:
+	var st: Dictionary = state[pid]
+	var asked: int = int(st["nurse_checked"])
+	var name := String(Cases.by_id(pid).get("name", "them")).split(" ")[-1]
+	if not well:
+		return RNG.pick("adeyemi_agrees", [
+			"I'll look in on %s now, doctor." % name,
+			"I was going to say something myself, actually.",
+			"Yes. I'm not happy with %s either." % name,
+		])
+	if asked >= 2:
+		return RNG.pick("adeyemi_again", [
+			"Again? I looked at %s an hour ago." % name,
+			"...Right you are, doctor. Same as I wrote last time, I expect.",
+			"I'll go. I'll write down what I find, mind.",
+		])
+	return RNG.pick("adeyemi_doubts", [
+		"%s? I wrote %s up as comfortable this morning." % [name, "them"],
+		"If you like. I was in there twenty minutes ago.",
+		"Of course. Is there something I've missed?",
+	])
 
 ## 4. ORDER A TEST. World truth, permanently, whatever anybody wanted.
 func order_test(pid: String, kind: String) -> ChartEntry:

@@ -75,7 +75,8 @@ func start_new_career(with_seed: int = 0) -> void:
 	day = 1
 	minute_of_day = 8 * 60
 	clock_running = false
-	cash = 0
+	# The float, once. From here it is your own money.
+	cash = Cases.STARTING_CASH
 	reset_debt()
 	DoctorRecord.wipe()
 	set_flag(Cases.READMIT_FLAG, [])
@@ -91,7 +92,7 @@ func start_new_career(with_seed: int = 0) -> void:
 ## player being referred on six consecutive nights and simply carrying on, which
 ## meant the top of the punishment scale was a plateau and there was nothing to
 ## be afraid of.
-const REFERRALS_TO_STRIKE_OFF := 3
+
 
 ## THE TWO ENDINGS, and until this session the game had neither.
 const ENDING_PAID := "paid"
@@ -113,24 +114,29 @@ func pay_vinnie(amount: int) -> int:
 ## against a debt that depended on the order of the list.
 func reset_debt() -> void:
 	set_flag("debt_remaining", Cases.DEBT_TOTAL)
-	set_flag("carried_debt", 0)
 	set_flag("vinnie_visits", false)
+	cash = Cases.STARTING_CASH
 
 func paid_off() -> bool:
 	return debt_remaining() <= 0
 
 ## Non-empty once the career is over, either way. Read by the day-over screen,
 ## which stops offering tomorrow.
+## STRUCK OFF WINS THE TIE, and the order matters more than it looks. Vinnie is
+## paid at eight and the sister reads the folder at ten past; checking `paid_off`
+## first made the last night of every career a total amnesty, because you could
+## earn the strike that ends you and the game would hand you the good ending
+## anyway. Every career ends on such a night by construction.
 func ending() -> String:
-	if paid_off():
-		return ENDING_PAID
 	if struck_off():
 		return ENDING_STRUCK_OFF
+	if paid_off():
+		return ENDING_PAID
 	return ""
 
 func struck_off() -> bool:
 	var d: Dictionary = flag(DoctorRecord.FLAG, {})
-	return int(d.get("referrals", 0)) >= REFERRALS_TO_STRIKE_OFF
+	return int(d.get("strikes", 0)) >= DoctorRecord.STRIKES_TO_STRIKE_OFF
 
 func start_day() -> void:
 	clock_running = true

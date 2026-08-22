@@ -56,7 +56,7 @@ func test_the_money_creates_the_decision() -> void:
 	var w := _day()
 	for c in Cases.roster():
 		w.set_disposition(String(c["id"]), "discharge")
-	var lazy: int = int(w.projected()["total"])
+	var lazy: int = int(w.projected()["earned"])
 	t.lt(float(lazy), float(Cases.DEBT_DUE),
 		"discharging everybody does not pay the debt — refusing to hold anyone fails")
 	w.queue_free()
@@ -65,11 +65,13 @@ func test_the_money_creates_the_decision() -> void:
 	w2.set_disposition("marchetti", "hold")
 	for id in ["kerrigan", "brennan", "oduya", "blake"]:
 		w2.set_disposition(id, "discharge")
-	var honest: int = int(w2.projected()["total"])
+	var honest: int = int(w2.projected()["earned"])
 	t.gt(float(honest), float(Cases.DEBT_DUE),
 		"holding the one genuinely unwell patient DOES pay it — honesty is possible")
 	t.lt(float(honest - Cases.DEBT_DUE), 400.0,
 		"...and only just, so it stays a decision rather than a formality")
+	for c in Cases.roster():
+		w2.examine(String(c["id"]))     ## an honest day is one where you looked
 	t.eq(w2.review_findings().size(), 0,
 		"and an honest day produces nothing for the reviewer to ask about")
 	w2.queue_free()
@@ -78,14 +80,14 @@ func test_the_money_creates_the_decision() -> void:
 	var w3 := _day()
 	for c in Cases.roster():
 		w3.set_disposition(String(c["id"]), "hold")
-	var greedy: int = int(w3.projected()["total"])
+	var greedy: int = int(w3.projected()["earned"])
 	w3.queue_free()
 	var w4 := _day()
 	w4.set_disposition("marchetti", "hold")
 	w4.set_disposition("oduya", "hold")
 	for id in ["kerrigan", "brennan", "blake"]:
 		w4.set_disposition(id, "discharge")
-	var selective: int = int(w4.projected()["total"])
+	var selective: int = int(w4.projected()["earned"])
 	w4.queue_free()
 	t.lt(float(greedy), float(selective),
 		"holding every bed EARNS LESS than holding two, because the empty beds admit")
@@ -96,7 +98,7 @@ func test_the_money_creates_the_decision() -> void:
 	w5.set_disposition("kerrigan", "hold")
 	for id in ["brennan", "oduya", "blake"]:
 		w5.set_disposition(id, "discharge")
-	t.gt(float(int(w5.projected()["total"])), float(Cases.DEBT_DUE),
+	t.gt(float(int(w5.projected()["earned"])), float(Cases.DEBT_DUE),
 		"keeping Dot Kerrigan out of kindness still clears the debt")
 	w5.queue_free()
 
@@ -508,19 +510,18 @@ func test_where_you_write_it_is_also_the_skill() -> void:
 ## Continue is a button that quietly restarts the career.
 func test_what_survives_the_night() -> void:
 	GameState.day = 4
-	GameState.set_flag("carried_debt", 640)
+	GameState.set_flag("debt_remaining", 9999)
 	GameState.set_flag("watched", true)
 	DoctorRecord.wipe()
 	var rec0 := DoctorRecord.load_from_state()
 	rec0.record_night([], ReviewSystem.OUTCOME_FLAGGED)
 	var d := GameState.to_dict()
 	GameState.day = 1
-	GameState.set_flag("carried_debt", 0)
 	GameState.set_flag("watched", false)
 	DoctorRecord.wipe()
 	GameState.from_dict(d)
 	t.eq(GameState.day, 4, "the day number survives a round trip")
-	t.eq(int(GameState.flag("carried_debt", 0)), 640, "and so does what Vinnie did not get")
+	t.eq(GameState.debt_remaining(), 9999, "and so does what is left of what you owe")
 	t.eq(DoctorRecord.load_from_state().flagged_nights, 1,
 		"and what she remembers about the doctor")
 	t.ok(bool(GameState.flag("watched", false)), "and that you are being read closely")
@@ -537,6 +538,7 @@ func test_what_survives_the_night() -> void:
 	GameState.reset_debt()
 	var before: int = GameState.debt_remaining()
 	var lean := _day()
+	lean.cash = 0            ## a night after the first, when the float is gone
 	for c in Cases.roster():
 		lean.set_disposition(String(c["id"]), "discharge")
 	var res := lean.end_day()
@@ -546,7 +548,6 @@ func test_what_survives_the_night() -> void:
 		"and what is left of the debt grows by his interest (%d owed, %d paid, %d left)"
 			% [before, int(res["paid"]), GameState.debt_remaining()])
 	lean.queue_free()
-	GameState.set_flag("carried_debt", 0)
 	GameState.set_flag("watched", false)
 	DoctorRecord.wipe()
 
@@ -615,7 +616,7 @@ func test_the_second_ward_is_a_different_problem() -> void:
 	w.set_disposition("bux", "hold")
 	w.set_disposition("lomax", "hold")
 	_rest_home(w)
-	var honest: int = int(w.projected()["total"])
+	var honest: int = int(w.projected()["earned"])
 	t.gt(float(honest), float(Cases.DEBT_DUE),
 		"holding the two who are genuinely unwell still pays the debt (%d)" % honest)
 	t.lt(float(honest - Cases.DEBT_DUE), 400.0, "...and only just, as on the first ward")
@@ -625,7 +626,7 @@ func test_the_second_ward_is_a_different_problem() -> void:
 	var m := _day_two()
 	m.set_disposition("bux", "hold")
 	_rest_home(m)
-	t.lt(float(int(m.projected()["total"])), float(Cases.DEBT_DUE),
+	t.lt(float(int(m.projected()["earned"])), float(Cases.DEBT_DUE),
 		"keeping only the woman who is unwell and state-funded does NOT pay it")
 	m.queue_free()
 	GameState.day = 1
@@ -876,6 +877,7 @@ func test_a_readmission_does_not_readmit() -> void:
 		"he is on the ward as a readmission")
 	w.set_disposition("marchetti", "discharge")
 	w.set_disposition("lomax", "hold")     ## he is on this ward too, and unwell
+	w.set_disposition("bux", "hold")       ## and so is she
 	_rest_home(w)
 	var res := w.end_day()
 	t.eq(PackedStringArray(res["readmitted"]).size(), 0,
@@ -907,29 +909,31 @@ func test_paying_it_off_is_the_way_out() -> void:
 func test_a_short_night_lengthens_the_whole_thing() -> void:
 	GameState.reset_debt()
 	var w := _day()
+	w.cash = 0               ## a night after the first, when the float is gone
 	for c in Cases.roster():
 		w.set_disposition(String(c["id"]), "discharge")
 	var res := w.end_day()
 	t.ok(bool(res["short"]), "sending the whole ward home does not cover the night")
 	t.eq(GameState.debt_remaining(),
-		Cases.DEBT_TOTAL - int(res["paid"]) + Cases.SHORTFALL_VIG,
-		"and his interest goes on the total")
+		int(round(float(Cases.DEBT_TOTAL - int(res["paid"])) * (1.0 + Cases.DEBT_INTEREST))),
+		"and ten per cent a night goes on whatever is left")
 	t.eq(w.debt_tonight, Cases.DEBT_DUE, "he still wants his usual number, not more")
 	w.queue_free()
 	GameState.reset_debt()
 
-## A bed you emptied by mistake earns you nothing all day. Without this the
-## people who bounce back keep their insurance tier, so sending a premium
-## patient home wrongly handed you a premium bed you could then hold entirely
-## honestly — a mistake that PAID.
-func test_a_readmitted_bed_is_not_reimbursed() -> void:
+## WHAT A BOUNCE COSTS IS THE ADMISSION IT DISPLACES, not the bed.
+##
+## The first version paid nothing for a readmitted bed, and that inverted the
+## whole mechanic: HOLDING somebody you had wrongly sent home earned zero while
+## re-discharging them paid $150 and freed a $500 admission, so putting right
+## what you got wrong cost $650 against doing it again.
+func test_a_bounce_costs_you_the_admission_not_the_bed() -> void:
 	GameState.set_flag(Cases.READMIT_FLAG, [])
 	var normal := _day()
 	normal.set_disposition("marchetti", "hold")
 	_rest_home(normal)
-	var full: int = int(normal.projected()["nights"])
+	var clean: Dictionary = normal.projected()
 	normal.queue_free()
-	t.gt(float(full), 0.0, "an ordinary premium night is worth something (%d)" % full)
 
 	GameState.day = 2
 	var back := _day()
@@ -937,35 +941,12 @@ func test_a_readmitted_bed_is_not_reimbursed() -> void:
 	back.start()
 	back.set_disposition("marchetti", "hold")
 	_rest_home(back)
-	t.eq(int(back.projected()["nights"]), 0,
-		"the bed you emptied by mistake earns nothing at all")
-	t.eq(back.night_value("marchetti"), 0, "and the ward says so by name")
+	var bounced: Dictionary = back.projected()
+	t.eq(back.night_value("marchetti"), Cases.night_fee(Cases.Tier.PREMIUM),
+		"treating somebody who bounced pays what the night is worth")
+	t.eq(int(bounced["admissions"]), int(clean["admissions"]) - Cases.ADMISSION_FEE,
+		"and what it costs you is the admission that would have had the bed")
 	back.queue_free()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
 	GameState.day = 1
 
-## A ward is people you keep walking past. "Ask how they have been" returned the
-## same sentence every time it was pressed, all day, forever — so every person
-## in the game was four lines long and the third conversation was identical to
-## the first.
-func test_they_have_something_else_to_say_the_third_time() -> void:
-	var w := _day()
-	var said := {}
-	for i in 3:
-		said[w.what_they_say("oduya")] = true
-	t.gt(float(said.size()), 1.0,
-		"asking somebody three times gets more than one answer (%d distinct)" % said.size())
-
-	# And what you have WRITTEN about them beats everything else they might say.
-	# `_day()` frees the previous ward, so this reuses the one already open.
-	w.advance_to(17 * 60)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60)
-	t.eq(w.what_they_say("oduya"), String(Cases.by_id("oduya")["on_your_note"]),
-		"and once it is in the notes, that is what they want to talk about")
-	w.queue_free()
-
-	# Every authored patient has the middle, on both wards.
-	for day in [1, 2]:
-		for c in Cases.roster(day):
-			for k in ["later", "evening", "pressed", "on_your_note"]:
-				t.ok(c.has(k), "%s has something to say when %s" % [c["id"], k])

@@ -69,15 +69,26 @@ func options(f, records: Records) -> Array:
 		{"a": Answer.STAND_BY, "text": "That is what I observed."},
 		{"a": Answer.DEFER, "text": "I would defer to the nursing note."},
 	]
-	if f.kind == "backdated" or f.kind == "addendum_cascade":
+	# ONCE. "I wrote it up late" was the answer to the game's headline mechanic
+	# and it had no hardening at all, unlike blaming the clocks — so the play was
+	# to write everything at twenty to eight, state it for five past eight, and
+	# clear it from a menu every single night.
+	if (f.kind == "backdated" or f.kind == "addendum_cascade") \
+			and int(used_answers.get(Answer.WROTE_IT_LATE, 0)) == 0:
 		out.append({"a": Answer.WROTE_IT_LATE, "text": "I wrote it up late. It was a busy shift."})
-	if _has_nurse_support(f, records):
+	if _has_nurse_support(f, records) \
+			and not (record != null and record.weight_for(f.kind) >= 1.8):
 		out.append({"a": Answer.POINT_AT_NURSE, "text": "Adeyemi reviewed him and agreed with me."})
 	# THE SKILLED ANSWER, and it is only on the menu when the day you actually
 	# had supports it. Without this the review had no skill in it at all: the two
 	# heavy findings could not be talked down by any means, so a player who had
 	# sequenced their day carefully scored exactly the same as one who had not.
-	var rec := _reconciliation(f, records)
+	# AND SHE STOPS OFFERING YOU THE GOOD ANSWERS. The same rule the file
+	# already applies to blaming the terminal clocks — an excuse used often
+	# enough is not an excuse, it is a pattern — extended to the two answers
+	# that actually move a bed. This is what the record DOES.
+	var worn_out: bool = record != null and record.weight_for(f.kind) >= 1.8
+	var rec := _reconciliation(f, records) if not worn_out else ""
 	if rec != "":
 		out.append({"a": Answer.RECONCILE, "text": rec})
 	out.append({"a": Answer.BLAME_SYSTEM, "text": "The terminal clocks have been out all week."})
@@ -269,13 +280,30 @@ func outcome() -> Dictionary:
 				b.state = Contradictions.Defence.NONE
 				b.why = "you told her the reason was wrong"
 
+	# THE RECORD REACHES THE VERDICT. `weight_for` only ever scaled a finding's
+	# severity, and severity has three consumers — which questions get asked,
+	# whether STAND_BY works, and screen text. None of them writes a bed state,
+	# so the entire escalation produced no change to the verdict, the money or
+	# the ending. It made the review LESS playable (heavier questions crowd out
+	# the ones about the beds you could still save) while leaving the outcome
+	# identical.
+	#
+	# Measured as a RATE, not a career total, so a long careful run is not
+	# punished for its length: once you are averaging an uncorroborated bed
+	# every other night, "only you saw it" stops being something she accepts.
+	var habitual: bool = record != null and record.nights >= 4 \
+		and float(record.times("uncorroborated_stay")) / float(record.nights) >= 0.5
 	var indefensible: Array = []
 	var solo: Array = []
 	for b in beds:
 		if b.indefensible():
 			indefensible.append(b)
 		elif b.state == Contradictions.Defence.SOLO:
-			solo.append(b)
+			if habitual:
+				b.why = "on your word alone, again — and she has stopped taking it"
+				indefensible.append(b)
+			else:
+				solo.append(b)
 
 	var verdict := OUTCOME_CLEAR
 	if indefensible.size() >= 2:

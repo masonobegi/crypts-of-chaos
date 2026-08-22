@@ -80,6 +80,7 @@ func _on_minute(now: int) -> void:
 		EventBus.request_ui.emit("review", {})
 
 func start() -> void:
+	cash = GameState.cash
 	# ...and starts listening again, because `start()` is also how tomorrow
 	# begins on the same node.
 	if not GameState.minute_passed.is_connected(_on_minute):
@@ -88,7 +89,12 @@ func start() -> void:
 	# What he wants tonight, which is his usual number unless there is less than
 	# that left of the whole thing — nobody hands over more than they owe.
 	debt_tonight = mini(Cases.DEBT_DUE, GameState.debt_remaining())
-	cash = Cases.STARTING_CASH
+	# CASH CARRIES. This said `cash = Cases.STARTING_CASH` and `start()` is
+	# called every morning, so the player was minted nine hundred pounds a night
+	# out of nowhere — a third of any night's takings, under every strategy, in
+	# every measurement this project has ever taken. It also made "he takes
+	# everything at eight" vacuous, because nothing survived the night for him
+	# to take. The float is granted once, at the start of a career.
 	minute = 8 * 60
 	# One clock, and a new shift starts at eight. Without this, a day begun
 	# after a handover (or loaded from a save taken at one) opened with the ward
@@ -222,8 +228,19 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	# question from whether they nodded now — AND whether they remember being
 	# ASKED, which is the other half and the more dangerous one. A patient who
 	# recalls the conversation recalls that the symptom was your idea.
+	# TWO ROLLS, NOT ONE.
+	#
+	# This was a single roll that appended to BOTH lists, and the two lists mean
+	# opposite things: `recalls` makes the entry corroboration, `suggested`
+	# makes it `symptom_was_suggested`, which is in the CONTRADICTED set and is
+	# checked first. So remembering lost and not remembering lost — verb three
+	# of six could never corroborate anything and was a pure trap in both
+	# branches, while the comment above it described a trade the code did not
+	# implement. Whether they will stand behind it and whether they remember
+	# WHOSE IDEA IT WAS are different questions, and the second is rarer.
 	if RNG.chance("recall_%s" % pid, float(c.get("recall", 0.6))):
 		(st["recalls"] as Array).append(e.id)
+	if RNG.chance("whose_idea_%s" % pid, float(c.get("recall", 0.6)) * 0.4):
 		(st["suggested"] as Array).append(e.id)
 	entry_written.emit(e)
 	AudioMgr.play("mumble", -13.0)
@@ -545,8 +562,15 @@ func discharged_ids() -> Array:
 func free_beds() -> int:
 	return Cases.BEDS - held_ids().size()
 
+## WHAT A BOUNCE ACTUALLY COSTS: the admission that would have filled the bed
+## it is lying in. Charged once, here, rather than by making the bed itself
+## worthless — which had the mechanic paying you to re-dump the patient.
 func admissions_taken() -> int:
-	return mini(Cases.ADMISSIONS_WAITING, free_beds())
+	var back := 0
+	for c in Cases.roster():
+		if bool(c.get("readmitted", false)):
+			back += 1
+	return maxi(0, mini(Cases.ADMISSIONS_WAITING - back, free_beds()))
 
 ## What tonight pays, if the day ended right now.
 func projected() -> Dictionary:
@@ -568,11 +592,15 @@ func projected() -> Dictionary:
 ## home wrongly handed you a premium bed you could then hold entirely honestly.
 ## Instead the bed you emptied by mistake sits there earning you nothing all
 ## day, which costs an honest player the best part of six nights of progress.
+## The money was never meant to be the punishment; the record is.
+##
+## A readmitted bed used to pay nothing, and that inverted the entire mechanic:
+## HOLDING somebody you had wrongly sent home earned zero, while re-discharging
+## them paid $150 and freed a $500 admission. Putting right what you got wrong
+## cost you $650 against doing it again. What a bounce actually costs is the
+## admission it displaces, which is charged once, in `admissions_taken`.
 func night_value(pid: String) -> int:
-	var c := Cases.by_id(pid)
-	if bool(c.get("readmitted", false)):
-		return 0
-	return Cases.night_fee(int(c["tier"]))
+	return Cases.night_fee(int(Cases.by_id(pid)["tier"]))
 
 ## Time passes, and Adeyemi walks her round when she walks it. Anything she
 ## finds goes in the chart in her name, truthfully, whether it suits you or not.
@@ -731,7 +759,15 @@ func end_day() -> Dictionary:
 	var in_hand: int = int(p["total"])
 	var handed_over: int = mini(in_hand, GameState.debt_remaining())
 	var still_owed: int = GameState.pay_vinnie(handed_over)
+	# TEN PER CENT A NIGHT ON WHAT IS LEFT, every night, whether you were short
+	# or not. It is the only money mechanism in the game: a bad night is never
+	# charged twice, it simply takes longer to get out from under. And it is
+	# what makes coasting diverge instead of merely being slow.
+	if still_owed > 0:
+		still_owed = int(round(float(still_owed) * (1.0 + Cases.DEBT_INTEREST)))
+		GameState.set_flag("debt_remaining", still_owed)
 	cash = in_hand - handed_over
+	GameState.cash = cash
 	var short: bool = handed_over < debt_tonight and still_owed > 0
 	var res := {
 		"earned": p["earned"], "paid": handed_over, "cash": cash,
@@ -746,11 +782,6 @@ func end_day() -> Dictionary:
 	# he is. A new pair of eyes in your workplace, permanently.
 	if short:
 		GameState.set_flag("vinnie_visits", true)
-		# He adds his interest to the total rather than to tonight. Falling
-		# behind makes the whole thing longer, which is what falling behind
-		# to somebody like Vinnie does.
-		GameState.set_flag("debt_remaining", still_owed + Cases.SHORTFALL_VIG)
-		GameState.set_flag("carried_debt", 0)
 	# WHO IS COMING BACK. Anybody you sent home who was not fit to go is in a bed
 	# tomorrow — not as a punishment the reviewer hands out, but because that is
 	# what happens. It is the only consequence in the game that arrives before
@@ -813,6 +844,14 @@ func review_truth() -> Dictionary:
 			"self_discharged": bool(st.get("self_discharged", false)),
 			## You were at the bedside and you know what you found.
 			"examined": bool(st.get("examined", false)),
+			## Did you go anywhere near them at all? Reading their chart or
+			## sending somebody counts; deciding blind does not.
+			"looked_at": bool(st.get("examined", false)) or has_read(pid)
+				or int(st.get("nurse_checked", 0)) > 0
+				or int(st.get("colleague", 0)) > 0
+				or int(st.get("asked_count", 0)) > 0,
+			## They were here yesterday, you sent them home, and here they are.
+			"bounced_back": bool(Cases.by_id(pid).get("readmitted", false)),
 			"patient_recalls": st["recalls"],
 			"patient_suggested": st["suggested"],
 			"flagged": is_flagged(pid),

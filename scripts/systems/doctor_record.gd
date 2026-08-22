@@ -35,7 +35,29 @@ const COUNTED := {
 }
 
 var counts: Dictionary = {}     ## kind -> times, across the whole career
-var referrals := 0              ## REFERRED verdicts. Three and you are finished
+var referrals := 0              ## REFERRED verdicts, for the record and the tally
+
+## HOW CLOSE THE BOARD IS, and the strike currency of the whole game.
+##
+## This used to be `referrals >= 3`, and it fired at nobody. The money-optimal
+## play — hold three, because a fourth costs a $500 admission to gain at most
+## $850 — lands on FLAGGED on BOTH authored wards and never on REFERRED, which
+## needs two indefensible beds. So the optimal player accrued zero strikes
+## forever, the auditor never spawned, and the flat seven-day loop the whole
+## redesign exists to kill survived one verdict tier down.
+##
+## A score instead. A clean night pays a strike back, a queried one is free, a
+## flagged one costs, and a referral costs properly. Five and the Board writes
+## to you. The $4,350 farm reaches five at the end of night five and dies one
+## night short of paying off; an honest career never leaves zero.
+const STRIKE_FOR := {
+	ReviewSystem.OUTCOME_CLEAR: -1,
+	ReviewSystem.OUTCOME_QUESTIONS: 0,
+	ReviewSystem.OUTCOME_FLAGGED: 1,
+	ReviewSystem.OUTCOME_ESCALATED: 3,
+}
+const STRIKES_TO_STRIKE_OFF := 5
+var strikes := 0
 var flagged_nights := 0
 var clean_nights := 0
 var nights := 0
@@ -45,6 +67,7 @@ static func load_from_state() -> DoctorRecord:
 	var d: Dictionary = GameState.flag(FLAG, {})
 	r.counts = Dictionary(d.get("counts", {})).duplicate(true)
 	r.referrals = int(d.get("referrals", 0))
+	r.strikes = int(d.get("strikes", 0))
 	r.flagged_nights = int(d.get("flagged_nights", 0))
 	r.clean_nights = int(d.get("clean_nights", 0))
 	r.nights = int(d.get("nights", 0))
@@ -54,6 +77,7 @@ func save_to_state() -> void:
 	GameState.set_flag(FLAG, {
 		"counts": counts.duplicate(true),
 		"referrals": referrals,
+		"strikes": strikes,
 		"flagged_nights": flagged_nights,
 		"clean_nights": clean_nights,
 		"nights": nights,
@@ -90,6 +114,7 @@ func record_night(findings: Array, verdict: String) -> void:
 			# career.
 			seen[k] = true
 			counts[k] = times(k) + 1
+	strikes = maxi(0, strikes + int(STRIKE_FOR.get(verdict, 0)))
 	match verdict:
 		ReviewSystem.OUTCOME_ESCALATED:
 			referrals += 1
@@ -99,6 +124,16 @@ func record_night(findings: Array, verdict: String) -> void:
 		ReviewSystem.OUTCOME_CLEAR:
 			clean_nights += 1
 	save_to_state()
+
+## How near the edge, in words. On the handover screen, because a threshold the
+## player cannot see coming is a threshold that feels arbitrary when it lands.
+func standing() -> String:
+	var left: int = STRIKES_TO_STRIKE_OFF - strikes
+	if strikes <= 0:
+		return ""
+	if left <= 1:
+		return "One more bad night and the Board writes to you."
+	return "%d more bad nights and the Board writes to you." % left
 
 ## What she says before she says anything else. Empty on a clean record, which
 ## is the point — the first few days she has no reason to open with anything.

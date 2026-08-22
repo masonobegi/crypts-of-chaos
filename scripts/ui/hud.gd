@@ -262,25 +262,36 @@ func _on_clock(_m: int) -> void:
 ## saved value in GameState is what is left of it between them.
 func _refresh_money() -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")
-	var cash: int = int(w.cash) if w != null else GameState.cash
-	_cash.text = UIKit.money_str(cash)
-	_cash.add_theme_color_override("font_color",
-		UIKit.HUD_MONEY if cash >= 0 else UIKit.HUD_BAD)
+	# WHAT TONIGHT IS WORTH, NOT WHAT IS IN YOUR POCKET.
+	#
+	# Since the debt got a term, Vinnie takes everything at eight — so `cash`
+	# reads $900 all day and $0 the moment the day ends, which is a number that
+	# never moves and then means nothing. What the player is actually deciding
+	# about is what this shift will hand over, against how much of the whole
+	# thing is left.
+	var tonight: int = int(w.projected()["total"]) if w != null and not w.ended \
+		else (int(w.end_day().get("paid", 0)) if w != null else GameState.cash)
+	_cash.text = UIKit.money_str(tonight)
+	_cash.add_theme_color_override("font_color", UIKit.HUD_MONEY)
 	# WHAT TONIGHT LOOKS LIKE FROM HERE. `cash` does not move until eight
 	# o'clock, so the money readout sat at nine hundred all day and told the
 	# player nothing while they made the only decisions that change it. The
 	# second line is the whole tension of the day in six words.
-	if w == null or w.ended:
-		_owed.visible = false
-		return
-	var p: Dictionary = w.projected()
-	var total: int = int(p["total"])
 	_owed.visible = true
+	if w == null:
+		_owed.text = ""
+		return
+	var left: int = GameState.debt_remaining()
+	if w.ended:
+		_owed.text = "handed over  ·  %s still owed" % UIKit.money_str(left)
+		_owed.add_theme_color_override("font_color",
+			UIKit.HUD_MONEY if left <= 0 else UIKit.HUD_INK)
+		return
 	# Tonight's number and the whole thing, because the whole thing is the game.
-	_owed.text = "%s tonight  ·  %s to go" % [
-		UIKit.money_str(total), UIKit.money_str(GameState.debt_remaining())]
+	_owed.text = "he wants %s  ·  %s to go" % [
+		UIKit.money_str(w.debt_tonight), UIKit.money_str(left)]
 	_owed.add_theme_color_override("font_color",
-		UIKit.HUD_MONEY if total >= w.debt_tonight else UIKit.HUD_BAD)
+		UIKit.HUD_MONEY if tonight >= w.debt_tonight else UIKit.HUD_BAD)
 
 func _on_objective(text: String) -> void:
 	_objective.text = text

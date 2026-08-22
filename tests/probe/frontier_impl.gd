@@ -88,6 +88,9 @@ func run() -> void:
 
 func _search(day: int) -> void:
 	GameState.day = day
+	# No readmissions from a previous search, or the roster this search thinks
+	# it is exploring is not the roster it gets.
+	GameState.set_flag(Cases.READMIT_FLAG, [])
 	var ids: Array = []
 	for c in Cases.roster(day): ids.append(String(c["id"]))
 	var rows: Array = []
@@ -121,7 +124,7 @@ func _search(day: int) -> void:
 		var v := String(r["verdict"])
 		if not best.has(v) or int(r["cash"]) > int(best[v]["cash"]):
 			best[v] = r
-	print("\n--- the most money made at each verdict ---")
+	print("\n--- the biggest night at each verdict ---")
 	for v in [ReviewSystem.OUTCOME_CLEAR, ReviewSystem.OUTCOME_QUESTIONS,
 			ReviewSystem.OUTCOME_FLAGGED, ReviewSystem.OUTCOME_ESCALATED]:
 		if not best.has(v):
@@ -136,8 +139,8 @@ func _search(day: int) -> void:
 	var clean: int = int(best[ReviewSystem.OUTCOME_CLEAR]["cash"]) if best.has(ReviewSystem.OUTCOME_CLEAR) else -99999
 	var noted: int = int(best[ReviewSystem.OUTCOME_QUESTIONS]["cash"]) if best.has(ReviewSystem.OUTCOME_QUESTIONS) else -99999
 	print("\n--- is the frontier real? ---")
-	print("  best signed-off day: %d" % clean)
-	print("  best noted day:      %d  (+%d for a bed on the file)" % [noted, noted - clean])
+	print("  best signed-off night: %d" % clean)
+	print("  best noted night:      %d  (+%d for a bed on the file)" % [noted, noted - clean])
 	var top: Dictionary = rows[0]
 	print("  most money anybody made: %d, and it was %s (%s / %s)"
 		% [top["cash"], top["verdict"], top["how"], top["pol"]])
@@ -174,7 +177,11 @@ func _run(held: Array, how: String, pol: String, mixed := false) -> Dictionary:
 		rv.answer(int(chooser.call(f, rv.options(f, w.records))), res["held"])
 	var o := rv.outcome()
 	var row := {
-		"cash": int(res["cash"]), "verdict": String(o["verdict"]),
+		# WHAT THE NIGHT WAS WORTH, which since the debt got a term is what he
+		# took rather than what is left over — he takes everything, so the
+		# leftover is zero on every night that does not finish the game and
+		# ranking by it made all 2,200 strategies look identical.
+		"cash": int(res["paid"]), "verdict": String(o["verdict"]),
 		"held": held, "how": ("mixed+" + how) if mixed else how, "pol": pol,
 		"indef": int(o["indefensible"]), "solo": int(o["solo"]),
 	}

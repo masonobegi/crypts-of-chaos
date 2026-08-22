@@ -30,6 +30,9 @@ const SHOTS := [
 	["14_write", "ui:write"],
 	["15_ward_two", "ui:ward_two"],
 	["16_review", "ui:review"],
+	["17_day_over", "ui:day_over"],
+	["18_paid", "ui:paid"],
+	["19_struck_off", "ui:struck_off"],
 ]
 
 func start() -> void:
@@ -152,6 +155,22 @@ func _stage_ui(which: String, w) -> void:
 					ps2.reset_day()
 				w.examine("lomax")
 			EventBus.request_ui.emit("patient", {"patient_id": "lomax"})
+		"day_over":
+			EventBus.request_ui.emit("day_over", {
+				"verdict": ReviewSystem.OUTCOME_FLAGGED,
+				"remembered": PackedStringArray(["oduya"])})
+		"paid":
+			# THE WAY OUT. Nothing in the game had an ending until this session.
+			GameState.set_flag("debt_remaining", 0)
+			EventBus.request_ui.emit("day_over",
+				{"verdict": ReviewSystem.OUTCOME_CLEAR})
+		"struck_off":
+			GameState.reset_debt()
+			var rec := DoctorRecord.load_from_state()
+			for i in 3:
+				rec.record_night([], ReviewSystem.OUTCOME_ESCALATED)
+			EventBus.request_ui.emit("day_over",
+				{"verdict": ReviewSystem.OUTCOME_ESCALATED})
 		"review":
 			# Back to the first ward: this stage names its patients, and the
 			# ward_two stage before it left the day on the second one.

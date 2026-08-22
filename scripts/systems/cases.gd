@@ -50,24 +50,40 @@ const STARTING_CASH := 900
 ## running and simply carry on.
 ##
 ## Now it is a sum with an end on it. He takes everything you have at eight
-## o'clock, the remainder is what you still owe, and clearing it is the way out
-## — the only winning ending the game has. Simulated before it was built, at
-## the measured per-night earnings of each policy:
+## o'clock, ten per cent a night goes on whatever is left, and clearing it is
+## the way out — the only winning ending the game has.
 ##
-##   honest, signed off .............. 12 nights
-##   one well-timed lie a night ...... 10 nights
-##   the money-optimal three ......... 9 nights
+## THE FIRST VERSION OF THESE NUMBERS DID NOT WORK, and the reason is worth
+## keeping: the ward was minting the player nine hundred pounds every morning,
+## so the ratio between coasting and working was 0.79 and no interest rate
+## exists that blocks the first without also making the second take seventeen
+## nights. Deleting the float — and making a readmission eat an admission slot
+## — drops coasting to about a thousand a night and holds honest work at about
+## two and a half, a ratio of 0.41, and the whole thing becomes solvable.
 ##
-## Which is the shape the design wanted: dishonesty is meaningfully faster and
-## not overwhelmingly so, and the three nights it saves have to be weighed
-## against a referral ladder that ends a career at three.
-const DEBT_TOTAL := 30000
+## Amortised at $15,500 and ten per cent:
+##
+##   honest, signed off ...................  9 nights
+##   one well-timed lie a night ...........  7 nights
+##   the money-optimal three ..............  6 nights
+##   coasting .............................  NEVER — the balance grows
+##
+## Nine honest nights is the first ward played five times and the second four,
+## which is about as much as two authored wards can carry before the boards are
+## solved. And a third off the run for taking the risk is meaningfully faster
+## without being the only way to play.
+const DEBT_TOTAL := 15500
 
 ## What he expects on any given night. Less than this and he does not break
-## anything — he stands in the corridor being pleasant, adds his interest, and
-## asks Adeyemi who you are.
-const DEBT_DUE := 3200
-const SHORTFALL_VIG := 450
+## anything — he stands in the corridor being pleasant and asks Adeyemi who you
+## are.
+const DEBT_DUE := 2200
+
+## And what it costs to be behind. Ten per cent a night on whatever is left
+## AFTER he has been paid, which is the only money mechanism in the game: a bad
+## night is never charged twice, it simply takes longer to get out from under.
+const DEBT_INTEREST := 0.10
+
 const DEBT_DUE_MINUTE := 20 * 60
 
 ## `truly_well` is the simulation's own opinion and is never shown. It decides
@@ -451,21 +467,53 @@ static func roster(day := -1) -> Array:
 	var coming_back: Array = GameState.flag(READMIT_FLAG, [])
 	if coming_back.is_empty():
 		return base
+	# A BOUNCE TAKES AN ADMISSION SLOT, NOT SOMEBODY ELSE'S BED.
+	#
+	# The first version seated returners at index 0 and pushed a scheduled
+	# patient off the end — and index 0 is Ivo Marchetti on the first ward and
+	# Nasreen Bux on the second, which are each ward's ONLY genuinely unwell
+	# hold. So depending purely on which day it was, a readmission either
+	# deleted the honest path outright or upgraded the ward by swapping a state
+	# bed for a premium one. Ten authored people, and the mechanic was quietly
+	# removing whichever one mattered most.
+	#
+	# The five beds are the five beds. What a bounce costs is the admission that
+	# would have filled the bed it is sitting in — see `WardDay.admissions_taken`.
 	var out: Array = []
-	var beds_used := 0
+	var back := {}
 	for id in coming_back:
+		back[String(id)] = true
+	for c in base:
+		if back.has(String(c["id"])):
+			out.append(readmission_of(c))
+		else:
+			out.append(c)
+	# Somebody bouncing back from the OTHER ward takes the bed of whoever on
+	# this one is furthest from needing it — the well patient nobody is arguing
+	# about, which is the honest way a bed actually gets found.
+	for id in coming_back:
+		if back.has(String(id)) and _index_of(out, String(id)) >= 0:
+			continue
 		var original := anyone(String(id))
 		if original.is_empty():
 			continue
+		var swap := -1
+		for i in out.size():
+			if bool(out[i].get("truly_well", true)) and not bool(out[i].get("readmitted", false)):
+				swap = i
+				break
+		if swap < 0:
+			continue
 		var r := readmission_of(original)
-		r["bed"] = base[beds_used]["bed"]
-		out.append(r)
-		beds_used += 1
-		if beds_used >= base.size():
-			break
-	for i in range(beds_used, base.size()):
-		out.append(base[i])
+		r["bed"] = out[swap]["bed"]
+		out[swap] = r
 	return out
+
+static func _index_of(list: Array, id: String) -> int:
+	for i in list.size():
+		if String(list[i]["id"]) == id:
+			return i
+	return -1
 
 ## TODAY'S WARD. Everything that acts on a patient goes through this, so a
 ## lookup for somebody who is not in a bed this morning correctly finds nothing.
@@ -523,7 +571,31 @@ const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO]
 
 static func prior_entries(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
-	return PRIOR_BY_DAY[(d - 1) % PRIOR_BY_DAY.size()]
+	var base: Array = PRIOR_BY_DAY[(d - 1) % PRIOR_BY_DAY.size()].duplicate()
+	# WHOEVER ADMITTED THEM AT THREE IN THE MORNING WROTE SOMETHING.
+	#
+	# A readmission arrived with a completely blank chart, so the audit could
+	# not see them at all and the eight-till-ten window on them was free. The
+	# night SHO's admission note is on the record before you get there, in his
+	# own name, saying what the fiction already says.
+	var out: Array = []
+	for c in roster(d):
+		if not bool(c.get("readmitted", false)):
+			continue
+		out.append({
+			"patient": String(c["id"]), "minute": 3 * 60 + 20,
+			"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Iqbal (nights)",
+			"text": String(c.get("summary", "Readmitted overnight.")),
+		})
+	for e in base:
+		# Yesterday's ward's note about somebody who is back is not today's.
+		var seen := false
+		for r in out:
+			if String(r["patient"]) == String(e["patient"]):
+				seen = true
+		if not seen:
+			out.append(e)
+	return out
 
 const PRIOR_ONE := [
 	{

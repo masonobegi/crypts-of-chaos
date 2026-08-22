@@ -8,7 +8,9 @@ extends ScreenBase
 
 func _build() -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")
-	var v := card_shell(720, 640, "WARD C",
+	# Taller: the money panel gained a line when the debt got a total, and the
+	# last of the three numbers was sitting under the fold.
+	var v := card_shell(720, 700, "WARD C",
 		"%s  ·  five beds  ·  you are the only doctor on" % GameState.time_string())
 
 	v.add_child(UIKit.label(

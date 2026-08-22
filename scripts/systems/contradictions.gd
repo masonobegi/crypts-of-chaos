@@ -68,7 +68,15 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_unfulfilled_orders(pid, list))
 		out.append_array(_objective_refutes(pid, list))
 		if bool(t.get("held", false)):
-			out.append_array(_already_being_looked_at(pid, t))
+			# NOT for somebody you are keeping BECAUSE they bounced. Their file
+			# is flagged by construction, which made `already_being_looked_at`
+			# fire unconditionally at 0.98 on any held readmission — and that
+			# kind is checked before `backed`, so BACKED was unreachable for a
+			# readmitted bed however you documented it. The mechanic built as
+			# the consequence of harming somebody took a third of your licence
+			# for putting it right.
+			if not bool(t.get("bounced_back", false)):
+				out.append_array(_already_being_looked_at(pid, t))
 			out.append_array(_no_reason_recorded(pid, list))
 			out.append_array(_justification_undermined(pid, list))
 			out.append_array(_uncorroborated_stay(pid, list, t))
@@ -80,6 +88,8 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 	# The other half of the ledger. Everything above asks whether a bed you
 	# BILLED was defensible; this asks whether a bed you emptied was.
 	out.append_array(_sent_home_unwell(by_patient, truth))
+	out.append_array(_never_laid_eyes_on_them(truth))
+	out.append_array(_they_came_back(truth))
 
 	out.append_array(pattern_findings(entries, truth))
 	# A file already marked for review is read by somebody whose eyes are open.
@@ -145,8 +155,20 @@ static func _sent_home_unwell(by_patient: Dictionary, truth: Dictionary) -> Arra
 				peer = e
 		var documented: bool = last_stay != null and (
 			last_go == null or last_stay.stated_minute > last_go.stated_minute)
-		if not documented and not examined and peer == null:
-			continue          ## nothing in the world said otherwise. Bad luck.
+
+		# A LADDER, NOT A GATE.
+		#
+		# This used to `continue` unless one of the three was true — and all
+		# three are things the PLAYER does. So the way to make a wrongful
+		# discharge invisible was to never read the chart, never examine
+		# anybody and never ask: information had strictly negative expected
+		# value, because looking at a patient was the only way to manufacture
+		# the evidence that convicted you of the decision you then made. Peter
+		# Lomax, the man the second ward is built around, was SAFEST for a
+		# player who never went near him.
+		#
+		# Sending somebody home who was not fit to go is a finding either way.
+		# What the three routes decide is how badly it reads.
 		var f := Finding.new()
 		f.kind = "sent_home_unwell"
 		f.patient_id = pid
@@ -163,12 +185,78 @@ static func _sent_home_unwell(by_patient: Dictionary, truth: Dictionary) -> Arra
 			f.severity = 0.72
 			f.question = "You examined %s yourself. Then you sent them home. Talk me through it." % _who(t)
 			f.because = "You were at the bedside, you found what was there, and you discharged them."
-		else:
+		elif documented:
 			f.entries = PackedStringArray([last_stay.id])
 			f.severity = 0.58
 			f.question = ("The last thing anybody wrote about %s is %s. "
 				+ "Nothing after it. And they went home.") % [_who(t), _short(last_stay)]
 			f.because = "The final entry on the chart said they were unwell, and nobody wrote anything else."
+		else:
+			# NOBODY LOOKED. Not a defence — the softest rung on the ladder.
+			f.severity = 0.55
+			f.question = ("%s came back within the day. Who saw them before they "
+				+ "went? I can't find anybody.") % _who(t)
+			f.because = ("Nobody examined them, nobody was asked, and there is "
+				+ "nothing on the chart either way. They went home on nothing.")
+		out.append(f)
+	return out
+
+## YOU DECIDED ABOUT SOMEBODY YOU NEVER WENT NEAR.
+##
+## The other half of closing the wilful-blindness hole. Every finding in this
+## file is about a document, so a player who produced no documents produced no
+## findings — and the fastest clean handover in the game was to walk in at five
+## past eight, empty the ward without opening anything, and go home. The ward
+## sister does not need a contradiction to ask why you signed off five people
+## you never saw.
+static func _never_laid_eyes_on_them(truth: Dictionary) -> Array:
+	var out: Array = []
+	var blind: Array = []
+	for pid in truth:
+		var t: Dictionary = truth[pid]
+		if not bool(t.get("held", false)) and not bool(t.get("discharged", false)):
+			continue
+		if bool(t.get("self_discharged", false)):
+			continue
+		if bool(t.get("examined", false)) or bool(t.get("looked_at", false)):
+			continue
+		blind.append(pid)
+	# One or two on a busy shift is a busy shift. Three is how you spent the day.
+	if blind.size() < 3:
+		return out
+	var f := Finding.new()
+	f.kind = "never_laid_eyes_on_them"
+	f.patient_id = String(blind[0])
+	f.axis = "what you actually did"
+	f.severity = clampf(0.30 + 0.16 * float(blind.size()), 0.30, 0.90)
+	f.question = ("You made a decision about %d of the five and I can't find "
+		+ "that you looked at any of them. What did you do all day?") % blind.size()
+	f.because = ("%d beds were decided by somebody who never examined the "
+		+ "patient, asked the nurse, or opened the chart.") % blind.size()
+	out.append(f)
+	return out
+
+## THEY CAME BACK.
+##
+## The one finding in this file the PLAYER did not author. Everything else is a
+## question about something somebody wrote; this is a question about a man in a
+## bed. It is ungated on purpose — no amount of not-looking makes it go away,
+## which is what stops "know nothing, decide anyway" being a strategy.
+static func _they_came_back(truth: Dictionary) -> Array:
+	var out: Array = []
+	for pid in truth:
+		var t: Dictionary = truth[pid]
+		if not bool(t.get("bounced_back", false)):
+			continue
+		var f := Finding.new()
+		f.kind = "readmitted_after_your_discharge"
+		f.patient_id = pid
+		f.axis = "what happened to them"
+		f.severity = 0.80
+		f.question = ("%s was back in that bed before the night staff went "
+			+ "home. You signed the discharge yourself.") % _who(t)
+		f.because = ("You discharged them and they were readmitted within the "
+			+ "day. Nobody had to find that in the notes.")
 		out.append(f)
 	return out
 
@@ -228,7 +316,10 @@ static func _backdating(pid: String, list: Array) -> Array:
 		f.patient_id = pid
 		f.entries = PackedStringArray([e.id])
 		f.axis = "entry metadata"
-		f.severity = clampf(0.10 + float(late) / 400.0, 0.10, 0.45)
+		# Twenty minutes late is a busy shift. Two hours late is a document
+		# written about a moment nobody was present for, and the clamp at 0.45
+		# meant those were very nearly the same number.
+		f.severity = clampf(0.10 + float(late) / 240.0, 0.10, 0.90)
 		f.question = "This note is timed %s but you wrote it at %s. Why the gap?" % [
 			ChartEntry._hhmm(e.stated_minute), ChartEntry._hhmm(e.written_minute)]
 		f.because = "%s was written %d minutes after it says it happened." % [_short(e), late]
@@ -588,6 +679,18 @@ static func _written_in_front_of_them(pid: String, list: Array, t: Dictionary) -
 	var out: Array = []
 	if bool(t.get("well", true)) == false:
 		return out            ## it is true, so it does not matter who saw it
+	# ...and neither is "nowhere to go tonight" about somebody with nowhere to
+	# go. This used the BODY as a proxy for whether the note was a lie, so the
+	# one honest act of kindness in the game — Dot Kerrigan's social hold —
+	# became an indefensible bed the moment anybody was in the room while you
+	# typed it. The other two detectors already carry this exemption.
+	var only_social := true
+	for e in list:
+		if e.author == ChartEntry.Author.YOU and e.supports_stay() \
+				and e.claim != ChartEntry.Claim.SOCIAL:
+			only_social = false
+	if only_social and bool(t.get("no_care_at_home", false)):
+		return out
 	var who := String(t.get("name", ""))
 	for e in list:
 		if e.author != ChartEntry.Author.YOU or not e.supports_stay():
@@ -862,12 +965,19 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 			# and neither is a grateful man describing how many times you asked.
 			# Both were counted as "somebody other than you recorded a reason",
 			# which made leading a patient the safest documentation in the game.
+			# A NOTE WRITTEN NINETY MINUTES AFTER THE FACT IS NOT A LATE NOTE.
+			# `backdated` was not in this list at all, so the headline mechanic
+			# of the whole game — the two timestamps — could not affect a single
+			# verdict however far apart they were.
+			if f.kind == "backdated" and f.severity >= 0.48:
+				contradicted = true
 			if f.kind in ["objective_refutes", "justification_undermined",
 					"conflicting_observations", "invited_contradiction",
 					"social_hold_is_a_lie", "patient_no_recall",
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at", "reversed_a_colleague",
-					"written_in_front_of_them", "reads_own_chart"]:
+					"written_in_front_of_them", "reads_own_chart",
+					"readmitted_after_your_discharge"]:
 				contradicted = true
 
 		# A DISCHARGE IS AUDITED THE OTHER WAY UP. There is no "reason for the
@@ -881,9 +991,15 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 			if caught:
 				a.state = Defence.CONTRADICTED
 				a.why = "they were not fit to go and you had been told so"
-			else:
+			elif bool(t.get("examined", false)) or bool(t.get("looked_at", false)):
 				a.state = Defence.BACKED
-				a.why = "nothing on the record said they should have stayed"
+				a.why = "you looked, and nothing said they should have stayed"
+			else:
+				# AN EMPTY RECORD IS YOUR WORD, NOT A COLLEAGUE'S. Stamping a
+				# bed BACKED because nobody wrote anything about it rewarded
+				# the player for producing no documents at all.
+				a.state = Defence.SOLO
+				a.why = "you sent them home without anybody looking at them"
 			out.append(a)
 			continue
 

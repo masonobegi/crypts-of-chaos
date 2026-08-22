@@ -146,12 +146,12 @@ func _closing(v: VBoxContainer, w) -> void:
 			for line in tally:
 				v.add_child(UIKit.label("· " + String(line), 13, UIKit.WARN,
 					HORIZONTAL_ALIGNMENT_LEFT, true))
-			if int(_rv.record.referrals) > 0:
-				v.add_child(UIKit.label(
-					"· %d referral%s. Three and the Board takes your licence."
-						% [_rv.record.referrals,
-							"" if _rv.record.referrals == 1 else "s"],
-					13, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
+			# HOW NEAR THE EDGE, in words. A threshold the player cannot see
+			# coming is a threshold that feels arbitrary when it lands.
+			var standing := String(_rv.record.standing())
+			if standing != "":
+				v.add_child(UIKit.label("· " + standing, 13, UIKit.BAD,
+					HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("THE CONVERSATION", 12, UIKit.INK_DIM))

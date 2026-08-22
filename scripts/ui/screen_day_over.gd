@@ -11,7 +11,10 @@ func _build() -> void:
 	pauses_world = true
 	var verdict := String(ctx.get("verdict", ReviewSystem.OUTCOME_CLEAR))
 	var w = ward()
-	var short: bool = w != null and w.cash < 0
+	# FROM THE DAY, NOT RECOMPUTED. `w.cash < 0` can never be true now that
+	# Vinnie takes what there is and no more, so this silently overwrote
+	# end_day's own finding every single night.
+	var short: bool = w != null and bool(w.end_day().get("short", false))
 
 	# THE CAREER ENDS HERE OR IT DOES NOT END AT ALL. A probe that played seven
 	# days found a player being referred on six consecutive nights and simply
@@ -48,6 +51,10 @@ func _build() -> void:
 
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("TOMORROW", 12, UIKit.INK_DIM))
+	var standing := String(DoctorRecord.load_from_state().standing())
+	if standing != "":
+		v.add_child(UIKit.label("· " + standing, 14, UIKit.BAD,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
 	for line in _consequences(verdict, short):
 		v.add_child(UIKit.label("· " + String(line), 14, UIKit.INK,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -96,7 +103,18 @@ func _consequences(verdict: String, short: bool) -> Array:
 func _carry(verdict: String, short: bool) -> void:
 	GameState.set_flag("watched", verdict == ReviewSystem.OUTCOME_FLAGGED
 		or verdict == ReviewSystem.OUTCOME_ESCALATED)
-	GameState.set_flag("auditor_present", verdict == ReviewSystem.OUTCOME_ESCALATED)
+	# GATED ON FLAGGED, NOT REFERRED, AND IT LASTS. Coding is the state the
+	# money-optimal play never once reached, so the auditor — a whole person,
+	# and the answer to the promise this screen prints — was expensive content
+	# behind a trigger that never fired. And recomputing it from last night
+	# meant one clean shift made her vanish; she is booked for two.
+	var bad: bool = verdict == ReviewSystem.OUTCOME_FLAGGED \
+		or verdict == ReviewSystem.OUTCOME_ESCALATED
+	var shifts_left: int = maxi(int(GameState.flag("auditor_shifts", 0)) - 1, 0)
+	if bad:
+		shifts_left = 2
+	GameState.set_flag("auditor_shifts", shifts_left)
+	GameState.set_flag("auditor_present", shifts_left > 0)
 	GameState.set_flag("vinnie_visits", short)
 	# The beds she could not corroborate, by name. They open tomorrow with a
 	# note on the file, which is the only reason "noted" costs anything.
@@ -157,6 +175,8 @@ func _ending_card(ending: String) -> void:
 	stats.add_child(UIKit.row("Signed off", str(rec.clean_nights), UIKit.GOOD))
 	stats.add_child(UIKit.row("Queried or flagged", str(rec.flagged_nights), UIKit.WARN))
 	stats.add_child(UIKit.row("Referred", str(rec.referrals), UIKit.BAD))
+	stats.add_child(UIKit.row("Against your name",
+		"%d of %d" % [rec.strikes, DoctorRecord.STRIKES_TO_STRIKE_OFF], UIKit.BAD))
 	stats.add_child(UIKit.row("Still owed",
 		UIKit.money_str(GameState.debt_remaining()),
 		UIKit.MONEY if won else UIKit.BAD))

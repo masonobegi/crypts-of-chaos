@@ -15,7 +15,6 @@ var failed := false
 ## audits were measured against a debt that depended on the order of the list.
 func _clean_slate() -> void:
 	GameState.set_flag("remembered_beds", PackedStringArray())
-	GameState.set_flag("carried_debt", 0)
 	GameState.reset_debt()
 	DoctorRecord.wipe()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
@@ -420,7 +419,7 @@ func _second_day() -> bool:
 	# A NIGHT THAT CAME UP SHORT. Vinnie no longer asks for more tomorrow — he
 	# adds his interest to the total, so what a bad night costs you is a longer
 	# career rather than a harder morning.
-	GameState.set_flag("debt_remaining", Cases.DEBT_TOTAL + Cases.SHORTFALL_VIG)
+	GameState.set_flag("debt_remaining", int(Cases.DEBT_TOTAL * 1.2))
 	# NOT `_day()`. That clears exactly the two flags this measurement exists to
 	# set — the fix for the leaking carry silently turned this criterion into a
 	# comparison of a quiet ward with itself.

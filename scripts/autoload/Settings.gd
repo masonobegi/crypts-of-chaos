@@ -51,8 +51,6 @@ const BINDABLE := [
 	["interact", "Use / examine"],
 	["grab", "Pick up"],
 	["throw", "Throw"],
-	["chart", "Read the chart"],
-	["tablet", "Tablet"],
 	["pause", "Pause"],
 ]
 
@@ -69,8 +67,6 @@ const PAD_DEFAULTS := {
 	"interact": JOY_BUTTON_X,
 	"grab": JOY_BUTTON_RIGHT_SHOULDER,
 	"throw": JOY_BUTTON_LEFT_SHOULDER,
-	"chart": JOY_BUTTON_Y,
-	"tablet": JOY_BUTTON_BACK,
 	"pause": JOY_BUTTON_START,
 }
 

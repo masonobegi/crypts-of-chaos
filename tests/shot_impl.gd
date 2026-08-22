@@ -125,4 +125,32 @@ func _save(name: String) -> void:
 	var img := tree.root.get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
-	print("  shot: ", ProjectSettings.globalize_path(path))
+	var note := ""
+	if name.begins_with("1") and game != null and game.ui != null:
+		# HOW MUCH OF THE CARD IS BELOW THE FOLD.
+		#
+		# Only measurable HERE. Under --headless the root Window is 64 pixels
+		# tall, every Control lays out against it, and a card capped at
+		# `viewport height - 116` therefore reports as three-quarters hidden —
+		# which is how a UI bug that did not exist got onto the list twice. This
+		# harness runs in a real 1600x900 window, so these are real numbers.
+		var hidden := _below_the_fold(game.ui)
+		note = "   [%.0f%% below the fold%s]" % [hidden * 100.0,
+			"  <-- TOO MUCH" if hidden >= 0.5 else ""]
+	print("  shot: ", ProjectSettings.globalize_path(path), note)
+
+## The worst overflow on any scrolling area in the screen, as a fraction of its
+## own content height. 0.0 means everything fits without scrolling.
+func _below_the_fold(n: Node) -> float:
+	var worst := 0.0
+	if n is ScrollContainer:
+		var sc := n as ScrollContainer
+		var content := 0.0
+		for c in sc.get_children():
+			if c is Control:
+				content = maxf(content, (c as Control).size.y)
+		if content > 1.0 and sc.size.y > 1.0:
+			worst = maxf(worst, clampf((content - sc.size.y) / content, 0.0, 1.0))
+	for c in n.get_children():
+		worst = maxf(worst, _below_the_fold(c))
+	return worst

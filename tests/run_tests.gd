@@ -60,7 +60,18 @@ func _run() -> void:
 			current = "%s::%s" % [suite_name, n]
 			if inst.has_method("setup"):
 				inst.call("setup")
+			# A TEST THAT ASSERTS NOTHING IS A FAILING TEST.
+			#
+			# Reading a key a dictionary no longer has raises and ABORTS the
+			# function (the same shape as gotcha #11 in CLAUDE.md), so the
+			# assertions after it never run and the suite reports a pass. That
+			# is exactly how `test_abandoning_your_story...` kept reporting
+			# green for three iterations while checking nothing at all.
+			var before := passed + failed
 			inst.call(n)
+			if passed + failed == before:
+				failed += 1
+				failures.append("%s asserted nothing — it aborted partway" % current)
 			ran += 1
 		_out("  %-24s %d tests" % [suite_name, ran])
 	_out("\n--------------------------------------")

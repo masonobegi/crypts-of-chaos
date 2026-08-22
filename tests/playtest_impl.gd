@@ -182,6 +182,14 @@ func run() -> void:
 			w.write_entry("oduya",C.UNWELL,"Reports dizziness.",17*60+25)
 			w.advance_to(17*60+50); w.nurse_check("oduya")
 			w.set_disposition("oduya","hold"); _discharge_rest(w,["marchetti","oduya"]), stand],
+		["21 sign off at 08:05 and go home", func(w):
+			for id in ["marchetti","oduya","brennan"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["marchetti","oduya","brennan"]), stand],
+		["22 the same, with a note on each first", func(w):
+			w.write_entry("oduya",C.UNWELL,"Unsettled overnight.",8*60)
+			w.write_entry("brennan",C.UNWELL,"Wound warm.",8*60+5)
+			for id in ["marchetti","oduya","brennan"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["marchetti","oduya","brennan"]), smart],
 		["20 fold under questioning", func(w):
 			w.set_disposition("marchetti","hold"); w.advance_to(19*60+5)
 			w.write_entry("oduya",C.UNWELL,"Reports dizziness.",19*60)

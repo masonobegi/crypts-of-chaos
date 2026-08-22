@@ -9,6 +9,9 @@ func _ready() -> void:
 	outfit = Build.SCRUB_BLUE if archetype != "corrupt" else Build.SCRUB_GREEN
 	home_room = "station"
 	if patrol_rooms.is_empty():
-		patrol_rooms = ["corridor", "station", "ward_101", "ward_102", "ward_103",
-			"ward_104", "ward_105", "supply", "intake", "day_room"]
+		# THESE ARE THE ONLY FOUR ROOMS THERE ARE. The old list named ten, of
+		# which six were demolished with the departments and the bay itself was
+		# not among them, so `point_in` returned Vector3.ZERO and every patrol
+		# leg walked her to the corner of the world.
+		patrol_rooms = ["corridor", "station", "ward"]
 	super._ready()

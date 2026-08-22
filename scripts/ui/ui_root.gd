@@ -235,7 +235,7 @@ func _controls_screen() -> Control:
 	v.add_child(UIKit.label(
 		"A pad works without setting anything up: left stick walks, right stick "
 		+ "looks, A jumps, X uses, right bumper picks up, left bumper throws, "
-		+ "Y is the chart.", 13, UIKit.INK_DIM,
+		+ "Start pauses.", 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	outer.add_child(UIKit.spacer(6))

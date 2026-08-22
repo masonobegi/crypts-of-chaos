@@ -30,8 +30,8 @@ func prompt(_player) -> Array:
 	var w = get_tree().get_first_node_in_group("ward_day")
 	if _is_the_office() and w != null and not w.ended:
 		var p: Dictionary = w.projected()
-		return ["Go home", "%s against %s owed" % [
-			UIKit.money_str(int(p["total"])), UIKit.money_str(Cases.DEBT_DUE)]]
+		return ["Go home", "%s against %s owed  ·  she still rounds till eight" % [
+			UIKit.money_str(int(p["total"])), UIKit.money_str(w.debt_tonight)]]
 	var sub := "in full view of the ward" if not is_private \
 		else "door's shut. nobody's looking."
 	return ["Read the ward's notes", sub]

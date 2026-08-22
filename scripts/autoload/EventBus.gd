@@ -19,7 +19,6 @@ signal evidence_recorded(witness, ev) ## Node, Evidence
 # ---------------------------------------------------------------- shift / time
 signal shift_started(day: int)
 signal shift_ended(day: int)
-signal clock_tick(minutes_of_day: int)     ## in-game minute changed
 signal hour_tick(hour: int)
 signal day_advanced(day: int)
 signal phase_changed(phase: int)           ## GameState.Phase

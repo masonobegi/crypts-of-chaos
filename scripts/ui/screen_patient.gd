@@ -18,8 +18,13 @@ func _build() -> void:
 	var st: Dictionary = w.state[_pid]
 	var disposition := String(st["disposition"])
 
+	# Who is paying belongs in the header beside the bed number rather than as a
+	# third row in the money panel: it is an attribute of the person, it never
+	# changes during the day, and it was costing the fifth verb its place on
+	# the screen.
 	var v := card_shell(660, 700, String(c["name"]).to_upper(),
-		"%s  ·  bed %d" % [String(c["condition"]), int(c["bed"])])
+		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
+			Cases.tier_name(int(c["tier"]))])
 
 	v.add_child(UIKit.label("\"%s\"" % (_said if _said != "" else String(c["opening"])),
 		16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -32,7 +37,6 @@ func _build() -> void:
 	mv.add_child(UIKit.row("Send them home", "+%s once" % UIKit.money_str(Cases.DISCHARGE_FEE), UIKit.INK_DIM))
 	mv.add_child(UIKit.row("Every further night", "+%s to you"
 		% UIKit.money_str(Cases.night_fee(int(c["tier"]))), UIKit.MONEY))
-	mv.add_child(UIKit.row("Paying", Cases.tier_name(int(c["tier"])), UIKit.INK_DIM, 13))
 	m.add_child(mv)
 	v.add_child(m)
 

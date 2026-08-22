@@ -395,6 +395,9 @@ func wards() -> Array[Room]:
 func point_in(key: String, stream := "nav") -> Vector3:
 	var r: Room = rooms.get(key, null)
 	if r == null:
+		# Silently returning the origin is how a nurse ended up patrolling to
+		# the corner of the building for a room that had been demolished.
+		push_error("point_in: no room named '%s'" % key)
 		return Vector3.ZERO
 	return nav.random_point_in(r.rect.grow(-1.0), stream)
 

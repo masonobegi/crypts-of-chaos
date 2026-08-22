@@ -31,7 +31,7 @@ var _escalated: Dictionary = {}
 func _ready() -> void:
 	add_to_group("suspicion_system")
 	EventBus.world_event.connect(_on_world_event)
-	EventBus.clock_tick.connect(_on_clock_tick)
+	GameState.minute_passed.connect(_on_clock_tick)
 	_ensure_institutions()
 
 # ------------------------------------------------------------------ registry

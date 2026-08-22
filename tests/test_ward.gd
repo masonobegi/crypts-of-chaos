@@ -267,26 +267,36 @@ func test_the_defence_is_decided_hours_before_the_conversation() -> void:
 	eager.queue_free()
 
 func test_abandoning_your_story_is_worse_than_defending_it() -> void:
+	# Written in the gap, so the bed starts on your word alone rather than
+	# already contradicted — a bed that is beyond saving cannot be made worse by
+	# anything you say, and testing on one measured nothing.
 	var w := _day()
-	w.advance_to(19 * 60 + 5)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60)
+	w.advance_to(17 * 60 + 30)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 25)
 	w.set_disposition("oduya", "hold")
 	var findings := w.review_findings()
 
+	# Measured in BEDS, which is what the review is about. This used to read
+	# outcome()["unresolved"], a key the per-bed audit stopped returning — the
+	# lookup aborted the function and the test reported a pass while checking
+	# nothing. The runner now fails a test that asserts nothing.
 	var stubborn := ReviewSystem.new()
 	stubborn.begin(findings, w.records.entries, w.review_truth())
 	while not stubborn.finished():
 		stubborn.answer(ReviewSystem.Answer.STAND_BY, w.held_ids())
-	var a := float(stubborn.outcome()["unresolved"])
+	var a := int(stubborn.outcome()["indefensible"])
 
 	var folding := ReviewSystem.new()
 	folding.begin(findings, w.records.entries, w.review_truth())
 	while not folding.finished():
 		folding.answer(ReviewSystem.Answer.DEFER, w.held_ids())
-	var b := float(folding.outcome()["unresolved"])
+	var fo := folding.outcome()
+	var b := int(fo["indefensible"])
 
-	t.gt(b, a, "telling her the note was wrong, about a bed you billed, is worse than defending it")
-	t.gt(float(folding.outcome()["created"]), 0.0,
+	t.gt(float(b), float(a),
+		"telling her the note was wrong, about a bed you billed, is worse than defending it (%d beds vs %d)"
+			% [b, a])
+	t.gt(float(fo["created"]), 0.0,
 		"and it creates problems that did not exist before you opened your mouth")
 	w.queue_free()
 
@@ -355,3 +365,26 @@ func test_a_bed_she_could_not_stand_up_goes_on_the_file() -> void:
 			% [first, _sev(after.review_findings())])
 	after.queue_free()
 	GameState.set_flag("remembered_beds", PackedStringArray())
+
+## The office desk used to end the day at whatever minute you walked into it,
+## so the safest shift on the ward was to hold three beds at five past eight and
+## sign off before anybody had rounded. Leaving early buys you absence, not
+## silence: the evening happens and you are not there to answer it.
+func test_going_home_early_does_not_stop_the_evening() -> void:
+	var early := _day()
+	early.advance_to(8 * 60 + 5)
+	early.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 8 * 60)
+	early.set_disposition("oduya", "hold")
+	early.set_disposition("marchetti", "hold")
+	_rest_home(early)
+	var res := early.end_day()
+	t.gt(float(early.records.for_patient("oduya").size()), 2.0,
+		"the rounds between leaving and handover are on the chart when she reads it")
+	t.gt(float(Array(res["findings"]).size()), 0.0,
+		"and the note you left behind has something to argue with")
+	early.queue_free()
+
+func _rest_home(w: WardDay) -> void:
+	for c in Cases.ROSTER:
+		if String(w.state[String(c["id"])]["disposition"]) == "":
+			w.set_disposition(String(c["id"]), "discharge")

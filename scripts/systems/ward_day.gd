@@ -123,6 +123,17 @@ func start() -> void:
 ## is affordable once and not affordable twice.
 const READ_COST := 12
 
+## And so does everything else. A twelve-hour shift is a budget, not a backdrop:
+## every act of authorship walks you closer to the next round, which is the only
+## reason the timing of a note is a decision rather than a text field. The
+## cascade is the case that matters — patching a lie three times costs the best
+## part of an hour, and an hour is how far it is from a safe gap into Adeyemi
+## writing her round up beside you.
+const WRITE_COST := 8      ## typing it, at a terminal, properly
+const ASK_COST := 10       ## sitting down with somebody and leading them
+const NURSE_COST := 15     ## finding her, asking, waiting to be told
+const ORDER_COST := 5      ## a form
+
 ## Charts read so far today, so re-checking something you already looked at is
 ## free. The cost is for LEARNING it, not for remembering it.
 var _read: Dictionary = {}
@@ -157,6 +168,7 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 		"backdated": e.backdated_by(), "terminal": terminal,
 		"supports_stay": e.supports_stay(), "explains": explains})
 	entry_written.emit(e)
+	advance_to(minute + WRITE_COST)
 	return e
 
 ## 2. ASK A LEADING QUESTION. The patient becomes the source — but only if they
@@ -169,6 +181,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	st["agreed"] = agreed
 	_log("ask_patient", {"pid": pid, "symptom": symptom, "agreed": agreed})
 	if not agreed:
+		advance_to(minute + ASK_COST)
 		return null
 	var e := ChartEntry.new()
 	e.patient_id = pid
@@ -188,6 +201,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 		(st["recalls"] as Array).append(e.id)
 		(st["suggested"] as Array).append(e.id)
 	entry_written.emit(e)
+	advance_to(minute + ASK_COST)
 	return e
 
 ## 3. ASK A NURSE TO CHECK. Independently authored, which is the strongest kind
@@ -214,6 +228,7 @@ func nurse_check(pid: String) -> ChartEntry:
 	records.add(e)
 	_log("nurse_check", {"pid": pid, "corroborated": not well})
 	entry_written.emit(e)
+	advance_to(minute + NURSE_COST)
 	return e
 
 ## 4. ORDER A TEST. World truth, permanently, whatever anybody wanted.
@@ -233,6 +248,7 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 	_pending[o.id] = minute + TEST_TURNAROUND
 	_log("order_test", {"pid": pid, "kind": kind, "due": minute + TEST_TURNAROUND})
 	entry_written.emit(o)
+	advance_to(minute + ORDER_COST)
 	return o
 
 ## The result lands later. It does not care what the chart says.
@@ -361,6 +377,16 @@ func _routine_round(at: int) -> void:
 func end_day() -> Dictionary:
 	if ended:
 		return {}
+	# GOING HOME EARLY DOES NOT STOP THE EVENING HAPPENING.
+	#
+	# The office desk ended the day at whatever minute you walked into it, which
+	# meant the safest possible shift was to hold three beds at five past eight
+	# in the morning and sign off before Adeyemi had walked a single round:
+	# nothing to contradict, full money, out by nine. She works the evening
+	# whether you are on the ward or not, and she writes it up. What leaving
+	# early actually buys you is not being there when she does — every round
+	# between now and handover lands on the chart with you unable to answer it.
+	advance_to(Cases.DEBT_DUE_MINUTE)
 	ended = true
 	var p := projected()
 	cash = int(p["total"]) - debt_tonight

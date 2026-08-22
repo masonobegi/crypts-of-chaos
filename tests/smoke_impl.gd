@@ -232,6 +232,12 @@ func _check_screens_actually_draw() -> bool:
 	_ok(not buttons.is_empty(), "the %s screen has controls on it" % name)
 	_ok(dead.is_empty(), "and every control on %s has a size%s" % [name,
 		"" if dead.is_empty() else ": " + ", ".join(dead)])
+	# HOW MUCH OF THE CARD IS BELOW THE FOLD.
+	#
+	# A control can have a perfectly good size and still be somewhere nobody
+	# looks. Everything a screen offers being reachable by scrolling is not the
+	# same as it being READABLE, and a card whose second half is hidden reads as
+	# a card with half the options on it.
 	_screen_queue.pop_front()
 	if _screen_queue.is_empty():
 		if ui.has_method("close"):

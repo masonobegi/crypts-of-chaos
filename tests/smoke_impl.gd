@@ -136,14 +136,27 @@ func _check_the_chart_works() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:
 		return
+	# FROM HERE THE HARNESS OWNS THE CLOCK. Everything below drives the day by
+	# hand to specific minutes, and the real one has been running the whole time
+	# the player was being walked across the corridor — so the shift was quietly
+	# hitting eight o'clock between two checks, force-discharging the entire
+	# ward and closing the day, and every assertion after that was reading a
+	# cached result for a day nobody played. It surfaced only when readmission
+	# started reading the dispositions that force-close had written.
+	GameState.clock_running = false
 	# THE MORNING FIRST. `advance_to` only goes forward, so everything that
 	# needs a particular hour has to happen before something walks the day past
 	# it — and the registrar keeps hours.
 	_check_the_new_verbs(w)
+	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
+	# review fifteen, an examination fifteen, the registrar twenty-five — and
+	# from half past seven that is enough to walk the shift past eight o'clock,
+	# at which point the ward force-discharges everybody and closes the day
+	# under the harness. Start in the afternoon and there is room for all of it.
 	var before: int = w.records.for_patient("oduya").size()
-	w.advance_to(19 * 60 + 30)
+	w.advance_to(15 * 60 + 30)
 	var e = w.write_entry("oduya", ChartEntry.Claim.UNWELL,
-		"Reports transient dizziness on standing.", 19 * 60 + 10)
+		"Reports transient dizziness on standing.", 15 * 60 + 10)
 	_ok(w.records.for_patient("oduya").size() > before, "a note can be written")
 	_ok(e.written_minute > e.stated_minute,
 		"and it records both when it happened and when it was typed")
@@ -159,7 +172,12 @@ func _check_the_verbs_work() -> void:
 	_ok(n.supports_stay(),
 		"and about the patient who is genuinely unwell, she agrees with you")
 	var o = w.order_test("oduya", "lying and standing BP")
-	w.advance_to(21 * 60 + 30)
+	# INSIDE THE DAY. This said 21:30, which is an hour and a half after the
+	# ward force-ends — so `_on_minute` discharged the whole ward and closed the
+	# day here, and everything below was asserting against a cached result on a
+	# day that had already finished. It only surfaced when readmission started
+	# reading the dispositions the force-close had written.
+	w.advance_to(17 * 60 + 30)
 	var r = w.resolve_test(o)
 	_ok(r.claim == ChartEntry.Claim.RESULT_NORMAL,
 		"a test on somebody who is well comes back normal, whatever you wanted")
@@ -222,6 +240,24 @@ func _check_being_seen_somewhere_else(w) -> void:
 	player.global_position = h.point_in("office") + Vector3(0, 0.1, 0)
 	_ok(w._who_can_see_me().is_empty(),
 		"and writing in your office with the door shut happens in front of nobody")
+	# ...UNLESS SHE IS IN IT. The end-of-day screen promises an auditor after a
+	# referral and promises you will be writing in front of somebody; this is
+	# that promise, tested. She is spawned at boot from the flag, so the check
+	# stands one up by hand rather than replaying a whole night.
+	var auditor := NurseNPC.new()
+	auditor.npc_id = "auditor_probe"
+	auditor.display = "Ms Ferrand, Coding"
+	game.add_child(auditor)
+	auditor.global_position = h.point_in("office")
+	var sus = tree.get_first_node_in_group("suspicion_system")
+	if sus != null:
+		sus.register(DB.make_mind(auditor.npc_id, auditor.display,
+			"institution", "observant"), auditor)
+	_ok(Array(w._who_can_see_me()).has(auditor.display),
+		"with Coding standing in your office, the office is not private")
+	if sus != null:
+		sus.unregister(auditor.npc_id)
+	auditor.queue_free()
 
 	# Stood in the corridor, writing up a bedside observation for right now.
 	player.global_position = h.point_in("corridor") + Vector3(0, 0.1, 0)
@@ -374,6 +410,7 @@ func _check_tomorrow_is_a_different_ward() -> void:
 	var before := {}
 	for p in ps.active():
 		before[p.id] = p.display_name
+
 	GameState.day = 2
 	var w = tree.get_first_node_in_group("ward_day")
 	if w != null:

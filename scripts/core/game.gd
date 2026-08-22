@@ -280,7 +280,39 @@ func _seed_social_graph() -> void:
 ## patients are rather than rolled out of an archetype table.
 func _spawn_staff() -> void:
 	_spawn_nurse("rule_follower", 0)
+	_spawn_auditor()
 	_seed_social_graph()
+
+## AND THE PROMISE THE GAME MAKES AND DID NOT KEEP.
+##
+## After a REFERRED verdict the end-of-day screen says, in as many words:
+## "There is an auditor on the ward tomorrow. She is not there to help. You will
+## be asked to put things in writing while somebody watches you do it." Nothing
+## happened. `auditor_present` was set by the worst verdict in the game and read
+## by exactly one line weighting a tannoy announcement.
+##
+## She is a person now, and she does the thing the sentence describes: she walks
+## the ward and the corridor and your office, and the witness system counts her
+## like it counts anybody else. Which means the room with a door on it — the one
+## place in the building where you can write something nobody saw you write —
+## is not private any more. That is the whole of the mechanic, and it is exactly
+## what the screen already promised.
+func _spawn_auditor() -> void:
+	if not GameState.flag("auditor_present", false):
+		return
+	var a := NurseNPC.new()
+	a.npc_id = "auditor"
+	a.archetype = "observant"
+	a.display = "Ms Ferrand, Coding"
+	# Not scrubs. She is not staff and she is not pretending to be.
+	a.set_colours(_random_skin(), Color(0.26, 0.28, 0.34), Color(0.18, 0.14, 0.11))
+	a.patrol_rooms = ["ward", "corridor", "office", "station"]
+	a.home_room = "office"
+	add_child(a)
+	a.global_position = hospital.point_in("office", "auditor_spawn")
+	var mind := DB.make_mind(a.npc_id, a.display, "institution", "observant")
+	suspicion.register(mind, a)
+	EventBus.toast.emit("Ms Ferrand from Coding is on the ward today.", "bad")
 
 func _spawn_nurse(arch: String, index: int) -> void:
 	var n := NurseNPC.new()

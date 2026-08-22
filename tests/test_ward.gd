@@ -752,3 +752,87 @@ func test_the_paperwork_cannot_find_him() -> void:
 		"and so does the registrar, because he sits down with him")
 	seen.queue_free()
 	GameState.day = 1
+
+# ------------------------------------------------------ they come back
+## THE CONSEQUENCE THE GAME DID NOT HAVE. Until this existed a discharge was
+## free unless the ward sister happened to catch it in the morning: you sent a
+## man home to make the money and he ceased to exist.
+func test_the_man_you_sent_home_is_in_a_bed_in_the_morning() -> void:
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	var w := _day()
+	w.set_disposition("marchetti", "discharge")   ## genuinely unwell, and you knew
+	_rest_home(w)
+	var res := w.end_day()
+	t.ok(PackedStringArray(res["readmitted"]).has("marchetti"),
+		"discharging somebody who was not fit to go brings them back")
+	w.queue_free()
+
+	GameState.day = 2
+	var ids := []
+	var readmitted := {}
+	for c in Cases.roster():
+		ids.append(String(c["id"]))
+		if bool(c.get("readmitted", false)):
+			readmitted[String(c["id"])] = c
+	t.ok(ids.has("marchetti"), "he is on tomorrow's ward, which is not his ward")
+	t.eq(ids.size(), Cases.BEDS, "and there are still only five beds")
+	t.eq(readmitted.size(), 1, "one of them is a readmission")
+	var m: Dictionary = readmitted["marchetti"]
+	t.ok(not bool(m.get("truly_well", true)), "he is worse than he was")
+	t.ok(m.has("audit_flag"), "and his file opens with the coding review on it")
+	t.ok(String(m["opening"]) != String(Cases.anyone("marchetti")["opening"]),
+		"and he has something new to say about it")
+
+	# The displaced scheduled patient is simply not admitted — five beds is five.
+	var scheduled := []
+	for c in Cases.DAY_TWO:
+		scheduled.append(String(c["id"]))
+	var missing := 0
+	for id in scheduled:
+		if not ids.has(id):
+			missing += 1
+	t.eq(missing, 1, "and one scheduled admission does not happen")
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.day = 1
+
+## Somebody who walked out against advice is not on your conscience, and neither
+## is somebody who was genuinely well when you sent them home.
+func test_not_every_discharge_comes_back() -> void:
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	var w := _day()
+	w.set_disposition("marchetti", "hold")
+	_rest_home(w)                                  ## four well people go home
+	var res := w.end_day()
+	t.eq(PackedStringArray(res["readmitted"]).size(), 0,
+		"sending home four people who are well brings nobody back")
+	w.queue_free()
+
+	GameState.day = 2
+	var q := _day_two()
+	q.advance_to(17 * 60)                          ## Ferreira signs herself out
+	q.set_disposition("lomax", "hold")
+	q.set_disposition("bux", "hold")
+	_rest_home(q)
+	var res2 := q.end_day()
+	t.ok(not PackedStringArray(res2["readmitted"]).has("ferreira"),
+		"and a woman who signed herself out is not your readmission")
+	q.queue_free()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.day = 1
+
+## A readmission does not bounce forever. Once round is the point being made.
+func test_a_readmission_does_not_readmit() -> void:
+	GameState.set_flag(Cases.READMIT_FLAG, ["marchetti"])
+	GameState.day = 2
+	var w := _day_two()
+	t.ok(bool(Cases.by_id("marchetti").get("readmitted", false)),
+		"he is on the ward as a readmission")
+	w.set_disposition("marchetti", "discharge")
+	w.set_disposition("lomax", "hold")     ## he is on this ward too, and unwell
+	_rest_home(w)
+	var res := w.end_day()
+	t.eq(PackedStringArray(res["readmitted"]).size(), 0,
+		"sending him home again does not start it over")
+	w.queue_free()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.day = 1

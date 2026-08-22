@@ -650,6 +650,25 @@ func end_day() -> Dictionary:
 	if short:
 		GameState.set_flag("vinnie_visits", true)
 		GameState.set_flag("carried_debt", debt_tonight - int(p["total"]))
+	# WHO IS COMING BACK. Anybody you sent home who was not fit to go is in a bed
+	# tomorrow — not as a punishment the reviewer hands out, but because that is
+	# what happens. It is the only consequence in the game that arrives before
+	# anybody has read anything.
+	var bouncing := PackedStringArray()
+	for pid in state:
+		var st: Dictionary = state[pid]
+		if String(st["disposition"]) != "discharge":
+			continue
+		if bool(st.get("self_discharged", false)):
+			continue          ## she signed herself out. That one is not yours.
+		if bool(Cases.by_id(pid).get("truly_well", true)):
+			continue
+		if bool(Cases.by_id(pid).get("readmitted", false)):
+			continue          ## already a readmission. Once round is enough.
+		bouncing.append(pid)
+	GameState.set_flag(Cases.READMIT_FLAG, bouncing)
+	res["readmitted"] = bouncing
+
 	_result = res
 	AudioMgr.play("money" if not short else "error", -8.0)
 	money_changed.emit(cash)

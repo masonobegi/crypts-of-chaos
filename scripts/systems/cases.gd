@@ -60,6 +60,11 @@ const DAY_ONE := [
 		"on_hold": "Right. Well — you'd know. You're the doctor.",
 		"on_discharge": "I'll finish the tablets. I know, I know.",
 				"exam_unwell": "The margin they drew in pen on Tuesday is behind the redness now, not in front of it.",
+				"readmit_summary": "Back at 02:40. Leg tracking above the pen mark. Febrile on arrival.",
+		"readmit_opening": "You said finish the tablets. I finished the tablets.",
+		"readmit_hold": "Aye. I'll not argue with you today.",
+		"readmit_discharge": "...You're the doctor. You keep saying.",
+		"readmit_exam": "The redness is four inches above where somebody drew the line on Tuesday.",
 		"note": "Talks to everyone. Whatever you tell him, the night staff hear it too.",
 	},
 	{
@@ -74,6 +79,11 @@ const DAY_ONE := [
 		"on_hold": "That's all right. It's warm in here.",
 		"on_discharge": "Oh. Right you are. Is somebody coming?",
 				"exam_well": "She is steady on the frame and knows where she is. It is the evenings that are the problem.",
+				"readmit_summary": "Found on the floor of the flat at 23:10 by a neighbour. No fracture again.",
+		"readmit_opening": "Is it morning? They keep turning the lights on.",
+		"readmit_hold": "That's all right. It's warm in here.",
+		"readmit_discharge": "Oh. Right you are. Is somebody coming this time?",
+		"readmit_exam": "Cold to the touch and she has been on that floor a while.",
 		"note": "Nobody at home. Her daughter Ruth is a retired ward sister and reads charts.",
 		"family": "Mrs Kerrigan's daughter",
 		"family_note": "She used to do my job.",
@@ -95,6 +105,11 @@ const DAY_ONE := [
 		"on_hold": "You're joking. She wrote it in the notes, I watched her do it.",
 		"on_discharge": "Brilliant. Cheers, doc.",
 				"exam_well": "The wound is dry and he wants his trousers. There is nothing here.",
+				"readmit_summary": "Represented at 04:15. Wound dehisced. Tachycardic.",
+		"readmit_opening": "It opened up. On the bus. I didn't know what to do.",
+		"readmit_hold": "Yeah. Yeah, all right.",
+		"readmit_discharge": "You're joking. You are actually joking.",
+		"readmit_exam": "The wound is open and there is more coming out of it than should be.",
 		"note": "Adeyemi documented 'for discharge today' at 09:20. It is already on the chart.",
 	},
 	{
@@ -109,6 +124,11 @@ const DAY_ONE := [
 		"on_hold": "Thank you. Honestly. You've been very thorough with me.",
 		"on_discharge": "Right. No, you're right. It's just — no. You're right.",
 				"exam_well": "Chest clear, pulse regular, and he watches your face the entire time.",
+				"readmit_summary": "Ambulance at 01:20 with chest pain. Troponin rising this time.",
+		"readmit_opening": "You did tell me. You said it wasn't my heart.",
+		"readmit_hold": "Thank you. I'd rather be here.",
+		"readmit_discharge": "No. No, I'm not going. I'm sorry. I'm not.",
+		"readmit_exam": "Grey, sweating, and the number that was negative twice is not negative now.",
 		"note": "Will praise you loudly and specifically to anybody who asks.",
 		## And "specifically" is the problem. A grateful patient who describes
 		## his care in detail is describing YOUR CONVERSATION in detail.
@@ -126,6 +146,11 @@ const DAY_ONE := [
 		"on_hold": "If you think so. I've got work.",
 		"on_discharge": "Thank you. Genuinely.",
 				"exam_well": "She is dressed, she is fine, and she has been fine since yesterday.",
+				"readmit_summary": "Readmitted 05:00, worst headache of her life. Coding have flagged it already.",
+		"readmit_opening": "I said I was fine. I know I said I was fine.",
+		"readmit_hold": "Right. Yes. Thank you.",
+		"readmit_discharge": "Are you sure? Only — no. All right.",
+		"readmit_exam": "Photophobic, and she will not open her eyes while you talk to her.",
 		"note": "",
 		## The trap. This is in her file and nowhere else — the player only finds
 		## it by opening the record and reading it. The one that looks free is
@@ -162,6 +187,11 @@ const DAY_TWO := [
 		"on_hold": "Thank you. I'd rather be sure, with the little one at home.",
 		"on_discharge": "If you're sure. I'll take the tablets, I promise.",
 				"exam_unwell": "Still warm to the touch, and there is a rigor coming on while you stand there.",
+				"readmit_summary": "Back at 22:50. Temp 39.1. The little one is with her sister.",
+		"readmit_opening": "I took them. I did take them. It just kept coming back.",
+		"readmit_hold": "Thank you. I'd rather be sure, with her at home.",
+		"readmit_discharge": "If you're sure. You're sure?",
+		"readmit_exam": "Thirty-nine one, and a rigor while you have your hand on her arm.",
 		"note": "State funded. A night in this bed is worth almost nothing to you.",
 	},
 	{
@@ -176,6 +206,11 @@ const DAY_TWO := [
 		"on_hold": "Oh, that's a relief. I'll tell Yemi. She worries.",
 		"on_discharge": "No, no. You're the doctor. I'll manage the stairs.",
 				"exam_well": "Rate is regular under your fingers. He is fine. He is also very frightened of his stairs.",
+				"readmit_summary": "Found at the bottom of the stairs by his daughter at 21:00. In fast AF.",
+		"readmit_opening": "Twenty-two of them. I told you about the stairs.",
+		"readmit_hold": "Oh, that's a relief. Yemi's outside.",
+		"readmit_discharge": "No, no. You're the doctor. I'll manage.",
+		"readmit_exam": "Rate is 140 and irregular and there is a haematoma over his hip.",
 		"note": "His daughter Yemi has already requested a copy of the notes.",
 		"family": "Mr Achebe-Fry's daughter",
 		"family_note": "She is a solicitor, and she asked for the notes before you got here.",
@@ -196,6 +231,11 @@ const DAY_TWO := [
 		"on_hold": "No. No, I've got work. I'm not staying.",
 		"on_discharge": "Thank you. Finally.",
 				"exam_well": "Alert, dry, keen. There is nothing wrong with this woman.",
+				"readmit_summary": "Blue-lighted in at 03:00, ketones 5.2. She never made the shift.",
+		"readmit_opening": "I didn't even get there. I got as far as the bus stop.",
+		"readmit_hold": "Fine. Whatever. Fine.",
+		"readmit_discharge": "No. I'm staying. I'm not doing that again.",
+		"readmit_exam": "Dry, breathing hard, and her breath is unmistakable across the bed.",
 		"note": "Has been asking to leave since breakfast. She will not wait forever.",
 		## A BED WITH A CLOCK ON IT. If you have not decided by mid-afternoon she
 		## discharges herself, which frees the bed and pays the admission — and
@@ -227,6 +267,11 @@ const DAY_TWO := [
 		"on_hold": "Aye. Probably for the best. I'm not — aye.",
 		"on_discharge": "Right. Right you are. Cheers.",
 				"exam_unwell": "His hands are going. He has an empty chair in the corner of the room he keeps checking, and the chart says CIWA 4.",
+				"readmit_summary": "Police brought him at 23:40. Withdrawing hard. Two seizures at the door.",
+		"readmit_opening": "I'm all right. I'm all right. What time is it?",
+		"readmit_hold": "Aye. Probably for the best.",
+		"readmit_discharge": "Right. Right you are. Cheers.",
+		"readmit_exam": "Seizing intermittently, and nothing about this is a surprise.",
 		"note": "The numbers on his chart have been coming down all week.",
 		## THE ONE YOU CANNOT FIND BY READING. Every note on him says improving.
 		## Standing in front of him says otherwise, and the only way to stand in
@@ -245,6 +290,11 @@ const DAY_TWO := [
 		"on_hold": "Do I. And what's the indication for that, doctor?",
 		"on_discharge": "Sensible. Somebody wants this bed more than I do.",
 				"exam_well": "Nothing. And she watches you look, and tells you what you have missed.",
+				"readmit_summary": "Collapsed again at home at 20:30. She had written the time down herself.",
+		"readmit_opening": "I have the note I made. Would you like to see the time on it?",
+		"readmit_hold": "Do I. And what's the indication for that, doctor?",
+		"readmit_discharge": "Sensible. Somebody wants this bed more than I do.",
+		"readmit_exam": "Bradycardic, and she tells you the rate before you have finished counting.",
 		"note": "Retired ward sister, forty-one years. Reads her own notes daily.",
 		## WINIFRED BLAKE'S TRAP, INSIDE OUT. Hers was a flag on a file you had to
 		## open. This one reads the file herself, every evening, and remembers
@@ -257,9 +307,64 @@ const DAY_TWO := [
 ## the harder one, so an even day is never a soft day.
 const DAYS := [DAY_ONE, DAY_TWO]
 
+## Who is coming back.
+##
+## THE CONSEQUENCE THE GAME DID NOT HAVE. Until this existed, a discharge was
+## free unless the ward sister happened to catch it in the morning: you sent a
+## man home to make the money and he ceased to exist. Somebody you discharged
+## who was not fit to go is in a bed tomorrow, worse, and takes the place of one
+## of the scheduled admissions — so a readmission costs a bed as well as a
+## conversation, and the ward you walk onto is one you made.
+const READMIT_FLAG := "readmissions"
+
+## The word she uses for what happened. Written on the chart, at the top, where
+## the first thing anybody reads about this person is what you did last time.
+static func readmission_of(c: Dictionary) -> Dictionary:
+	var r := c.duplicate(true)
+	r["readmitted"] = true
+	r["tier"] = c["tier"]
+	r["truly_well"] = false          ## worse than they were, and it is not subtle
+	r["only_visible_in_person"] = false   ## it is visible from the end of the bed now
+	r["condition"] = "%s — READMITTED" % String(c["condition"])
+	r["summary"] = String(c.get("readmit_summary",
+		"Back within twenty-four hours of discharge. Worse than when they left."))
+	r["opening"] = String(c.get("readmit_opening",
+		"I did try. I got home and I couldn't."))
+	r["on_hold"] = String(c.get("readmit_hold", "Thank you. I'm sorry to be a nuisance.")) 
+	r["on_discharge"] = String(c.get("readmit_discharge", "...Right. Again."))
+	r["exam_unwell"] = String(c.get("readmit_exam",
+		"Worse than yesterday, and yesterday you had the chance to see it."))
+	r["note"] = "Discharged by you yesterday. Back within the day."
+	r["audit_flag"] = ("Readmitted within 24 hours of a discharge you authorised. "
+		+ "AUTOMATIC CODING REVIEW.")
+	r["suggestible"] = 0.1           ## they have stopped agreeing with you
+	r["recall"] = 1.0                ## and they remember every word of yesterday
+	return r
+
+## Today's five beds: the scheduled ward, with anybody bouncing back displacing
+## a scheduled admission. The displaced patient is simply not admitted — there
+## are five beds and there have always been five beds.
 static func roster(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
-	return DAYS[(d - 1) % DAYS.size()]
+	var base: Array = DAYS[(d - 1) % DAYS.size()]
+	var coming_back: Array = GameState.flag(READMIT_FLAG, [])
+	if coming_back.is_empty():
+		return base
+	var out: Array = []
+	var beds_used := 0
+	for id in coming_back:
+		var original := anyone(String(id))
+		if original.is_empty():
+			continue
+		var r := readmission_of(original)
+		r["bed"] = base[beds_used]["bed"]
+		out.append(r)
+		beds_used += 1
+		if beds_used >= base.size():
+			break
+	for i in range(beds_used, base.size()):
+		out.append(base[i])
+	return out
 
 ## TODAY'S WARD. Everything that acts on a patient goes through this, so a
 ## lookup for somebody who is not in a bed this morning correctly finds nothing.

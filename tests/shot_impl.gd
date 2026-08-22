@@ -29,10 +29,11 @@ const SHOTS := [
 	["13_board", "ui:board"],
 	["14_write", "ui:write"],
 	["15_ward_two", "ui:ward_two"],
-	["16_review", "ui:review"],
-	["17_day_over", "ui:day_over"],
-	["18_paid", "ui:paid"],
-	["19_struck_off", "ui:struck_off"],
+	["16_ward_three", "ui:ward_three"],
+	["17_review", "ui:review"],
+	["18_day_over", "ui:day_over"],
+	["19_paid", "ui:paid"],
+	["20_struck_off", "ui:struck_off"],
 ]
 
 func start() -> void:
@@ -184,6 +185,17 @@ func _stage_ui(which: String, w) -> void:
 			GameState.set_flag("debt_remaining", 9240)
 			EventBus.request_ui.emit("day_over",
 				{"verdict": ReviewSystem.OUTCOME_ESCALATED})
+		"ward_three":
+			# THE THIRD WARD. Nobody on it is ill except a man who says he is
+			# fine, and the best-paying bed is a woman asking you to keep her.
+			GameState.day = 3
+			GameState.start_day()
+			if w != null:
+				w.start()
+				var ps4 = tree.get_first_node_in_group("patient_system")
+				if ps4 != null and ps4.has_method("reset_day"):
+					ps4.reset_day()
+			EventBus.request_ui.emit("patient", {"patient_id": "fry"})
 		"review":
 			# Back to the first ward: this stage names its patients, and the
 			# ward_two stage before it left the day on the second one. Staged

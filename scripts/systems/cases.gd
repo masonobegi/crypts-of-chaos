@@ -236,6 +236,81 @@ const DAY_ONE := [
 		"audit_flag": "Readmitted within 30 days on 4 August. Coding queried by "
 			+ "Meridian Mutual. FILE MARKED FOR ROUTINE REVIEW.",
 	},
+	## ---- ALTERNATES. Interchangeable with the bed above by ROLE: same tier,
+	## same truth, same reason for being in that slot. What changes between
+	## careers is who you are having the conversation with, not what the ward is.
+	{
+		"id": "bassong", "name": "Sylvie Bassong", "age": 79, "bed": 2,
+		"condition": "Fall, no fracture",
+		"tier": Tier.STATE,
+		"truly_well": true,
+		"suggestible": 0.5,
+		"recall": 0.55,
+		"summary": "X-rays clear. Mobilising with a frame. Lives alone. No package in place.",
+		"opening": "You'll not send me back on my own, will you. Not tonight.",
+		"later": "It was two days, last time. Before anybody came.",
+		"evening": "I've stopped ringing them. You feel a nuisance in the end.",
+		"pressed": "I'm not poorly. I know I'm not poorly. That's not what I'm saying.",
+		"on_your_note": "Have you put about the stairs? It's the stairs that's the thing.",
+		"on_hold": "Oh, thank you. I'll sleep tonight, now.",
+		"on_discharge": "Right. Yes. I'll manage. People do.",
+		"exam_well": "Nothing broken and nothing wrong. She is frightened of her own hallway.",
+		"note": "Medically fine. Found on the floor twice this year and nobody has arranged anything.",
+		"no_care_at_home": true,
+		"social_reason": "Lives alone, two unwitnessed falls. Care package not arranged.",
+		"readmit_summary": "Ambulance at 03:10. On the hall floor since about ten.",
+		"readmit_opening": "I did try the stairs. I thought I'd be all right.",
+		"readmit_hold": "Thank you, love. I won't say anything else about it.",
+		"readmit_discharge": "...To the same house. Right you are.",
+		"readmit_exam": "Cold, bruised, and entirely uninjured, which is somehow worse.",
+	},
+	{
+		"id": "whitcombe", "name": "Rory Whitcombe", "age": 31, "bed": 3,
+		"condition": "Appendicectomy, day two",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.35,
+		"recall": 0.9,
+		"summary": "Wound clean. Eating. Passed everything he is meant to pass.",
+		"opening": "Morning. Am I out today? Somebody said today.",
+		"later": "I've walked to the lift and back four times. I counted.",
+		"evening": "I'm going to miss another day. That's three now.",
+		"pressed": "Is there something you're not telling me? You keep coming back.",
+		"on_your_note": "What've you put? Only I feel completely fine, so.",
+		"on_hold": "Seriously? For what? I've been walking about all day.",
+		"on_discharge": "Yes. Cheers. Genuinely, cheers.",
+		"exam_well": "Wound is clean and dry and he does a small lap of the bay to prove it.",
+		"note": "Nothing hidden. A straightforward recovery and he knows it.",
+		"readmit_summary": "Back at 22:40 with a wound infection. Started that afternoon.",
+		"readmit_opening": "It went red on the way home. I nearly turned round.",
+		"readmit_hold": "Yeah. No. Fine. I'd rather be here for this bit.",
+		"readmit_discharge": "You're sending me home with this? Look at it.",
+		"readmit_exam": "Hot, red and spreading from the port site. This one is real.",
+	},
+	{
+		"id": "nwankwo", "name": "Cordelia Nwankwo", "age": 55, "bed": 5,
+		"condition": "Vertigo, settled",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.4,
+		"recall": 0.95,
+		"summary": "Symptom free since yesterday. Neurology reviewed and discharged.",
+		"opening": "I know how this works. My last stay got queried, you know.",
+		"later": "Coding rang me at home about it. At home.",
+		"evening": "Whatever you write, somebody will read it twice. I'd think on.",
+		"pressed": "I'd rather you didn't put words in my mouth. I've had that before.",
+		"on_your_note": "Read that back to me. I want to hear it out loud.",
+		"on_hold": "On what basis. And put the basis in the notes, please.",
+		"on_discharge": "Good. Sensible. That's the right answer.",
+		"exam_well": "No nystagmus, no drift, nothing at all. She watches you check.",
+		"note": "Well. Her file is already under review from last time, and she knows it.",
+		"audit_flag": "Previous admission queried by Coding. File under review.",
+		"readmit_summary": "Returned 21:00 with recurrence. Settled again before review.",
+		"readmit_opening": "Twice. And it'll be twice on the file, won't it.",
+		"readmit_hold": "Fine. But write down why, properly, this time.",
+		"readmit_discharge": "Again. Right. I'll be keeping my own notes.",
+		"readmit_exam": "Symptom free by the time you get to her, and unimpressed.",
+	},
 ]
 
 ## DAY TWO IS NOT DAY ONE WITH NEW NAMES.
@@ -414,6 +489,81 @@ const DAY_TWO := [
 		## exactly what was in it and what was not.
 		"reads_own_chart": true,
 	},
+	## ---- ALTERNATES.
+	{
+		"id": "haldane", "name": "Moira Haldane", "age": 66, "bed": 2,
+		"condition": "TIA, investigations complete",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.45,
+		"recall": 0.8,
+		"summary": "Scan clear. Started on secondary prevention. No residual deficit.",
+		"opening": "My son's coming at eleven. He'll want to go through it all.",
+		"later": "He's written questions down. He does that.",
+		"evening": "He's asked for a copy of the notes. I said that was fine.",
+		"pressed": "I'd sooner he was here when we talk about this, if it's all the same.",
+		"on_your_note": "He read that. He wants to know who observed it.",
+		"on_hold": "Another night? He'll ask why. I'll need to be able to say.",
+		"on_discharge": "Lovely. He'll be pleased. He's been that worried.",
+		"exam_well": "No deficit anywhere. She grips your hands and looks pleased with herself.",
+		"note": "Well. Her son reads every line and asks who wrote it.",
+		"family_reads_charts": true,
+		"family": "Her son",
+		"family_note": "He is a pharmacist, and he has already asked for the drug chart.",
+		"readmit_summary": "Represented 23:30 with a further episode, resolved on arrival.",
+		"readmit_opening": "He said we should have stopped in. He did say.",
+		"readmit_hold": "Yes. He'll be happier. So will I.",
+		"readmit_discharge": "He is going to want that in writing, I'm afraid.",
+		"readmit_exam": "No deficit again, and a son in the corridor with a list.",
+	},
+	{
+		"id": "grieve", "name": "Danny Grieve", "age": 27, "bed": 3,
+		"condition": "Asthma exacerbation, resolved",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.5,
+		"recall": 0.7,
+		"summary": "Peak flow back to best. Off nebulisers since midnight.",
+		"opening": "What time do rounds finish? I've got to be somewhere at three.",
+		"later": "If I'm not there at three I don't get paid for the week.",
+		"evening": "Right, that's three. That's that gone, then.",
+		"pressed": "Are you actually going to decide, or am I just sat here?",
+		"on_your_note": "That says I'm wheezy. I'm not wheezy, mate. Listen.",
+		"on_hold": "No. No, I can't. You don't get it, I actually can't.",
+		"on_discharge": "Thank you. Thank you, seriously.",
+		"exam_well": "Chest is completely clear and he talks in full paragraphs to prove it.",
+		"note": "Well, and on a shift at three that he cannot afford to miss.",
+		"self_discharges_at": 15 * 60,
+		"readmit_summary": "Ambulance 02:00, silent chest. Nebulised in transit.",
+		"readmit_opening": "I know. I know what you're going to say.",
+		"readmit_hold": "Yeah. Yeah, all right.",
+		"readmit_discharge": "You are joking. Listen to me. Actually listen.",
+		"readmit_exam": "Tight, quiet, and working far too hard. Nothing like this morning.",
+	},
+	{
+		"id": "delacroix", "name": "Yves Delacroix", "age": 61, "bed": 5,
+		"condition": "Atypical chest pain, workup negative",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 1.0,
+		"summary": "Angiography normal. Troponins flat. Discharge planned yesterday.",
+		"opening": "I have the discharge letter from yesterday. Shall I read it to you?",
+		"later": "I keep every letter. I have done for eleven years.",
+		"evening": "I have written down the time of each conversation today. Force of habit.",
+		"pressed": "You have asked me that in three different ways now. I noticed each one.",
+		"on_your_note": "That is not what I said. I have what I said, here, in pencil.",
+		"on_hold": "Then I would like the reason, and I would like it dated.",
+		"on_discharge": "Thank you. That agrees with yesterday, which is reassuring.",
+		"exam_well": "Nothing, and he watches your hands the entire time.",
+		"note": "Premium, well, and he keeps his own record of everything you say.",
+		"reads_own_chart": true,
+		"readmit_summary": "Attended again 22:15. Same pain, same negative workup.",
+		"readmit_opening": "Third time. I have the letters for all three.",
+		"readmit_hold": "Very well. Dated, please.",
+		"readmit_discharge": "As you wish. I shall add it to the others.",
+		"readmit_exam": "Nothing to find, and a man writing down that you found nothing.",
+	},
 ]
 
 
@@ -559,6 +709,80 @@ const DAY_THREE := [
 		"readmit_hold": "Thank you. I won't ask again.",
 		"readmit_discharge": "No, you're right. You were right the first time.",
 		"readmit_exam": "Nothing, again, and she knows it before you have finished.",
+	},
+	## ---- ALTERNATES.
+	{
+		"id": "mbeki", "name": "Josiah Mbeki", "age": 49, "bed": 1,
+		"condition": "Renal colic, stone passed",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.25,
+		"recall": 0.85,
+		"summary": "Stone passed overnight. Pain free. Renal function normal.",
+		"opening": "It went about four this morning. I nearly cheered.",
+		"later": "I've not had so much as a twinge since. It's gone.",
+		"evening": "I've been up and down that corridor all day waiting on somebody.",
+		"pressed": "There's nothing to tell you. It hurt, and now it doesn't.",
+		"on_your_note": "That's not right, that. I said it stopped.",
+		"on_hold": "What for? Honestly — what for?",
+		"on_discharge": "Grand. I'll away, then.",
+		"exam_well": "Soft, painless, and he presses his own side to show you.",
+		"note": "Nothing hidden. It hurt, it stopped, and he wants to leave.",
+		"readmit_summary": "Back at 01:20 with a second stone and a temperature.",
+		"readmit_opening": "There was another one. Nobody said there'd be another one.",
+		"readmit_hold": "Aye, fair enough. I'll stop.",
+		"readmit_discharge": "Not with a fever. Come on. Not with a fever.",
+		"readmit_exam": "Tender, febrile, and this one is obstructed. Nothing like this morning.",
+	},
+	{
+		"id": "ferrero", "name": "Bianca Ferrero", "age": 63, "bed": 2,
+		"condition": "Cellulitis, treated",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 0.8,
+		"summary": "Redness settled. Oral switch complete. Lives with her husband.",
+		"opening": "I'm ready when you are. It's him I'm thinking about.",
+		"later": "He's got the memory thing. He can't be doing the tablets on his own.",
+		"evening": "The girl comes Tuesdays. Only Tuesdays. It's Thursday.",
+		"pressed": "I'm quite well. I keep telling you, it isn't me.",
+		"on_your_note": "Have you put about my husband? That's the bit that matters.",
+		"on_hold": "Thank you. But somebody's got to go round to him tonight.",
+		"on_discharge": "That's all right. I'll sort it. I always do.",
+		"exam_well": "The leg is completely settled. She is not the patient in this story.",
+		"note": "Medically ready. Her husband cannot manage his own medication and nobody is going.",
+		"no_care_at_home": true,
+		"social_reason": "Sole carer for husband with dementia. No cover arranged tonight.",
+		"readmit_summary": "Readmitted 23:45 after a fall at home. She was on the stairs with him.",
+		"readmit_opening": "He got up in the night. I was trying to catch him.",
+		"readmit_hold": "Thank you. Is somebody with him? Please say somebody's with him.",
+		"readmit_discharge": "No. Not tonight. Please.",
+		"readmit_exam": "Bruised and exhausted and still asking about somebody else.",
+	},
+	{
+		"id": "quill", "name": "Tam Quill", "age": 22, "bed": 3,
+		"condition": "Self-harm, wounds sutured",
+		"tier": Tier.STATE,
+		"truly_well": true,
+		"suggestible": 0.4,
+		"recall": 0.75,
+		"summary": "Wounds closed. Bloods normal. Awaiting mental health liaison.",
+		"opening": "Are you the one who decides, or is that somebody else again?",
+		"later": "Third person today. Nobody's the one who decides.",
+		"evening": "They've gone now, haven't they. The team. They've gone home.",
+		"pressed": "I've answered this. I answered it at eleven and I answered it at two.",
+		"on_your_note": "Can I see that? People write things and then nobody says.",
+		"on_hold": "Okay. So somebody's coming tomorrow. Is somebody coming tomorrow?",
+		"on_discharge": "Right. Yeah. That's what I thought would happen.",
+		"exam_well": "Wounds are clean and closing. Nobody from liaison has been.",
+		"note": "Physically fine. Not assessed. State funded, and the team went home at five.",
+		"no_care_at_home": true,
+		"social_reason": "Awaiting mental health liaison assessment. Not for discharge.",
+		"readmit_summary": "Brought back 02:30 by police. Second presentation in twelve hours.",
+		"readmit_opening": "You wrote that nobody had been. And I still went.",
+		"readmit_hold": "Fine.",
+		"readmit_discharge": "Yeah. Course.",
+		"readmit_exam": "Awake, flat, and answering in single words.",
 	},
 ]
 
@@ -751,6 +975,79 @@ const DAY_FOUR := [
 		"readmit_discharge": "Right. So that's twice I've sat here for nothing.",
 		"readmit_exam": "Neurologically normal again, and thoroughly sick of the place.",
 	},
+	## ---- ALTERNATES.
+	{
+		"id": "okereke", "name": "Ngozi Okereke", "age": 44, "bed": 2,
+		"condition": "Palpitations, admitted overnight, monitoring normal",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.4,
+		"recall": 0.95,
+		"summary": "Admitted 01:40 by Dr Costa. Telemetry normal throughout. Bloods normal.",
+		"opening": "I was told overnight. It is now tomorrow, so — what is the position?",
+		"later": "I have a theatre list of my own on Thursday. I am not a patient by trade.",
+		"evening": "I have read the trace. There is nothing on the trace.",
+		"pressed": "You are asking me to agree to something. I would rather you just said it.",
+		"on_your_note": "I have read that entry. I would not have written that entry.",
+		"on_hold": "Then show me the indication. I will wait while you find it.",
+		"on_discharge": "Thank you. That is the correct reading of it.",
+		"exam_well": "Regular, unremarkable, entirely normal — and she takes her own pulse after you.",
+		"note": "Premium, well, admitted by a colleague overnight, and a clinician herself.",
+		"reads_own_chart": true,
+		"readmit_summary": "Returned 20:50 having had a further episode in the car park.",
+		"readmit_opening": "It happened in the car park. Of course it did.",
+		"readmit_hold": "Yes. That is reasonable. Thank you.",
+		"readmit_discharge": "I would document that decision very carefully, if I were you.",
+		"readmit_exam": "In sinus rhythm and thoroughly fed up.",
+	},
+	{
+		"id": "hollins", "name": "Bert Hollins", "age": 81, "bed": 3,
+		"condition": "Chest infection, treated. Discharged 04:30.",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.65,
+		"recall": 0.4,
+		"summary": "Discharged by Dr Costa at 04:30. Son collecting. Still on the ward at eight.",
+		"opening": "Our David's coming. He finishes at six, so.",
+		"later": "He'll have been held up. He's very good, our David.",
+		"evening": "He'll come. He's never not come.",
+		"pressed": "Am I stopping or going? Only I've been told both today.",
+		"on_your_note": "Are you writing me back in? I thought I was done.",
+		"on_hold": "Oh. Have I taken bad again? Nobody said.",
+		"on_discharge": "I know, son. I was discharged this morning. I'm just waiting.",
+		"exam_well": "Chest is clear and he is entirely well. He is waiting for a lift.",
+		"note": "Discharged at half four this morning by a colleague. The bed is full because David is late.",
+		"readmit_summary": "Formally readmitted 23:00 having sat in the day room since five.",
+		"readmit_opening": "He did come. He came at nine. They'd shut the doors.",
+		"readmit_hold": "That's kind of you. I'll not be any bother.",
+		"readmit_discharge": "Right you are. I'll wait outside, then.",
+		"readmit_exam": "Perfectly well, rather cold, and still entirely cheerful about it.",
+	},
+	{
+		"id": "sarraf", "name": "Yasmin Sarraf", "age": 29, "bed": 5,
+		"condition": "Syncope, cardiac workup negative",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.55,
+		"recall": 0.8,
+		"summary": "Seen by Dr Costa 03:50, for observation. Asymptomatic since. Eating.",
+		"opening": "The night doctor said I had to stay in. Did something show up?",
+		"later": "Nobody's been back since. I've been waiting to be told what it was.",
+		"evening": "If there's nothing on it, why am I still here? Genuinely asking.",
+		"pressed": "Please just tell me straight. I'd rather know than be managed.",
+		"on_your_note": "That's not what happened. I fainted once, standing up, in the heat.",
+		"on_hold": "Another night for a faint? My sister's had six of those.",
+		"on_discharge": "Oh thank God. Right. Thank you.",
+		"exam_well": "Completely normal, lying and standing. She fainted in a queue in July.",
+		"note": "The night registrar wrote that she stays. She is well, and nothing else says otherwise.",
+		"colleague_wrong": true,
+		"colleague_seen": "03:50",
+		"readmit_summary": "Attended again 21:20 after a second faint. Workup negative again.",
+		"readmit_opening": "It happened again. Same thing. Standing up too fast.",
+		"readmit_hold": "Okay. If you think so. You've actually looked this time.",
+		"readmit_discharge": "Fine. Two nights of my life for a faint.",
+		"readmit_exam": "Normal again, in every position you can put her in.",
+	},
 ]
 
 const PRIOR_FOUR := [
@@ -827,9 +1124,117 @@ static func readmission_of(c: Dictionary) -> Dictionary:
 ## Today's five beds: the scheduled ward, with anybody bouncing back displacing
 ## a scheduled admission. The displaced patient is simply not admitted — there
 ## are five beds and there have always been five beds.
+## WHICH FIVE OF THIS WARD'S PEOPLE ARE IN THE BEDS TONIGHT.
+##
+## THE REASON THIS EXISTS: a career is nine nights and the cast was twenty
+## people, so the second career had no game in it. You already knew Ivo
+## Marchetti was the one who was genuinely ill — and the whole investigation
+## layer, the twelve minutes a chart and the fifteen to go and look at somebody,
+## exists ONLY to find that out. The content was not too small. It was consumed
+## in one run, and every verb in the game turned into a formality on the second.
+##
+## So a ward is five SLOTS rather than five people, and `bed` is the slot id: any
+## number of authored patients can share a bed number, and exactly one of them is
+## in it tonight. The ward keeps its shape — the bed that is genuinely ill is
+## still genuinely ill, the premium temptation is still premium — because the
+## alternates for a slot are interchangeable BY ROLE. A draw cannot produce a
+## ward with no honest hold in it, or one with nothing worth lying about, because
+## no slot has a candidate that would do that.
+##
+## Pure in (seed, day, bed): no stored state, no RNG stream to advance, so
+## calling this five times in a day returns the same five people. Seed 0 is the
+## canonical ward — the first candidate in every slot — which is what the whole
+## test suite plays and what every authored measurement refers to.
+## `picks` forces a specific candidate per slot, so every combination a career
+## can produce is enumerable rather than reachable only by hunting for a seed.
+## The probe that proves no draw makes a ward unwinnable needs to walk all of
+## them; without this it could only sample.
+## A HARNESS-ONLY OVERRIDE. `WardDay` reaches the draw through `roster()`, which
+## takes no picks, so a probe that wants to build a ward from a SPECIFIC
+## combination has nowhere to say so. Set this, build the ward, clear it.
+## Never set during play — a career's draw is a pure function of its seed.
+static var forced_picks: Array = []
+
+## WHICH CANDIDATE, given the career seed and the slot. A proper avalanche
+## mixer, because two cheaper things were tried and both dealt the same two
+## games forever.
+##
+## First it was `hash("ward%d_bed%d") ^ seed`. With two candidates a slot, the
+## pick is that value's LOW BIT, and XOR only touches the low bit with the low
+## bit — so every slot on every ward flipped together on whether the seed was
+## odd or even. Eight combinations a ward and four thousand careers on paper;
+## two in practice.
+##
+## Then it was `hash("w%d_b%d_s%d")` on the combined string, which should have
+## worked and did not: Godot's String hash does not spread into the bottom bit
+## well enough, and six seeds printed side by side still showed two games.
+##
+## So: splitmix64. Multiply the inputs apart with odd constants, then two
+## shift-xor-multiply rounds, so every bit of the seed reaches the bottom one.
+## Masked rather than absi()'d, because absi(INT64_MIN) is still negative and a
+## negative modulus indexes off the front of the array.
+static func _mix(seed_v: int, day: int, bed: int) -> int:
+	# Every constant here is below 2^63 ON PURPOSE. The textbook splitmix64
+	# multipliers (0x9E3779B97F4A7C15 and friends) do not fit in a signed 64-bit
+	# int, and GDScript does not wrap them — it mangles the literal, and the
+	# mixer silently stopped mixing. Wards one to three then dealt the SAME five
+	# people for every seed in existence while ward four varied, which looks
+	# exactly like a content problem and is not one.
+	var x: int = seed_v * 6364136223846793005
+	x += day * 2654435761 + bed * 40503
+	x = x & 0x7FFFFFFFFFFFFFFF
+	x = ((x ^ (x >> 33)) * 2685821657736338717) & 0x7FFFFFFFFFFFFFFF
+	x = ((x ^ (x >> 29)) * 1442695040888963407) & 0x7FFFFFFFFFFFFFFF
+	return (x ^ (x >> 32)) & 0x7FFFFFFFFFFFFFFF
+
+static func draw_five(day: int, picks: Array = []) -> Array:
+	var pool: Array = DAYS[(day - 1) % DAYS.size()]
+	if picks.is_empty():
+		picks = forced_picks
+	var by_bed := {}
+	for c in pool:
+		var b := int(c["bed"])
+		if not by_bed.has(b):
+			by_bed[b] = []
+		by_bed[b].append(c)
+	var beds: Array = by_bed.keys()
+	beds.sort()
+	var out: Array = []
+	for i in beds.size():
+		var b = beds[i]
+		var cands: Array = by_bed[b]
+		if not picks.is_empty():
+			out.append(cands[int(picks[i]) % cands.size()])
+			continue
+		if cands.size() == 1 or GameState.seed_value == 0:
+			out.append(cands[0])
+			continue
+		var h: int = _mix(GameState.seed_value, day, int(b))
+		out.append(cands[h % cands.size()])
+	return out
+
+## Every authored person on a ward, drawn or not. The data check walks this;
+## `roster` walks the five who are actually in the beds.
+## How many candidates each slot has, in bed order — the shape of the draw.
+static func slot_sizes(day: int) -> Array:
+	var by_bed := {}
+	for c in DAYS[(day - 1) % DAYS.size()]:
+		var b := int(c["bed"])
+		by_bed[b] = int(by_bed.get(b, 0)) + 1
+	var beds: Array = by_bed.keys()
+	beds.sort()
+	var out: Array = []
+	for b in beds:
+		out.append(int(by_bed[b]))
+	return out
+
+static func pool_for(day := -1) -> Array:
+	var d: int = day if day > 0 else GameState.day
+	return DAYS[(d - 1) % DAYS.size()]
+
 static func roster(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
-	var base: Array = DAYS[(d - 1) % DAYS.size()]
+	var base: Array = draw_five(d)
 	var coming_back: Array = GameState.flag(READMIT_FLAG, [])
 	if coming_back.is_empty():
 		return base
@@ -953,7 +1358,16 @@ static func prior_entries(day := -1) -> Array:
 			"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Iqbal (nights)",
 			"text": String(c.get("summary", "Readmitted overnight.")),
 		})
+	# ONLY THE FIVE WHO ARE ACTUALLY IN THE BEDS. A ward is a draw from a larger
+	# authored cast now, so the prior-note list for the ward contains handover
+	# notes about people who are not on it tonight. Left unfiltered they arrived
+	# as chart entries for patients with no bed, which the audit then read.
+	var here := {}
+	for c in roster(d):
+		here[String(c["id"])] = true
 	for e in base:
+		if not here.has(String(e["patient"])):
+			continue
 		# Yesterday's ward's note about somebody who is back is not today's.
 		var seen := false
 		for r in out:

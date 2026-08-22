@@ -933,11 +933,62 @@ to her — and she remembers every word, and tells the ward sister in the mornin
 that she asked. Consent is the one defence that is not a defence. Saying no to
 her costs nothing at all, which is what makes it a decision.
 
+### The second career had no game in it
+
+A career is nine nights and the cast was twenty people, so you already knew Ivo
+Marchetti was the one who was genuinely ill. The whole investigation layer — the
+twelve minutes a chart, the fifteen to go and look at somebody, the seventy-five
+for bloods to come back — exists *only* to find that out, and on a second run
+you skip all of it. The content was not too small. It was consumed in one run,
+and every verb in the game turned into a formality on the way through.
+
+So a ward is five **slots** now rather than five people, and `bed` is the slot
+id: several authored patients share a bed number and exactly one of them is in
+it tonight, drawn as a pure function of the career seed. Twelve new people, three
+per ward, giving eight combinations a ward and 4,096 career shapes. Nothing else
+changed — same four wards, same themes, same length of career, no new systems
+and no new verbs. What changed is that you cannot memorise which bed is the
+honest hold.
+
+Candidates for a slot have to be **interchangeable by role**: same tier, so the
+night is worth the same money, and same truth, so the honest hold is still where
+the ward put it. The data check enforces both, which is what stops a draw
+quietly dealing a ward with nothing genuinely wrong on it.
+
+And because the game can now deal a board nobody has ever looked at,
+`tests/probe/draws_run.gd` walks **every** combination on every ward — thirty-two
+deals — plays each one the way somebody who understood the game would, and
+asserts an honest day is never REFERRED and always covers the night.
+
+### The draw was broken twice and looked perfect both times
+
+First it was `hash("ward%d_bed%d") ^ seed`. With two candidates a slot the pick
+is that value's bottom bit, and XOR only touches the bottom bit with the bottom
+bit — so every slot on every ward flipped together on whether the seed was odd
+or even. Four thousand careers on paper, two in practice.
+
+Then it was a hash of the combined string, which should have worked: Godot's
+String `hash()` does not reach the bottom bit well enough, and six seeds printed
+side by side still showed two games.
+
+Then splitmix64 — with the textbook constants, which do not fit in a signed
+64-bit integer. GDScript mangles the literal instead of wrapping it, and the
+mixer silently stopped mixing: wards one to three dealt identical fives for
+every seed in existence while ward four varied, which looks exactly like a
+content bug and is not one.
+
+All three passed the tests, the data check and a play of the game. The only
+thing that ever showed any of them was counting distinct wards across two
+thousand seeds, so that is a permanent check now rather than something somebody
+thought to do once.
+
 ### Where it stands
 
 ```
-271 unit assertions · 68 smoke checks · 15 authored people · boot check
+273 unit assertions · 70 smoke checks · 32 authored people · boot check
 seven day-level criteria ................................ 7/7
+every deal a career can make, played honestly ........... 32/32
+distinct careers over 2,000 seeds ....................... 1,573
 six career criteria ..................................... 6/6
 adversarial frontier, 3,300 strategies over three wards . monotone on all three,
                                                           top figure unreachable

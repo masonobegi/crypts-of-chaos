@@ -21,7 +21,11 @@ func run() -> void:
 	print("\n=== AUTHORED DATA — %d wards ===" % Cases.DAYS.size())
 	for day in Cases.DAYS.size():
 		GameState.day = day + 1
-		var roster: Array = Cases.roster(day + 1)
+		# EVERY AUTHORED PERSON ON THE WARD, not the five in the beds tonight. A
+		# ward is a draw from a pool now, so checking the roster checks whichever
+		# five the seed happened to pick and leaves the alternates unread — which
+		# is exactly the shape of content bug this file exists to catch.
+		var roster: Array = Cases.pool_for(day + 1)
 		var beds := {}
 		var unwell := 0
 		var premium := 0
@@ -39,13 +43,14 @@ func run() -> void:
 			if seen_ids.has(id):
 				_fail("id %s appears on two wards" % id)
 			seen_ids[id] = true
-			if beds.has(int(c["bed"])):
-				_fail("ward %d has two patients in bed %d" % [day + 1, int(c["bed"])])
-			beds[int(c["bed"])] = true
-			if not well:
-				unwell += 1
-			if int(c["tier"]) == Cases.Tier.PREMIUM:
-				premium += 1
+			# `bed` is the SLOT id, and several authored people can share one —
+			# exactly one of them is in it on any given night. What has to be
+			# true is that every slot has a candidate, not that every candidate
+			# has a slot to itself.
+			if not beds.has(int(c["bed"])):
+				beds[int(c["bed"])] = []
+			beds[int(c["bed"])].append(c)
+
 			# A family rule that fires needs somebody to name.
 			if bool(c.get("family_reads_charts", false)) and not c.has("family"):
 				_fail("ward %d / %s / family" % [day + 1, id])
@@ -53,30 +58,57 @@ func run() -> void:
 			if bool(c.get("no_care_at_home", false)) and not c.has("social_reason"):
 				_fail("ward %d / %s / social_reason" % [day + 1, id])
 		if beds.size() != Cases.BEDS:
-			_fail("ward %d has %d beds, not %d" % [day + 1, beds.size(), Cases.BEDS])
+			_fail("ward %d has %d slots, not %d" % [day + 1, beds.size(), Cases.BEDS])
+
+		# INTERCHANGEABLE MEANS INTERCHANGEABLE. Two people can share a slot only
+		# if swapping one for the other leaves the ward the same shape: same
+		# tier, so the night is worth the same money, and same truth, so the
+		# honest hold is still where the ward says it is. Without this a draw
+		# could quietly produce a ward with no genuinely ill patient on it, or
+		# turn a premium temptation into a state bed, and the careful economy
+		# every other check defends would depend on a hash.
+		for b in beds:
+			var cands: Array = beds[b]
+			var t0: int = int(cands[0]["tier"])
+			var w0: bool = bool(cands[0].get("truly_well", true))
+			for alt in cands:
+				if int(alt["tier"]) != t0:
+					_fail("ward %d slot %d: %s is a different tier from %s"
+						% [day + 1, int(b), String(alt["id"]), String(cands[0]["id"])])
+				if bool(alt.get("truly_well", true)) != w0:
+					_fail("ward %d slot %d: %s is not as ill as %s"
+						% [day + 1, int(b), String(alt["id"]), String(cands[0]["id"])])
+			if not w0:
+				unwell += 1
+			if t0 == Cases.Tier.PREMIUM:
+				premium += 1
 		if unwell < 1:
 			_fail("ward %d has nobody who genuinely needs a bed" % (day + 1))
-		print("  ward %d: %d people, %d genuinely unwell, %d premium, prior notes %d"
-			% [day + 1, roster.size(), unwell, premium, Cases.prior_entries(day + 1).size()])
+		var combos := 1
+		for b in beds:
+			combos *= Array(beds[b]).size()
+		print("  ward %d: %d authored, %d slots, %d combinations, %d genuinely unwell, %d premium"
+			% [day + 1, roster.size(), beds.size(), combos, unwell, premium])
 
 		# THE LOAD-BEARING INEQUALITY, on every ward: holding all five must earn
 		# less than holding three, or "keep everybody" is the answer.
 		var w := WardDay.new()
 		tree.root.add_child(w)
 		w.start()
-		for c in roster:
+		var tonight: Array = Cases.roster(day + 1)
+		for c in tonight:
 			w.set_disposition(String(c["id"]), "hold")
 		var five: int = int(w.projected()["earned"])
-		for c in roster:
+		for c in tonight:
 			w.set_disposition(String(c["id"]), "discharge")
 		var best_three := 0
-		for i in roster.size():
-			for j in range(i + 1, roster.size()):
-				for k in range(j + 1, roster.size()):
-					for c in roster:
+		for i in tonight.size():
+			for j in range(i + 1, tonight.size()):
+				for k in range(j + 1, tonight.size()):
+					for c in tonight:
 						w.set_disposition(String(c["id"]), "discharge")
 					for x in [i, j, k]:
-						w.set_disposition(String(roster[x]["id"]), "hold")
+						w.set_disposition(String(tonight[x]["id"]), "hold")
 					best_three = maxi(best_three, int(w.projected()["earned"]))
 		if five >= best_three:
 			_fail("ward %d: holding five earns %d, three earns %d" % [day + 1, five, best_three])

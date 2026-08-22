@@ -16,6 +16,14 @@ var t
 ##
 ## The runner calls this before each test. `free()`, not `queue_free()`.
 func setup() -> void:
+	# THE CANONICAL WARD, IN EVERY TEST. A ward is a draw from a pool of
+	# authored people now, and the draw is a pure function of the career seed —
+	# so `test_what_survives_the_night` calling `start_new_career(4242)` left
+	# 4242 in GameState and every test BELOW it played a randomly drawn ward
+	# while asserting things about named patients. Two of them failed and the
+	# rest passed by luck of the hash. Seed 0 is the authored five, which is
+	# what every measurement in this project refers to.
+	GameState.seed_value = 0
 	for n in t.root.get_children():
 		if n is WardDay:
 			t.root.remove_child(n)
@@ -841,8 +849,12 @@ func test_the_man_you_sent_home_is_in_a_bed_in_the_morning() -> void:
 		"and he has something new to say about it")
 
 	# The displaced scheduled patient is simply not admitted — five beds is five.
+	# AGAINST THE FIVE WHO WERE COMING, not the whole authored pool: `DAY_TWO`
+	# holds eight people and only five of them have beds on any given night, so
+	# comparing against the pool counts three alternates who were never
+	# scheduled and reports four displaced patients instead of one.
 	var scheduled := []
-	for c in Cases.DAY_TWO:
+	for c in Cases.draw_five(2):
 		scheduled.append(String(c["id"]))
 	var missing := 0
 	for id in scheduled:

@@ -6,7 +6,7 @@ primitives at runtime and every sound is synthesised on first play.
 ## Always
 
 ```bash
-GODOT=/path/to/godot ./run_tests.sh      # 271 assertions, a headless shift, 31 playtests, the data check
+GODOT=/path/to/godot ./run_tests.sh      # 273 assertions, a headless shift, 31 playtests, the data and draw checks
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
 godot --headless --path . --script res://tests/probe/career_run.gd    # a whole career, eight ways
@@ -162,10 +162,28 @@ change — five real bugs have been caught only by looking at the game.
   strike total that never reset. There are no achievements and no stats
   dictionary — both existed, both were read by nothing, and both were cut.
 - **Content lives in `Cases`, and adding a patient must not require touching a
-  system.** Fifteen people across three wards, each a dictionary of authored
+  system.** Thirty-two people across four wards, each a dictionary of authored
   strings; `tests/probe/data_run.gd` walks every one and fails on any field a
   system would otherwise silently default. If a new kind of patient needs a new
   `if` in `WardDay`, the data model is wrong, not the patient.
+- **A ward is five SLOTS, not five people, and `bed` is the slot id.** Several
+  authored patients share a bed number and exactly one of them is in it on any
+  given night, drawn as a pure function of the career seed. This exists because
+  a career is nine nights and the second one had no game in it — you remembered
+  which bed was genuinely ill, and the whole investigation layer became a
+  formality. Candidates for a slot MUST have the same `tier` and the same
+  `truly_well` as each other; the data check enforces it, and it is what stops a
+  draw producing a ward with no honest hold or a different economy. Seed 0 is
+  the canonical ward and is what every test and every authored measurement
+  plays — `setup()` pins it.
+- **Anything seeded gets its distribution counted, not eyeballed.** The draw has
+  been broken twice in a way that dealt the same two games forever while looking
+  perfect in the game, the tests and the data check: once because `hash ^ seed`
+  only mixes at the bottom bit (which is the only bit that matters when a slot
+  has two candidates), once because Godot's String `hash()` does not spread into
+  that bit either. Also: the textbook splitmix64 constants do NOT fit in a
+  signed 64-bit int and GDScript mangles the literal rather than wrapping it.
+  `tests/probe/draws_run.gd` counts distinct wards over two thousand seeds.
 
 ## Testing philosophy
 

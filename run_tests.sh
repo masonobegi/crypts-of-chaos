@@ -49,11 +49,20 @@ SMOKE=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/playtest_run.gd 2>&1 | grep -vE "$NOISE"
 PLAY=${PIPESTATUS[0]}
 
-# The authored content, which the property tests do not touch: fifteen people
-# across three wards, every field a system will silently default if it is
+# The authored content, which the property tests do not touch: every person on
+# every ward, drawn or not, every field a system will silently default if it is
 # missing, and the one inequality every ward has to satisfy.
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/data_run.gd 2>&1 | grep -vE "$NOISE"
 DATA=${PIPESTATUS[0]}
+
+# EVERY WARD A CAREER CAN DEAL, played honestly. A ward is a draw from a pool
+# now, so the game can deal a board nobody has ever looked at; this walks all of
+# them and asserts an honest day is never a disaster and always covers the
+# night. It also counts distinct wards across two thousand seeds, because the
+# draw has twice been broken in a way that dealt the same two games forever and
+# looked perfect from everywhere else.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/draws_run.gd 2>&1 | grep -vE "$NOISE"
+DRAWS=${PIPESTATUS[0]}
 
 # And finally the one route no other harness takes: the real entry point.
 # Everything above instantiates Game.tscn directly, which skips Boot and the
@@ -63,8 +72,8 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA boot=$BOOT)" >&2
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$DRAWS" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA draws=$DRAWS boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

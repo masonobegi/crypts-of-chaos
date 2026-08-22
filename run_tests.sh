@@ -49,6 +49,12 @@ SMOKE=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/playtest_run.gd 2>&1 | grep -vE "$NOISE"
 PLAY=${PIPESTATUS[0]}
 
+# The authored content, which the property tests do not touch: fifteen people
+# across three wards, every field a system will silently default if it is
+# missing, and the one inequality every ward has to satisfy.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/data_run.gd 2>&1 | grep -vE "$NOISE"
+DATA=${PIPESTATUS[0]}
+
 # And finally the one route no other harness takes: the real entry point.
 # Everything above instantiates Game.tscn directly, which skips Boot and the
 # main menu entirely — the gap that hid both "the game is unplayable from the
@@ -57,8 +63,8 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY boot=$BOOT)" >&2
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

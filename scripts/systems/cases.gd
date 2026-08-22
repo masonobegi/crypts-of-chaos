@@ -148,6 +148,7 @@ const DAY_ONE := [
 		## the whole design wanted and did not have: kindness that needs
 		## paperwork rather than kindness that gets you audited.
 		"no_care_at_home": true,
+		"social_reason": "No care at home. Daughter works nights. Awaiting social work.",
 	},
 	{
 		"id": "brennan", "name": "Hal Brennan", "age": 39, "bed": 3,
@@ -228,7 +229,7 @@ const DAY_ONE := [
 		"evening": "I've missed the whole day. I did say.",
 		"pressed": "Is there a form? There's usually a form.",
 		"on_your_note": "It says here I've had a recurrence. I haven't had a recurrence.",
-		"note": "",
+		"note": "Nothing to talk to. The one thing about her is on her file.",
 		## The trap. This is in her file and nowhere else — the player only finds
 		## it by opening the record and reading it. The one that looks free is
 		## the one somebody is already looking at.

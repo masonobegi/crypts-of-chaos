@@ -690,3 +690,36 @@ func test_the_patient_who_reads_her_own_notes() -> void:
 		"writing a symptom into the notes of somebody who reads them is a finding")
 	w.queue_free()
 	GameState.day = 1
+
+## THE SECOND WARD'S PREMISE, pinned. Peter Lomax is not well, and every
+## instrument that produces a piece of paper says he is. If the rounds announce
+## him — as they did, at ten o'clock, before the player had left the office —
+## then going to look at anybody is pointless and the examination is decoration.
+func test_the_paperwork_cannot_find_him() -> void:
+	var w := _day_two()
+	w.advance_to(19 * 60)                  ## every round of the day has happened
+	for e in w.records.for_patient("lomax"):
+		t.ok(not e.supports_stay(),
+			"nothing the ward writes about him says he should stay (%s)" % e.text)
+	w.advance_to(11 * 60)
+	w.nurse_check("lomax")
+	var nurse_said_stay := false
+	for e in w.records.for_patient("lomax"):
+		if e.author == ChartEntry.Author.NURSE and e.supports_stay():
+			nurse_said_stay = true
+	t.ok(not nurse_said_stay, "asking Adeyemi to review him does not find it either — she scores him")
+	var o := w.order_test("lomax", "bloods")
+	var r := w.resolve_test(o)
+	t.eq(int(r.claim), int(ChartEntry.Claim.RESULT_NORMAL),
+		"and his bloods come back normal, because they would")
+	w.queue_free()
+
+	# ...and the two verbs that put somebody in front of him DO find it.
+	var seen := _day_two()
+	t.ok(seen.examine("lomax").length() > 20, "your own examination finds it")
+	seen.advance_to(11 * 60 + 30)
+	var peer := seen.ask_colleague("lomax")
+	t.ok(peer != null and peer.supports_stay(),
+		"and so does the registrar, because he sits down with him")
+	seen.queue_free()
+	GameState.day = 1

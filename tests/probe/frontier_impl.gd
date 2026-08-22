@@ -13,7 +13,7 @@ var A = ReviewSystem.Answer
 ## The justifications, and the minute each is performed at. 17:30 is ninety
 ## minutes clear of the 16:00 and 19:00 rounds; 19:00 is on top of one.
 const JUSTIFY := ["nothing", "gap_note", "round_note", "backdate", "lead",
-	"nurse", "test_late", "social"]
+	"nurse", "test_late", "social", "examine", "colleague", "colleague_note"]
 
 func _day() -> WardDay:
 	# Including the debt. A search whose later rows owe more than its earlier
@@ -23,6 +23,7 @@ func _day() -> WardDay:
 	GameState.set_flag("watched", false)
 	GameState.set_flag("auditor_present", false)
 	GameState.minute_of_day = 8 * 60
+	# NOT the day. `_search` owns which ward this is.
 	var w := WardDay.new(); tree.root.add_child(w); w.start(); return w
 
 func _justify(w: WardDay, pid: String, how: String) -> void:
@@ -53,6 +54,18 @@ func _justify(w: WardDay, pid: String, how: String) -> void:
 		"social":
 			w.advance_to(17 * 60 + 20)
 			w.write_entry(pid, C.SOCIAL, "No care at home. Awaiting social work.", 17 * 60 + 18)
+		## THE TWO NEW VERBS, and the obvious abuse of the second one: ask the
+		## registrar and then write over him if you do not like the answer.
+		"examine":
+			w.examine(pid)
+		"colleague":
+			w.advance_to(11 * 60 + 10)
+			w.ask_colleague(pid)
+		"colleague_note":
+			w.advance_to(11 * 60 + 10)
+			w.ask_colleague(pid)
+			w.advance_to(17 * 60 + 20)
+			w.write_entry(pid, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 
 func _answer_policy(name: String) -> Callable:
 	match name:
@@ -67,8 +80,13 @@ func _answer_policy(name: String) -> Callable:
 
 func run() -> void:
 	GameState.start_new_career(31337)
+	for day in [1, 2]:
+		_search(day)
+
+func _search(day: int) -> void:
+	GameState.day = day
 	var ids: Array = []
-	for c in Cases.roster(): ids.append(String(c["id"]))
+	for c in Cases.roster(day): ids.append(String(c["id"]))
 	var rows: Array = []
 	# Every non-empty subset of the five beds, up to four held (holding all
 	# five earns less than holding fewer — the admissions cover it).
@@ -81,14 +99,19 @@ func run() -> void:
 		# proving a piece of arithmetic that has its own test.
 		if held.size() > 3:
 			continue
-		# One justification style applied to every held bed, which is what a
-		# player converging on a strategy actually does.
+		# One justification style applied to every held bed — and then the same
+		# again MIXED, which is what somebody who has understood the game does:
+		# get a peer behind the bed that deserves one and write your own note on
+		# the bed that does not. A search that only applies one verb to the
+		# whole ward cannot see that strategy at all, and on the second ward it
+		# is the entire middle of the risk curve.
 		for how in JUSTIFY:
 			for pol in ["stand", "best"]:
-				rows.append(_run(held, how, pol))
+				rows.append(_run(held, how, pol, false))
+				rows.append(_run(held, how, pol, true))
 	rows.sort_custom(func(a, b): return int(a["cash"]) > int(b["cash"]))
 
-	print("\n=== ADVERSARIAL FRONTIER — %d strategies ===" % rows.size())
+	print("\n=== ADVERSARIAL FRONTIER — WARD %d — %d strategies ===" % [day, rows.size()])
 	# The pareto front: for each verdict, the most money anybody made reaching it.
 	var best := {}
 	for r in rows:
@@ -123,15 +146,19 @@ func run() -> void:
 		top_clean = false
 	print("  can the top figure be reached signed off? %s" % ("YES — DOMINANT STRATEGY" if top_clean else "no"))
 
-func _run(held: Array, how: String, pol: String) -> Dictionary:
+func _run(held: Array, how: String, pol: String, mixed := false) -> Dictionary:
 	var w := _day()
 	for c in Cases.roster():
 		var pid := String(c["id"])
 		if held.has(pid):
-			# Ivo Marchetti is genuinely unwell and the night round already says
-			# so; justifying him further is a different act from justifying
-			# somebody who is well, so the search does both.
-			_justify(w, pid, how)
+			# In MIXED mode the player has walked round and knows who is
+			# genuinely unwell, and spends the registrar on those beds — which
+			# is knowledge the examination verb genuinely buys, not cheating.
+			var verb := how
+			if mixed and not bool(c.get("truly_well", true)):
+				w.examine(pid)
+				verb = "colleague"
+			_justify(w, pid, verb)
 			w.set_disposition(pid, "hold")
 		else:
 			w.set_disposition(pid, "discharge")
@@ -145,7 +172,7 @@ func _run(held: Array, how: String, pol: String) -> Dictionary:
 	var o := rv.outcome()
 	var row := {
 		"cash": int(res["cash"]), "verdict": String(o["verdict"]),
-		"held": held, "how": how, "pol": pol,
+		"held": held, "how": ("mixed+" + how) if mixed else how, "pol": pol,
 		"indef": int(o["indefensible"]), "solo": int(o["solo"]),
 	}
 	# free(), not queue_free(): a --script main loop runs no frames, so a queued

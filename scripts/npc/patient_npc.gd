@@ -85,10 +85,18 @@ func _hold_bed_pose(_delta: float) -> void:
 	if not in_chair:
 		return
 	global_position = bed.mount_point()
-	# Facing the FOOT of the bed, which is the door. A patient lying with their
-	# back to the way you come in cannot look at you, and being looked at when
-	# you walk in is most of what this game is about.
-	rotation.y = bed.rotation.y + PI
+	# FACING THE FOOT OF THE BED, WHICH IS THE DOOR, and the bed's own yaw is
+	# already that direction — no half turn.
+	#
+	# This said `+ PI` for four iterations and it put every patient on the ward
+	# face to the wall. The reasoning behind the extra half turn was that a
+	# Godot model faces -Z, so facing the bed's local +Z needs turning round;
+	# the bodies here are built facing +Z, so the correction was the error. It
+	# only ever showed up by looking: the harness that photographs a patient
+	# from the front was photographing the back of Sam Oduya's head, and nothing
+	# that reads state could tell. Being looked at when you walk in is most of
+	# what this game is about, and nobody had been.
+	rotation.y = bed.rotation.y
 	velocity = Vector3.ZERO
 
 ## A patient in their chair does not budge for a doctor squeezing past — the

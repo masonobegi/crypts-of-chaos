@@ -26,8 +26,10 @@ const SHOTS := [
 	["10_morning", "ui:morning"],
 	["11_patient", "ui:patient"],
 	["12_chart", "ui:chart"],
-	["13_write", "ui:write"],
-	["14_review", "ui:review"],
+	["13_board", "ui:board"],
+	["14_write", "ui:write"],
+	["15_ward_two", "ui:ward_two"],
+	["16_review", "ui:review"],
 ]
 
 func start() -> void:
@@ -57,7 +59,17 @@ func tick() -> bool:
 
 	if typeof(shot[1]) == TYPE_STRING and String(shot[1]).begins_with("ui:"):
 		if settle == 0:
+			# A CARD OVER A ROOM, NOT A CARD OVER THE SKY. Several stages move
+			# the player to make a point — into the bay to be witnessed, into
+			# the station to reach the board — and the camera went with them,
+			# straight into the plaster. Point it down the ward first; the card
+			# is the subject but the room behind it is why any of this is 3D.
 			_stage_ui(String(shot[1]).substr(3), w)
+			# AFTER staging, not before: several stages move the player to make
+			# their point — into the bay to be witnessed, into the station to
+			# reach the board — and the camera is a child of the player, so
+			# pointing it first just carried it into the plaster with them.
+			_look_down_the_ward(cam)
 		settle += 1
 		if settle < 5:
 			return false
@@ -82,6 +94,15 @@ func tick() -> bool:
 	_save(String(shot[0]))
 	index += 1
 	return false
+
+## From the ward door, along the row of beds. The one view that shows the game
+## is a place and not a spreadsheet.
+func _look_down_the_ward(cam: Camera3D) -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		return
+	cam.global_position = h.door_point("ward") + Vector3(-4.5, 0.0, 1.6)
+	cam.look_at(h.door_point("ward") + Vector3(4.0, -0.35, 6.5), Vector3.UP)
 
 func _stage_ui(which: String, w) -> void:
 	match which:
@@ -112,7 +133,37 @@ func _stage_ui(which: String, w) -> void:
 				ui.current.set("_stated", 18 * 60 + 35)
 				if ui.current.has_method("rebuild"):
 					ui.current.rebuild()
+		"board":
+			# The one screen that is a place. Stand in the station to read it.
+			var pl2 = tree.get_first_node_in_group("player")
+			var h2 = tree.get_first_node_in_group("hospital")
+			if pl2 != null and h2 != null:
+				pl2.global_position = h2.point_in("station") + Vector3(0, 0.1, 0)
+			EventBus.request_ui.emit("board", {})
+		"ward_two":
+			# TOMORROW. A different five people and a different problem, which is
+			# the whole point of there being a second one.
+			GameState.day = 2
+			GameState.start_day()
+			if w != null:
+				w.start()
+				var ps2 = tree.get_first_node_in_group("patient_system")
+				if ps2 != null and ps2.has_method("reset_day"):
+					ps2.reset_day()
+				w.examine("lomax")
+			EventBus.request_ui.emit("patient", {"patient_id": "lomax"})
 		"review":
+			# Back to the first ward: this stage names its patients, and the
+			# ward_two stage before it left the day on the second one.
+			GameState.day = 1
+			if w != null:
+				w.start()
+				var ps3 = tree.get_first_node_in_group("patient_system")
+				if ps3 != null and ps3.has_method("reset_day"):
+					ps3.reset_day()
+				w.advance_to(19 * 60 + 5)
+				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+					"Reports transient dizziness on standing.", 18 * 60 + 35)
 			if w != null:
 				# The chart stage already left a contradiction in Sam Oduya's
 				# notes; hold him and the reviewer has something to ask about,

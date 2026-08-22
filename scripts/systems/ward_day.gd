@@ -264,6 +264,26 @@ func examination_of(pid: String) -> String:
 func has_examined(pid: String) -> bool:
 	return bool(state.get(pid, {}).get("examined", false))
 
+## WHAT A DOCUMENT WOULD SAY, as against what is true.
+##
+## THE SECOND WARD'S WHOLE PREMISE. Peter Lomax is not well, and every
+## instrument that produces a piece of paper says he is: his CIWA is scored at
+## fixed times by somebody working through a list, his bloods are unremarkable,
+## and he answers the questions. The tremor is intermittent and he is a man who
+## says "I'm all right" to anyone who asks.
+##
+## Without this the rounds simply announced him — Adeyemi wrote "still not right"
+## at ten o'clock and the bed was corroborated before the player had got out of
+## the office, which made going to look at anybody pointless. A patient flagged
+## `only_visible_in_person` reads as well to the ROUNDS, the NURSE and the
+## MACHINE, and as what he is to the two verbs that involve somebody sitting
+## down in front of him: your own examination, and the registrar's.
+static func reads_as_well(pid: String) -> bool:
+	var c := Cases.by_id(pid)
+	if bool(c.get("only_visible_in_person", false)):
+		return true
+	return bool(c.get("truly_well", true))
+
 ## 6. ASK A COLLEAGUE.
 ##
 ## THE STRONGEST CORROBORATION IN THE GAME AND THE MOST DANGEROUS REQUEST.
@@ -333,7 +353,9 @@ func nurse_check(pid: String) -> ChartEntry:
 	var c := Cases.by_id(pid)
 	var st: Dictionary = state[pid]
 	st["nurse_checked"] = int(st["nurse_checked"]) + 1
-	var well: bool = bool(c.get("truly_well", true))
+	# She scores him. That is what a nurse review IS, and it is why it cannot
+	# find the man whose problem does not show up in a score.
+	var well: bool = reads_as_well(pid)
 	var e := ChartEntry.new()
 	e.patient_id = pid
 	e.author = ChartEntry.Author.NURSE
@@ -379,7 +401,7 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 ## The result lands later. It does not care what the chart says.
 func resolve_test(order: ChartEntry) -> ChartEntry:
 	var c := Cases.by_id(order.patient_id)
-	var well: bool = bool(c.get("truly_well", true))
+	var well: bool = reads_as_well(order.patient_id)
 	var r := ChartEntry.new()
 	r.patient_id = order.patient_id
 	r.author = ChartEntry.Author.MACHINE
@@ -494,7 +516,11 @@ func _advance_locally(m: int) -> void:
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
 	_self_discharges(from)
-	if not ruth_has_been and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
+	# ...and only if her mother is in one of the beds. Ruth is Dot Kerrigan's
+	# daughter, and she was announcing herself at seven o'clock on the second
+	# ward, where there is no Dot Kerrigan and never has been.
+	if not ruth_has_been and state.has("kerrigan") \
+			and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
 		ruth_has_been = true
 		EventBus.toast.emit(
 			"Ruth Kerrigan is here to see her mother. She has brought a flask.", "info")
@@ -574,7 +600,7 @@ func _routine_round(at: int) -> void:
 		e.stated_minute = at
 		e.written_minute = at + 4
 		e.terminal_id = TERMINAL_STATION
-		if bool(c.get("truly_well", true)):
+		if reads_as_well(pid):
 			e.claim = ChartEntry.Claim.SETTLED
 			e.text = "Round: comfortable, no concerns."
 		else:

@@ -22,7 +22,10 @@ func _build() -> void:
 	# third row in the money panel: it is an attribute of the person, it never
 	# changes during the day, and it was costing the fifth verb its place on
 	# the screen.
-	var v := card_shell(660, 700, String(c["name"]).to_upper(),
+	# WIDER, because six verbs is a lot of card. At 660 in a 1600-wide window
+	# every subtitle wrapped onto a second line and the last two verbs sat
+	# below the fold; the window has the room and the card was not using it.
+	var v := card_shell(820, 760, String(c["name"]).to_upper(),
 		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
 			Cases.tier_name(int(c["tier"]))])
 
@@ -34,21 +37,25 @@ func _build() -> void:
 	# not labelled — two numbers, and the player can do what they like with them.
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.MONEY)
 	var mv := UIKit.vbox(2)
-	mv.add_child(UIKit.row("Send them home", "+%s once" % UIKit.money_str(Cases.DISCHARGE_FEE), UIKit.INK_DIM))
-	mv.add_child(UIKit.row("Every further night", "+%s to you"
-		% UIKit.money_str(Cases.night_fee(int(c["tier"]))), UIKit.MONEY))
+	if disposition == "":
+		mv.add_child(UIKit.row("Send them home",
+			"+%s once" % UIKit.money_str(Cases.DISCHARGE_FEE), UIKit.INK_DIM))
+	mv.add_child(UIKit.row(
+		"Every further night" if disposition != "discharge" else "You sent them home",
+		"+%s to you" % UIKit.money_str(Cases.night_fee(int(c["tier"]))
+			if disposition != "discharge" else Cases.DISCHARGE_FEE), UIKit.MONEY))
 	m.add_child(mv)
 	v.add_child(m)
 
 	v.add_child(UIKit.rule())
-	var acts := UIKit.vbox(6)
+	var acts := UIKit.vbox(4)
 
 	acts.add_child(_act("Read the chart",
-		"Everything written about them today, and when it was written.",
+		"Everything written today, and when it was written.",
 		func(): _go("chart")))
 
 	acts.add_child(_act("Ask how they have been",
-		"An open question. Whatever they say goes no further unless you write it down.",
+		"Whatever they say goes no further unless you write it down.",
 		func():
 			_said = String(c["opening"])
 			rebuild()))
@@ -58,8 +65,7 @@ func _build() -> void:
 	# there. Peter Lomax on the second ward is the whole argument for it: every
 	# document about him says improving, and he is not.
 	if w.has_examined(_pid):
-		acts.add_child(_act("You have examined them",
-			String(w.examination_of(_pid)), func(): pass))
+		acts.add_child(_note("You examined them.", String(w.examination_of(_pid))))
 	else:
 		acts.add_child(_act("Examine them",
 			"Fifteen minutes, curtains round. It goes in no notes — but you will know.",
@@ -71,7 +77,7 @@ func _build() -> void:
 	# dangerous request in the game: he reads the whole chart before he writes.
 	if WardDay.colleague_available(w.minute):
 		acts.add_child(_act("Ask %s for a second opinion" % WardDay.COLLEAGUE,
-			"A peer, in his own name. He reads everything on the chart first.",
+			"A peer, in his own name. He reads the whole chart first.",
 			func():
 				var e = w.ask_colleague(_pid)
 				_said = ("\"Agreed. I wouldn't send him anywhere today.\""
@@ -80,15 +86,14 @@ func _build() -> void:
 				rebuild()))
 	else:
 		var nxt: int = WardDay.colleague_next(w.minute)
-		acts.add_child(_act("%s is on the other ward" % WardDay.COLLEAGUE,
+		acts.add_child(_note("%s is on the other ward." % WardDay.COLLEAGUE,
 			("Back at %s." % ChartEntry._hhmm(nxt)) if nxt > 0
-				else "Gone for the day. You are the doctor on this ward.",
-			func(): pass))
+				else "Gone for the day. You are the doctor on this ward."))
 
 	# The leading question. Phrased as a clinical enquiry, because that is what
 	# it looks like from the outside — and from the inside, on a good day.
 	acts.add_child(_act("Ask whether they have felt faint at all",
-		"Some people will agree with anything. Not all of them remember agreeing.",
+		"Some people agree with anything. Not all of them remember agreeing.",
 		func():
 			var e = w.ask_patient(_pid, "feeling faint this evening")
 			_said = ("\"...Now you mention it. Maybe. A bit.\"" if e != null
@@ -96,7 +101,7 @@ func _build() -> void:
 			rebuild()))
 
 	acts.add_child(_act("Ask Adeyemi to review them",
-		"She writes what she finds, in her own name. That is the point of asking.",
+		"She writes what she finds, in her own name. That is the point.",
 		func():
 			w.nurse_check(_pid)
 			_said = "\"I'll look in on him now, doctor.\""
@@ -130,8 +135,20 @@ func _build() -> void:
 	foot.add_child(UIKit.button("Leave them be", close))
 	card_footer(foot)
 
+## A VERB YOU CANNOT USE IS NOT A BUTTON. Six full-height panels — a title, a
+## subtitle and a border each — put a third of this card below the fold, and the
+## third that went was the half you came here for. Anything that is unavailable
+## or already done collapses to one dim line, which is all it has to say.
+func _note(title: String, sub: String) -> Control:
+	var col := UIKit.vbox(0)
+	col.add_child(UIKit.label(title, 14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT))
+	if sub != "":
+		col.add_child(UIKit.label("   " + sub, 12, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+	return col
+
 func _act(title: String, sub: String, cb: Callable) -> Control:
-	var p := UIKit.panel(UIKit.PANEL_LIGHT, 3)
+	var p := UIKit.panel(UIKit.PANEL_LIGHT, 2)
 	var col := UIKit.vbox(1)
 	var b := UIKit.button(title, cb, UIKit.PANEL_LIGHT)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT

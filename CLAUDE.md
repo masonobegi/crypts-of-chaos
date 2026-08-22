@@ -158,7 +158,7 @@ change — five real bugs have been caught only by looking at the game.
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
 | overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
-| `tests/probe/frontier_run.gd` | dominant strategies. Four hundred plays — every subset of beds up to three, crossed with every way of justifying a hold, crossed with how you answer in the room — reported as the most money made at each verdict. Slow (minutes), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules or the bed audit. The property it exists to defend: **the top figure must not be reachable signed off.** |
+| `tests/probe/frontier_run.gd` | dominant strategies. Two thousand two hundred plays — both wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
 
 `playtest_run.gd` exits non-zero when a success criterion regresses, so a
 design inversion fails `run_tests.sh` rather than printing a report nobody
@@ -184,3 +184,24 @@ and say in the comment *why* the obvious thing was wrong.
     measurements belong in `screenshots.sh`, which runs a real 1600x900 window
     under Xvfb. Setting `tree.root.size` does not help — the dummy display
     driver ignores it.
+
+16. **A harness that reuses `GameState` must clear the whole carry, not part of
+    it.** The playtest cleared `remembered_beds` between runs and left
+    `carried_debt` alone, so from the first strategy that came up short every
+    later one owed Vinnie more than the last — three successive audits reported
+    a risk/reward frontier that depended on the order of the list, and "one
+    well-timed lie" was recorded as worth $150 when it is worth $850.
+    `_clean_slate()` clears all of it and `_day()` fails loudly if a run starts
+    owing anything but `Cases.DEBT_DUE`. The one measurement that WANTS a carry
+    (criterion 6) builds its ward through `_carried_day()` instead.
+17. **`Cases.roster()` is a function of `GameState.day`, so anything that
+    changes the day mid-run must change it back at the right moment.** Setting
+    it back before `end_day()` meant the force-discharge loop walked the first
+    ward's roster while the `WardDay` still held the second ward's patients, and
+    every lookup errored. Reset after the review, not after the play.
+18. **What a document says is not what is true, and the second ward is built on
+    the gap.** `WardDay.reads_as_well()` is what the rounds, a nurse review and
+    a test report; `truly_well` is what an examination and the registrar find.
+    A patient marked `only_visible_in_person` differs between the two. Without
+    it Adeyemi's ten o'clock round simply announced Peter Lomax and there was no
+    reason to go and look at anybody.

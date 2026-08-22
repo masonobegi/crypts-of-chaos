@@ -63,6 +63,9 @@ func tick() -> bool:
 			stage = "close"
 		"close":
 			_check_the_day_closes()
+			stage = "tomorrow"
+		"tomorrow":
+			_check_tomorrow_is_a_different_ward()
 			stage = "chain"
 		"chain":
 			if _check_the_screens_chain():
@@ -356,6 +359,45 @@ func _check_the_screens_chain() -> bool:
 			"remembered": PackedStringArray(["oduya"])}
 	EventBus.request_ui.emit(String(_chain[_chain_at]), ctx)
 	return false
+
+## TOMORROW IS FIVE DIFFERENT PEOPLE, IN THE BEDS.
+##
+## Day two opened with Hal Brennan's name floating over a bed belonging to
+## Tallulah Ferreira: the roster changed, the WardDay changed, and the bodies in
+## the room did not. Nothing above would have caught it — every other harness
+## reads `Cases` and `WardDay` and never looks at the ward.
+func _check_tomorrow_is_a_different_ward() -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		_fail("no patient system")
+		return
+	var before := {}
+	for p in ps.active():
+		before[p.id] = p.display_name
+	GameState.day = 2
+	var w = tree.get_first_node_in_group("ward_day")
+	if w != null:
+		w.start()
+	ps.reset_day()
+	var names := {}
+	var beds := {}
+	for p in ps.active():
+		names[p.id] = p.display_name
+		beds[p.bed_index] = true
+		_ok(not before.has(p.id), "%s was not on yesterday's ward" % p.display_name)
+		var b = ps.get_body(p.id)
+		_ok(b != null and is_instance_valid(b) and b.is_inside_tree(),
+			"%s has a body in the room" % p.display_name)
+	_ok(names.size() == Cases.roster().size(),
+		"tomorrow has %d people on it" % Cases.roster().size())
+	_ok(beds.size() == Cases.BEDS, "in %d different beds" % Cases.BEDS)
+	for id in before:
+		_ok(ps.get_body(id) == null,
+			"and yesterday's %s has gone home, body and all" % before[id])
+	GameState.day = 1
+	if w != null:
+		w.start()
+	ps.reset_day()
 
 func _collect_buttons(n: Node, out: Array) -> void:
 	if n is Button:

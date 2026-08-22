@@ -74,15 +74,46 @@ func _bed(index: int):
 ## somebody with the same name and the same problem, because a vertical slice
 ## has one authored roster and the point of a second day is the STATE you carry
 ## into it, not new content.
+## TOMORROW IS FIVE DIFFERENT PEOPLE.
+##
+## This woke yesterday's patients up and marked them a day older, which was
+## right while there was one authored ward and wrong the moment there were two:
+## day two opened with Hal Brennan's name floating over a bed belonging to
+## Tallulah Ferreira, because the bodies were never rebuilt. Anybody still on
+## the ward whose id is not on today's roster has gone home; anybody on today's
+## roster who is not in a bed needs one.
 func reset_day() -> void:
-	for id in patients:
-		var p: Patient = patients[id]
-		p.discharged = false
-		p.days_admitted += 1.0
-	for id in bodies:
-		var b = get_body(id)
-		if b != null and b.has_method("wake_up"):
-			b.wake_up("morning")
+	var wanted := {}
+	for c in Cases.roster():
+		wanted[String(c["id"])] = c
+
+	# Yesterday's ward goes home, bodies and all.
+	for id in patients.keys():
+		if wanted.has(id):
+			continue
+		var old_body = get_body(id)
+		if old_body != null:
+			bodies.erase(id)
+			old_body.queue_free()
+		patients.erase(id)
+
+	var sus = get_tree().get_first_node_in_group("suspicion_system")
+	for id in wanted:
+		if patients.has(id) and get_body(id) != null:
+			var p: Patient = patients[id]
+			p.discharged = false
+			p.days_admitted += 1.0
+			var b = get_body(id)
+			if b != null and b.has_method("wake_up"):
+				b.wake_up("morning")
+			continue
+		# New face, new bed.
+		var np := Patient.from_case(wanted[id])
+		np.archetype = _archetype_for(wanted[id])
+		np.mind = DB.make_mind(np.id, np.display_name, "patient", np.archetype)
+		patients[np.id] = np
+		_spawn(np, sus)
+	Log.i("ward re-populated for day %d: %d patients" % [GameState.day, patients.size()], "Ward")
 
 func get_body(id: String):
 	var b = bodies.get(id, null)

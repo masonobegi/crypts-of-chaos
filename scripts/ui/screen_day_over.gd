@@ -90,6 +90,11 @@ func _carry(verdict: String, short: bool) -> void:
 	var w = ward()
 	if w != null:
 		w.start()
+	# THE HUD STILL SAID DAY ONE ON THE SECOND WARD. `day` is a plain field;
+	# the only thing that tells anybody it changed is `start_day`, and nothing
+	# on this path called it — so the corner of the screen was a day behind for
+	# the whole of every day after the first, and the clock never restarted.
+	GameState.start_day()
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	if ps != null and ps.has_method("reset_day"):
 		ps.reset_day()

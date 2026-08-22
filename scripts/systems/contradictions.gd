@@ -89,6 +89,17 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		if f.patient_id != "" and bool(truth.get(f.patient_id, {}).get("flagged", false)):
 			f.severity = minf(0.98, f.severity * 1.6)
 			f.axis = "%s (file already under review)" % f.axis
+
+	# AND SO IS A DOCTOR. The fourth time she raises the same kind of thing with
+	# the same person, it stops being a discrepancy and starts being a habit —
+	# and unlike a note on a patient's file, this survives the ward changing
+	# overnight, which is the only reason it works at all.
+	var rec := DoctorRecord.load_from_state()
+	for f in out:
+		var w := rec.weight_for(f.kind)
+		if w > 1.0:
+			f.severity = minf(0.98, f.severity * w)
+			f.axis = "%s (and not for the first time)" % f.axis
 	_compound(out)
 	out.sort_custom(func(a, b): return a.severity > b.severity)
 	return out

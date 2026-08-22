@@ -35,7 +35,12 @@ var _beds: Array = []             ## Contradictions.BedAudit, one per billed nig
 var _upgraded: Dictionary = {}    ## beds the player successfully explained
 var _abandoned: Dictionary = {}   ## beds the player gave up on, out loud
 
+## What she already knows about you before she opens the folder. Loaded once per
+## review, so the opening line and the escalation both read off one snapshot.
+var record: DoctorRecord = null
+
 func begin(all_findings: Array, entries: Array = [], truth: Dictionary = {}) -> void:
+	record = DoctorRecord.load_from_state()
 	_beds = Contradictions.audit_beds(entries, truth, all_findings)
 	_upgraded.clear()
 	_abandoned.clear()
@@ -284,15 +289,15 @@ func outcome() -> Dictionary:
 		else (solo[0] if not solo.is_empty() else null)
 	var because := "Every bed you billed had a reason in it that somebody else had seen."
 	if worst_bed != null:
-		var who := String(Cases.by_id(worst_bed.patient_id).get("name", worst_bed.patient_id))
+		var who := Cases.name_of(worst_bed.patient_id)
 		because = "%s stayed the night and %s." % [who, worst_bed.why]
 
-	# SHE REMEMBERS THE BED, NOT THE DAY. Every bed she could not corroborate
-	# goes on that patient's file whether or not the day as a whole was worth
-	# raising. Without this, "noted" was free: one well-timed fabrication a day
-	# doubled the takings, carried nothing into tomorrow, and was therefore
-	# strictly better than honesty forever — the exact dominant strategy the
-	# per-bed audit was built to remove, reappearing one level up.
+	# SHE REMEMBERS THE DOCTOR, NOT THE BED. This used to return the patients
+	# whose beds she could not stand up, and tomorrow read their files harder —
+	# which was measured, worked, and was completely dead in a career, because
+	# the wards alternate and those people are not on the ward tomorrow. What
+	# accumulates is the person she keeps having to ask. Still returned by name
+	# so the end-of-day screen can say who tonight's were.
 	var remembered := PackedStringArray()
 	for b in beds:
 		if b.indefensible() or b.state == Contradictions.Defence.SOLO:
@@ -307,7 +312,22 @@ func outcome() -> Dictionary:
 		"transcript": transcript,
 		"created": extra.size(),
 		"remembered": remembered,
+		## What she said before she said anything else, and empty on a clean
+		## record — for the first few days she has no reason to open with
+		## anything at all.
+		"opening": record.opening_line() if record != null else "",
 	}
+
+## THE ONE PLACE THE NIGHT GOES ON YOUR RECORD.
+##
+## Separate from `outcome()`, which several screens call and which must stay a
+## pure read — a counter that incremented every time somebody looked at the
+## verdict would have made the escalation depend on how many times the player
+## opened a card.
+func commit(findings_raised: Array) -> void:
+	if record == null:
+		record = DoctorRecord.load_from_state()
+	record.record_night(findings_raised, String(outcome()["verdict"]))
 
 ## Her closing line. Written to tell the player what happened, not to score them.
 static func closing(verdict: String) -> String:

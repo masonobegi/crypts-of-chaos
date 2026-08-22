@@ -7,6 +7,7 @@ extends ScreenBase
 ## for themselves in the first ten minutes has had the good version of it.
 
 func _build() -> void:
+	var w = get_tree().get_first_node_in_group("ward_day")
 	var v := card_shell(720, 640, "WARD C",
 		"%s  ·  five beds  ·  you are the only doctor on" % GameState.time_string())
 
@@ -33,9 +34,14 @@ func _build() -> void:
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD)
 	var mv := UIKit.vbox(3)
 	mv.add_child(UIKit.label("THIS EVENING", 11, UIKit.INK_DIM))
+	# THE NUMBERS THE DAY ACTUALLY STARTS WITH, not the constants it usually
+	# starts with. After a short night both of these are wrong by whatever
+	# Vinnie did not get, and this card is the only place the player is told
+	# what they owe before they start making decisions about it.
 	mv.add_child(UIKit.row("Vinnie, in person, at eight",
-		UIKit.money_str(Cases.DEBT_DUE), UIKit.BAD, 17))
-	mv.add_child(UIKit.row("In your account", UIKit.money_str(Cases.STARTING_CASH),
+		UIKit.money_str(w.debt_tonight if w != null else Cases.DEBT_DUE), UIKit.BAD, 17))
+	mv.add_child(UIKit.row("In your account",
+		UIKit.money_str(w.cash if w != null else Cases.STARTING_CASH),
 		UIKit.MONEY, 17))
 	mv.add_child(UIKit.label(
 		"A discharge pays %s. A night in a bed pays more, and the difference depends on who is paying for the bed."
@@ -48,7 +54,7 @@ func _build() -> void:
 		GameState.start_day()
 		# The day owns the objective from here: it changes as beds are decided,
 		# and it carries a place as well as a sentence.
-		var w = get_tree().get_first_node_in_group("ward_day")
+		# `w` is the ward this whole card is describing, taken at the top.
 		if w != null:
 			w._update_objective()
 		close()))

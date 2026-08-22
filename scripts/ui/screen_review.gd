@@ -8,6 +8,7 @@ extends ScreenBase
 var _rv: ReviewSystem = null
 var _last := ""
 var _done := false
+var _committed := false
 
 func _build() -> void:
 	var w = ward()
@@ -22,6 +23,16 @@ func _build() -> void:
 	var v := card_shell(780, 700, "HANDOVER",
 		"Sister Nkemelu has last night's folder")
 
+	# WHAT SHE ALREADY KNOWS ABOUT YOU, before she opens it. Blank for the first
+	# few days, which is the point — she has no reason to open with anything
+	# until there is a shape to open with.
+	var opener := String(_rv.record.opening_line()) if _rv.record != null else ""
+	if opener != "":
+		var pre := UIKit.panel(Color(0.30, 0.22, 0.16), 4, 1, UIKit.WARN)
+		pre.add_child(UIKit.label("\"%s\"" % opener, 15, UIKit.INK,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		v.add_child(pre)
+
 	if _done or _rv.finished():
 		_closing(v, w)
 		return
@@ -31,7 +42,7 @@ func _build() -> void:
 	# was about an unnamed patient and an unnamed line, and the most important
 	# screen in the game read as an abstraction — the player could answer five
 	# questions without once knowing which bed was being discussed.
-	var who := String(Cases.by_id(f.patient_id).get("name", ""))
+	var who := Cases.name_of(f.patient_id) if f.patient_id != "" else ""
 	v.add_child(UIKit.label("She turns to %s's folder."
 		% (who if who != "" else "the ward's notes"), 12, UIKit.INK_DIM))
 	v.add_child(UIKit.label("\"%s\"" % f.question, 18, UIKit.INK,
@@ -125,6 +136,23 @@ func _closing(v: VBoxContainer, w) -> void:
 	v.add_child(UIKit.label(String(o["because"]), 15, tint,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 
+	# HER RUNNING TALLY, in plain words. She is not hiding it and the player
+	# should be able to see the ladder they are climbing before the rung breaks.
+	if _rv.record != null:
+		var tally: Array = _rv.record.summary_lines()
+		if not tally.is_empty():
+			v.add_child(UIKit.rule())
+			v.add_child(UIKit.label("ON YOUR RECORD, SO FAR", 12, UIKit.INK_DIM))
+			for line in tally:
+				v.add_child(UIKit.label("· " + String(line), 13, UIKit.WARN,
+					HORIZONTAL_ALIGNMENT_LEFT, true))
+			if int(_rv.record.referrals) > 0:
+				v.add_child(UIKit.label(
+					"· %d referral%s. Three and the Board takes your licence."
+						% [_rv.record.referrals,
+							"" if _rv.record.referrals == 1 else "s"],
+					13, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
+
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("THE CONVERSATION", 12, UIKit.INK_DIM))
 	var box := UIKit.vbox(4)
@@ -139,6 +167,10 @@ func _closing(v: VBoxContainer, w) -> void:
 	# NOT wrapped in another scroll: card_shell already scrolls `body`, and a
 	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
 	v.add_child(box)
+	# The night goes on the record when she closes the folder, once.
+	if not _committed:
+		_committed = true
+		_rv.commit(w.review_findings())
 	card_footer(UIKit.button("Go home", func():
 		EventBus.request_ui.emit("day_over", {"verdict": verdict,
 			"remembered": o.get("remembered", PackedStringArray())})

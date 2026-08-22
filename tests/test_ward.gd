@@ -333,11 +333,16 @@ func test_failure_is_always_explicable() -> void:
 			"and every question she asked is on the record afterwards")
 	w.queue_free()
 
-## "Noted" used to be free. It has to cost something or one well-timed
-## fabrication a day is strictly better than honesty forever: +150 on the night
-## and nothing carried into the morning. What carries is the BED, by name.
-func test_a_bed_she_could_not_stand_up_goes_on_the_file() -> void:
-	GameState.set_flag("remembered_beds", PackedStringArray())
+## "NOTED" HAS TO COST SOMETHING, or one well-timed fabrication a night is
+## strictly better than honesty forever: +700 on the night and nothing carried.
+##
+## The first version of this carried the BED — a note on that patient's file,
+## read harder tomorrow. It was measured, it worked, and a probe that played a
+## week found it completely dead: the wards alternate, so the patient whose file
+## was marked is not on the ward tomorrow and the flag is overwritten before
+## they ever come back. What accumulates is the DOCTOR.
+func test_she_remembers_the_doctor_not_the_bed() -> void:
+	DoctorRecord.wipe()
 	var clean := _day()
 	clean.advance_to(17 * 60 + 30)
 	clean.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 25)
@@ -347,24 +352,47 @@ func test_a_bed_she_could_not_stand_up_goes_on_the_file() -> void:
 	rv.begin(clean.review_findings(), clean.records.entries, clean.review_truth())
 	while not rv.finished():
 		rv.answer(ReviewSystem.Answer.STAND_BY, clean.held_ids())
-	var remembered := PackedStringArray(rv.outcome()["remembered"])
+	rv.commit(clean.review_findings())
 	clean.queue_free()
 
-	t.ok(remembered.has("oduya"),
-		"the bed you held on nobody's word but your own is remembered by name")
+	var rec := DoctorRecord.load_from_state()
+	t.eq(rec.times("uncorroborated_stay"), 1,
+		"a bed nobody else saw a reason for goes on YOUR record")
+	t.eq(rec.nights, 1, "and the night is counted")
 
-	# Tomorrow, the identical play on the identical patient is read harder.
-	GameState.set_flag("remembered_beds", remembered)
-	var after := _day()
-	t.ok(after.is_flagged("oduya"), "and he opens tomorrow with a note on his file")
-	after.advance_to(17 * 60 + 30)
-	after.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 25)
-	after.set_disposition("oduya", "hold")
-	t.gt(_sev(after.review_findings()), first * 1.4,
-		"doing it to him twice costs meaningfully more the second time (%.2f then %.2f)"
-			% [first, _sev(after.review_findings())])
-	after.queue_free()
-	GameState.set_flag("remembered_beds", PackedStringArray())
+	# THE SAME PLAY ON A DIFFERENT WARD. This is the case the per-bed version
+	# could not handle at all: tomorrow is five other people.
+	GameState.day = 2
+	var tomorrow := _day()
+	tomorrow.advance_to(17 * 60 + 30)
+	tomorrow.write_entry("voss", ChartEntry.Claim.UNWELL, "Unsettled.", 17 * 60 + 25)
+	tomorrow.set_disposition("voss", "hold")
+	var second := 0.0
+	for f in tomorrow.review_findings():
+		if f.kind == "uncorroborated_stay":
+			second = f.severity
+	tomorrow.queue_free()
+	GameState.day = 1
+
+	t.gt(second, first * 0.99,
+		"and doing the same thing to somebody else tomorrow is read harder, not fresh (%.2f then %.2f)"
+			% [first, second])
+	DoctorRecord.wipe()
+
+## Three referrals and the Board takes your licence. Before this, REFERRED — the
+## worst thing the reviewer can do — cost denser rounds and nothing else, and a
+## seven-day probe showed a greedy player being referred every night for a week
+## and simply carrying on.
+func test_three_referrals_ends_it() -> void:
+	DoctorRecord.wipe()
+	var rec := DoctorRecord.load_from_state()
+	t.ok(not GameState.struck_off(), "you start with a licence")
+	for i in 3:
+		rec.record_night([], ReviewSystem.OUTCOME_ESCALATED)
+	t.eq(rec.referrals, 3, "three referrals are counted")
+	t.ok(GameState.struck_off(), "and the third one ends the career")
+	DoctorRecord.wipe()
+	t.ok(not GameState.struck_off(), "a new career starts with a clean record")
 
 ## The office desk used to end the day at whatever minute you walked into it,
 ## so the safest shift on the ward was to hold three beds at five past eight and
@@ -454,29 +482,30 @@ func test_where_you_write_it_is_also_the_skill() -> void:
 func test_what_survives_the_night() -> void:
 	GameState.day = 4
 	GameState.set_flag("carried_debt", 640)
-	GameState.set_flag("remembered_beds", PackedStringArray(["oduya"]))
 	GameState.set_flag("watched", true)
+	DoctorRecord.wipe()
+	var rec0 := DoctorRecord.load_from_state()
+	rec0.record_night([], ReviewSystem.OUTCOME_FLAGGED)
 	var d := GameState.to_dict()
 	GameState.day = 1
 	GameState.set_flag("carried_debt", 0)
-	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("watched", false)
+	DoctorRecord.wipe()
 	GameState.from_dict(d)
 	t.eq(GameState.day, 4, "the day number survives a round trip")
 	t.eq(int(GameState.flag("carried_debt", 0)), 640, "and so does what Vinnie did not get")
-	t.ok(PackedStringArray(GameState.flag("remembered_beds", PackedStringArray())).has("oduya"),
-		"and the bed she could not stand up")
+	t.eq(DoctorRecord.load_from_state().flagged_nights, 1,
+		"and what she remembers about the doctor")
 	t.ok(bool(GameState.flag("watched", false)), "and that you are being read closely")
 	# ...and the ward reads them on the way in.
 	GameState.day = 1
 	var w := _day()
 	t.eq(w.debt_tonight, Cases.DEBT_DUE + 640,
 		"a short night makes tomorrow's number bigger, not the same")
-	t.ok(w.is_flagged("oduya"), "and yesterday's bed opens with a note on the file")
 	w.queue_free()
 	GameState.set_flag("carried_debt", 0)
-	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("watched", false)
+	DoctorRecord.wipe()
 
 ## Two wards alive at once must not drag each other's clocks FURTHER FORWARD.
 ##

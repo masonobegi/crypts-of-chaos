@@ -69,7 +69,7 @@ func _consequences(verdict: String, short: bool) -> Array:
 	var remembered := PackedStringArray(ctx.get("remembered", PackedStringArray()))
 	for pid in remembered:
 		out.append("%s's file has a note on it now. It will be read closely."
-			% String(Cases.by_id(String(pid)).get("name", pid)))
+			% Cases.name_of(String(pid)))
 	if short:
 		out.append("Vinnie was short. He says he will call in — it is on his way.")
 	return out
@@ -83,8 +83,11 @@ func _carry(verdict: String, short: bool) -> void:
 	GameState.set_flag("vinnie_visits", short)
 	# The beds she could not corroborate, by name. They open tomorrow with a
 	# note on the file, which is the only reason "noted" costs anything.
-	GameState.set_flag("remembered_beds",
-		PackedStringArray(ctx.get("remembered", PackedStringArray())))
+	# The per-bed carry is gone: the wards alternate, so a note on a patient's
+	# file was a note on somebody who would not be on the ward again before it
+	# was overwritten. What carries is the doctor's record, and `WardDay` writes
+	# that at the handover rather than here.
+	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.set_flag("carried_debt", absi(ward().cash) if short and ward() else 0)
 	GameState.day += 1
 	var w = ward()

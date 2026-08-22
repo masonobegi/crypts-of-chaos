@@ -661,13 +661,18 @@ func end_day() -> Dictionary:
 ## What the simulation knows, for the reviewer's bed-by-bed audit. Exposed
 ## because `Contradictions.audit_beds` needs it and the review screen builds
 ## that itself rather than being handed a pre-chewed float.
-## A file is read harder if it came into the day with something on it — either
-## authored (Winifred Blake) or earned last night. `remembered_beds` is what the
-## ward sister could not corroborate yesterday; she opens those records first.
+## A file is read harder if it came into the day with something on it: an
+## authored flag (Winifred Blake), or a readmission — somebody who was here
+## yesterday, went home on your say-so, and is back.
+##
+## It used to also mean "a bed the sister could not corroborate last night",
+## which was dead code in a career: the wards alternate, so that patient was
+## never on the ward again before the flag was overwritten. What accumulates
+## about a DOCTOR is in `DoctorRecord`; what accumulates about a PATIENT is
+## being back in the bed you emptied.
 func is_flagged(pid: String) -> bool:
-	if Cases.by_id(pid).has("audit_flag"):
-		return true
-	return PackedStringArray(GameState.flag("remembered_beds", PackedStringArray())).has(pid)
+	var c := Cases.by_id(pid)
+	return c.has("audit_flag") or c.has("readmitted")
 
 ## ONE BUILDER, NOT TWO. `review_truth` and `review_findings` each assembled
 ## their own copy of this dictionary and had already drifted apart by one key —

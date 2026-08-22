@@ -80,6 +80,20 @@ func start_new_career(with_seed: int = 0) -> void:
 	active_covers.clear()
 	Log.i("new day, seed %d" % seed_value, "GameState")
 
+## THE LOSING ENDING.
+##
+## Three REFERRED verdicts across a career and the Board takes your licence.
+## Before this existed the worst thing the ward sister could do cost you denser
+## nurse rounds and nothing else — a probe that played seven days found a greedy
+## player being referred on six consecutive nights and simply carrying on, which
+## meant the top of the punishment scale was a plateau and there was nothing to
+## be afraid of.
+const REFERRALS_TO_STRIKE_OFF := 3
+
+func struck_off() -> bool:
+	var d: Dictionary = flag(DoctorRecord.FLAG, {})
+	return int(d.get("referrals", 0)) >= REFERRALS_TO_STRIKE_OFF
+
 func start_day() -> void:
 	clock_running = true
 	day_started.emit(day)

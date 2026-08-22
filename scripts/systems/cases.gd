@@ -261,11 +261,32 @@ static func roster(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
 	return DAYS[(d - 1) % DAYS.size()]
 
+## TODAY'S WARD. Everything that acts on a patient goes through this, so a
+## lookup for somebody who is not in a bed this morning correctly finds nothing.
 static func by_id(id: String) -> Dictionary:
 	for c in roster():
 		if String(c["id"]) == id:
 			return c
 	return {}
+
+## ANYBODY THE GAME HAS EVER ADMITTED, on any ward.
+##
+## The reviewer remembers people across days and the wards alternate, so a bed
+## she could not stand up on Monday belongs to somebody who is not on the ward
+## on Tuesday. `by_id` correctly returns nothing for them, and every caller that
+## only wanted to print a NAME therefore printed the internal id — the end of
+## day screen was telling the player "oduya's file has a note on it now".
+static func anyone(id: String) -> Dictionary:
+	for day_roster in DAYS:
+		for c in day_roster:
+			if String(c["id"]) == id:
+				return c
+	return {}
+
+## What to call somebody, wherever they are.
+static func name_of(id: String) -> String:
+	var c := anyone(id)
+	return String(c.get("name", id)) if not c.is_empty() else id
 
 static func tier_name(t: int) -> String:
 	match t:

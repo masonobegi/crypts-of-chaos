@@ -158,7 +158,7 @@ change — five real bugs have been caught only by looking at the game.
 | `balance_sim.gd` | design inversions — it found that cheating originally paid *less* than honesty |
 | `screenshots.sh` | anything you can only see |
 | overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
-| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays a week five ways (honest, honest+corroborated, one lie, greedy, adaptive) and asks three questions: does honest play clear every night, is greed caught, and is one bad night recoverable. It found that `remembered_beds` is dead across a roster change and that `auditor_present` does nothing at all. |
+| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays a week five ways (honest, honest+corroborated, one lie, greedy, adaptive) and asks three questions: does honest play clear every night, is greed caught, and is one bad night recoverable. It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. |
 | `tests/probe/frontier_run.gd` | dominant strategies. Two thousand two hundred plays — both wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
 
 `playtest_run.gd` exits non-zero when a success criterion regresses, so a
@@ -206,3 +206,30 @@ and say in the comment *why* the obvious thing was wrong.
     A patient marked `only_visible_in_person` differs between the two. Without
     it Adeyemi's ten o'clock round simply announced Peter Lomax and there was no
     reason to go and look at anybody.
+
+19. **A gate on something the PLAYER does is a reward for doing nothing.**
+    `_sent_home_unwell` used to `continue` unless the discharge was documented,
+    examined, or overruled — all three player-initiated. So the way to make a
+    wrongful discharge invisible was to never read a chart, never examine
+    anybody and never ask: **information had strictly negative expected value**,
+    because looking at a patient was the only way to manufacture the evidence
+    that convicted you of the decision you then made. Any new rule that asks
+    "did the player produce a document about this" needs a rung for "no, and
+    that is worse", not an early return. `_they_came_back` and
+    `_never_laid_eyes_on_them` are ungated on purpose.
+20. **`WardDay.start()` runs every morning, so anything assigned in it is
+    assigned every morning.** `cash = Cases.STARTING_CASH` sat there and minted
+    the player nine hundred pounds a night out of nowhere — a third of a night's
+    takings, under every strategy, in every measurement this project ever took,
+    and it made "he takes everything at eight" vacuous because nothing survived
+    the night. One-off state belongs in `GameState.start_new_career`.
+21. **A verdict tier nothing reaches is content behind a trigger that never
+    fires.** `struck_off()` read only REFERRED verdicts, and the money-optimal
+    play lands on FLAGGED on both wards and never on REFERRED (that needs two
+    indefensible beds, and every two-indefensible variant earns less). So the
+    optimal player accrued zero strikes forever and the auditor never spawned.
+    Score every night on a scale instead of matching a verdict NAME.
+22. **A carried flag recomputed from last night lasts one night.** The auditor
+    was `verdict == ESCALATED`, recomputed in `_carry`, so a single clean shift
+    made her vanish. Anything meant to persist needs its own countdown
+    (`auditor_shifts`), not a re-derivation.

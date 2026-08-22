@@ -92,7 +92,7 @@ func _consequences(verdict: String, short: bool) -> Array:
 	# THE ONE THAT IS NOT ABOUT PAPERWORK. Somebody is coming back, and it is
 	# nothing to do with what the reviewer thought of your notes.
 	for pid in PackedStringArray(GameState.flag(Cases.READMIT_FLAG, [])):
-		out.append("%s is back on the ward in the morning. They did not make it through the night at home."
+		out.append("%s is back on the ward in the morning — they did not make it through the night at home."
 			% Cases.name_of(String(pid)))
 	if short:
 		out.append("Vinnie was short. He says he will call in — it is on his way.")

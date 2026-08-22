@@ -842,14 +842,86 @@ bed belonging to Tallulah Ferreira, because `reset_day()` woke yesterday's
 patients up rather than rebuilding the ward. And Ruth Kerrigan announced herself
 at seven o'clock on a ward her mother has never been on.
 
+---
+
+## Session 14 — 2026-08-22 — the career
+
+The fourth audit's finding was that the day was a game and the career was a
+loop. This session made the career.
+
+### An eight-lens panel attacked the plan before it was built
+
+And found four things that would have made the game worse than the loop it
+replaced. All four were real when checked against the code.
+
+**Information had strictly negative expected value.** `_sent_home_unwell`
+bailed unless the discharge was documented, examined, or overruled by a
+colleague — and all three of those are things the *player* does. So the way to
+make a wrongful discharge invisible was to never read a chart, never examine
+anybody and never ask. Looking at a patient was the only way to manufacture
+the evidence that convicted you of the decision you then made. Peter Lomax,
+the man the second ward is built around, was **safest for a player who never
+went near him**. It is a severity ladder now, not a gate, plus two findings
+the player does not author: they came back, and you decided about three people
+you never went near.
+
+**The $900 was a daily stipend.** `cash = STARTING_CASH` sat in `start()`,
+which runs every morning, so the player was minted a third of a night's
+takings out of nowhere under every strategy in every measurement this project
+has ever taken. It also made "he takes everything at eight" vacuous. Granted
+once now; cash carries; every number re-derived.
+
+**FLAGGED was a free verdict.** `struck_off()` read only referrals, and the
+money-optimal play lands on FLAGGED on both wards and never on REFERRED — so
+the optimal player accrued zero strikes forever and the auditor, gated on
+REFERRED, never spawned at all.
+
+**Readmission was upside-down.** Returners were seated at index 0, which is
+each ward's only genuinely unwell hold. A held readmission earned nothing
+while re-discharging one paid $150 and freed a $500 admission, so putting
+right what you got wrong cost $650 against doing it again. And `is_flagged`
+made every readmitted bed CONTRADICTED by construction, so the mechanic built
+as the consequence of harming somebody took a third of your licence for
+treating them.
+
+### What the career is now
+
+Vinnie is owed $15,500. He takes everything at eight, ten per cent goes on
+what is left, and clearing it is the way out. Every night is scored — signed
+off −1, noted 0, flagged +1, referred +3 — and at five the Board writes to
+you. Measured over a whole career, eight policies:
+
+```
+never look at anybody ......... STRUCK OFF night 3, never pays off
+hold three every night ........ STRUCK OFF night 3
+one careless lie a night ...... STRUCK OFF night 4
+lie every night, carefully .... STRUCK OFF night 7, $627 short
+honest ........................ PAID night 9
+honest + corroborated ......... PAID night 9
+lie every OTHER night ......... PAID night 7
+```
+
+Crime pays if you can stop.
+
+### And five smaller things the panel found
+
+The last night of every career was a total amnesty (`ending()` checked
+`paid_off` before `struck_off`). The honest social hold became indefensible
+the moment anybody was in the room, because `_written_in_front_of_them` used
+the body as a proxy for whether the note was a lie. The leading question used
+one roll for both "will they stand behind it" and "do they remember whose idea
+it was", so verb three of six was a trap in both branches. The doctor's record
+scaled severity, which no bed state reads, so the whole escalation changed no
+verdict, no money and no ending. And `backdated` was not in the contradicted
+list and clamped at 0.45, so the headline two-timestamp mechanic could not
+affect a verdict however far apart the two times were.
+
 ### NEXT UP
 
 - A third ward. The shape to aim for: one where the honest hold is somebody's
-  social circumstances rather than their medicine, so the third day is about
-  the one kind of true note the game currently only has one instance of.
-- The registrar is a verb and not yet a person. He has hours and an opinion;
-  he does not have a memory of being asked three times about patients who
-  turned out to be fine.
-- Nothing is randomised, deliberately. If a run-to-run variation is ever
-  wanted, the honest place for it is which five of a larger written cast are
-  in the beds — never generated conditions.
+  social circumstances rather than their medicine.
+- The registrar is a verb and not yet a person: he has hours and an opinion,
+  but no memory of being asked three times about people who turned out fine.
+- Nothing is randomised, deliberately. If run-to-run variation is ever wanted,
+  the honest place for it is which five of a larger written cast are in the
+  beds — never generated conditions.

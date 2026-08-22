@@ -66,6 +66,7 @@ func tick() -> bool:
 			stage = "tomorrow"
 		"tomorrow":
 			_check_tomorrow_is_a_different_ward()
+			_check_a_career_survives_a_save()
 			stage = "chain"
 		"chain":
 			if _check_the_screens_chain():
@@ -370,7 +371,7 @@ func _check_screens_actually_draw() -> bool:
 ## of a day is a chain — handover, then the verdict, then tomorrow — and each
 ## link is a different script asking the UI router for the next one by name. A
 ## typo in any one of those names is a game that stops at eight o'clock.
-var _chain: Array = ["review", "day_over", "morning"]
+var _chain: Array = ["review", "day_over", "morning", "board"]
 var _chain_at := -1
 
 func _check_the_screens_chain() -> bool:
@@ -462,3 +463,38 @@ func _report() -> void:
 		for e in errors:
 			print("  " + e)
 	print("--------------------------------------\n")
+
+## A WHOLE CAREER SURVIVES A SAVE, which is what "Continue" is.
+##
+## Since the debt got a term, what has to come back is not just the day number
+## and the money: it is what is left of what Vinnie is owed, what the ward
+## sister has written down about you, how near the Board you are, and who is
+## bouncing back in the morning. Any one of those dropped and Continue quietly
+## restarts a career the player is nine nights into.
+func _check_a_career_survives_a_save() -> void:
+	var before_debt := 4321
+	GameState.set_flag("debt_remaining", before_debt)
+	GameState.set_flag(Cases.READMIT_FLAG, ["oduya"])
+	GameState.day = 6
+	GameState.cash = 777
+	DoctorRecord.wipe()
+	var rec := DoctorRecord.load_from_state()
+	rec.record_night([], ReviewSystem.OUTCOME_FLAGGED)
+	rec.record_night([], ReviewSystem.OUTCOME_ESCALATED)
+
+	var snapshot := GameState.to_dict()
+	GameState.start_new_career(99)
+	_ok(GameState.debt_remaining() != before_debt, "a new career forgets the old one")
+
+	GameState.from_dict(snapshot)
+	_ok(GameState.debt_remaining() == before_debt,
+		"and a save brings back what is left of the debt")
+	_ok(GameState.day == 6, "the day you were on")
+	_ok(GameState.cash == 777, "the money in your pocket")
+	var back := DoctorRecord.load_from_state()
+	_ok(back.strikes == 4, "how near the Board you are (%d)" % back.strikes)
+	_ok(back.nights == 2, "how many shifts you have worked")
+	_ok(PackedStringArray(GameState.flag(Cases.READMIT_FLAG, [])).has("oduya"),
+		"and who is back in a bed in the morning")
+	GameState.start_new_career(20260821)
+	GameState.set_flag("tutorial_done", true)

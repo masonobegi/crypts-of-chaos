@@ -41,8 +41,13 @@ UNIT=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1 | grep -vE "$NOISE"
 SMOKE=${PIPESTATUS[0]}
 
-"$GODOT" --headless --fixed-fps 60 --path "$DIR" --script res://tests/live_run.gd 2>&1 | grep -vE "$NOISE"
-LIVE=${PIPESTATUS[0]}
+# The design harness. live_run.gd tested a world that no longer exists; what
+# replaced it is twenty ways of playing the day measured against the six
+# criteria in docs/REDESIGN.md. It exits non-zero when one of them regresses,
+# which is the only automated defence against the game quietly becoming a
+# formality again.
+"$GODOT" --headless --path "$DIR" --script res://tests/playtest_run.gd 2>&1 | grep -vE "$NOISE"
+PLAY=${PIPESTATUS[0]}
 
 # And finally the one route no other harness takes: the real entry point.
 # Everything above instantiates Game.tscn directly, which skips Boot and the
@@ -52,8 +57,8 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$LIVE" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE live=$LIVE boot=$BOOT)" >&2
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

@@ -10,6 +10,7 @@ const SCREEN_SCRIPTS := {
 	"patient": "res://scripts/ui/screen_patient.gd",
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"review": "res://scripts/ui/screen_review.gd",
+	"day_over": "res://scripts/ui/screen_day_over.gd",
 }
 
 var hud: HUD

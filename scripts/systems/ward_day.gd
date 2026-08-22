@@ -34,6 +34,9 @@ var telemetry: Array = []
 const RUTH_ARRIVES := 19 * 60
 var ruth_has_been := false
 
+## Tonight's number. Usually Cases.DEBT_DUE; more if last night came up short.
+var debt_tonight := Cases.DEBT_DUE
+
 ## How long a result takes to come back. Long enough that ordering one is a
 ## commitment rather than a lookup, and short enough to land inside the shift.
 const TEST_TURNAROUND := 75
@@ -77,11 +80,14 @@ func _on_minute(now: int) -> void:
 		EventBus.request_ui.emit("review", {})
 
 func start() -> void:
+	# Anything Vinnie did not get last night is on top of tonight.
+	debt_tonight = Cases.DEBT_DUE + int(GameState.flag("carried_debt", 0))
 	cash = Cases.STARTING_CASH
 	minute = 8 * 60
 	ended = false
 	records = Records.new()
 	state.clear()
+	_read.clear()
 	for c in Cases.ROSTER:
 		state[String(c["id"])] = {
 			"id": String(c["id"]),
@@ -106,7 +112,30 @@ func start() -> void:
 		e.written_minute = int(pe["minute"]) + 3
 		e.terminal_id = TERMINAL_WARD
 		records.add(e)
-	_log("day_start", {"cash": cash, "due": Cases.DEBT_DUE})
+	_log("day_start", {"cash": cash, "due": debt_tonight})
+
+## Reading a chart properly takes time you do not have. THE HONEST DAY IS AN
+## INVESTIGATION: the only way to know Marchetti is the one who genuinely needs
+## the bed is to open five records and read them, and until this cost something
+## a careful day and a careless one were indistinguishable — the instrumentation
+## measured the honest run at five clicks, and it was right. Twelve minutes a
+## chart means reading the whole ward is an hour of a twelve-hour shift, which
+## is affordable once and not affordable twice.
+const READ_COST := 12
+
+## Charts read so far today, so re-checking something you already looked at is
+## free. The cost is for LEARNING it, not for remembering it.
+var _read: Dictionary = {}
+
+func read_chart(pid: String) -> void:
+	if ended or _read.has(pid):
+		return
+	_read[pid] = true
+	_log("read_chart", {"pid": pid})
+	advance_to(minute + READ_COST)
+
+func has_read(pid: String) -> bool:
+	return _read.has(pid)
 
 # ------------------------------------------------------------ the four verbs
 ## 1. WRITE IT YOURSELF. Cheapest, fastest, and entirely your word.
@@ -269,14 +298,14 @@ func projected() -> Dictionary:
 	var adm: int = admissions_taken() * Cases.ADMISSION_FEE
 	return {"nights": nights, "discharges": d, "admissions": adm,
 		"earned": nights + d + adm, "total": cash + nights + d + adm,
-		"due": Cases.DEBT_DUE}
+		"due": debt_tonight}
 
 ## Time passes, and Adeyemi walks her round when she walks it. Anything she
 ## finds goes in the chart in her name, truthfully, whether it suits you or not.
 func advance_to(m: int) -> void:
 	var from := minute
 	minute = maxi(minute, m)
-	for r in Cases.ROUNDS:
+	for r in rounds_today():
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
 	if not ruth_has_been and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
@@ -284,6 +313,26 @@ func advance_to(m: int) -> void:
 		EventBus.toast.emit(
 			"Ruth Kerrigan is here to see her mother. She has brought a flask.", "info")
 		_log("ruth_arrived", {})
+
+## A ward that is already being looked at is a ward with more writing in it.
+## This is where last night's verdict stops being a paragraph: after a flag,
+## Adeyemi writes her rounds up twice as often, which halves the gaps a
+## fabrication has to fit into.
+func rounds_today() -> Array:
+	var base: Array = []
+	for r in Cases.ROUNDS:
+		# The 21:00 round was an hour after the day force-ends at eight and
+		# could never fire.
+		if int(r) < Cases.DEBT_DUE_MINUTE:
+			base.append(int(r))
+	if not GameState.flag("watched", false):
+		return base
+	var dense: Array = []
+	for i in base.size():
+		dense.append(base[i])
+		if i + 1 < base.size():
+			dense.append(int((base[i] + base[i + 1]) * 0.5))
+	return dense
 
 func _routine_round(at: int) -> void:
 	for c in Cases.ROSTER:
@@ -314,10 +363,10 @@ func end_day() -> Dictionary:
 		return {}
 	ended = true
 	var p := projected()
-	cash = int(p["total"]) - Cases.DEBT_DUE
-	var short: bool = int(p["total"]) < Cases.DEBT_DUE
+	cash = int(p["total"]) - debt_tonight
+	var short: bool = int(p["total"]) < debt_tonight
 	var res := {
-		"earned": p["earned"], "paid": Cases.DEBT_DUE, "cash": cash,
+		"earned": p["earned"], "paid": debt_tonight, "cash": cash,
 		"short": short, "held": held_ids(), "discharged": discharged_ids(),
 		"findings": review_findings(),
 	}
@@ -328,13 +377,40 @@ func end_day() -> Dictionary:
 	# he is. A new pair of eyes in your workplace, permanently.
 	if short:
 		GameState.set_flag("vinnie_visits", true)
-		GameState.set_flag("debt_carried", Cases.DEBT_DUE - int(p["total"]))
+		GameState.set_flag("carried_debt", debt_tonight - int(p["total"]))
 	money_changed.emit(cash)
 	day_ended.emit(res)
 	return res
 
 ## What the ward sister will find. Available to the player at any time, because
 ## she is not using information the chart does not contain.
+## What the simulation knows, for the reviewer's bed-by-bed audit. Exposed
+## because `Contradictions.audit_beds` needs it and the review screen builds
+## that itself rather than being handed a pre-chewed float.
+## A file is read harder if it came into the day with something on it — either
+## authored (Winifred Blake) or earned last night. `remembered_beds` is what the
+## ward sister could not corroborate yesterday; she opens those records first.
+func is_flagged(pid: String) -> bool:
+	if Cases.by_id(pid).has("audit_flag"):
+		return true
+	return PackedStringArray(GameState.flag("remembered_beds", PackedStringArray())).has(pid)
+
+func review_truth() -> Dictionary:
+	var truth := {}
+	for pid in state:
+		truth[pid] = {
+			"well": bool(Cases.by_id(pid).get("truly_well", true)),
+			"held": String(state[pid]["disposition"]) == "hold",
+			"patient_recalls": state[pid]["recalls"],
+			"patient_suggested": state[pid]["suggested"],
+			"flagged": is_flagged(pid),
+			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
+			"was_asked": bool(state[pid]["asked_symptom"]),
+			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
+			"no_care_at_home": bool(Cases.by_id(pid).get("no_care_at_home", false)),
+		}
+	return truth
+
 func review_findings() -> Array:
 	var truth := {}
 	for pid in state:
@@ -347,7 +423,7 @@ func review_findings() -> Array:
 			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
 			"no_care_at_home": bool(Cases.by_id(pid).get("no_care_at_home", false)),
 			"was_asked": bool(state[pid]["asked_symptom"]),
-			"flagged": Cases.by_id(pid).has("audit_flag"),
+			"flagged": is_flagged(pid),
 		}
 	return Contradictions.find_all(records.entries, truth, records.placements)
 

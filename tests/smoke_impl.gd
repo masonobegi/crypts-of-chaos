@@ -169,7 +169,7 @@ func _check_the_day_closes() -> void:
 	var f: Array = res["findings"]
 	_ok(f.size() > 0, "and the reviewer has something to ask about (%d findings)" % f.size())
 	var rv := ReviewSystem.new()
-	rv.begin(f)
+	rv.begin(f, w.records.entries, w.review_truth())
 	var asked := 0
 	while not rv.finished():
 		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])

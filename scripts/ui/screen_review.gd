@@ -16,7 +16,7 @@ func _build() -> void:
 		return
 	if _rv == null:
 		_rv = ReviewSystem.new()
-		_rv.begin(w.review_findings())
+		_rv.begin(w.review_findings(), w.records.entries, w.review_truth())
 	pauses_world = true
 
 	var v := card_shell(780, 700, "HANDOVER",
@@ -103,7 +103,8 @@ func _closing(v: VBoxContainer, w) -> void:
 	# ScrollContainer inside a ScrollContainer has a minimum height of zero.
 	v.add_child(box)
 	card_footer(UIKit.button("Go home", func():
-		EventBus.request_ui.emit("day_over", {"verdict": verdict})
+		EventBus.request_ui.emit("day_over", {"verdict": verdict,
+			"remembered": o.get("remembered", PackedStringArray())})
 		close()))
 
 func ward():

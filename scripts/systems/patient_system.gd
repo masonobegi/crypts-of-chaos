@@ -70,6 +70,20 @@ func _bed(index: int):
 ## Every read of `bodies` goes through here. Reading a freed node into a TYPED
 ## local aborts the calling function rather than yielding null, which is the
 ## single most expensive bug this project ever had.
+## A new day on the same ward: everybody who went home last night is replaced by
+## somebody with the same name and the same problem, because a vertical slice
+## has one authored roster and the point of a second day is the STATE you carry
+## into it, not new content.
+func reset_day() -> void:
+	for id in patients:
+		var p: Patient = patients[id]
+		p.discharged = false
+		p.days_admitted += 1.0
+	for id in bodies:
+		var b = get_body(id)
+		if b != null and b.has_method("wake_up"):
+			b.wake_up("morning")
+
 func get_body(id: String):
 	var b = bodies.get(id, null)
 	if b != null and not is_instance_valid(b):

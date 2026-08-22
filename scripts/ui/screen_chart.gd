@@ -20,6 +20,9 @@ func _build() -> void:
 		close()
 		return
 	var w = ward()
+	# Opening the record is the read, and the read costs ward time. Done before
+	# anything is drawn so the clock in the header is already the later one.
+	w.read_chart(_pid)
 	var v := card_shell(760, 720, String(c["name"]).to_upper(),
 		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
 			Cases.tier_name(int(c["tier"]))])

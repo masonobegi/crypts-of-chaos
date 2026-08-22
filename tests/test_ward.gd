@@ -77,29 +77,33 @@ func test_the_money_creates_the_decision() -> void:
 ## The central skill. Adeyemi rounds at fixed times; a fabrication in a gap is
 ## survivable and a fabrication on top of a round is not.
 func test_when_you_write_it_is_the_skill() -> void:
+	# Both times must be inside the working day: the ward force-ends at
+	# DEBT_DUE_MINUTE, so a test that reached past it was measuring a round
+	# that can never happen in play. The gap here is 17:30 — an hour and a
+	# half clear of the 16:00 round and ninety minutes before the 19:00 one.
 	var good := _day()
-	good.advance_to(19 * 60 + 30)
+	good.advance_to(17 * 60 + 30)
 	good.write_entry("oduya", ChartEntry.Claim.UNWELL,
-		"Reports transient dizziness on standing.", 19 * 60 + 25)
+		"Reports transient dizziness on standing.", 17 * 60 + 25)
 	good.set_disposition("oduya", "hold")
 	var quiet := _sev(good.review_findings())
 	good.queue_free()
 
 	var bad := _day()
-	bad.advance_to(21 * 60 + 5)
+	bad.advance_to(19 * 60 + 5)
 	bad.write_entry("oduya", ChartEntry.Claim.UNWELL,
-		"Reports transient dizziness on standing.", 21 * 60)
+		"Reports transient dizziness on standing.", 19 * 60)
 	bad.set_disposition("oduya", "hold")
 	var loud := _sev(bad.review_findings())
 	bad.queue_free()
 
 	t.gt(loud, quiet * 2.0,
-		"the same lie written over the nine o'clock round is worth more than twice one written in the gap")
+		"the same lie written over the seven o'clock round is worth more than twice one written in the gap")
 
 func test_the_rounds_happen_whether_you_ask_or_not() -> void:
 	var w := _day()
 	var before: int = w.records.for_patient("oduya").size()
-	w.advance_to(22 * 60)
+	w.advance_to(19 * 60 + 30)
 	t.gt(float(w.records.for_patient("oduya").size()), float(before),
 		"Adeyemi writes in the chart during the day without being asked")
 	w.queue_free()
@@ -109,25 +113,25 @@ func test_the_rounds_happen_whether_you_ask_or_not() -> void:
 ## than leaving it alone, or a dishonest day is just a worse honest one.
 func test_patching_a_lie_costs_more_than_leaving_it() -> void:
 	var bare := _day()
-	bare.advance_to(19 * 60 + 42)
-	bare.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness on standing.", 19 * 60 + 30)
+	bare.advance_to(16 * 60 + 42)
+	bare.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness on standing.", 16 * 60 + 30)
 	bare.set_disposition("oduya", "hold")
 	var alone := _sev(bare.review_findings())
 	bare.queue_free()
 
 	var patched := _day()
-	patched.advance_to(19 * 60 + 42)
+	patched.advance_to(16 * 60 + 42)
 	var a := patched.write_entry("oduya", ChartEntry.Claim.UNWELL,
-		"Reports dizziness on standing.", 19 * 60 + 30)
+		"Reports dizziness on standing.", 16 * 60 + 30)
 	var o := patched.order_test("oduya", "lying and standing BP")
-	patched.advance_to(21 * 60 + 30)
+	patched.advance_to(18 * 60)
 	patched.resolve_test(o)
-	patched.advance_to(23 * 60 + 10)
+	patched.advance_to(18 * 60 + 40)
 	var b := patched.write_entry("oduya", ChartEntry.Claim.SETTLED,
-		"BP unremarkable; symptoms positional.", 21 * 60, WardDay.TERMINAL_OFFICE, a.id)
-	patched.advance_to(23 * 60 + 40)
+		"BP unremarkable; symptoms positional.", 18 * 60, WardDay.TERMINAL_OFFICE, a.id)
+	patched.advance_to(19 * 60 + 10)
 	patched.write_entry("oduya", ChartEntry.Claim.ADMIN,
-		"Addendum timed late owing to workload.", 23 * 60 + 10, WardDay.TERMINAL_OFFICE, b.id)
+		"Addendum timed late owing to workload.", 18 * 60 + 40, WardDay.TERMINAL_OFFICE, b.id)
 	patched.set_disposition("oduya", "hold")
 	var mended := _sev(patched.review_findings())
 	patched.queue_free()
@@ -138,11 +142,11 @@ func test_patching_a_lie_costs_more_than_leaving_it() -> void:
 
 func test_a_result_cannot_be_talked_to() -> void:
 	var w := _day()
-	w.advance_to(19 * 60 + 30)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60 + 25)
+	w.advance_to(16 * 60 + 30)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 16 * 60 + 25)
 	var before := _sev(w.review_findings())
 	var o := w.order_test("oduya", "lying and standing BP")
-	w.advance_to(20 * 60)
+	w.advance_to(17 * 60 + 45)
 	w.resolve_test(o)
 	w.set_disposition("oduya", "hold")
 	var after := _sev(w.review_findings())
@@ -163,10 +167,10 @@ func test_asking_the_nurse_depends_entirely_on_who_you_ask_about() -> void:
 	honest.queue_free()
 
 	var reckless := _day()
-	reckless.advance_to(19 * 60 + 30)
-	reckless.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60 + 25)
+	reckless.advance_to(17 * 60 + 20)
+	reckless.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 15)
 	var solo := _sev(reckless.review_findings())
-	reckless.advance_to(19 * 60 + 50)
+	reckless.advance_to(17 * 60 + 40)
 	reckless.nurse_check("oduya")        ## well — she writes that he is fine
 	reckless.set_disposition("oduya", "hold")
 	t.gt(_sev(reckless.review_findings()), solo,
@@ -176,9 +180,9 @@ func test_asking_the_nurse_depends_entirely_on_who_you_ask_about() -> void:
 ## One lie is a discrepancy. Three is a shape.
 func test_the_institution_notices_the_pattern_not_the_note() -> void:
 	var w := _day()
-	w.advance_to(19 * 60 + 30)
+	w.advance_to(17 * 60 + 30)
 	for id in ["oduya", "brennan", "blake"]:
-		w.write_entry(id, ChartEntry.Claim.UNWELL, "Unsettled this evening.", 19 * 60 + 25)
+		w.write_entry(id, ChartEntry.Claim.UNWELL, "Unsettled this evening.", 17 * 60 + 25)
 		w.set_disposition(id, "hold")
 	t.ok(_kinds(w.review_findings()).has("pattern_of_holds"),
 		"three people held on notes only you ever wrote is its own finding")
@@ -187,15 +191,15 @@ func test_the_institution_notices_the_pattern_not_the_note() -> void:
 ## The flag is on her file and nowhere else.
 func test_the_flagged_file_is_read_harder() -> void:
 	var plain := _day()
-	plain.advance_to(19 * 60 + 30)
-	plain.write_entry("oduya", ChartEntry.Claim.UNWELL, "Headache recurred.", 19 * 60 + 25)
+	plain.advance_to(17 * 60 + 30)
+	plain.write_entry("oduya", ChartEntry.Claim.UNWELL, "Headache recurred.", 17 * 60 + 25)
 	plain.set_disposition("oduya", "hold")
 	var unflagged := _sev(plain.review_findings())
 	plain.queue_free()
 
 	var flagged := _day()
-	flagged.advance_to(19 * 60 + 30)
-	flagged.write_entry("blake", ChartEntry.Claim.UNWELL, "Headache recurred.", 19 * 60 + 25)
+	flagged.advance_to(17 * 60 + 30)
+	flagged.write_entry("blake", ChartEntry.Claim.UNWELL, "Headache recurred.", 17 * 60 + 25)
 	flagged.set_disposition("blake", "hold")
 	t.gt(_sev(flagged.review_findings()), unflagged * 1.4,
 		"the identical act on the patient whose file is already under review costs meaningfully more")
@@ -216,19 +220,25 @@ func test_reversing_a_colleague_is_its_own_problem() -> void:
 func test_the_defence_is_decided_hours_before_the_conversation() -> void:
 	# Test ordered LATE: "it was transient, it had settled by then" is coherent.
 	var late := _day()
-	late.advance_to(19 * 60 + 30)
-	late.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60 + 25)
+	late.advance_to(16 * 60 + 30)
+	late.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 16 * 60 + 25)
 	var o1 := late.order_test("oduya", "lying and standing BP")
-	late.advance_to(21 * 60 + 30)
+	late.advance_to(18 * 60 + 30)
 	late.resolve_test(o1)
 	late.set_disposition("oduya", "hold")
 	var rv1 := ReviewSystem.new()
-	rv1.begin(late.review_findings())
+	rv1.begin(late.review_findings(), late.records.entries, late.review_truth())
 	var had_reconcile := false
 	while not rv1.finished():
-		for opt in rv1.options(rv1.current(), late.records):
-			if int(opt["a"]) == ReviewSystem.Answer.RECONCILE:
-				had_reconcile = true
+		var q1 = rv1.current()
+		# Specifically the question the RESULT asks. Checking "was RECONCILE
+		# offered anywhere in the room" passed for the wrong reason — a note
+		# written near a round has its own transience answer, which has nothing
+		# to do with when you ordered the test.
+		if q1.kind == "objective_refutes":
+			for opt in rv1.options(q1, late.records):
+				if int(opt["a"]) == ReviewSystem.Answer.RECONCILE:
+					had_reconcile = true
 		rv1.answer(ReviewSystem.Answer.STAND_BY, late.held_ids())
 	t.ok(had_reconcile,
 		"a test ordered two hours after the symptom leaves you an honest-sounding explanation")
@@ -236,19 +246,21 @@ func test_the_defence_is_decided_hours_before_the_conversation() -> void:
 
 	# Test ordered IMMEDIATELY to cover yourself: that explanation is gone.
 	var eager := _day()
-	eager.advance_to(19 * 60 + 30)
-	eager.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60 + 25)
+	eager.advance_to(16 * 60 + 30)
+	eager.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 16 * 60 + 25)
 	var o2 := eager.order_test("oduya", "lying and standing BP")
-	eager.advance_to(19 * 60 + 45)
+	eager.advance_to(16 * 60 + 45)
 	eager.resolve_test(o2)
 	eager.set_disposition("oduya", "hold")
 	var rv2 := ReviewSystem.new()
-	rv2.begin(eager.review_findings())
+	rv2.begin(eager.review_findings(), eager.records.entries, eager.review_truth())
 	var eager_reconcile := false
 	while not rv2.finished():
-		for opt in rv2.options(rv2.current(), eager.records):
-			if int(opt["a"]) == ReviewSystem.Answer.RECONCILE:
-				eager_reconcile = true
+		var q2 = rv2.current()
+		if q2.kind == "objective_refutes":
+			for opt in rv2.options(q2, eager.records):
+				if int(opt["a"]) == ReviewSystem.Answer.RECONCILE:
+					eager_reconcile = true
 		rv2.answer(ReviewSystem.Answer.STAND_BY, eager.held_ids())
 	t.ok(not eager_reconcile,
 		"covering yourself immediately destroys the only good answer you had — the safe play is the wrong one")
@@ -256,19 +268,19 @@ func test_the_defence_is_decided_hours_before_the_conversation() -> void:
 
 func test_abandoning_your_story_is_worse_than_defending_it() -> void:
 	var w := _day()
-	w.advance_to(21 * 60 + 5)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 21 * 60)
+	w.advance_to(19 * 60 + 5)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60)
 	w.set_disposition("oduya", "hold")
 	var findings := w.review_findings()
 
 	var stubborn := ReviewSystem.new()
-	stubborn.begin(findings)
+	stubborn.begin(findings, w.records.entries, w.review_truth())
 	while not stubborn.finished():
 		stubborn.answer(ReviewSystem.Answer.STAND_BY, w.held_ids())
 	var a := float(stubborn.outcome()["unresolved"])
 
 	var folding := ReviewSystem.new()
-	folding.begin(findings)
+	folding.begin(findings, w.records.entries, w.review_truth())
 	while not folding.finished():
 		folding.answer(ReviewSystem.Answer.DEFER, w.held_ids())
 	var b := float(folding.outcome()["unresolved"])
@@ -280,13 +292,13 @@ func test_abandoning_your_story_is_worse_than_defending_it() -> void:
 
 func test_the_same_excuse_twice_stops_working() -> void:
 	var w := _day()
-	w.advance_to(21 * 60 + 5)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 20 * 60 + 30)
-	w.write_entry("brennan", ChartEntry.Claim.UNWELL, "Wound warm.", 20 * 60 + 35)
+	w.advance_to(19 * 60 + 5)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 18 * 60 + 30)
+	w.write_entry("brennan", ChartEntry.Claim.UNWELL, "Wound warm.", 18 * 60 + 35)
 	w.set_disposition("oduya", "hold")
 	w.set_disposition("brennan", "hold")
 	var rv := ReviewSystem.new()
-	rv.begin(w.review_findings())
+	rv.begin(w.review_findings(), w.records.entries, w.review_truth())
 	while not rv.finished():
 		rv.answer(ReviewSystem.Answer.BLAME_SYSTEM, w.held_ids())
 	var o := rv.outcome()
@@ -296,11 +308,11 @@ func test_the_same_excuse_twice_stops_working() -> void:
 ## Nobody should ever leave the review not knowing what happened to them.
 func test_failure_is_always_explicable() -> void:
 	var w := _day()
-	w.advance_to(21 * 60 + 5)
-	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 21 * 60)
+	w.advance_to(19 * 60 + 5)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 19 * 60)
 	w.set_disposition("oduya", "hold")
 	var rv := ReviewSystem.new()
-	rv.begin(w.review_findings())
+	rv.begin(w.review_findings(), w.records.entries, w.review_truth())
 	while not rv.finished():
 		rv.answer(ReviewSystem.Answer.STAND_BY, w.held_ids())
 	var o := rv.outcome()
@@ -310,3 +322,36 @@ func test_failure_is_always_explicable() -> void:
 		t.ok(String(line["question"]).length() > 10,
 			"and every question she asked is on the record afterwards")
 	w.queue_free()
+
+## "Noted" used to be free. It has to cost something or one well-timed
+## fabrication a day is strictly better than honesty forever: +150 on the night
+## and nothing carried into the morning. What carries is the BED, by name.
+func test_a_bed_she_could_not_stand_up_goes_on_the_file() -> void:
+	GameState.set_flag("remembered_beds", PackedStringArray())
+	var clean := _day()
+	clean.advance_to(17 * 60 + 30)
+	clean.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 25)
+	clean.set_disposition("oduya", "hold")
+	var first := _sev(clean.review_findings())
+	var rv := ReviewSystem.new()
+	rv.begin(clean.review_findings(), clean.records.entries, clean.review_truth())
+	while not rv.finished():
+		rv.answer(ReviewSystem.Answer.STAND_BY, clean.held_ids())
+	var remembered := PackedStringArray(rv.outcome()["remembered"])
+	clean.queue_free()
+
+	t.ok(remembered.has("oduya"),
+		"the bed you held on nobody's word but your own is remembered by name")
+
+	# Tomorrow, the identical play on the identical patient is read harder.
+	GameState.set_flag("remembered_beds", remembered)
+	var after := _day()
+	t.ok(after.is_flagged("oduya"), "and he opens tomorrow with a note on his file")
+	after.advance_to(17 * 60 + 30)
+	after.write_entry("oduya", ChartEntry.Claim.UNWELL, "Reports dizziness.", 17 * 60 + 25)
+	after.set_disposition("oduya", "hold")
+	t.gt(_sev(after.review_findings()), first * 1.4,
+		"doing it to him twice costs meaningfully more the second time (%.2f then %.2f)"
+			% [first, _sev(after.review_findings())])
+	after.queue_free()
+	GameState.set_flag("remembered_beds", PackedStringArray())

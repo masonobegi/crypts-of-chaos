@@ -152,7 +152,7 @@ static func night_fee(t: int) -> int:
 ## money-optimal play was also the safest one. A ward has rounds. They are at
 ## fixed, learnable times, which turns "when do I write this" from flavour into
 ## the central skill — the gaps are real and you find them by reading the chart.
-const ROUNDS := [10 * 60, 14 * 60, 18 * 60, 21 * 60]
+const ROUNDS := [10 * 60, 13 * 60, 16 * 60, 19 * 60]
 
 const PRIOR_ENTRIES := [
 	{

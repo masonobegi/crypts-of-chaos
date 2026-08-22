@@ -525,7 +525,11 @@ static func _reversed_a_colleague(pid: String, list: Array) -> Array:
 		for e in list:
 			if not e.supports_stay() or e.author != ChartEntry.Author.YOU:
 				continue
-			if e.stated_minute < plan.stated_minute:
+			# WRITTEN, not stated. Stating a time is free — the exploit was to
+			# claim you saw him at eight o'clock, fifty minutes before Adeyemi
+			# wrote her discharge plan, and the reversal simply did not register.
+			# When you actually typed it is not yours to choose.
+			if e.written_minute < plan.written_minute:
 				continue
 			var f := Finding.new()
 			f.kind = "reversed_a_colleague"
@@ -577,6 +581,100 @@ static func pattern_findings(entries: Array, truth: Dictionary) -> Array:
 	f.because = ("%d patients were held on findings nobody but you ever recorded."
 		% solo_holds.size())
 	out.append(f)
+	return out
+
+# ======================================================================
+# THE BED AUDIT — what replaced the severity sum.
+#
+# For three iterations the verdict was a float: add up every finding, compare
+# against four thresholds. It was gamed three times running, and each fix built
+# the next exploit. Killing "hold three and write two notes" made an EMPTY
+# CHART the safest play in the game, because a chart with nothing in it has
+# nothing to contradict. Adding `pattern_of_holds` to catch that was switched
+# off by writing the note as PATIENT-authored instead. Rebalancing severities
+# downward moved most findings into the band where standing by them is free.
+#
+# The flaw is structural, not numerical. A sum lets the player make findings
+# NOT HAPPEN, and the cheapest way to make a finding not happen is to write
+# nothing at all — which is the exact opposite of the game.
+#
+# So the reviewer no longer adds anything up. She goes bed by bed and asks one
+# question about each: WHY WAS THIS BED OCCUPIED LAST NIGHT? A held bed cannot
+# be made to disappear from that list, and an empty chart is not a way of
+# dodging the question — it is the worst possible answer to it.
+enum Defence {
+	BACKED,        ## somebody other than you put a reason in the record
+	SOLO,          ## your word, and only your word
+	CONTRADICTED,  ## the record actively disagrees with the reason you gave
+	NONE,          ## there is no reason in the record at all
+}
+
+class BedAudit extends RefCounted:
+	var patient_id := ""
+	var state: Defence = Defence.NONE
+	var why := ""
+	var findings: Array = []
+
+	func indefensible() -> bool:
+		return state == Defence.NONE or state == Defence.CONTRADICTED
+
+## One verdict per held bed. `findings` are the questions she has about it.
+static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Array:
+	var out: Array = []
+	for pid in truth:
+		if not bool(truth[pid].get("held", false)):
+			continue
+		var a := BedAudit.new()
+		a.patient_id = pid
+		for f in findings:
+			if f.patient_id == pid:
+				a.findings.append(f)
+
+		var mine := false
+		var backed := false
+		var contradicted := false
+		var recalls: Array = truth[pid].get("patient_recalls", [])
+		for e in entries:
+			if e.patient_id != pid or not e.supports_stay():
+				continue
+			match e.author:
+				ChartEntry.Author.YOU:
+					mine = true
+				ChartEntry.Author.NURSE, ChartEntry.Author.MACHINE:
+					backed = true
+				ChartEntry.Author.PATIENT:
+					# Only if he would still say it in the morning. A symptom the
+					# patient does not remember reporting is not corroboration,
+					# it is a second thing to explain.
+					if recalls.has(e.id):
+						backed = true
+					else:
+						mine = true
+		for f in a.findings:
+			# A symptom the patient says you put in his head is not corroboration,
+			# and neither is a grateful man describing how many times you asked.
+			# Both were counted as "somebody other than you recorded a reason",
+			# which made leading a patient the safest documentation in the game.
+			if f.kind in ["objective_refutes", "justification_undermined",
+					"conflicting_observations", "invited_contradiction",
+					"social_hold_is_a_lie", "patient_no_recall",
+					"symptom_was_suggested", "grateful_witness",
+					"already_being_looked_at", "reversed_a_colleague"]:
+				contradicted = true
+
+		if contradicted:
+			a.state = Defence.CONTRADICTED
+			a.why = "the record disagrees with the reason given"
+		elif backed:
+			a.state = Defence.BACKED
+			a.why = "somebody other than you recorded a reason"
+		elif mine:
+			a.state = Defence.SOLO
+			a.why = "the only person who recorded a reason was you"
+		else:
+			a.state = Defence.NONE
+			a.why = "no reason was recorded at all"
+		out.append(a)
 	return out
 
 static func _short(e) -> String:

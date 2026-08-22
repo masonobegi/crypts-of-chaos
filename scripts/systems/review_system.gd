@@ -31,8 +31,14 @@ var resolved: Array = []          ## findings the player talked down
 var used_answers := {}            ## Answer -> times used
 var transcript: Array = []        ## {question, answer, effect, because}
 var extra: Array = []             ## findings the player created in the room
+var _beds: Array = []             ## Contradictions.BedAudit, one per billed night
+var _upgraded: Dictionary = {}    ## beds the player successfully explained
+var _abandoned: Dictionary = {}   ## beds the player gave up on, out loud
 
-func begin(all_findings: Array) -> void:
+func begin(all_findings: Array, entries: Array = [], truth: Dictionary = {}) -> void:
+	_beds = Contradictions.audit_beds(entries, truth, all_findings)
+	_upgraded.clear()
+	_abandoned.clear()
 	findings = all_findings.duplicate()
 	findings.sort_custom(func(a, b): return a.severity < b.severity)
 	if findings.size() > MAX_QUESTIONS:
@@ -106,9 +112,16 @@ func _reconciliation(f, records: Records) -> String:
 			if absi(a.stated_minute - b.stated_minute) >= 25:
 				return "It came and went. That is what transient means."
 		"justification_undermined":
+			# You wrote that he was unwell, then wrote that he had settled, and
+			# billed the night anyway. That is only defensible if the settling
+			# happened too late in the day to act on — you cannot put a
+			# seventy-year-old in a taxi at half past six because he perked up.
+			# The gate used to be `>= DEBT_DUE_MINUTE`, which is the minute the
+			# ward closes: no entry can ever be stated at or after it, so this
+			# answer had never once been offered to anybody.
 			for e in list:
-				if e.supports_discharge() and e.stated_minute >= Cases.DEBT_DUE_MINUTE:
-					return "He was fine by then. That is why he went home this morning."
+				if e.supports_discharge() and e.stated_minute >= Cases.DEBT_DUE_MINUTE - 90:
+					return "He settled at that hour. I was not sending him home in the dark."
 		"reversed_a_colleague":
 			for e in list:
 				if e.author == ChartEntry.Author.NURSE and e.supports_stay():
@@ -167,6 +180,7 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				return {"cleared": false, "effect": effect}
 			cleared = true
 			effect = "She accepts it, and writes that down."
+			_abandoned[f.patient_id] = true
 			# ...and if the bed was billed, you have just removed its reason.
 			if f.patient_id != "" and held_ids.has(f.patient_id):
 				var g := Contradictions.Finding.new()
@@ -190,10 +204,12 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 			else:
 				cleared = true
 				effect = "\"I'll ask her.\" She does, later, and it holds."
+				_upgraded[f.patient_id] = true
 
 		Answer.RECONCILE:
 			cleared = true
 			effect = "\"...All right. Yes. That happens.\""
+			_upgraded[f.patient_id] = true
 
 		Answer.BLAME_SYSTEM:
 			# It is an answer about TIMESTAMPS. It used to clear anything of any
@@ -226,34 +242,71 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 	return {"cleared": cleared, "effect": effect}
 
 ## What is left standing when she closes the folder.
+## THE VERDICT IS PER BED, NOT PER FLOAT.
+##
+## She goes down the list of beds that were billed and asks one question about
+## each: why was this one occupied? A held bed cannot be removed from that list
+## by writing nothing — an empty chart is the WORST answer to the question, not
+## a way of avoiding it. That is the whole reason this replaced a sum: a sum
+## rewards making findings not happen, and the cheapest way to make a finding
+## not happen was to stop playing the game.
 func outcome() -> Dictionary:
-	var unresolved := 0.0
-	var worst = null
-	for f in findings:
-		if resolved.has(f):
-			continue
-		unresolved += f.severity
-		if worst == null or f.severity > worst.severity:
-			worst = f
-	for g in extra:
-		unresolved += g.severity
-		if worst == null or g.severity > worst.severity:
-			worst = g
+	var beds: Array = _beds
+	# What the player said in the room can move a bed either way.
+	for pid in _upgraded:
+		for b in beds:
+			if b.patient_id == pid and b.state == Contradictions.Defence.CONTRADICTED:
+				b.state = Contradictions.Defence.SOLO
+				b.why = "explained, but still only on your word"
+	for pid in _abandoned:
+		for b in beds:
+			if b.patient_id == pid:
+				b.state = Contradictions.Defence.NONE
+				b.why = "you told her the reason was wrong"
+
+	var indefensible: Array = []
+	var solo: Array = []
+	for b in beds:
+		if b.indefensible():
+			indefensible.append(b)
+		elif b.state == Contradictions.Defence.SOLO:
+			solo.append(b)
+
 	var verdict := OUTCOME_CLEAR
-	if unresolved > 2.5:
+	if indefensible.size() >= 2:
 		verdict = OUTCOME_ESCALATED
-	elif unresolved > 1.4:
+	elif indefensible.size() == 1 or solo.size() >= 2:
 		verdict = OUTCOME_FLAGGED
-	elif unresolved > 0.6:
+	elif solo.size() == 1:
 		verdict = OUTCOME_QUESTIONS
+
+	var worst_bed = indefensible[0] if not indefensible.is_empty() \
+		else (solo[0] if not solo.is_empty() else null)
+	var because := "Every bed you billed had a reason in it that somebody else had seen."
+	if worst_bed != null:
+		var who := String(Cases.by_id(worst_bed.patient_id).get("name", worst_bed.patient_id))
+		because = "%s stayed the night and %s." % [who, worst_bed.why]
+
+	# SHE REMEMBERS THE BED, NOT THE DAY. Every bed she could not corroborate
+	# goes on that patient's file whether or not the day as a whole was worth
+	# raising. Without this, "noted" was free: one well-timed fabrication a day
+	# doubled the takings, carried nothing into tomorrow, and was therefore
+	# strictly better than honesty forever — the exact dominant strategy the
+	# per-bed audit was built to remove, reappearing one level up.
+	var remembered := PackedStringArray()
+	for b in beds:
+		if b.indefensible() or b.state == Contradictions.Defence.SOLO:
+			remembered.append(b.patient_id)
+
 	return {
 		"verdict": verdict,
-		"unresolved": unresolved,
-		"worst": worst,
-		# THE CAUSAL CHAIN, so a bad morning is never mysterious.
-		"because": worst.because if worst != null else "Nothing in the folder disagreed with itself.",
+		"beds": beds.size(),
+		"indefensible": indefensible.size(),
+		"solo": solo.size(),
+		"because": because,
 		"transcript": transcript,
 		"created": extra.size(),
+		"remembered": remembered,
 	}
 
 ## Her closing line. Written to tell the player what happened, not to score them.

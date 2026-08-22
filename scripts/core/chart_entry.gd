@@ -87,8 +87,15 @@ func supports_discharge() -> bool:
 		or claim == Claim.RESULT_NORMAL or claim == Claim.FIT_FOR_DISCHARGE
 
 ## Two entries are ABOUT THE SAME MOMENT if the windows they describe overlap.
-## Half an hour either side, because a ward round is not a stopwatch.
-const SAME_MOMENT := 30
+## Two notes this far apart are talking about the same thing, so disagreeing is
+## a contradiction. Forty-five rather than thirty because the reviewer's "it
+## came and went" answer is only offered from twenty-five minutes apart: at
+## thirty, that answer existed in a five-minute sliver nobody could aim at, and
+## a defence you cannot plan for is not a skill. Now the shape is learnable —
+## inside twenty-five minutes of a round you are simply caught, between
+## twenty-five and forty-five you have something to say, and beyond that
+## nobody is looking at the same moment at all.
+const SAME_MOMENT := 45
 
 func concerns_same_moment_as(other: ChartEntry) -> bool:
 	return absi(stated_minute - other.stated_minute) <= SAME_MOMENT

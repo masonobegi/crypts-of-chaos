@@ -84,7 +84,9 @@ func build() -> void:
 	# set_in_bed() drops the body from the marker rather than standing on it.
 	_mount = Marker3D.new()
 	_mount.name = "Occupant"
-	_mount.position = Vector3(0, MATTRESS_TOP + 0.30, -LENGTH * 0.06)
+	# Toward the HEAD end, so the hips land near the pillow and the legs run down
+	# the mattress instead of the body sitting on the foot of the bed.
+	_mount.position = Vector3(0, MATTRESS_TOP + 0.30, -LENGTH * 0.22)
 	add_child(_mount)
 
 func mount_point() -> Vector3:

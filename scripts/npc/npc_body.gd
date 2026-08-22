@@ -887,7 +887,7 @@ func set_on_duty(v: bool) -> void:
 			global_position = _off_duty_at
 		else:
 			var back := String(get("home_room") if get("home_room") != null else "corridor")
-			if back == "" or not h.is_room_open(back):
+			if back == "":
 				back = "corridor"
 			global_position = h.point_in(back, "duty_return")
 
@@ -944,18 +944,26 @@ func set_in_bed(on: bool) -> void:
 		return
 	_seated = on
 	var b: Node3D = body
-	# Hips at the mattress, trunk raised against the backrest.
-	b.position = Vector3(0, -0.62, 0.10) if on else Vector3.ZERO
-	b.rotation.x = 0.72 if on else 0.0
-	# Legs out along the mattress rather than folded off a seat.
+	# Hips down at the mattress and back toward the pillow; trunk tipped BACKWARD
+	# against the raised head of the bed.
+	#
+	# The sign matters and the first version had it wrong: a character model
+	# faces its own -Z, so a POSITIVE rotation.x tips the top of the body toward
+	# where it is looking — face down. The render showed five people hunched
+	# forward over their own knees like a ward full of men being sick. Backward
+	# is negative.
+	b.position = Vector3(0, -0.55, 0.26) if on else Vector3.ZERO
+	b.rotation.x = -0.52 if on else 0.0
+	# Legs out along the mattress rather than folded off a seat, and nearly
+	# straight at the knee — this is lying in a bed, not perching on one.
 	for leg in _legs:
-		leg.rotation.x = -0.86 if on else 0.0
+		leg.rotation.x = -1.02 if on else 0.0
 	for knee in _knees:
-		knee.rotation.x = 0.28 if on else 0.0
+		knee.rotation.x = 0.18 if on else 0.0
 	for i in _arms.size():
 		var arm: Node3D = _arms[i]
-		arm.rotation.x = -0.55 if on else 0.0
-		arm.rotation.z = (0.22 if i == 0 else -0.22) if on else 0.0
+		arm.rotation.x = -0.30 if on else 0.0
+		arm.rotation.z = (0.26 if i == 0 else -0.26) if on else 0.0
 	if _nametag:
 		_nametag.position.y = (1.30 if on else 1.92) * height_scale
 	if _speech:

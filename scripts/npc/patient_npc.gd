@@ -85,7 +85,10 @@ func _hold_bed_pose(_delta: float) -> void:
 	if not in_chair:
 		return
 	global_position = bed.mount_point()
-	rotation.y = bed.rotation.y
+	# Facing the FOOT of the bed, which is the door. A patient lying with their
+	# back to the way you come in cannot look at you, and being looked at when
+	# you walk in is most of what this game is about.
+	rotation.y = bed.rotation.y + PI
 	velocity = Vector3.ZERO
 
 ## A patient in their chair does not budge for a doctor squeezing past — the
@@ -249,7 +252,7 @@ func _maybe_wander() -> void:
 	# against the comfort of the room they are ACTUALLY in, so a cold, dark day
 	# room slows down every psych patient on the floor at once, from a
 	# thermostat nobody associates with any of them.
-	var day_room: bool = data.dept() == "psych" and h.is_room_open("day_room")
+	var day_room := false  # there is no day room; the ward is the ward
 	if day_room:
 		urge = maxf(urge, 0.45)
 	if not RNG.chance("patient_wander", urge):

@@ -357,11 +357,11 @@ func _pick_patrol_target() -> void:
 	# the far end of the ward strategically valuable.
 	if archetype == "lazy" and RNG.chance("lazy_skip", 0.6):
 		pool = [home_room, "corridor"]
-	# A decent coffee machine is, mechanically, a nurse-retention device. Staff
-	# spend more of the shift at the station and less of it in your wards.
-	elif role == "nurse" and GameState.has_upgrade("coffee_machine") \
-			and not GameState.flag("coffee_broken", false) \
-			and RNG.chance("coffee_pull", 0.45):
+	# There are no upgrades to buy any more. What pulls Adeyemi back to the
+	# station is the paperwork she has to do there, which is also what makes the
+	# ward quiet at predictable moments — and a quiet ward is when a note gets
+	# written without anybody watching.
+	elif role == "nurse" and RNG.chance("station_paperwork", 0.35):
 		pool = ["station"]
 	# A department nobody has bought is behind a shutter, and a nurse who picks
 	# one stands in the corridor waiting on a path that does not exist. Filtered
@@ -369,7 +369,7 @@ func _pick_patrol_target() -> void:
 	# opens — buying a department means more of the building is watched.
 	var reachable: Array = []
 	for k in pool:
-		if h.is_room_open(String(k)):
+		if true:  # every room in a four-room ward is open; the shutters are gone
 			reachable.append(k)
 	if reachable.is_empty():
 		reachable = ["corridor"]

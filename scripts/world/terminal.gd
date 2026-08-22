@@ -27,49 +27,40 @@ func build(disp: String, private: bool) -> void:
 	add_child(glow)
 
 func prompt(_player) -> Array:
-	if _going_home():
-		return ["Finish the shift", "sign off and go home"]
-	if _can_call_it_a_day():
-		return ["Call it a day", "anyone you have not seen gets seen by nursing"]
-	var sub := "in full view of the ward" if not is_private else "door's shut. nobody's looking."
-	return ["Use terminal", sub]
+	var w = get_tree().get_first_node_in_group("ward_day")
+	if _is_the_office() and w != null and not w.ended:
+		var p: Dictionary = w.projected()
+		return ["Go home", "%s against %s owed" % [
+			UIKit.money_str(int(p["total"])), UIKit.money_str(Cases.DEBT_DUE)]]
+	var sub := "in full view of the ward" if not is_private \
+		else "door's shut. nobody's looking."
+	return ["Read the ward's notes", sub]
 
-## After the chart review, this is how the day ends.
+## THE DAY ENDS IN A SPECIFIC ROOM WITH A DOOR ON IT.
 ##
-## It used to end at a button on a screen that the screen's OTHER button freed
-## forever. Ending the shift at a terminal, in the world, means "go and fix
-## something first" is a real errand with a real way back — and it puts the last
-## act of the day in the room where the records are, which is where it belongs.
-func _going_home() -> bool:
-	# There is no separate chart-review phase any more; the review is a
-	# conversation the next morning. A terminal is a terminal all day.
-	return false
-
-## Ending the day is a walk to your office rather than a clock running out.
-##
-## It makes the round a thing you choose the shape of: see five patients
-## properly, see one and spend the day on them, or see nobody and let nursing
-## have the whole ward. The clock is still there as a backstop, but the decision
-## is now yours and it is made in a specific room with a door on it.
-func _can_call_it_a_day() -> bool:
-	if mode != "admin" or not is_private:
-		return false
-	var ss = get_tree().get_first_node_in_group("shift_system")
-	return ss != null and ss.can_end_day()
+## Not a clock running out and not a button on a screen. Walking to your own
+## office to sign off is the last decision of the shift, and it is made in the
+## room where the records are, which is where it belongs — and it means "go and
+## fix one more thing first" is a real errand with a real way back.
+func _is_the_office() -> bool:
+	return mode == "admin" and is_private
 
 func interact(_player, _held) -> void:
 	AudioMgr.play("beep", -12.0)
-	if _going_home():
-		var ss = get_tree().get_first_node_in_group("shift_system")
-		if ss != null:
-			ss.clock_out()
+	var w = get_tree().get_first_node_in_group("ward_day")
+	if w == null:
 		return
-	if _can_call_it_a_day():
-		var ss2 = get_tree().get_first_node_in_group("shift_system")
-		if ss2 != null:
-			ss2.end_shift(true)
+	if _is_the_office() and not w.ended:
+		# Anybody you never made a decision about goes home. Nursing is not
+		# going to keep a bed occupied because you did not get round to it.
+		for c in Cases.ROSTER:
+			var pid := String(c["id"])
+			if String(w.state[pid]["disposition"]) == "":
+				w.set_disposition(pid, "discharge")
+		w.end_day()
+		EventBus.request_ui.emit("review", {})
 		return
-	EventBus.request_ui.emit("records", {
-		"mode": mode, "private": is_private, "room": room_key,
-		"position": global_position,
-	})
+	# Any other terminal is somewhere to read from, and somewhere to be seen
+	# reading from.
+	EventBus.request_ui.emit("records", {})
+

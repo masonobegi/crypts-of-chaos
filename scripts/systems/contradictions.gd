@@ -63,6 +63,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_patient_no_recall(pid, list, t))
 		out.append_array(_symptom_was_suggested(pid, list, t))
 		out.append_array(_grateful_witness(pid, list, t))
+		out.append_array(_family_read_it(pid, list, t))
 		out.append_array(_unfulfilled_orders(pid, list))
 		out.append_array(_objective_refutes(pid, list))
 		if bool(t.get("held", false)):
@@ -247,6 +248,41 @@ static func _grateful_witness(pid: String, list: Array, t: Dictionary) -> Array:
 		+ "my asking, how many times you brought up feeling faint.")
 	f.because = ("The patient volunteered a detailed account of the conversation, "
 		+ "because he was grateful.")
+	out.append(f)
+	return out
+
+## SOMEBODY'S DAUGHTER USED TO DO THIS JOB.
+##
+## Ruth Kerrigan was a ward sister for thirty years and reads her mother's chart
+## the way she read charts for all of them. She is the only person in the
+## building who looks at the notes without being asked, and unlike the reviewer
+## she is there AT SEVEN, while the day is still going on — so what she sees is
+## whatever the chart said before you had a chance to tidy it.
+##
+## She does not need a contradiction either. She has looked after enough old
+## women to know what an eighty-one-year-old is doing in a bed on a Tuesday.
+static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
+	var out: Array = []
+	if not bool(t.get("family_reads_charts", false)) or not bool(t.get("held", false)):
+		return out
+	var reason_before_seven := false
+	for e in list:
+		if e.supports_stay() and e.stated_minute <= 19 * 60:
+			reason_before_seven = true
+	var f := Finding.new()
+	f.kind = "family_read_it"
+	f.patient_id = pid
+	f.axis = "what the family were told"
+	f.severity = 0.40 if reason_before_seven else 0.75
+	if reason_before_seven:
+		f.question = ("Mrs Kerrigan's daughter rang me. She'd read the notes and "
+			+ "wanted to know how long. Did you speak to her?")
+		f.because = "The daughter read the chart at visiting and followed it up."
+	else:
+		f.question = ("Mrs Kerrigan's daughter read the notes at seven and there "
+			+ "was nothing in them about keeping her. She used to do my job.")
+		f.because = ("Ruth Kerrigan read the chart at visiting hours, before there "
+			+ "was any reason written in it, and she knows what she is reading.")
 	out.append(f)
 	return out
 

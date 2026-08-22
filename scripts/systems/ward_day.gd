@@ -27,6 +27,13 @@ var state: Dictionary = {}
 ## Everything the player did, for the instrumentation. Development only.
 var telemetry: Array = []
 
+## Ruth Kerrigan arrives at seven whether you are ready or not. She is a retired
+## ward sister, she reads her mother's chart the way she read charts for thirty
+## years, and she is the only person in the building who will look at the notes
+## without being asked to.
+const RUTH_ARRIVES := 19 * 60
+var ruth_has_been := false
+
 func _ready() -> void:
 	add_to_group("ward_day")
 
@@ -48,6 +55,7 @@ func start() -> void:
 			"tests": 0,
 			"discharged_at": -1,
 		}
+	ruth_has_been = false
 	for pe in Cases.PRIOR_ENTRIES:
 		var e := ChartEntry.new()
 		e.patient_id = String(pe["patient"])
@@ -231,6 +239,11 @@ func advance_to(m: int) -> void:
 	for r in Cases.ROUNDS:
 		if int(r) > from and int(r) <= minute:
 			_routine_round(int(r))
+	if not ruth_has_been and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
+		ruth_has_been = true
+		EventBus.toast.emit(
+			"Ruth Kerrigan is here to see her mother. She has brought a flask.", "info")
+		_log("ruth_arrived", {})
 
 func _routine_round(at: int) -> void:
 	for c in Cases.ROSTER:
@@ -270,6 +283,12 @@ func end_day() -> Dictionary:
 	}
 	_log("day_end", {"earned": p["earned"], "short": short, "cash": cash,
 		"findings": res["findings"].size()})
+	# Failure is not an ending, it is a worse tomorrow. He does not break
+	# anything; he stands in the corridor being pleasant, and Adeyemi asks who
+	# he is. A new pair of eyes in your workplace, permanently.
+	if short:
+		GameState.set_flag("vinnie_visits", true)
+		GameState.set_flag("debt_carried", Cases.DEBT_DUE - int(p["total"]))
 	money_changed.emit(cash)
 	day_ended.emit(res)
 	return res
@@ -285,6 +304,7 @@ func review_findings() -> Array:
 			"patient_recalls": state[pid]["recalls"],
 			"patient_suggested": state[pid]["suggested"],
 			"tells_everyone": bool(Cases.by_id(pid).get("tells_everyone", false)),
+			"family_reads_charts": pid == "kerrigan" and ruth_has_been,
 			"was_asked": bool(state[pid]["asked_symptom"]),
 			"flagged": Cases.by_id(pid).has("audit_flag"),
 		}

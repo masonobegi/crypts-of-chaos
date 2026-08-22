@@ -6,6 +6,7 @@ extends CanvasLayer
 ## dexterity games, the shift chooser, the night, the hearing, the shop, the
 ## tablet — went with the redesign, along with the screens themselves.
 const SCREEN_SCRIPTS := {
+	"morning": "res://scripts/ui/screen_morning.gd",
 	"patient": "res://scripts/ui/screen_patient.gd",
 	"chart": "res://scripts/ui/screen_chart.gd",
 	"review": "res://scripts/ui/screen_review.gd",

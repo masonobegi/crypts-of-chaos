@@ -64,6 +64,23 @@ func _closing(v: VBoxContainer, w) -> void:
 	v.add_child(UIKit.label(ReviewSystem.closing(verdict), 17, UIKit.INK,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.stamp(verdict.to_upper(), tint))
+
+	# The money, and what it did or did not cover. Vinnie came at eight; this is
+	# what he found. Being short is not a game over — it is tomorrow being worse.
+	v.add_child(UIKit.rule())
+	var short: bool = w.cash < 0
+	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD if short else UIKit.MONEY)
+	var mv := UIKit.vbox(2)
+	mv.add_child(UIKit.row("Owed", UIKit.money_str(Cases.DEBT_DUE), UIKit.INK_DIM))
+	mv.add_child(UIKit.row("Left over" if not short else "Still owed",
+		UIKit.money_str(absi(w.cash)), UIKit.MONEY if not short else UIKit.BAD, 17))
+	if short:
+		mv.add_child(UIKit.label(
+			"He took what there was and said he would come to the ward tomorrow, "
+			+ "since it is on his way. He has never once said where he works.",
+			13, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
+	m.add_child(mv)
+	v.add_child(m)
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("WHAT DECIDED IT", 12, UIKit.INK_DIM))
 	v.add_child(UIKit.label(String(o["because"]), 15, tint,

@@ -1,0 +1,128 @@
+extends RefCounted
+## Photograph the ward. Five real bugs in this project were found only by
+## looking at it, and every one of them was invisible to the tests.
+var tree: SceneTree = null
+var game: Node = null
+var frames := 0
+var index := 0
+var settle := 0
+var out_dir := ""
+
+## Fixed vantages. The ward runs along +Z from the corridor.
+## Vantages derived from the ACTUAL layout rather than guessed. Corridor is
+## Rect2(0,0,20,4), ward Rect2(0,4,20,9) with its door at x=10, station
+## Rect2(0,-8,12,8), office Rect2(12,-8,8,8). Beds run along the ward's far wall
+## at z=11.65. Getting these wrong put the first render inside a bedside table
+## looking at the sky.
+const SHOTS := [
+	["01_corridor", Vector3(1.5, 1.7, 2.0), Vector3(18.0, 1.5, 2.0)],
+	["02_ward_from_door", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
+	["03_bedside", "bedside"],
+	["04_face", "face"],
+	["05_ward_along", Vector3(1.6, 1.7, 9.5), Vector3(18.5, 1.2, 11.0)],
+	["06_station", Vector3(6.0, 1.7, -1.0), Vector3(6.0, 1.3, -7.0)],
+	["07_office", Vector3(16.0, 1.7, -2.0), Vector3(16.0, 1.3, -7.0)],
+	["08_ward_wide", Vector3(2.0, 2.6, 6.0), Vector3(14.0, 1.0, 11.5)],
+	["10_morning", "ui:morning"],
+	["11_patient", "ui:patient"],
+	["12_chart", "ui:chart"],
+	["13_review", "ui:review"],
+]
+
+func start() -> void:
+	GameState.start_new_career(20260822)
+	GameState.set_flag("tutorial_done", true)
+	# NOT headless_sim: Game._spawn_ui() returns early under that flag, so the
+	# whole UI is nil and every screen shot photographs an empty room. This is a
+	# rendered run — it wants the real UI.
+	out_dir = "user://shots"
+	DirAccess.make_dir_recursive_absolute(out_dir)
+	game = load("res://scenes/Game.tscn").instantiate()
+	tree.root.add_child(game)
+	GameState.start_day()
+
+func tick() -> bool:
+	frames += 1
+	tree.paused = false
+	if frames < 20:
+		return false
+	if index >= SHOTS.size():
+		print("captured %d frames to %s" % [SHOTS.size(),
+			ProjectSettings.globalize_path(out_dir)])
+		return true
+	var shot: Array = SHOTS[index]
+	var cam: Camera3D = game.player.camera
+	var w = tree.get_first_node_in_group("ward_day")
+
+	if typeof(shot[1]) == TYPE_STRING and String(shot[1]).begins_with("ui:"):
+		if settle == 0:
+			_stage_ui(String(shot[1]).substr(3), w)
+		settle += 1
+		if settle < 5:
+			return false
+		settle = 0
+		_save(String(shot[0]))
+		if game.ui.has_method("close"):
+			game.ui.close()
+		index += 1
+		return false
+
+	if game.ui and game.ui.has_method("close"):
+		game.ui.close()
+	if typeof(shot[1]) == TYPE_STRING:
+		_frame_a_person(cam, String(shot[1]))
+	else:
+		cam.global_position = shot[1]
+		cam.look_at(shot[2], Vector3.UP)
+	settle += 1
+	if settle < 4:
+		return false
+	settle = 0
+	_save(String(shot[0]))
+	index += 1
+	return false
+
+func _stage_ui(which: String, w) -> void:
+	match which:
+		"morning":
+			EventBus.request_ui.emit("morning", {})
+		"patient":
+			EventBus.request_ui.emit("patient", {"patient_id": "oduya"})
+		"chart":
+			if w != null:
+				w.advance_to(21 * 60)
+				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+					"Reports transient dizziness on standing.", 19 * 60 + 30)
+			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
+		"review":
+			if w != null:
+				w.set_disposition("oduya", "hold")
+				for id in ["marchetti", "kerrigan", "brennan", "blake"]:
+					w.set_disposition(id, "discharge")
+				w.advance_to(Cases.DEBT_DUE_MINUTE)
+				w.end_day()
+			EventBus.request_ui.emit("review", {})
+
+## Stand in front of somebody. Characters have to read at two metres and at ten.
+func _frame_a_person(cam: Camera3D, how: String) -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		return
+	var b = ps.get_body("oduya")
+	if b == null or not b.is_inside_tree():
+		return
+	var head: Vector3 = b.head_position()
+	var dist := 1.5 if how == "face" else 2.8
+	var eye := head + Vector3(0.35, 0.10, -1.0).normalized() * dist
+	# TOWARD THE DOOR, not through the far wall. The bed head is at +Z; adding
+	# to z put the camera inside the plaster and photographed a beige gradient.
+	if how == "bedside":
+		eye = head + Vector3(0.85, 0.45, -1.7)
+	cam.global_position = eye
+	cam.look_at(head, Vector3.UP)
+
+func _save(name: String) -> void:
+	var img := tree.root.get_texture().get_image()
+	var path := "%s/%s.png" % [out_dir, name]
+	img.save_png(path)
+	print("  shot: ", ProjectSettings.globalize_path(path))

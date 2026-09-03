@@ -150,6 +150,7 @@ func _check_the_chart_works() -> void:
 	# it — and the registrar keeps hours.
 	_check_the_new_verbs(w)
 	_check_the_room_is_watching(w)
+	_check_no_sign_is_mirrored()
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
 	# from half past seven that is enough to walk the shift past eight o'clock,
@@ -186,6 +187,44 @@ func _check_the_verbs_work() -> void:
 	_ok(o.fulfilled_by == r.id, "and the order is answered by it")
 
 	_check_being_seen_somewhere_else(w)
+
+## NO SIGN IN THE BUILDING RENDERS ITS OWN MIRROR IMAGE.
+##
+## `Build.label3d` used to set `double_sided = true` on everything. A billboard
+## turns to face you so it costs nothing there — but a sign bolted to a wall or
+## hung from a ceiling shows its BACK to anyone behind it, and the back of text
+## is the text backwards. Every hanging corridor sign read correctly walking one
+## way and mirrored walking the other.
+##
+## It had been found and hand-patched twice — `Hospital._build_signage` sets the
+## flag false itself and carries a comment about "ǝʞɐʇnI ⅋ ʎqqo˥",
+## `Dressing.ceiling_sign` builds a whole second rotated label to cover the back
+## — and still shipped, because a fix at two call sites does not fix a default.
+## Checked over the real building rather than by eye: at a distance a mirrored
+## sign just looks like a blurry sign, which is exactly why it survived every
+## screenshot review.
+func _check_no_sign_is_mirrored() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to inspect")
+		return
+	var bad: Array = []
+	var seen := 0
+	for n in _all_nodes(tree.root):
+		if not (n is Label3D):
+			continue
+		seen += 1
+		if n.billboard == BaseMaterial3D.BILLBOARD_DISABLED and n.double_sided:
+			bad.append(String(n.text).substr(0, 18))
+	_ok(seen > 5, "there are signs in the building to check (%d)" % seen)
+	_ok(bad.is_empty(), "and not one of them renders backwards%s"
+		% ("" if bad.is_empty() else ": " + ", ".join(bad)))
+
+func _all_nodes(root: Node) -> Array:
+	var out: Array = [root]
+	for c in root.get_children():
+		out.append_array(_all_nodes(c))
+	return out
 
 ## THE REASON THIS GAME IS IN FIRST PERSON, CHECKED AGAINST THE ACTUAL BUILDING.
 ##

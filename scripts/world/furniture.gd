@@ -133,6 +133,64 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, _door_wall_z(r) - into * 3.4), 0.9)
 	Dressing.floor_mat(h, Vector3(_door_x(r), 0, _door_wall_z(r) - into * 1.05),
 		Vector2(1.5, 0.9), Color(0.22, 0.30, 0.32))
+	_dress_ward_top(h, r)
+
+## THE TOP OF THE WARD, which was a hundred and twenty square metres of nothing.
+##
+## Every bed is against the far wall, so the half of the bay nearest the door was
+## bare vinyl and one blank painted wall — twenty metres of it — with a fire
+## door in the middle. In a wide shot down the ward that reads as a level
+## somebody had not finished building, and it is the first thing a player sees
+## walking in. It was also the first thing in the screenshots that looked like a
+## prototype rather than a game.
+##
+## A real ward puts its working end here: the linen and the hamper, because
+## somebody has to change five beds; the trolley of boxes nobody has put away;
+## the whiteboard with the bed list on it; the gel dispensers by the door, which
+## are the most photographed object in any hospital; and chairs, because
+## visitors wait at this end rather than at the bedside.
+##
+## All of it is Dressing, so none of it has collision or a navigation footprint
+## and no member of staff can get stuck on any of it. That is the rule that
+## lets there be this much of it. The overlap audit in `smoke_run.gd` is what
+## keeps it honest — two of these were placed inside each other on the way in.
+static func _dress_ward_top(h: Hospital, r: Room) -> void:
+	var into := _toward(r)
+	var dz := _door_wall_z(r)
+	var lx: float = r.rect.position.x
+	var rx: float = r.rect.end.x
+
+	# The working corner: linen in, dirty out, and the boxes in between.
+	Dressing.linen(h, Vector3(lx + 1.5, 0, dz - into * 1.5), _door_rot(r))
+	Dressing.hamper(h, Vector3(lx + 2.6, 0, dz - into * 1.5), _door_rot(r))
+	Dressing.boxes(h, Vector3(lx + 0.9, 0, dz - into * 2.9), LEFT_ROT)
+	Dressing.mop_bucket(h, Vector3(lx + 3.6, 0, dz - into * 1.3), _door_rot(r))
+
+	# The board the shift is actually run off, and the gel nobody uses.
+	Dressing.whiteboard(h, _door_wall(r, 0.30, 1.62), _door_rot(r), 2.0, 1.15)
+	Dressing.noticeboard(h, _door_wall(r, 0.62, 1.58), _door_rot(r), 1.7, 1.05)
+	Dressing.dispenser(h, _door_wall(r, 0.46, 1.32), _door_rot(r))
+	Dressing.extinguisher(h, _door_wall(r, 0.86, 1.05), _door_rot(r))
+
+	# Where people wait. Two chairs and something to put a cup on, at the end of
+	# the bay furthest from anybody being examined.
+	Dressing.stool(h, Vector3(rx - 1.3, 0, dz - into * 1.6))
+	Dressing.stool(h, Vector3(rx - 2.2, 0, dz - into * 1.6))
+	Dressing.water_cooler(h, Vector3(rx - 0.8, 0, dz - into * 2.8), RIGHT_ROT)
+	Dressing.plant(h, Vector3(rx - 3.3, 0, dz - into * 1.4), 1.05)
+
+	# Trays stack ON something. Parked in open floor they read as a thing
+	# somebody dropped in the middle of the room, which is exactly how they
+	# looked in the first screenshot after this went in.
+	Dressing.trays(h, Vector3(lx + 4.5, 0, dz - into * 1.35), _door_rot(r))
+	Dressing.screen_partition(h, Vector3(r.rect.get_center().x - 2.6, 0,
+		dz - into * 3.2), LEFT_ROT)
+	# The handrail every ward has, down the blank wall — cut around the doorway,
+	# because a rail across a fire door is the sort of detail that makes a room
+	# read as generated rather than built.
+	var door_x := _door_x(r)
+	Dressing.handrail_run(h, lx + 5.2, rx - 5.2, dz - into * 0.06,
+		[Vector2(door_x - 1.5, door_x + 1.5)], 0.92)
 	# The near half of the bay, which is otherwise a lot of empty floor between
 	# the door and the people.
 	var hmp := Vector3(r.rect.position.x + 1.0, 0, _door_wall_z(r) - into * 2.4)

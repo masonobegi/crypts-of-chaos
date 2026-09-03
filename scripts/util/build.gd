@@ -310,7 +310,19 @@ static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard 
 	l.pixel_size = size / 64.0
 	l.modulate = color
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED if billboard else BaseMaterial3D.BILLBOARD_DISABLED
-	l.double_sided = true
+	# A FIXED LABEL MUST NOT RENDER ITS OWN MIRROR.
+	#
+	# This was `true` for everything. A billboard always turns to face you, so
+	# double-sided costs it nothing — but a sign bolted to a wall or hung from a
+	# ceiling shows its BACK face to anyone behind it, and the back face of text
+	# is the text backwards. Every hanging corridor sign in the building read
+	# correctly walking one way and mirrored walking the other, and
+	# `Dressing.ceiling_sign` had already been given a second, properly rotated
+	# back label to fix exactly that — so what was actually on screen was the
+	# correct back label with the front label's mirror image drawn on top of it.
+	# `Hospital._build_signage` carries a comment about the same bug and sets
+	# this to false by hand; it is the default's job, not every caller's.
+	l.double_sided = billboard
 	l.no_depth_test = false
 	l.shaded = false
 	# 12 was a halo half a stroke wide. At any distance the outlines of adjacent

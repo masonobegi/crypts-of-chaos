@@ -221,8 +221,16 @@ func _build_body() -> void:
 	for sx in [-1.0, 1.0]:
 		var white := Build.mi(Build.sphere_mesh(0.056), Build.unshaded(Color(0.99, 0.99, 1.0)),
 			Vector3(sx * 0.080, 0.012, 0.166), Vector3.ZERO, Vector3(0.92, 1.18, 0.78))
+		# PAINTED ON, NOT STUCK ON. The pupil was a full 3cm sphere whose centre
+		# sat 3cm proud of the eye white, so it parallaxed against the white as
+		# soon as you were off-axis — and you are off-axis for most of the game,
+		# because you stand beside a bed looking down at somebody lying in it.
+		# Both pupils drifted toward the top outer corner of their whites and
+		# every patient in the ward looked walleyed. Flattened into a disc that
+		# hugs the surface of the white, it reads as a painted eye from any
+		# angle, which is what the sphere was pretending to be.
 		var pupil := Build.mi(Build.sphere_mesh(0.030), Build.unshaded(Color(0.10, 0.11, 0.16)),
-			Vector3(sx * 0.080, 0.008, 0.196))
+			Vector3(sx * 0.080, 0.008, 0.190), Vector3.ZERO, Vector3(1.0, 1.0, 0.30))
 		_head.add_child(white)
 		_head.add_child(pupil)
 		_eyes_open.append(white)

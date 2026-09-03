@@ -425,7 +425,12 @@ static func _ward(h: Hospital, r: Room) -> void:
 
 		# Gas outlets and the bed number, on the wall behind the head.
 		Dressing.oxygen_panel(h, Vector3(slot.x, 1.42, far_z + into * 0.10), _far_rot(r))
-		_wall_sign(h, str(n), Vector3(slot.x, 2.30, far_z + into * 0.14), _far_rot(r), 0.16)
+		# OFF TO THE SIDE, because the patient's floating name tag is centred
+		# over the same bed. Directly above the head the two sat on top of each
+		# other and every bedside shot read "Sam Oduya" with a "4" printed
+		# through it. Beside the head is also where a real bed number is.
+		_wall_sign(h, str(n), Vector3(slot.x - 0.86, 2.30, far_z + into * 0.14),
+			_far_rot(r), 0.16)
 		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, far_z + into * 0.30), _far_rot(r))
 
 		# The cabinet by the head and the tray table across the foot: the two

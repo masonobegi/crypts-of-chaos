@@ -275,7 +275,21 @@ func _build_hum() -> AudioStreamWAV:
 ##
 ## Events wrap around the end of the buffer, so the tail of the last chord
 ## decays into the top of the first bar and the loop has no seam to hide.
-const MUSIC_BARS := 8
+## THIRTY-TWO BARS, NOT EIGHT.
+##
+## Eight bars at 82bpm is 23.4 seconds, and there is exactly one piece of music
+## in the game: it starts on the title screen and it does not stop until the
+## career ends. That is something like two hundred and fifty passes of the same
+## eight bars in one sitting, which is the single most common thing anybody
+## says about a small game with a synthesised score.
+##
+## The material was not the problem — the playtest note that produced this
+## arrangement was answered — so this is a FORM rather than a rewrite: the
+## eight bars people liked, twice, then a bridge, then the eight again, with
+## the arrangement thinning and thickening across the four passes so that no
+## two of them sound the same. Ninety-four seconds, and the loop point is now
+## four times further apart than the longest thing anybody does in one place.
+const MUSIC_BARS := 32
 const BEATS_PER_BAR := 4
 
 ## One entry per bar: `b` is the root the bar is built on in semitones from the
@@ -295,7 +309,26 @@ const BEATS_PER_BAR := 4
 const SCORE := {
 	"key": 233.08, "bpm": 82.0, "swing": 0.20, "gain": 0.95,
 	"drums": 0.5, "comp": 1.0, "lead": 1.0, "seed": 4471,
+	# A A B A, eight bars each. A is the head this arrangement was built around
+	# and is played three times; B lifts and then walks back down to it, so the
+	# return has somewhere to return from.
 	"prog": [
+		## A
+		{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
+		{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
+		{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
+		{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 9]},
+		## A again — the head repeats, which is what a head does
+		{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
+		{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
+		{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
+		{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 9]},
+		## B, up a minor third and then back down through the ii-V
+		{"b": 3, "c": [4, 7, 11]}, {"b": 3, "c": [2, 7, 10]},
+		{"b": -1, "c": [3, 6, 10]}, {"b": -1, "c": [2, 5, 9]},
+		{"b": 1, "c": [4, 8, 11]}, {"b": 1, "c": [3, 7, 10]},
+		{"b": -2, "c": [1, 5, 10]}, {"b": -5, "c": [0, 4, 7]},
+		## A, last time
 		{"b": 0, "c": [3, 7, 10]}, {"b": -2, "c": [1, 5, 10]},
 		{"b": -4, "c": [3, 7, 10]}, {"b": -5, "c": [0, 4, 7]},
 		{"b": 0, "c": [3, 7, 10]}, {"b": 5, "c": [8, 12, 15]},
@@ -494,6 +527,9 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 		var b0 := float(here["b"])
 		var chord: Array = here["c"]
 		var bar_t := float(bar) * beat * float(BEATS_PER_BAR)
+		# Which of the four eight-bar passes this is. Read by the comping, the
+		# lead and the kit — see the arrangement note below.
+		var section: int = bar / 8
 
 		# No bass line. The chord below carries the bar's root as its bottom
 		# note instead, which is enough to say where the harmony is without
@@ -501,16 +537,37 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 		#
 		# Comping, off the beat, because a chord on the beat is a hymn.
 		if comp > 0.0:
-			for h in [1.0 + swing, 2.5 + swing, 3.0]:
+			# And the comping opens up on the last pass — an extra push on the
+			# and-of-four, which is where the head wants to go round again.
+			var pushes: Array = [1.0 + swing, 2.5 + swing, 3.0]
+			if section == 3:
+				pushes.append(3.5 + swing)
+			for h in pushes:
 				var voicing: Array = [b0 - 12.0]
 				voicing.append_array(chord)
 				for n in voicing:
 					_render(buf, "keys", bar_t + float(h) * beat, beat * 1.6,
 						_semitone(root, float(n) - 12.0), comp * 0.20, rng)
 
-		# The lead phrases: two bars on, two bars off, and it lands on a chord
-		# tone. Sparse enough to sit under eighteen minutes of a shift.
-		if lead > 0.0 and bar % 4 < 2:
+		# THE ARRANGEMENT CHANGES ACROSS THE FOUR PASSES, or the form is just
+		# the same eight bars four times and the length bought nothing. What
+		# separates a loop you stop hearing from a loop you notice is whether
+		# anything is ever ABSENT: an instrument dropping out and coming back
+		# is the cheapest structure there is, and it costs no material at all.
+		#
+		#   A   head, lead phrasing two bars on two bars off
+		#   A'  lead tacet, brushes pulled back to the rim — the quiet pass
+		#   B   bridge, lead on the odd bars only, hats back
+		#   A'' the head again, lead fullest, to end on the biggest thing
+		# The lead phrases: it lands on a chord tone and leaves room. Sparse
+		# enough to sit under eighteen minutes of a shift.
+		var lead_here: bool = false
+		match section:
+			0: lead_here = bar % 4 < 2
+			1: lead_here = false
+			2: lead_here = bar % 2 == 0
+			_: lead_here = bar % 4 < 3
+		if lead > 0.0 and lead_here:
 			var figure := [0.0, 0.75 + swing * 0.5, 1.5, 2.5 + swing]
 			for i in figure.size():
 				if rng.randf() > 0.82:
@@ -521,15 +578,21 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 					_semitone(root, float(pick) + 12.0), lead * 0.13, rng)
 
 		# Kit, brushes only. No kick: that and the bass were the DUH DUH DUH.
+		#
+		# The hats come off for the second pass. With the lead already tacet
+		# there, that pass is a comping keyboard and a rim click, which is a
+		# genuinely different texture rather than the same one turned down —
+		# and it makes the bridge arriving with the hats back an event.
 		if drums > 0.0:
 			for b in [1.0, 3.0]:
 				_render(buf, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.26, rng)
-			for i in 8:
-				var pos: float = float(i) * 0.5
-				if i % 2 == 1:
-					pos += swing * 0.5
-				_render(buf, "hat", bar_t + pos * beat, 0.10,
-					0.0, drums * (0.13 if i % 2 == 0 else 0.08), rng)
+			if section != 1:
+				for i in 8:
+					var pos: float = float(i) * 0.5
+					if i % 2 == 1:
+						pos += swing * 0.5
+					_render(buf, "hat", bar_t + pos * beat, 0.10,
+						0.0, drums * (0.13 if i % 2 == 0 else 0.08), rng)
 
 	# Normalise to a known peak. The previous score was mixed by eye and landed
 	# thirteen decibels quieter than anybody could hear; measuring it is one

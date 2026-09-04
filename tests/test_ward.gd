@@ -1101,6 +1101,59 @@ func test_holding_the_man_you_got_wrong_is_defensible() -> void:
 	GameState.set_flag(Cases.READMIT_PENDING, [])
 	GameState.day = 1
 
+## THE SCORE HAS A FORM, and the four passes are not the same eight bars four
+## times over.
+##
+## There is exactly one piece of music in this game: it starts on the title
+## screen and it does not stop until the career ends. At eight bars and 82bpm
+## that was 23.4 seconds, something like two hundred and fifty passes in one
+## sitting, and it is the single most common thing anybody says about a small
+## game with a synthesised score.
+##
+## Length alone would have bought nothing — thirty-two bars of the same eight is
+## still the same eight. What makes a loop stop being heard is anything ever
+## being ABSENT, so the arrangement thins and thickens across the four passes:
+## the lead is tacet through the second and the brushes pull back to the rim.
+## That is what this measures, because it is the part a later edit would
+## silently undo while the length went on looking right.
+func test_the_score_is_longer_than_the_thing_it_plays_under() -> void:
+	var st: AudioStreamWAV = AudioMgr._build_music()
+	t.ok(st != null, "there is a score")
+	if st == null:
+		return
+	var samples: int = st.data.size() / 2
+	var seconds: float = float(samples) / float(AudioMgr.SR)
+	t.ok(seconds > 60.0, "and the loop is over a minute long (%.1f s)" % seconds)
+
+	# Energy per eight-bar pass. Two passes that render identically are the same
+	# music twice; the whole point of the form is that they do not.
+	var per_pass: Array = []
+	var span: int = samples / 4
+	for pass_i in 4:
+		var sum := 0.0
+		# Every 64th sample: four million absolute values in GDScript is slower
+		# than the rest of this file put together, and the shape is the same.
+		var i: int = pass_i * span
+		while i < (pass_i + 1) * span:
+			var v: int = st.data[i * 2] | (st.data[i * 2 + 1] << 8)
+			if v > 32767:
+				v -= 65536
+			sum += absf(float(v))
+			i += 64
+		per_pass.append(sum / float(span / 64))
+	var quietest: float = per_pass[0]
+	var loudest: float = per_pass[0]
+	for e in per_pass:
+		quietest = minf(quietest, float(e))
+		loudest = maxf(loudest, float(e))
+	t.ok(loudest > quietest * 1.10,
+		"and the four passes are not the same pass four times (%.0f..%.0f)"
+			% [quietest, loudest])
+	# Specifically: the second one is the quiet one, by construction.
+	t.ok(float(per_pass[1]) == quietest,
+		"the second pass is the one that drops out (%.0f, %.0f, %.0f, %.0f)"
+			% [per_pass[0], per_pass[1], per_pass[2], per_pass[3]])
+
 ## A NEW CAREER IS ACTUALLY NEW. `flags.clear()` used to run after the three
 ## calls that write the flags a career starts with, so the right state was being
 ## reached by accident through the defaults of the getters that read them — and

@@ -244,7 +244,11 @@ func _settings_screen() -> Control:
 			# Play something at the new level, so the slider answers the
 			# question it is actually being asked.
 			_audition(), pct))
-	v.add_child(UIKit.slider("Ambience", Settings.get_value("music_volume"),
+	# "Music", not "Ambience". It is the slider that turns the score down, and
+	# a player who wants the score turned down does not go looking under
+	# "Ambience" — they conclude there is no way to do it. The setting key stays
+	# `music_volume`, which is what it has always actually been.
+	v.add_child(UIKit.slider("Music", Settings.get_value("music_volume"),
 		0.0, 1.0, 0.05, func(x): Settings.set_value("music_volume", x), pct))
 
 	v.add_child(UIKit.rule())

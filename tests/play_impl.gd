@@ -55,6 +55,7 @@ var _replans := 0
 ## right distance from the terminal and the wrong side of the room.
 var _reach := REACH
 var _office_tries := 0
+var _day_was := 0
 
 const REACH := 2.4
 ## How long a single approach gets. The office is at the far end of the
@@ -352,7 +353,12 @@ func tick() -> bool:
 			if _since() > 6:
 				if String(game.ui.current_id) == "day_over":
 					_check_the_shift_can_be_finished()
-					_to("done")
+					_want = ["Work tomorrow"]
+					_tries = 0
+					_dir = 0
+					_last_focus = ""
+					_day_was = GameState.day
+					_to("tomorrow")
 				elif _tries > 40:
 					_fail("the handover would not finish (screen '%s')"
 						% game.ui.current_id)
@@ -362,6 +368,17 @@ func tick() -> bool:
 					_tap("accept", true)
 					_tap("accept", false)
 					_to("handover")
+		"tomorrow":
+			# AND THE NEXT MORNING. The End of Shift card is not the end of
+			# anything — "Work tomorrow" is the only thing that advances a
+			# career, and the chain from one day to the next is the join that
+			# has broken most often in this project.
+			if _seek():
+				_to("tomorrow_settle")
+		"tomorrow_settle":
+			if _since() > 20:
+				_check_tomorrow_arrives()
+				_to("done")
 		"done":
 			_report()
 			return true
@@ -447,6 +464,13 @@ func _check_the_office_opens(p) -> void:
 				p.current_room() if p != null and p.has_method("current_room") else "?",
 				_round(_target.global_position) if _target else "?",
 				_wp, _path.size()])
+
+func _check_tomorrow_arrives() -> void:
+	_ok(GameState.day == _day_was + 1,
+		"and one press starts the next day (day %d)" % GameState.day)
+	_ok(String(game.ui.current_id) == "morning",
+		"with the morning briefing in front of you (screen '%s')"
+			% game.ui.current_id)
 
 func _check_the_shift_can_be_finished() -> void:
 	var w = tree.get_first_node_in_group("ward_day")

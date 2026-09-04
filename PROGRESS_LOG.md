@@ -1673,6 +1673,12 @@ records, sign off, and answer the ward sister until the End of Shift card is on
 the screen. Nine checks, three seconds, and it is the only thing in this repo
 that asserts the game can be COMPLETED rather than merely started.
 
+It goes one screen further than the shift: "Work tomorrow" is the only thing
+that advances a career, and the join from one day to the next is what has
+broken most often in this project — so the plan presses it and asserts the day
+number moved and the next morning's briefing is on the screen. Eleven checks in
+all.
+
 Six things it found on the way to passing, all of them harness bugs and every
 one of them the kind that would also have been a player's problem:
 

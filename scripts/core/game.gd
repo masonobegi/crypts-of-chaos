@@ -336,20 +336,30 @@ func _on_visitor(pid, who) -> void:
 	v.patient_id = String(pid)
 	v.set_look(_look(v.npc_id, 61, Color(0.45, 0.38, 0.42)))
 	add_child(v)
-	# At the foot of her mother's bed, not "somewhere in the ward". She came to
-	# see one person.
+	# BESIDE THE BED, ON THE SIDE THE ROOM IS ON. She came to see one person, so
+	# "somewhere in the ward" is the wrong answer — and so is a fixed world-space
+	# offset, which is what the first version used: +0.9 on z is toward the far
+	# wall, because the beds stand head to the plaster, so she was put behind
+	# the bedhead facing the plaster. Off the patient's own basis instead, which
+	# already points down the bed toward the door.
 	var spot := hospital.point_in("ward")
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	if ps != null and ps.has_method("get_body"):
 		var body = ps.get_body(String(pid))
 		if body != null and is_instance_valid(body) and body.is_inside_tree():
-			spot = body.global_position + Vector3(0.95, 0, 0.9)
+			var t: Transform3D = body.global_transform
+			spot = body.global_position + t.basis.z * 0.55 + t.basis.x * 0.95
 			spot.y = 0.0
 	v.global_position = spot
 	# VISITING, not ARRIVING: she is put where she is going. Walking her in
 	# from the door needs a nav path from outside the building, and the state
 	# she would arrive in has its own documented trap.
 	v.stand_and_argue(spot, 60.0)
+	# ...and turned toward the bed rather than toward the wall behind it.
+	if ps != null and ps.has_method("get_body"):
+		var look_at_body = ps.get_body(String(pid))
+		if look_at_body != null and is_instance_valid(look_at_body):
+			v.look_toward(look_at_body.global_position)
 	var mind = suspicion.minds.get(v.npc_id, null)
 	if mind == null:
 		mind = DB.make_mind(v.npc_id, v.display, "family", "observant")

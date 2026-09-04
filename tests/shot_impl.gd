@@ -23,6 +23,7 @@ const SHOTS := [
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],
+	["04c_visitor", "visitor"],
 	["05_ward_along", Vector3(1.6, 1.7, 9.5), Vector3(18.5, 1.2, 11.0)],
 	["06_station", Vector3(6.0, 1.7, -1.0), Vector3(6.0, 1.3, -7.0)],
 	["07_office", Vector3(16.0, 1.7, -2.0), Vector3(16.0, 1.3, -7.0)],
@@ -311,6 +312,23 @@ func _frame_a_person(cam: Camera3D, how: String) -> void:
 	if ps == null:
 		push_error("shot: no patient system to photograph")
 		return
+	# SOMEBODY'S FAMILY, AT THE BEDSIDE. A spawn nobody has ever looked at is a
+	# spawn with a pose bug in it, and this one puts a body next to a bed by
+	# hand rather than by walking it there.
+	if how == "visitor":
+		var w = tree.get_first_node_in_group("ward_day")
+		var who := _someone()
+		if w != null and tree.get_nodes_in_group("visitor").is_empty():
+			w.visitor_arrived.emit(who, "Ruth Kerrigan")
+		var body = ps.get_body(who)
+		if body == null or not body.is_inside_tree():
+			push_error("shot: nobody to visit")
+			return
+		var at: Vector3 = body.head_position()
+		cam.global_position = at + Vector3(2.6, 0.55, -3.4)
+		cam.look_at(at + Vector3(0.6, -0.45, 0.2), Vector3.UP)
+		return
+
 	# ALL FIVE HEADS IN ONE FRAME. The variety between patients is the thing
 	# that is easiest to lose and hardest to see one bed at a time — five
 	# people who differ only slightly from their neighbour still read as one

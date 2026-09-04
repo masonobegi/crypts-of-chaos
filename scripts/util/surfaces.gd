@@ -297,13 +297,29 @@ void fragment() {
 ##
 ## Curtains, bedding, upholstery. A woven cross-hatch and a soft sheen along the
 ## grain, which is most of what separates cloth from painted plastic.
-static func fabric_mat(base: Color, weave := 300.0, shared := true) -> ShaderMaterial:
+## Threads per metre, in ONE place. It was a default here and a hard-coded 180
+## at the only call site, so raising the default reached nothing and the
+## comments below went on describing a pitch that no object in the game had —
+## which is the same class of fault as a constant nothing reads, only quieter,
+## because the code and the comment disagree and the picture sides with the
+## code.
+##
+## 180 and not the 300 that was briefly written here. Rendered both: at 300 the
+## weave dissolves almost completely by half a metre, so a gown at the distance
+## you actually read one is flat pink. The pitch was never the problem — the
+## gingham came from two sines of the SAME pitch averaged into a square
+## lattice, and what fixed it was perturbing the phase, running warp and weft
+## at pitches that do not divide into each other, multiplying rather than
+## averaging, and halving the amplitude.
+const WEAVE := 180.0
+
+static func fabric_mat(base: Color, weave := WEAVE, shared := true) -> ShaderMaterial:
 	var key := "fab|%s|%.0f" % [base.to_html(), weave]
 	if shared and _cache.has(key):
 		return _cache[key]
 	var sh := _shader("fab_sh", """
 uniform vec3 base_col : source_color = vec3(0.8, 0.8, 0.85);
-uniform float weave = 180.0;
+uniform float weave = 180.0;   // see WEAVE above; this is only the fallback
 
 void fragment() {
 	vec3 p = world_pos;
@@ -317,8 +333,8 @@ void fragment() {
 	// is irregular at every scale, which is what cloth is.
 	float slub = fbm2(p.xy * 9.0);
 	uv += (slub - 0.5) * 1.7;
-	// FADE IT OUT BEFORE IT ALIASES. A 300-per-metre sine is finer than a
-	// pixel at a metre and a half, and an un-faded one crawls and moirés
+	// FADE IT OUT BEFORE IT ALIASES. A 180-per-metre sine is finer than a
+	// pixel at about three metres, and an un-faded one crawls and moirés
 	// across a curtain every time the player moves. `fwidth` says how much of
 	// the pattern falls inside this pixel; past about half a cycle there is no
 	// honest answer, so it dissolves to the flat colour it averages to — which

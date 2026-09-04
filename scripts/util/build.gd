@@ -629,7 +629,14 @@ static func cloth_mat(color: Color, line := 0.016) -> Material:
 	var key := "cloth|%s|%.4f" % [color.to_html(), line]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
-	var m: Material = Surfaces.fabric_mat(color, 180.0, false)
+	# NO PITCH ARGUMENT, so the one documented in `fabric_mat` is the one that
+	# gets used. This passed 180 explicitly, which silently outvoted the move
+	# to 300 — every piece of cloth in the game kept the old pitch while the
+	# shader's own comments described the new one. The gingham fix worked
+	# anyway, because the three changes that mattered were the perturbed phase,
+	# the mismatched warp and weft pitches and the lower amplitude; the pitch
+	# was the one part of it that never took.
+	var m: Material = Surfaces.fabric_mat(color, Surfaces.WEAVE, false)
 	if line > 0.0:
 		m.next_pass = outline(line, ink_for(color))
 	m.set_meta("cloth_recipe", [color, line])

@@ -120,6 +120,112 @@ func _justify(w: WardDay, pid: String, how: String) -> void:
 			w.advance_to(17 * 60 + 20)
 			w.write_entry(pid, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 
+## THE DAY A CAREFUL PERSON PLAYS, spelled out rather than searched for.
+##
+## The combinatorial search reported "signed off — never reached" on the fourth
+## ward and printed "no clean day exists on this ward" under it. That is a
+## claim about the WARD, made from a fact about the SEARCH, and it is false: a
+## day played by hand — look at everybody, send the nurse to everybody, ask the
+## registrar about everybody, hold exactly the two who are unwell, stand by all
+## of it — signs off clean. The file already carries two comments about this
+## exact trap and a `diligent` flag added because of it; the flag was still not
+## the honest day, because it only applied to the beds being HELD, and half of
+## what makes a discharge defensible is having looked at the person you sent
+## home.
+##
+## So the honest day is now a named strategy rather than something the search
+## is hoped to stumble into, and whether it comes out clean is a criterion. It
+## is also the only row in here a player could describe in one sentence.
+func _honest_day(day: int) -> Dictionary:
+	GameState.day = day
+	var w := _day()
+	# Read everybody, then lay hands on everybody. Half of what makes a
+	# DISCHARGE defensible is having looked at the person you sent home, which
+	# is the half the `diligent` flag never covered.
+	w.advance_to(8 * 60 + 30)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		w.read_chart(pid)
+		w.examine(pid)
+	# ...AND WRITE DOWN WHAT YOU FOUND.
+	#
+	# The first version of this honest day looked at everybody and never wrote
+	# anything, and it came out FLAGGED — correctly. Gwen Ashworth is the ward's
+	# whole argument: the night registrar cleared her for home and was wrong,
+	# the nurse cannot see it, asking the registrar again gets the same answer
+	# in writing, and ONLY an examination finds it. So examining her tells YOU;
+	# it puts nothing on the chart. "No reason was recorded at all" is the right
+	# verdict on a doctor who looked, knew, kept the bed and wrote nothing —
+	# that is the game's entire subject, and a probe whose honest player does
+	# not document is not measuring honesty.
+	#
+	# Eleven o'clock: in the gap between the ten and one rounds, stated at the
+	# minute it happened. No backdating anywhere in this day.
+	w.advance_to(11 * 60)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if bool(Cases.by_id(pid).get("truly_well", true)):
+			continue
+		w.write_entry(pid, ChartEntry.Claim.UNWELL,
+			"Examined at the bedside. Not fit for discharge today.", w.minute)
+	# AND CORROBORATE WITH SOMETHING THAT CAN ACTUALLY SEE IT.
+	#
+	# The version before this sent the nurse to everybody, which sounds like
+	# thoroughness and is not. Gwen Ashworth is only visible in person: the
+	# nurse goes, finds nothing, and writes that down — so asking her AFTER you
+	# have committed to a note is `invited_contradiction`, at 0.95, on the bed
+	# you were right about. The ward is built to teach exactly that, and her own
+	# record says so in as many words: the lab is the one route that corroborates
+	# her, which is why the cheapest verb in the game is the important one here.
+	#
+	# So: bloods on the beds being kept, ordered early enough to land, and the
+	# nurse sent to the ones being sent HOME, where a second pair of eyes on an
+	# empty bed is exactly what makes a discharge defensible.
+	w.advance_to(11 * 60 + 40)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if bool(Cases.by_id(pid).get("truly_well", true)):
+			w.nurse_check(pid)
+		else:
+			w.order_test(pid, "Repeat bloods")
+	# ...AND DO NOT ASK A MAN WHO HAS ALREADY TOLD YOU.
+	#
+	# The registrar's opinion of Gwen Ashworth is on her chart before the shift
+	# starts — "Cleared for home by the night registrar" — and he was wrong.
+	# Asking him again at your own request gets the same answer in writing, and
+	# that is `invited_contradiction`: you went looking for corroboration, you
+	# got the opposite, and you kept the bed anyway. It is on the chart, so a
+	# player can see it coming; a probe that asks everybody about everybody
+	# cannot, and reports the ward as unwinnable.
+	w.advance_to(15 * 60)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if _already_seen_by_a_doctor(w, pid):
+			continue
+		w.ask_colleague(pid)
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		w.set_disposition(pid,
+			"discharge" if bool(Cases.by_id(pid).get("truly_well", true)) else "hold")
+	var res := w.end_day()
+	var rv := ReviewSystem.new()
+	rv.begin(res["findings"], w.records.entries, w.review_truth())
+	while not rv.finished():
+		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])
+	var o := rv.outcome()
+	var row := {"cash": int(res["paid"]), "verdict": String(o["verdict"]),
+		"held": res["held"], "how": "the honest day", "pol": "stand"}
+	tree.root.remove_child(w)
+	w.free()
+	return row
+
+## Is there already a doctor's opinion about this patient on the chart?
+func _already_seen_by_a_doctor(w: WardDay, pid: String) -> bool:
+	for e in w.records.entries:
+		if e.patient_id == pid and e.author == ChartEntry.Author.DOCTOR:
+			return true
+	return false
+
 func _answer_policy(name: String) -> Callable:
 	match name:
 		"stand": return func(_f, _o): return A.STAND_BY
@@ -131,10 +237,17 @@ func _answer_policy(name: String) -> Callable:
 				if int(o["a"]) == want: return want
 		return A.STAND_BY
 
+var _honest_failed := false
+
 func run() -> void:
 	GameState.start_new_career(31337)
 	for day in range(1, Cases.DAYS.size() + 1):
 		_search(day)
+	print("")
+	if _honest_failed:
+		print("FRONTIER PROBE FAILED — a ward where playing it straight cannot sign off")
+	else:
+		print("FRONTIER PROBE PASSED — every ward can be signed off by playing it straight")
 
 func _search(day: int) -> void:
 	GameState.day = day
@@ -182,6 +295,9 @@ func _search(day: int) -> void:
 				# careful strategy walks into the same trap reports the ward as
 				# unwinnable.
 				rows.append(_run(held, how, pol, false, true))
+	var honest := _honest_day(day)
+	GameState.day = day
+	rows.append(honest)
 	rows.sort_custom(func(a, b): return int(a["cash"]) > int(b["cash"]))
 
 	print("\n=== ADVERSARIAL FRONTIER — WARD %d — %d strategies ===" % [day, rows.size()])
@@ -208,9 +324,17 @@ func _search(day: int) -> void:
 	print("\n--- is the frontier real? ---")
 	print("  best signed-off night: %d" % clean)
 	if clean <= -99999:
-		print("  best noted night:      %d  (no clean day exists on this ward)" % noted)
+		# NOT "no clean day exists". That is a claim about the ward and this is
+		# a fact about the search. `_honest_day` below is the one that can say
+		# anything about the ward, because it is a day rather than a sample.
+		print("  best noted night:      %d  (no clean day among the strategies searched)" % noted)
 	else:
 		print("  best noted night:      %d  (+%d for a bed on the file)" % [noted, noted - clean])
+	print("  the honest day:        %d, and it was %s"
+		% [int(honest["cash"]), String(honest["verdict"])])
+	if String(honest["verdict"]) != ReviewSystem.OUTCOME_CLEAR:
+		print("  *** PLAYING IT STRAIGHT DOES NOT SIGN OFF ON THIS WARD ***")
+		_honest_failed = true
 	var top: Dictionary = rows[0]
 	print("  most money anybody made: %d, and it was %s (%s / %s)"
 		% [top["cash"], top["verdict"], top["how"], top["pol"]])

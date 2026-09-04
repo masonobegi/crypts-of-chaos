@@ -1968,3 +1968,26 @@ wards that sign off on the honest day ................... 4/4
 the game says nothing it should not, while being played . asserted
 shaders that compile .................................... all of them, and it is checked
 ```
+
+### A negative result: light wrap does not fix a flat face
+
+The one audit finding left standing after all of the above was "characters have
+no key light and no form", and the standard fix is `BACKLIGHT` — Godot's wrap
+term, which puts light on the side of a surface facing AWAY from the source and
+is what gives skin its subsurface roll. It was worth knowing whether the
+Compatibility renderer even supports it.
+
+It does, and it does not help. A wrap of 0.28 on skin alone moved 6,100 pixels
+of a 1600x900 frame by at most 27 levels; 0.70, which is well past subtle,
+moved 6,300 by at most 52 — and the two faces are indistinguishable side by
+side. Reverted rather than shipped, because a term nobody can see is the same
+failure as a constant nothing reads.
+
+The reason it does nothing is worth more than the change would have been: the
+faces are not short of light. The sun is a directional key with its shadow off,
+so it lights the whole interior from upper-left, and there is 1.15 of ambient
+on top of that — a head is already lit from two directions. What reads as flat
+is an egg with decal eyes, which is a geometry problem.
+
+`look.sh` is what made this cheap: two renders and a pixel diff, and the answer
+was a measurement rather than an opinion.

@@ -330,6 +330,18 @@ with it because a lost afternoon does not care which.
     the building and the first version filled two thousand lines of the test
     log with "The object does not have any 'meta' values with the key".
 
+44. **`BACKLIGHT` works on gl_compatibility and does not fix a flat face.**
+    Tried and measured, because "the characters have no form" is the obvious
+    next thing to reach for after the normals are fixed: a wrap term on skin at
+    0.28 moved 6,100 pixels by at most 27 levels, and at 0.70 — well past
+    subtle — 6,300 pixels by at most 52, with the face reading identically in
+    both. The reason is that the faces are not short of light. The sun is a
+    DIRECTIONAL key with shadows off, so it lights the interior from
+    upper-left, and ambient is 1.15 on top of it; a head is already lit from
+    two directions. What makes a face read flat here is the geometry and the
+    decal eyes, not the lighting, so that is where the next attempt should go.
+    The term compiles and costs nothing — it is simply not the lever.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

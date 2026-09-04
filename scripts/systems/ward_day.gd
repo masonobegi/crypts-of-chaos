@@ -882,6 +882,25 @@ func end_day() -> Dictionary:
 	if GameState.minute_passed.is_connected(_on_minute):
 		GameState.minute_passed.disconnect(_on_minute)
 	advance_to(Cases.DEBT_DUE_MINUTE)
+	# THE LAB DOES NOT STOP BECAUSE YOU WENT HOME.
+	#
+	# `ended` is set above and `_on_minute` returns early once it is, and the
+	# clock is disconnected — so every test still in flight was silently thrown
+	# away. Then `_unfulfilled_orders` charged 0.30 a piece for "you ordered
+	# this and there is nothing to say it was ever done". Ordering bloods was
+	# punished twice: you paid five minutes for a result you never got, and then
+	# the ward sister held the missing result against you.
+	#
+	# Anything whose seventy-five minutes were up before eight o'clock comes
+	# back. Anything ordered so late it could not have landed by the end of the
+	# shift is genuinely outstanding, and that one is fair.
+	for eid in _pending.keys():
+		if int(_pending[eid]) > Cases.DEBT_DUE_MINUTE:
+			continue
+		_pending.erase(eid)
+		var late := records.by_id(String(eid))
+		if late != null and late.fulfilled_by == "":
+			resolve_test(late)
 	var p := projected()
 	# HE TAKES EVERYTHING. What you made tonight goes against what is left of
 	# what you owe, and the remainder is the only score the game keeps.

@@ -222,6 +222,7 @@ func _check_the_verbs_work() -> void:
 	_check_writing_is_observed(w)
 	_check_discharged_patients_leave(w)
 	_check_the_nurse_does_rounds()
+	_check_tests_in_flight_come_back(w)
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
@@ -273,6 +274,48 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## A TEST YOU PAID FOR COMES BACK.
+##
+## `end_day` sets `ended` and disconnects from the clock, and `_on_minute`
+## returns early once `ended` is set — so every test still in flight when the
+## shift closed was silently thrown away. `_unfulfilled_orders` then charged
+## 0.30 a piece for "you ordered this and there is nothing to say it was ever
+## done". Ordering bloods was punished twice: you paid five minutes for a result
+## you never got, and the ward sister held the missing result against you.
+func _check_tests_in_flight_come_back(_w) -> void:
+	# ITS OWN WARD. This check has to END a day to prove the point, and the
+	# shared one is mid-shift with a clock the checks above have already walked
+	# to gone five — order a test on it and seventy-five minutes puts the result
+	# past the handover, which is the one case that SHOULD stay unfulfilled.
+	# The shared clock is put back afterwards, because `advance_to` writes it.
+	var was := GameState.minute_of_day
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	var pid := String(Cases.roster()[0]["id"])
+	w.advance_to(17 * 60)
+	var o = w.order_test(pid, "Repeat bloods")
+	_ok(o != null and o.fulfilled_by == "", "a test ordered at five is still out")
+	if o == null:
+		tree.root.remove_child(w); w.free()
+		GameState.minute_of_day = was
+		return
+	# Sign off. Seventy-five minutes from five o'clock is 18:20, well before the
+	# eight o'clock handover, so this one has to be back.
+	var res: Dictionary = w.end_day()
+	_ok(o.fulfilled_by != "",
+		"and signing off does not throw it away — it is back by eight")
+	var unfulfilled := 0
+	for f in res["findings"]:
+		if String(f.kind) == "unfulfilled_order":
+			unfulfilled += 1
+	_ok(unfulfilled == 0,
+		"so nobody is charged for an order the lab did answer (%d findings)"
+			% unfulfilled)
+	tree.root.remove_child(w)
+	w.free()
+	GameState.minute_of_day = was
 
 ## THE NURSE ACTUALLY WALKS TO A BED.
 ##

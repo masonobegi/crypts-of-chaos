@@ -101,11 +101,23 @@ func _build_environment() -> void:
 	# without something darkening where two things meet — this is what puts the
 	# chairs on the floor rather than in front of it. Forward+ only; the
 	# screenshot harness runs Compatibility and will not show it.
-	env.ssao_enabled = true
-	env.ssao_radius = 0.9
-	env.ssao_intensity = 1.35
-	env.ssao_power = 1.6
-	env.ssao_light_affect = 0.25
+	# ONLY WHERE IT EXISTS. SSAO is Forward+ only, and this project ships on
+	# Compatibility — the one renderer that can be run and therefore verified
+	# here. Enabling it anyway printed "Screen-space ambient occlusion (SSAO)
+	# can only be enabled when using the Forward+ rendering backend" on every
+	# single launch of the shipped build, and did nothing.
+	#
+	# What replaced it is `Build.blob_shadow`: a patch under everything that
+	# stands on the floor, which works on any backend. Left switched on where
+	# the backend supports it, because the two are complementary rather than
+	# alternatives — contact shadows ground an object, ambient occlusion darkens
+	# the corners of a room.
+	if _renderer() == "forward_plus":
+		env.ssao_enabled = true
+		env.ssao_radius = 0.9
+		env.ssao_intensity = 1.35
+		env.ssao_power = 1.6
+		env.ssao_light_affect = 0.25
 	we.environment = env
 	add_child(we)
 	_env = env
@@ -213,6 +225,19 @@ func _spawn_systems() -> void:
 	ward = WardDay.new()
 	ward.name = "WardDay"
 	add_child(ward)
+
+## Which backend the build is configured for.
+##
+## The project setting, which is what a shipped build uses — there is no runtime
+## accessor for this in 4.3 that GDScript can reach. A `--rendering-method` flag
+## on the command line WOULD make this wrong; the only thing in the repo that
+## passes one is `screenshots.sh`, and it passes the value already in the file.
+## Both `boot_check.sh` and `export.sh` deliberately pass nothing, because
+## forcing the renderer in a harness is how "the shipping renderer does not
+## start at all" stayed invisible for a whole release.
+static func _renderer() -> String:
+	return String(ProjectSettings.get_setting(
+		"rendering/renderer/rendering_method", "forward_plus"))
 
 func _spawn_player() -> void:
 	player = Player.new()

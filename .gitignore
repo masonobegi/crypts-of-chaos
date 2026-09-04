@@ -21,6 +21,11 @@ Thumbs.db
 # test_all_scripts_compile — which walks every .gd under tests/ — so the
 # assertion count moved between runs depending on what had been left lying
 # around, and `git add -A` would happily commit them.
-tests/_check.gd
+# The underscore prefix is the convention for all of it, not just the one file
+# check.sh writes: two throwaway evening-lighting probes called
+# `tests/_evening_*.gd` were left lying around by an audit and went straight
+# into a commit on the next `git add -A`, which is the exact failure the
+# paragraph above describes happening again for want of one character.
+tests/_*.gd
 tests/tmpcheck/
 tests/scratch/

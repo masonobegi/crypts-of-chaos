@@ -41,6 +41,29 @@ UNIT=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1 | grep -vE "$NOISE"
 SMOKE=${PIPESTATUS[0]}
 
+# ...AND ON TWO WARDS IT HAS NEVER SEEN.
+#
+# A ward is five people drawn from a pool of ten per day, so the first ward
+# alone can deal thirty-two boards — and every check in smoke_impl.gd used to
+# name its patients ("oduya", "marchetti", "blake"), which meant the whole file
+# could only ever run against one of them. Pointing it anywhere else produced
+# eight failures that were all the harness naming somebody who was not there.
+#
+# Two extra seeds, quietly, and only the verdict is printed: the point is that
+# the game works on a board nobody has looked at, not to read it three times.
+SMOKE_SEEDS=0
+for s in 1 12345; do
+  out=$(SMOKE_SEED="$s" "$GODOT" --headless --path "$DIR" \
+    --script res://tests/smoke_run.gd 2>&1)
+  code=$?
+  line=$(echo "$out" | grep -E "SMOKE RUN (PASSED|FAILED)" | head -1)
+  echo "  seed $s: $line"
+  if [ "$code" -ne 0 ]; then
+    echo "$out" | grep -A20 "SMOKE RUN FAILED" | sed 's/^/    /'
+    SMOKE_SEEDS=1
+  fi
+done
+
 # The design harness. live_run.gd tested a world that no longer exists; what
 # replaced it is twenty ways of playing the day measured against the six
 # criteria in docs/REDESIGN.md. It exits non-zero when one of them regresses,
@@ -88,9 +111,9 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
     || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

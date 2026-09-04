@@ -15,6 +15,8 @@ extends RefCounted
 var tree: SceneTree = null
 var game: Node = null
 var frames := 0
+## The seed this run is on. Overridable with SMOKE_SEED.
+var seed := 20260821
 var stage := "boot"
 var errors: Array[String] = []
 var notes: Array[String] = []
@@ -27,7 +29,16 @@ var _walk_from := Vector3.ZERO
 var _walk_since := 0
 
 func start() -> void:
-	GameState.start_new_career(20260821)
+	# THE SEED IS OVERRIDABLE, so the same run can be pointed at a ward it has
+	# never seen. Everything below builds a real world with a real UI on ONE
+	# deal, and a ward is a draw from a pool of ten per day — so "the game
+	# works" has only ever been checked against one of the thirty-two boards
+	# ward one alone can produce. `SMOKE_SEED=n ./run_tests.sh` picks another.
+	var env := OS.get_environment("SMOKE_SEED")
+	if env != "" and env.is_valid_int():
+		seed = int(env)
+		print("  (seed %d)" % seed)
+	GameState.start_new_career(seed)
 	GameState.set_flag("tutorial_done", true)
 	# NOT headless_sim. Game._spawn_ui() returns early under that flag, so `ui`
 	# is null and every screen check silently passes by never running — which is
@@ -167,11 +178,12 @@ func _check_the_chart_works() -> void:
 	# from half past seven that is enough to walk the shift past eight o'clock,
 	# at which point the ward force-discharges everybody and closes the day
 	# under the harness. Start in the afternoon and there is room for all of it.
-	var before: int = w.records.for_patient("oduya").size()
+	var pen := _anyone()
+	var before: int = w.records.for_patient(pen).size()
 	w.advance_to(15 * 60 + 30)
-	var e = w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+	var e = w.write_entry(pen, ChartEntry.Claim.UNWELL,
 		"Reports transient dizziness on standing.", 15 * 60 + 10)
-	_ok(w.records.for_patient("oduya").size() > before, "a note can be written")
+	_ok(w.records.for_patient(pen).size() > before, "a note can be written")
 	_ok(e.written_minute > e.stated_minute,
 		"and it records both when it happened and when it was typed")
 	_ok(e.backdated_by() == 20, "and knows the gap between them exactly")
@@ -188,12 +200,16 @@ func _check_the_verbs_work() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:
 		return
-	var n = w.nurse_check("marchetti")
+	var n = w.nurse_check(_someone_unwell())
 	_ok(n != null and n.author == ChartEntry.Author.NURSE,
 		"a nurse can be asked to look, and writes in her own name")
 	_ok(n.supports_stay(),
 		"and about the patient who is genuinely unwell, she agrees with you")
-	var o = w.order_test("oduya", "lying and standing BP")
+	# SOMEBODY WHO IS WELL, because the assertion below is that the lab comes
+	# back normal for them. `_anyone()` is the first bed on the roster and on
+	# some wards that is the genuinely unwell one, whose bloods correctly come
+	# back abnormal — a real result failing a check that had assumed a ward.
+	var o = w.order_test(_someone_well(), "lying and standing BP")
 	# INSIDE THE DAY. This said 21:30, which is an hour and a half after the
 	# ward force-ends — so `_on_minute` discharged the whole ward and closed the
 	# day here, and everything below was asserting against a cached result on a
@@ -896,6 +912,51 @@ func _check_the_daughter_actually_turns_up() -> void:
 				known = true
 	_ok(known, "and they are somebody the ward can be seen by")
 
+## WHO IS ACTUALLY ON THIS WARD.
+##
+## Every check below used to name a patient — "oduya", "marchetti", "blake" —
+## and a ward is five people drawn from a pool of ten per day. So this whole
+## file could only ever run against ONE of the thirty-two boards the first ward
+## alone can deal, and pointing it at any other seed produced eight failures
+## that were all the harness naming somebody who was not there. The game was
+## fine; the check could not see it.
+##
+## Picked off the roster instead, by the property each check actually needs.
+func _anyone() -> String:
+	var r := Cases.roster()
+	return String(r[0]["id"]) if not r.is_empty() else ""
+
+## Somebody the simulation says is genuinely unwell AND whom a second pair of
+## eyes can see it in, for the checks that assert the nurse or the registrar
+## agrees with you.
+##
+## `only_visible_in_person` is the whole point of Gwen Ashworth: the nurse goes,
+## finds nothing, and writes that down. Picking her would fail a check that is
+## asserting the nurse tells the truth — and she does.
+func _someone_unwell() -> String:
+	for c in Cases.roster():
+		if not bool(c.get("truly_well", true)) \
+				and not bool(c.get("only_visible_in_person", false)) \
+				and not bool(c.get("colleague_wrong", false)):
+			return String(c["id"])
+	for c in Cases.roster():
+		if not bool(c.get("truly_well", true)):
+			return String(c["id"])
+	return _anyone()
+
+func _someone_well() -> String:
+	for c in Cases.roster():
+		if bool(c.get("truly_well", true)):
+			return String(c["id"])
+	return _anyone()
+
+## Everybody, in roster order, for the checks that decide a whole ward.
+func _all_ids() -> Array:
+	var out: Array = []
+	for c in Cases.roster():
+		out.append(String(c["id"]))
+	return out
+
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
 	if ps == null:
@@ -1326,28 +1387,33 @@ func _check_the_room_is_watching(w) -> void:
 ## does not contain, and the registrar is the only corroboration a bed can have
 ## that nobody can take apart.
 func _check_the_new_verbs(w) -> void:
+	# The one the simulation says is genuinely unwell, because two of these
+	# assert that a second pair of eyes AGREES — which is only true of somebody
+	# who actually has something wrong with them.
+	var ill := _someone_unwell()
+	var was_entries: int = _entries_for(w, ill)
 	var before: int = w.minute
-	var found: String = w.examine("marchetti")
+	var found: String = w.examine(ill)
 	_ok(found.length() > 20, "you can go and look at somebody, and it tells you something")
 	_ok(w.minute > before, "and it costs a quarter of an hour of the shift")
-	_ok(w.records.for_patient("marchetti").size() == _entries_for(w, "marchetti"),
+	_ok(_entries_for(w, ill) == was_entries,
 		"and it writes nothing down, which is the point of it")
 	var again: int = w.minute
-	w.examine("marchetti")
+	w.examine(ill)
 	_ok(w.minute == again, "looking twice is free — the cost is for learning, not remembering")
 
 	# The registrar keeps his own hours, so the harness has to be at one of them.
 	w.advance_to(11 * 60 + 30)
 	_ok(WardDay.colleague_available(w.minute), "%s is on the ward at half eleven" % WardDay.COLLEAGUE)
-	var peer = w.ask_colleague("marchetti")
+	var peer = w.ask_colleague(ill)
 	_ok(peer != null and peer.author == ChartEntry.Author.DOCTOR,
 		"a colleague can be asked, and writes in his own name")
 	_ok(peer.supports_stay(),
-		"and about the man who is genuinely unwell, he backs you in writing")
+		"and about the one who is genuinely unwell, he backs you in writing")
 	w.advance_to(14 * 60)
 	_ok(not WardDay.colleague_available(w.minute),
 		"at two o'clock he is on the other ward and cannot be asked at all")
-	_ok(w.ask_colleague("oduya") == null, "and asking anyway does nothing")
+	_ok(w.ask_colleague(_someone_well()) == null, "and asking anyway does nothing")
 
 func _entries_for(w, pid: String) -> int:
 	return w.records.for_patient(pid).size()
@@ -1399,23 +1465,28 @@ func _check_being_seen_somewhere_else(w) -> void:
 	player.global_position = h.point_in("corridor") + Vector3(0, 0.1, 0)
 	var at: int = w.minute
 	w.observe_player("corridor", PackedStringArray(["Adeyemi"]))
-	w.write_entry("blake", ChartEntry.Claim.UNWELL, "Headache recurred.", at)
-	w.set_disposition("blake", "hold")
+	var corridor_pid := _anyone()
+	w.write_entry(corridor_pid, ChartEntry.Claim.UNWELL, "Headache recurred.", at)
+	w.set_disposition(corridor_pid, "hold")
 	var kinds: Array = []
 	for f in w.review_findings():
 		kinds.append(f.kind)
 	_ok(kinds.has("author_elsewhere"),
 		"and a bedside note timed for a minute you were seen in the corridor is a finding")
-	w.set_disposition("blake", "")
+	w.set_disposition(corridor_pid, "")
 
 func _check_the_day_closes() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:
 		return
-	w.set_disposition("marchetti", "hold")
-	w.set_disposition("oduya", "hold")
-	for id in ["kerrigan", "brennan", "blake"]:
-		w.set_disposition(id, "discharge")
+	# Hold the first two, send the rest home. The point of the check is that a
+	# day ENDS and produces something for the reviewer, not which two — and
+	# naming five people meant this could only run on the one ward that has
+	# them.
+	var i := 0
+	for id in _all_ids():
+		w.set_disposition(String(id), "hold" if i < 2 else "discharge")
+		i += 1
 	var res: Dictionary = w.end_day()
 	_ok(not res.is_empty(), "the day ends")
 	_ok(int(res["earned"]) > 0, "and pays something (%s)" % str(res["earned"]))
@@ -1453,8 +1524,8 @@ func _check_screens_actually_draw() -> bool:
 		_screen_started = true
 		_screen_queue = [
 			["morning", {}],
-			["patient", {"patient_id": "oduya"}],
-			["chart", {"patient_id": "oduya"}],
+			["patient", {"patient_id": _anyone()}],
+			["chart", {"patient_id": _anyone()}],
 		]
 		EventBus.request_ui.emit(String(_screen_queue[0][0]), _screen_queue[0][1])
 		return true
@@ -1531,7 +1602,7 @@ func _check_the_screens_chain() -> bool:
 	var ctx := {}
 	if String(_chain[_chain_at]) == "day_over":
 		ctx = {"verdict": ReviewSystem.OUTCOME_QUESTIONS,
-			"remembered": PackedStringArray(["oduya"])}
+			"remembered": PackedStringArray([_anyone()])}
 	EventBus.request_ui.emit(String(_chain[_chain_at]), ctx)
 	return false
 
@@ -1691,5 +1762,8 @@ func _check_a_career_survives_a_save() -> void:
 	_ok(back.nights == 2, "how many shifts you have worked")
 	_ok(PackedStringArray(GameState.flag(Cases.READMIT_FLAG, [])).has("oduya"),
 		"and who is back in a bed in the morning")
-	GameState.start_new_career(20260821)
+	# THE SEED THIS RUN IS ON, not the default. Restoring 20260821 by name here
+	# put every check after this one back on a different ward from the one the
+	# run was pointed at, which is invisible until the run is pointed anywhere.
+	GameState.start_new_career(seed)
 	GameState.set_flag("tutorial_done", true)

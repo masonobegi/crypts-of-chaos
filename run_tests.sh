@@ -103,6 +103,30 @@ CAREER=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/frontier_run.gd 2>&1 | grep -vE "$NOISE"
 FRONTIER=${PIPESTATUS[0]}
 
+# ...AND THE GAME SAYS NOTHING IT SHOULD NOT WHILE BEING PLAYED.
+#
+# `boot_check.sh` asserts this for the way IN — Boot and the main menu — and
+# that is where it stops, because it quits at the title screen. So nothing has
+# ever checked what the game prints once Game.tscn is actually loaded, which is
+# where the environment, the world, the NPCs and every system live.
+#
+# It cost a warning on every launch of the shipped build: the environment
+# enabled SSAO, which is Forward+ only, on a project that ships Compatibility.
+# Six harnesses ran past it for as long as it existed.
+#
+# The same ignore list boot_check.sh uses, for the same reasons: this container
+# has no sound card, no vsync and a dummy renderer.
+QUIET_IGNORE='ALSA lib|snd_|audio_driver_alsa|All audio drivers failed|Could not set V-Sync|PulseAudio|pcm\.c|conf\.c|confmisc\.c|Unknown PCM|ERR_CANT_OPEN|init_output_device|ObjectDB instances leaked|PagedAllocator|Unreferenced static string|RID allocations|resources still in use|Parameter "m" is null|mesh_get_surface_count|^ *at: '
+NOISY=$("$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1 \
+  | grep -E "ERROR|SCRIPT ERROR|WARNING" | grep -vE "$QUIET_IGNORE" || true)
+QUIET=0
+if [ -n "$NOISY" ]; then
+  echo ""
+  echo "=== THE GAME PRINTED THIS WHILE BEING PLAYED ==="
+  echo "$NOISY" | sort -u | sed 's/^/  /'
+  QUIET=1
+fi
+
 # And finally the one route no other harness takes: the real entry point.
 # Everything above instantiates Game.tscn directly, which skips Boot and the
 # main menu entirely — the gap that hid both "the game is unplayable from the
@@ -111,9 +135,9 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
     || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

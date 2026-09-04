@@ -819,7 +819,7 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 	GameState.set_flag("watched", true)
 	_rounds_announced = 0
 	var heard := func(text: String, _kind: String):
-		if text.begins_with("%s has been round" % DB.WARD_NURSE):
+		if text.contains("%s has been round" % DB.WARD_NURSE):
 			_rounds_announced += 1
 	EventBus.toast.connect(heard)
 	var w := WardDay.new()

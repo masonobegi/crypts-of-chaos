@@ -1043,8 +1043,16 @@ func _routine_round(at: int, which := 0) -> void:
 	# discharge onward — and this line is on screen precisely when the player
 	# is deciding whether their timing worked.
 	if wrote > 0:
-		EventBus.toast.emit("%s has been round. %d note%s on the chart."
-			% [DB.WARD_NURSE, wrote, "" if wrote == 1 else "s"], "info")
+		# WITH THE TIME ON IT. `_drain_toasts` merges a repeat of the line
+		# already at the bottom into a tally rather than adding a panel, and
+		# every round writes the same number of notes — so three rounds came out
+		# as one line reading "x3", which is exactly the beat this exists to
+		# give. The hour is also the thing worth learning: she is at ten, one,
+		# four and seven, and a note within forty-five minutes of any of them
+		# reads as an argument.
+		EventBus.toast.emit("%d:%02d — %s has been round. %d note%s on the chart."
+			% [at / 60, at % 60, DB.WARD_NURSE, wrote,
+				"" if wrote == 1 else "s"], "info")
 	_log("round", {"at": at})
 
 ## What a nurse writes at a bedside four times a night — EIGHT on a watched day,

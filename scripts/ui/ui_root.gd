@@ -330,7 +330,7 @@ func _controls_screen() -> Control:
 	row.add_child(reset)
 	var back := UIKit.button("Back", func():
 		_listening_for = ""
-		close())
+		_back())
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(back)
 	outer.add_child(row)

@@ -278,9 +278,41 @@ func _seed_social_graph() -> void:
 ## patients are rather than rolled out of an archetype table.
 func _spawn_staff() -> void:
 	_spawn_nurse("rule_follower", 0)
+	_refresh_days_visitors()
+	_seed_social_graph()
+	# EVERY MORNING, NOT ONCE. `_spawn_staff` runs in `_ready`, and both of these
+	# are gated on flags that only exist at the END of a night — `auditor_present`
+	# and `vinnie_visits` are written by the End of Shift card, long after this
+	# has run. A career never reloads Game.tscn (the day rolls over in place, via
+	# `_carry` and `PatientSystem.reset_day`), so `_ready` never ran again and
+	# neither of them could ever appear.
+	#
+	# So the game promised, in as many words, "Ms Ferrand from Coding is on the
+	# ward for the next two shifts" and "there is a man in the corridor" on the
+	# card at the end of every bad night, and then nobody arrived — for the whole
+	# life of the feature.
+	GameState.day_started.connect(func(_d): _refresh_days_visitors())
+
+## Who is on the ward today because of what happened last night. Rebuilt each
+## morning: whoever should not be here any more goes, whoever should is spawned.
+func _refresh_days_visitors() -> void:
+	for c in get_children():
+		if not (c is NurseNPC):
+			continue
+		var who := String(c.get("npc_id"))
+		if who == "auditor" or who == "vinnie":
+			# The BODY goes; SuspicionSystem hears about it through tree_exiting
+			# and drops it from the registry. The MIND stays, which is why Ms
+			# Ferrand is booked for two shifts and arrives on the second one
+			# already knowing what she saw on the first.
+			# remove_child BEFORE queue_free: queue_free is deferred to the end
+			# of the frame, so a node freed that way is still in the tree — and
+			# still visible, and still a registered witness — for the rest of
+			# the morning it was supposed to have left.
+			remove_child(c)
+			c.queue_free()
 	_spawn_auditor()
 	_spawn_vinnie()
-	_seed_social_graph()
 
 ## AND THE PROMISE THE GAME MAKES AND DID NOT KEEP.
 ##
@@ -316,7 +348,10 @@ func _spawn_vinnie() -> void:
 	v.home_room = "corridor"
 	add_child(v)
 	v.global_position = hospital.point_in("corridor", "vinnie_spawn")
-	suspicion.register(DB.make_mind(v.npc_id, v.display, "institution", "observant"), v)
+	var vm = suspicion.minds.get(v.npc_id, null)
+	if vm == null:
+		vm = DB.make_mind(v.npc_id, v.display, "institution", "observant")
+	suspicion.register(vm, v)
 	EventBus.toast.emit(
 		"There is a man in the corridor. Adeyemi has asked twice who he is.", "bad")
 
@@ -333,7 +368,11 @@ func _spawn_auditor() -> void:
 	a.home_room = "office"
 	add_child(a)
 	a.global_position = hospital.point_in("office", "auditor_spawn")
-	var mind := DB.make_mind(a.npc_id, a.display, "institution", "observant")
+	# Reuse her mind if she has one. A fresh Mind every morning is a woman who
+	# arrives for her second shift having forgotten the first.
+	var mind = suspicion.minds.get(a.npc_id, null)
+	if mind == null:
+		mind = DB.make_mind(a.npc_id, a.display, "institution", "observant")
 	suspicion.register(mind, a)
 	EventBus.toast.emit("Ms Ferrand from Coding is on the ward today.", "bad")
 

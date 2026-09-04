@@ -156,6 +156,7 @@ func _check_the_chart_works() -> void:
 	_check_no_sign_is_mirrored()
 	_check_every_room_named_in_source_exists()
 	_check_the_tutorial_finishes()
+	_check_the_promised_visitors_arrive()
 	_check_the_crosshair_keeps_the_secret(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
@@ -258,6 +259,41 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## THE PEOPLE THE CARD PROMISES ACTUALLY TURN UP.
+##
+## The End of Shift card says, in as many words, "Ms Ferrand from Coding is on
+## the ward for the next two shifts. She is not there to help" and "there is a
+## man in the corridor". Both are gated on flags — `auditor_present`,
+## `vinnie_visits` — that are written by that card, at the END of a night. Both
+## spawns live in `Game._spawn_staff`, which runs in `_ready`. And a career never
+## reloads Game.tscn: the day rolls over in place through `_carry` and
+## `PatientSystem.reset_day`. So `_ready` never ran again, and neither of them
+## could ever appear, for the entire life of the feature — the game made a
+## specific promise on its most dramatic screen and never once kept it.
+func _check_the_promised_visitors_arrive() -> void:
+	var before := _count_visitors()
+	_ok(before == 0, "nobody from Coding is here on a clean day (%d)" % before)
+	GameState.set_flag("auditor_present", true)
+	GameState.set_flag("vinnie_visits", true)
+	GameState.start_day()
+	var after := _count_visitors()
+	_ok(after == 2, "and after a bad night both of them are on the ward (%d)" % after)
+	# ...and they go away again when the ward is clean.
+	GameState.set_flag("auditor_present", false)
+	GameState.set_flag("vinnie_visits", false)
+	GameState.start_day()
+	_ok(_count_visitors() == 0, "and they leave when the ward is clean again")
+
+func _count_visitors() -> int:
+	var n := 0
+	for c in _all_nodes(tree.root):
+		if not c.has_method("get"):
+			continue
+		var who := String(c.get("npc_id")) if c.get("npc_id") != null else ""
+		if (who == "auditor" or who == "vinnie") and c.is_inside_tree():
+			n += 1
+	return n
 
 ## THE TUTORIAL CAN REACH ITS LAST LINE.
 ##

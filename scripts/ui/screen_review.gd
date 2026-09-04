@@ -133,11 +133,22 @@ func _closing(v: VBoxContainer, w) -> void:
 	# authored paragraph for coming up short could not render. The end-of-shift
 	# card documents this exact bug being fixed there and not here.
 	var short: bool = bool(w.end_day().get("short", false))
+	# WHAT HE WANTED AGAINST WHAT HE GOT, not "left over".
+	#
+	# `w.cash` is `in_hand - min(in_hand, debt_remaining)` — Vinnie takes
+	# everything up to what he is owed against a $15,500 debt — so it is exactly
+	# zero on every night of every career except the last. The panel read
+	# "Owed $2,200 / Left over $0" whether the night made $600 or $5,000, on the
+	# screen where the money is supposed to land.
+	var res: Dictionary = w.end_day()
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD if short else UIKit.MONEY)
 	var mv := UIKit.vbox(2)
-	mv.add_child(UIKit.row("Owed", UIKit.money_str(w.debt_tonight), UIKit.INK_DIM))
-	mv.add_child(UIKit.row("Left over" if not short else "Still owed",
-		UIKit.money_str(absi(w.cash)), UIKit.MONEY if not short else UIKit.BAD, 17))
+	mv.add_child(UIKit.row("He wanted", UIKit.money_str(w.debt_tonight), UIKit.INK_DIM))
+	mv.add_child(UIKit.row("He got", UIKit.money_str(int(res.get("paid", 0))),
+		UIKit.MONEY if not short else UIKit.BAD, 17))
+	mv.add_child(UIKit.row("Still owed",
+		UIKit.money_str(int(res.get("still_owed", GameState.debt_remaining()))),
+		UIKit.BAD))
 	if short:
 		mv.add_child(UIKit.label(
 			"He took what there was and said he would come to the ward tomorrow, "

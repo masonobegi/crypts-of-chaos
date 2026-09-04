@@ -1086,6 +1086,43 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(missing.is_empty(), "and every one of them exists%s"
 		% ("" if missing.is_empty() else " — " + ", ".join(PackedStringArray(missing))))
 
+	# AND EVERY SOUND THE SOURCE ASKS FOR IS A SOUND THAT EXISTS.
+	#
+	# `AudioMgr._build` used to fall back to "beep" in silence for an unknown
+	# name, so a typo played the wrong sound forever and the only way to notice
+	# was to know what that action was meant to sound like. It says so now — but
+	# only when the line actually runs, and half the sounds in this game belong
+	# to verbs a smoke run never reaches. This reads the source instead.
+	var bad_sounds: Array = []
+	var sounds := 0
+	for path in _all_scripts("res://scripts"):
+		var src := FileAccess.get_file_as_string(path)
+		for line in src.split("\n"):
+			if line.strip_edges().begins_with("#"):
+				continue
+			var at := line.find("AudioMgr.play")
+			while at >= 0:
+				var q := line.find("\"", at)
+				if q < 0:
+					break
+				var q2 := line.find("\"", q + 1)
+				if q2 < 0:
+					break
+				var nm := line.substr(q + 1, q2 - q - 1)
+				if nm.is_valid_identifier():
+					sounds += 1
+					if not AudioMgr.RECIPES.has(nm) and not bad_sounds.has(nm):
+						bad_sounds.append("%s in %s" % [nm, path.get_file()])
+				at = line.find("AudioMgr.play", q2)
+	# The one table that names sounds as data rather than at the call site.
+	for spec in AmbienceSystem.SPARSE:
+		sounds += 1
+		if not AudioMgr.RECIPES.has(String(spec[0])):
+			bad_sounds.append("%s in AmbienceSystem.SPARSE" % String(spec[0]))
+	_ok(sounds > 15, "%d sound names in the source" % sounds)
+	_ok(bad_sounds.is_empty(), "and every one is a recipe that exists%s"
+		% ("" if bad_sounds.is_empty() else " — " + ", ".join(PackedStringArray(bad_sounds))))
+
 ## `Name.method(` occurrences in a source file, outside comments.
 func _calls_on(src: String, autoload: String) -> Array:
 	var out: Array = []

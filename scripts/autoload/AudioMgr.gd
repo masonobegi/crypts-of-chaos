@@ -173,6 +173,18 @@ func _ensure_voices() -> void:
 func _build(name: String) -> AudioStreamWAV:
 	if _cache.has(name):
 		return _cache[name]
+	# A NAME THAT IS NOT A RECIPE IS A TYPO, AND IT SAYS SO.
+	#
+	# This fell back to "beep" in silence, so a mistyped sound name did not
+	# fail — it played the wrong sound, forever, and the only way to notice was
+	# to know what that action was supposed to sound like. Same silent-substitute
+	# shape as `GameState.adjust_rep()` throwing and taking its function with it:
+	# the failure is invisible precisely because something plausible happens.
+	#
+	# Still falls back, because a missing sound must never take a verb down with
+	# it. Once per name, because `_cache` catches the second call.
+	if not RECIPES.has(name):
+		push_error("AudioMgr: no recipe named '%s' — playing beep instead" % name)
 	var r: Dictionary = RECIPES.get(name, RECIPES["beep"])
 	var dur: float = float(r["d"])
 	var n_samples := int(dur * SR)

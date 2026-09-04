@@ -27,6 +27,21 @@ var skin := Color(0.87, 0.72, 0.60)
 var outfit := Build.SCRUB_BLUE
 var hair := Color(0.25, 0.18, 0.14)
 var height_scale := 1.0
+## Width independent of height, so two people the same height are not the same
+## person scaled. Applied to the trunk and the limbs, never to the head — a
+## head that scales with the body reads as a different species rather than a
+## different build.
+var girth := 1.0
+## 0 is a full head of hair, 1 is none of it. Shrinks the crown and lifts the
+## hairline rather than deleting the mesh, so it reads as thinning.
+var bald := 0.0
+var beard := false
+## Whether anybody has actually chosen a look for this body. `PatientNPC._ready`
+## used to force a gown colour unconditionally, which runs after the spawner has
+## called `set_look` and before `_build_body` reads it — so every patient's gown
+## came out the same hardcoded pale blue no matter what `Appearance` decided,
+## and the variation was invisible on the largest surface on the model.
+var _look_given := false
 
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_i := 0
@@ -150,14 +165,20 @@ func _build_body() -> void:
 	_torso.position = Vector3(0, 0.95, 0)
 	root.add_child(_torso)
 	# One solid, hip to shoulder, broad at the top.
+	# GIRTH ON THE TRUNK, and only on the trunk and the limbs. Scaling the whole
+	# body would just be a taller or shorter copy of the same person; widening
+	# the trunk against a fixed head is the difference between five sizes of one
+	# person and five people.
 	_torso.add_child(Build.mi(
-		Build.taper_mesh(Vector2(0.44, 0.30), Vector2(0.70, 0.36), 0.74, 0.13),
+		Build.taper_mesh(Vector2(0.44 * girth, 0.30 * girth),
+			Vector2(0.70 * girth, 0.36 * girth), 0.74, 0.13),
 		Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, 0.06, 0)))
 	# A collar, deliberately proud of the shoulders so it DOES take a line of
 	# its own — one band of contrast at the top of the body, which is what the
 	# eye lands on first.
 	_torso.add_child(Build.mi(
-		Build.taper_mesh(Vector2(0.42, 0.34), Vector2(0.34, 0.28), 0.09, 0.035),
+		Build.taper_mesh(Vector2(0.42 * girth, 0.34 * girth),
+			Vector2(0.34 * girth, 0.28 * girth), 0.09, 0.035),
 		Build.mat(outfit.lightened(0.30), 0.85, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, 0.385, 0.005)))
 	# ...and a neck inside it, so the head is attached to something instead of
@@ -196,6 +217,19 @@ func _build_body() -> void:
 	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
 		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.150, 0.075), Vector3.ZERO, Vector3(1.05, 0.72, 0.95)))
+	# FACIAL HAIR, where the record says so. Built as two solids that follow the
+	# jaw the chin already established — a jawline piece and a moustache — both
+	# lined, because the whole reason it is here is that it changes the profile
+	# of a head seen from across a ward. Authored per person in `Cases`, never
+	# rolled from a hash: it is a fact about somebody, not a size.
+	if beard:
+		_head.add_child(Build.mi(Build.sphere_mesh(0.175),
+			Build.mat(hair.darkened(0.05), 0.92, 0.0, Color(0, 0, 0), LINE),
+			Vector3(0, -0.105, 0.055), Vector3.ZERO, Vector3(1.03, 0.86, 1.02)))
+		_head.add_child(Build.mi(Build.sphere_mesh(0.072),
+			Build.mat(hair.darkened(0.05), 0.92, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(0, -0.058, 0.170), Vector3.ZERO, Vector3(1.25, 0.42, 0.70)))
+
 	# A cap on the crown, set BACK from the face and narrower than the skull.
 	# The first pass made it 0.37 wide on a 0.40 head and centred it, which is
 	# a helmet — and a patient lying in a bed is rotated ninety degrees, so the
@@ -203,24 +237,48 @@ func _build_body() -> void:
 	# eyes peering over the top of it. A squashed SPHERE, not a box: a slab
 	# reads as hair from straight on only, and from the side it was a dark plank
 	# stuck to somebody's cheek.
-	_head.add_child(Build.mi(Build.sphere_mesh(0.224),
+	# THINNING, from `Appearance`. The crown shrinks toward the back of the
+	# skull and flattens; it is never removed, because a head with no hair mesh
+	# on it reads as shaved — a decision somebody made — where thinning is just
+	# time passing, which is what the age it comes from means.
+	var crown: float = lerpf(1.0, 0.80, bald)
+	_head.add_child(Build.mi(Build.sphere_mesh(0.224 * crown),
 		Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, 0.078, -0.030), Vector3.ZERO, Vector3(0.99, 0.70, 1.0)))
+		Vector3(0, 0.078 + 0.012 * bald, -0.030 - 0.030 * bald), Vector3.ZERO,
+		Vector3(0.99, lerpf(0.70, 0.48, bald), 1.0)))
 	# ...and a forelock, so there is a hairLINE. Hair with no edge on the
 	# forehead reads as a swimming cap — but a straight BAR across the forehead
 	# reads as a headband, which is what the first attempt at this was. A second
 	# squashed sphere set forward and low follows the skull instead.
-	_head.add_child(Build.mi(Build.sphere_mesh(0.185),
-		Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, 0.082, 0.055), Vector3.ZERO, Vector3(1.02, 0.52, 0.86)))
+	# ...and the hairline goes back with it, which is the half of this that
+	# actually reads: a smaller cap alone looks like a smaller haircut.
+	if bald < 0.85:
+		_head.add_child(Build.mi(Build.sphere_mesh(0.185 * lerpf(1.0, 0.72, bald)),
+			Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(0, 0.082 + 0.020 * bald, 0.055 - 0.075 * bald), Vector3.ZERO,
+			Vector3(1.02, lerpf(0.52, 0.34, bald), 0.86)))
 	# Eyes: the cheapest possible way to make "is this person looking at me"
 	# legible across a corridor, which the whole suspicion system depends on.
 	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
 	# a dot on a white oval is an eye. Unshaded and unlined: a black ring round
 	# an eyeball at this scale is just a bigger pupil.
+	#
+	# BIGGER THAN LIFE, NOT BIGGER THAN THE FACE. The whites were 0.056 with an
+	# x-scale of 0.92, which is 0.10 of half-width each on a head 0.21 across —
+	# the two of them spanned the entire face and every character in the game
+	# appeared to be wearing swimming goggles. Nobody had seen it, because the
+	# only two shots framed on a person had been silently photographing the far
+	# wall instead. Down about a third: still unmistakable from the corridor,
+	# and a face at the bedside now.
 	for sx in [-1.0, 1.0]:
-		var white := Build.mi(Build.sphere_mesh(0.056), Build.unshaded(Color(0.99, 0.99, 1.0)),
-			Vector3(sx * 0.080, 0.012, 0.166), Vector3.ZERO, Vector3(0.92, 1.18, 0.78))
+		# WIDER THAN TALL, and not quite white. A sphere scaled 0.92 x 1.18 is
+		# an egg standing on end, which is not the shape of an eye opening — and
+		# in pure unshaded white against skin it glared. Two of those with a
+		# small dot in the middle of each is a pair of goggles, which is exactly
+		# what every character in this game was wearing.
+		var white := Build.mi(Build.sphere_mesh(0.036),
+			Build.unshaded(Color(0.94, 0.94, 0.96)),
+			Vector3(sx * 0.072, 0.010, 0.178), Vector3.ZERO, Vector3(1.04, 0.82, 0.72))
 		# PAINTED ON, NOT STUCK ON. The pupil was a full 3cm sphere whose centre
 		# sat 3cm proud of the eye white, so it parallaxed against the white as
 		# soon as you were off-axis — and you are off-axis for most of the game,
@@ -229,8 +287,12 @@ func _build_body() -> void:
 		# every patient in the ward looked walleyed. Flattened into a disc that
 		# hugs the surface of the white, it reads as a painted eye from any
 		# angle, which is what the sphere was pretending to be.
-		var pupil := Build.mi(Build.sphere_mesh(0.030), Build.unshaded(Color(0.10, 0.11, 0.16)),
-			Vector3(sx * 0.080, 0.008, 0.190), Vector3.ZERO, Vector3(1.0, 1.0, 0.30))
+		# AND THE DARK PART IS MOST OF IT. On a real face the iris fills nearly
+		# the whole height of the opening and the white shows at the corners;
+		# a small dot centred in a large white is a cartoon of surprise, and
+		# that was the permanent expression of everybody in the building.
+		var pupil := Build.mi(Build.sphere_mesh(0.027), Build.unshaded(Color(0.11, 0.10, 0.13)),
+			Vector3(sx * 0.072, 0.008, 0.194), Vector3.ZERO, Vector3(1.0, 1.02, 0.24))
 		_head.add_child(white)
 		_head.add_child(pupil)
 		_eyes_open.append(white)
@@ -243,15 +305,15 @@ func _build_body() -> void:
 		# entire difference between "this is going well" and "you have made me
 		# worse", and it is the fastest thing on this model to read at three
 		# metres.
-		var brow := Build.mi(Build.rbox_mesh(Vector3(0.098, 0.020, 0.026), 0.009),
+		var brow := Build.mi(Build.rbox_mesh(Vector3(0.076, 0.018, 0.024), 0.008),
 			Build.mat(hair.lightened(0.10), 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.082, 0.068, 0.192))
+			Vector3(sx * 0.076, 0.060, 0.196))
 		_head.add_child(brow)
 		_brows.append(brow)
 		# A closed lid, hidden until it is needed. Hiding the eyes alone leaves
 		# a blank face, which reads as a missing texture rather than as sleep.
-		var lid := Build.mi(Build.rbox_mesh(Vector3(0.095, 0.017, 0.024), 0.008),
-			Build.unshaded(Color(0.36, 0.27, 0.24)), Vector3(sx * 0.080, 0.012, 0.192))
+		var lid := Build.mi(Build.rbox_mesh(Vector3(0.072, 0.015, 0.022), 0.007),
+			Build.unshaded(skin.darkened(0.18)), Vector3(sx * 0.074, 0.012, 0.198))
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)
@@ -271,12 +333,18 @@ func _build_body() -> void:
 
 	for sx in [-1.0, 1.0]:
 		var arm := Node3D.new()
-		arm.position = Vector3(sx * 0.395, 1.24, 0)
+		# Shoulders move out with the trunk. Left at a fixed 0.395 the arms of a
+		# broad person hang inside their own chest.
+		arm.position = Vector3(sx * 0.395 * girth, 1.24, 0)
 		root.add_child(arm)
 		# One sleeve, one cuff, one mitten. The hand is WIDER than the wrist:
 		# limbs that taper to nothing read as tentacles, and what sells a hand
 		# is being the widest thing at the end of the arm.
-		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15, 0.15), Vector2(0.20, 0.20), 0.56, 0.075),
+		# Limbs take HALF the trunk's variation. A broad person is not broad in
+		# proportion everywhere, and arms at full girth read as inflated.
+		var limb: float = lerpf(1.0, girth, 0.5)
+		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15 * limb, 0.15 * limb),
+			Vector2(0.20 * limb, 0.20 * limb), 0.56, 0.075),
 			Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.26, 0)))
 		arm.add_child(Build.mi(Build.capsule_mesh(0.082, 0.13),
 			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
@@ -292,9 +360,10 @@ func _build_body() -> void:
 		# leg and buys a real sit — thigh forward, shin down, foot on the floor —
 		# as well as a bend on the back-swing of the walk.
 		var leg := Node3D.new()
-		leg.position = Vector3(sx * 0.145, 0.68, 0)
+		leg.position = Vector3(sx * 0.145 * limb, 0.68, 0)
 		root.add_child(leg)
-		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.20, 0.20), Vector2(0.27, 0.25), 0.34, 0.085),
+		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.20 * limb, 0.20 * limb),
+			Vector2(0.27 * limb, 0.25 * limb), 0.34, 0.085),
 			Build.mat(outfit.darkened(0.34), 0.85, 0.0, Color(0, 0, 0), LINE),
 			Vector3(0, -0.17, 0)))
 		var knee := Node3D.new()
@@ -309,8 +378,25 @@ func _build_body() -> void:
 		_knees.append(knee)
 		_legs.append(leg)
 
-	_nametag = Build.label3d(display, 0.095, Color(0.99, 0.99, 0.96))
+	# SMALLER, AND IT FADES OUT WHEN YOU ARE ON TOP OF SOMEBODY.
+	#
+	# A 0.095 label is a metre and a half of text, and the player stands about
+	# a metre and a half from a bed — so walking up to a patient put their name
+	# across the entire screen in grey capitals, over the ceiling, over the
+	# wall, over their face. The name is for picking a bed out from the door;
+	# once you are at the bedside the interaction prompt already says who this
+	# is, twice.
+	_nametag = Build.label3d(display, 0.062, Color(0.99, 0.99, 0.96))
 	_nametag.position = Vector3(0, 1.98 * height_scale, 0)
+	# Godot fades a GeometryInstance3D by distance for us. `begin` is the NEAR
+	# limit — below it the label is not drawn at all — so this is "appears once
+	# you have stepped back from the bed, gone again from the far end of the
+	# building". The margins make both ends a fade rather than a pop.
+	_nametag.visibility_range_begin = 2.4
+	_nametag.visibility_range_begin_margin = 0.9
+	_nametag.visibility_range_end = 15.0
+	_nametag.visibility_range_end_margin = 3.0
+	_nametag.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(_nametag)
 
 	_speech = Build.label3d("", 0.075, Color(1, 1, 1))
@@ -324,6 +410,18 @@ func set_colours(p_skin: Color, p_outfit: Color, p_hair: Color) -> void:
 	skin = p_skin
 	outfit = p_outfit
 	hair = p_hair
+
+## THE WHOLE LOOK, from `Appearance.of()`. Must be called before the body is
+## built — everything here is baked into meshes in `_build_body`.
+func set_look(look: Dictionary) -> void:
+	_look_given = true
+	skin = look.get("skin", skin)
+	outfit = look.get("outfit", outfit)
+	hair = look.get("hair", hair)
+	height_scale = float(look.get("height", height_scale))
+	girth = float(look.get("girth", girth))
+	bald = float(look.get("bald", bald))
+	beard = bool(look.get("beard", beard))
 
 # ------------------------------------------------------------------ movement
 func goto(target: Vector3, run := false) -> void:

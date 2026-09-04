@@ -98,6 +98,7 @@ const DAY_ONE := [
 	{
 		"id": "marchetti", "name": "Ivo Marchetti", "age": 54, "bed": 1,
 		"they": "he",
+		"beard": true,
 		"condition": "Cellulitis, left lower leg",
 		"tier": Tier.PREMIUM,
 		"truly_well": false,          ## GENUINELY borderline — you can hold him honestly
@@ -486,6 +487,7 @@ const DAY_TWO := [
 	{
 		"id": "lomax", "name": "Peter Lomax", "age": 58, "bed": 4,
 		"they": "he",
+		"beard": true,
 		"condition": "Alcohol withdrawal, CIWA falling",
 		## PREMIUM ON PURPOSE, and it is the whole arithmetic of the second ward.
 		## The only bed that both needs holding and pays for the night is the one
@@ -614,6 +616,7 @@ const DAY_TWO := [
 	{
 		"id": "delacroix", "name": "Yves Delacroix", "age": 61, "bed": 5,
 		"they": "he",
+		"beard": true,
 		"condition": "Atypical chest pain, workup negative",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -758,6 +761,7 @@ const DAY_THREE := [
 	{
 		"id": "aldridge", "name": "Kit Aldridge", "age": 19, "bed": 3,
 		"they": "he",
+		"beard": true,
 		"condition": "Overdose, medically cleared",
 		"tier": Tier.STATE,
 		"truly_well": true,
@@ -786,6 +790,7 @@ const DAY_THREE := [
 	{
 		"id": "okwuosa", "name": "Bernard Okwuosa", "age": 76, "bed": 4,
 		"they": "he",
+		"beard": true,
 		"condition": "Chest infection, treated",
 		"tier": Tier.STANDARD,
 		"truly_well": false,           ## and he will tell you the opposite
@@ -1106,6 +1111,7 @@ const DAY_FOUR := [
 	{
 		"id": "vane", "name": "Hollis Vane", "age": 47, "bed": 4,
 		"they": "he",
+		"beard": true,
 		"condition": "Pancreatitis, not settling",
 		"tier": Tier.PREMIUM,
 		## LOUD, AND RIGHT. Everybody stopped listening on Tuesday.
@@ -1187,6 +1193,7 @@ const DAY_FOUR := [
 	{
 		"id": "hollins", "name": "Bert Hollins", "age": 81, "bed": 3,
 		"they": "he",
+		"beard": true,
 		"condition": "Chest infection, treated. Discharged 04:30.",
 		"tier": Tier.STANDARD,
 		"truly_well": true,

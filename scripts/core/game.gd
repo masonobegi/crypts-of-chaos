@@ -354,7 +354,7 @@ func _spawn_vinnie() -> void:
 	v.npc_id = "vinnie"
 	v.archetype = "observant"
 	v.display = "a man in the corridor"
-	v.set_colours(_random_skin(), Color(0.16, 0.15, 0.17), Color(0.12, 0.10, 0.09))
+	v.set_look(_look("vinnie", 46, Color(0.16, 0.15, 0.17)))
 	v.patrol_rooms = ["corridor"]
 	v.home_room = "corridor"
 	add_child(v)
@@ -374,7 +374,7 @@ func _spawn_auditor() -> void:
 	a.archetype = "observant"
 	a.display = "Ms Ferrand, Coding"
 	# Not scrubs. She is not staff and she is not pretending to be.
-	a.set_colours(_random_skin(), Color(0.26, 0.28, 0.34), Color(0.18, 0.14, 0.11))
+	a.set_look(_look("auditor", 51, Color(0.26, 0.28, 0.34)))
 	a.patrol_rooms = ["ward", "corridor", "office", "station"]
 	a.home_room = "office"
 	add_child(a)
@@ -392,8 +392,8 @@ func _spawn_nurse(arch: String, index: int) -> void:
 	n.npc_id = "nurse_%d" % index
 	n.archetype = arch
 	n.display = "Nurse %s" % DB.WARD_NURSE
-	n.set_colours(_random_skin(), Build.SCRUB_BLUE if arch != "corrupt" else Build.SCRUB_GREEN,
-		Color(0.2, 0.15, 0.11))
+	n.set_look(_look(n.npc_id, 38,
+		Build.SCRUB_BLUE if arch != "corrupt" else Build.SCRUB_GREEN))
 	add_child(n)
 	n.global_position = hospital.point_in("station", "nurse_spawn")
 	var mind := DB.make_mind(n.npc_id, n.display, "nurse", arch)
@@ -404,10 +404,18 @@ func _spawn_nurse(arch: String, index: int) -> void:
 ## the floor to do that — she needs the chart, which is where she gets her
 ## questions from.
 
-func _random_skin() -> Color:
-	return RNG.pick("staff_skin", [
-		Color(0.95, 0.83, 0.72), Color(0.87, 0.72, 0.60), Color(0.76, 0.60, 0.46),
-		Color(0.60, 0.44, 0.32), Color(0.44, 0.31, 0.22), Color(0.33, 0.23, 0.17)])
+## THE SAME PERSON EVERY CAREER. `_random_skin()` drew from `RNG`, which is
+## seeded per world — so Nurse Adeyemi, whom the entire game is about being
+## watched by, had a different face in every playthrough, and Ms Ferrand arrived
+## for her second booked shift looking like somebody else. They are named
+## characters. `Appearance` keys off the id, so they are stable everywhere.
+##
+## Their clothes stay authored: scrubs, a suit that is deliberately not scrubs,
+## and whatever Vinnie is wearing. That is the half that means something.
+func _look(id: String, age: int, uniform: Color) -> Dictionary:
+	var look := Appearance.anyone(id, age)
+	look["outfit"] = uniform
+	return look
 
 func _spawn_ui() -> void:
 	# The balance harness drives the systems directly with no player present and

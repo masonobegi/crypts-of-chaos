@@ -55,7 +55,13 @@ func _spawn(p: Patient, sus) -> void:
 	npc.name = "Patient_" + p.id
 	npc.display = p.display_name
 	npc.archetype = p.archetype
-	npc.set_colours(p.skin_tone, p.shirt_color, Color(0.22, 0.16, 0.12))
+	# NOT ONE MANNEQUIN, FORTY PEOPLE. `p.skin_tone` and `p.shirt_color` were
+	# fields on `Patient` that nothing ever assigned, so every patient in the
+	# game was built from the same two defaults and the same hardcoded brown —
+	# five identical bodies in a row, in a game about deciding between five
+	# people. `Appearance` derives a look from the id and the age, both of which
+	# were already in the record and one of which nothing read.
+	npc.set_look(Appearance.of(p.case()))
 	_parent().add_child(npc)
 	npc.bind(p, bed)
 	if bed:

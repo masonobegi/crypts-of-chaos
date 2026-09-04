@@ -22,9 +22,6 @@ var expected_stay_days := 2.0
 var recovery := 0.9
 var satisfaction := 0.7
 
-var skin_tone: Color = Color(0.92, 0.78, 0.66)
-var shirt_color: Color = Color(0.86, 0.88, 0.90)
-
 static func from_case(c: Dictionary) -> Patient:
 	var p := Patient.new()
 	p.id = String(c["id"])

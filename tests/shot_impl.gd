@@ -19,6 +19,7 @@ const SHOTS := [
 	["02_ward_from_door", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
+	["04b_lineup", "lineup"],
 	["05_ward_along", Vector3(1.6, 1.7, 9.5), Vector3(18.5, 1.2, 11.0)],
 	["06_station", Vector3(6.0, 1.7, -1.0), Vector3(6.0, 1.3, -7.0)],
 	["07_office", Vector3(16.0, 1.7, -2.0), Vector3(16.0, 1.3, -7.0)],
@@ -113,16 +114,16 @@ func _stage_ui(which: String, w) -> void:
 		"morning":
 			EventBus.request_ui.emit("morning", {})
 		"patient":
-			EventBus.request_ui.emit("patient", {"patient_id": "oduya"})
+			EventBus.request_ui.emit("patient", {"patient_id": _someone()})
 		"chart":
 			if w != null:
 				# A note written on top of the seven o'clock round, backdated by
 				# half an hour: the photograph has to show a chart with
 				# something WRONG in it, or it is a photograph of an empty form.
 				w.advance_to(19 * 60 + 5)
-				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+				w.write_entry(_someone(), ChartEntry.Claim.UNWELL,
 					"Reports transient dizziness on standing.", 18 * 60 + 35)
-			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
+			EventBus.request_ui.emit("chart", {"patient_id": _someone()})
 		"write":
 			# The form itself, standing in the bay: the note being composed, the
 			# gap it will record, and who is in the room while you compose it.
@@ -130,7 +131,7 @@ func _stage_ui(which: String, w) -> void:
 			var h = tree.get_first_node_in_group("hospital")
 			if pl != null and h != null:
 				pl.global_position = h.point_in("ward") + Vector3(0, 0.1, 0)
-			EventBus.request_ui.emit("chart", {"patient_id": "oduya"})
+			EventBus.request_ui.emit("chart", {"patient_id": _someone()})
 			var ui = game.ui
 			if ui != null and ui.current != null:
 				ui.current.set("_writing", true)
@@ -159,7 +160,7 @@ func _stage_ui(which: String, w) -> void:
 		"day_over":
 			EventBus.request_ui.emit("day_over", {
 				"verdict": ReviewSystem.OUTCOME_FLAGGED,
-				"remembered": PackedStringArray(["oduya"])})
+				"remembered": PackedStringArray([_someone()])})
 		"paid":
 			# THE WAY OUT. Nothing in the game had an ending until this session.
 			# Staged with a plausible career behind it, or the card documents a
@@ -227,26 +228,70 @@ func _stage_ui(which: String, w) -> void:
 				if ps3 != null and ps3.has_method("reset_day"):
 					ps3.reset_day()
 				w.advance_to(19 * 60 + 5)
-				w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+				w.write_entry(_someone(), ChartEntry.Claim.UNWELL,
 					"Reports transient dizziness on standing.", 18 * 60 + 35)
 			if w != null:
 				# The chart stage already left a contradiction in Sam Oduya's
 				# notes; hold him and the reviewer has something to ask about,
 				# which is the only version of this screen worth looking at.
-				w.set_disposition("oduya", "hold")
-				for id in ["marchetti", "kerrigan", "brennan", "blake"]:
+				w.set_disposition(_someone(), "hold")
+				# EVERYONE ELSE ON THIS WARD. The list was four names from the
+				# canonical seed-0 ward and this harness runs on another one, so
+				# every call errored — "Invalid access to property or key
+				# 'kerrigan'" — four times per run, in among the real output.
+				for id in _the_others():
 					w.set_disposition(id, "discharge")
 				w.advance_to(Cases.DEBT_DUE_MINUTE)
 				w.end_day()
 			EventBus.request_ui.emit("review", {})
 
 ## Stand in front of somebody. Characters have to read at two metres and at ten.
+## WHOEVER IS ACTUALLY IN THE BED, not a name from another ward.
+##
+## These two shots asked for "oduya" and this harness starts a career on seed
+## 20260822 — a ward oduya is not on. `get_body` came back null, the function
+## returned, and the camera stayed wherever the previous shot had left it. So
+## the only two frames in the whole set that were supposed to photograph a
+## PERSON have been quietly photographing the same wide ward view as everything
+## else, for as long as they have existed.
+##
+## That is why "every patient in the game is the same body" survived a hundred
+## screenshot runs: the shots that would have shown it never framed anybody.
+func _someone() -> String:
+	var r := Cases.roster()
+	return String(r[0]["id"]) if not r.is_empty() else ""
+
 func _frame_a_person(cam: Camera3D, how: String) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
 	if ps == null:
+		push_error("shot: no patient system to photograph")
 		return
-	var b = ps.get_body("oduya")
+	# ALL FIVE HEADS IN ONE FRAME. The variety between patients is the thing
+	# that is easiest to lose and hardest to see one bed at a time — five
+	# people who differ only slightly from their neighbour still read as one
+	# person repeated. Photographed square on, from the foot of the bay.
+	if how == "lineup":
+		var heads: Array = []
+		for c in Cases.roster():
+			var body = ps.get_body(String(c["id"]))
+			if body != null and body.is_inside_tree():
+				heads.append(body.head_position())
+		if heads.is_empty():
+			push_error("shot: nobody on the ward to line up")
+			return
+		var mid := Vector3.ZERO
+		for hp in heads:
+			mid += hp
+		mid /= float(heads.size())
+		cam.global_position = Vector3(mid.x, mid.y + 0.25, mid.z - 5.4)
+		cam.look_at(Vector3(mid.x, mid.y - 0.10, mid.z), Vector3.UP)
+		return
+
+	var who := _someone()
+	var b = ps.get_body(who)
 	if b == null or not b.is_inside_tree():
+		# LOUDLY. A silent return here is what hid this for so long.
+		push_error("shot: nobody to photograph — wanted %s on ward %d" % [who, GameState.day])
 		return
 	var head: Vector3 = b.head_position()
 	var dist := 1.5 if how == "face" else 2.8
@@ -257,6 +302,15 @@ func _frame_a_person(cam: Camera3D, how: String) -> void:
 		eye = head + Vector3(0.85, 0.45, -1.7)
 	cam.global_position = eye
 	cam.look_at(head, Vector3.UP)
+
+## Everyone on today's ward except the one the shots are framed on.
+func _the_others() -> Array:
+	var out: Array = []
+	var first := _someone()
+	for c in Cases.roster():
+		if String(c["id"]) != first:
+			out.append(String(c["id"]))
+	return out
 
 ## A finding of a given kind, for staging a record that took a few weeks.
 func _mk(kind: String):

@@ -26,7 +26,13 @@ var _pre_talk: State = State.IN_BED
 
 func _ready() -> void:
 	role = "patient"
-	outfit = Color(0.72, 0.78, 0.82)     # gown
+	# A GOWN, unless a spawner has already dressed this one. This line used to
+	# be unconditional, and `_ready` runs after `PatientSystem._spawn` has called
+	# `set_look` — so the gown `Appearance` chose was overwritten with the same
+	# pale blue for every patient in the game, on the biggest single surface on
+	# the model. The skin and hair varied and nobody could see the difference.
+	if not _look_given:
+		outfit = Appearance.GOWN[0]
 	super._ready()
 	add_to_group("patient_npc")
 	_timer = RNG.randf_range_s("patient_idle_t", 8.0, 20.0)
@@ -37,8 +43,11 @@ func bind(p: Patient, p_bed: PatientBed) -> void:
 	npc_id = p.id
 	display = p.display_name
 	archetype = p.archetype
-	skin = p.skin_tone
-	outfit = p.shirt_color
+	# NO COLOURS HERE. These two lines assigned `skin` and `outfit` from fields
+	# on `Patient` that nothing ever set — and they ran after `add_child`, so
+	# after `_build_body` had already baked the materials. They could not have
+	# changed anything even when they held something. The look is set by
+	# `PatientSystem._spawn` from `Appearance`, before the body exists.
 	if p_bed:
 		p_bed.patient_id = p.id
 		p_bed.occupant = self

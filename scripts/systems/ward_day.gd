@@ -8,6 +8,9 @@ extends Node
 
 signal money_changed(cash: int)
 signal entry_written(entry)
+## A bed decided. Emitted only on an actual change, so re-confirming the same
+## disposition does not count as a new decision.
+signal disposition_set(pid, what)
 signal patient_changed(pid: String)
 signal day_ended(result: Dictionary)
 
@@ -571,6 +574,7 @@ func set_disposition(pid: String, what: String) -> void:
 		st["discharged_at"] = minute
 	if before != what:
 		_log("disposition", {"pid": pid, "from": before, "to": what})
+		disposition_set.emit(pid, what)
 		# A bed decided sounds like a rubber stamp, because that is what it is.
 		AudioMgr.play("stamp", -11.0, 1.0 if what == "discharge" else 0.85)
 	patient_changed.emit(pid)

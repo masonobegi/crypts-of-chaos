@@ -21,26 +21,68 @@ const STEPS := [
 		"done": "entry_written",
 	},
 	{
-		"id": "owed", "line": "Vinnie wants three thousand two hundred by eight. You have nine hundred.",
-		"done": "disposition_set",
+		# BUILT FROM THE CONSTANTS. This said "three thousand two hundred"
+		# against a DEBT_DUE of 2,200 — a number that was right for a balance
+		# pass two reworks ago and has been wrong ever since. It is also the only
+		# line in the running game that states the premise out loud, so it was
+		# wrong in the one place it mattered.
+		"id": "owed", "line": "", "done": "disposition_set",
 	},
 ]
+
+## The third line, in figures that cannot drift from the economy.
+static func _owed_line() -> String:
+	return "Vinnie wants %s by eight. You have %s." % [
+		UIKit.money_str(Cases.DEBT_DUE), UIKit.money_str(Cases.STARTING_CASH)]
 
 var _index := 0
 var _active := true
 
 func _ready() -> void:
 	add_to_group("tutorial")
-	if GameState.flag("tutorial_done", false):
-		_active = false
-		return
+	# CONNECT ALWAYS, GATE ON STATE.
+	#
+	# This returned early when `tutorial_done` was set, so the signals were never
+	# connected at all — and once a run has been marked done there is no way back
+	# even if the flag is cleared, which is what the screenshot harness and the
+	# "start again" path both do. `note()` and `_say()` already check `_active`,
+	# so gating at the connection bought nothing and cost recoverability.
+	_active = not GameState.flag("tutorial_done", false)
 	EventBus.request_ui.connect(_on_ui)
+	# THE OTHER TWO STEPS HAD NO WAY TO FIRE. `note()` had exactly one caller —
+	# `_on_ui`, gated on the chart — so `_index` could only ever reach 1. Step
+	# two ("every note records when it was written") was shown forever and step
+	# three, the only line in the running game that states the premise, could
+	# never be reached at all. `tutorial_done` was therefore never set either, so
+	# a returning player was re-tutorialised every morning of their career.
+	#
+	# Deferred because the ward is built after this: connecting here would find
+	# no WardDay in the group yet.
+	call_deferred("_hook_the_ward")
 	call_deferred("_say")
+
+func _hook_the_ward() -> void:
+	var w = get_tree().get_first_node_in_group("ward_day")
+	if w == null:
+		return
+	if w.has_signal("entry_written") and not w.entry_written.is_connected(_on_entry):
+		w.entry_written.connect(_on_entry)
+	if w.has_signal("disposition_set") and not w.disposition_set.is_connected(_on_disposition):
+		w.disposition_set.connect(_on_disposition)
+
+func _on_entry(_e) -> void:
+	note("entry_written")
+
+func _on_disposition(_pid, _what) -> void:
+	note("disposition_set")
 
 func _say() -> void:
 	if not _active or _index >= STEPS.size():
 		return
-	EventBus.toast.emit(String(STEPS[_index]["line"]), "info")
+	var line := String(STEPS[_index]["line"])
+	if line == "":
+		line = _owed_line()
+	EventBus.toast.emit(line, "info")
 
 func note(what: String) -> void:
 	if not _active or _index >= STEPS.size():

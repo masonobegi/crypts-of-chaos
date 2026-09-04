@@ -155,6 +155,7 @@ func _check_the_chart_works() -> void:
 	_check_the_room_is_watching(w)
 	_check_no_sign_is_mirrored()
 	_check_every_room_named_in_source_exists()
+	_check_the_tutorial_finishes()
 	_check_the_crosshair_keeps_the_secret(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
@@ -257,6 +258,44 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## THE TUTORIAL CAN REACH ITS LAST LINE.
+##
+## `note()` had exactly one caller — the chart-opened hook — so `_index` could
+## only ever reach 1. Step two was shown forever, step three (the only line in
+## the running game that states the premise) could never fire, and because the
+## run never completed, `tutorial_done` was never set: a returning player was
+## re-tutorialised every morning of their career. Three toasts is the entire
+## onboarding and two thirds of it was unreachable.
+func _check_the_tutorial_finishes() -> void:
+	var t = tree.get_first_node_in_group("tutorial")
+	if t == null:
+		_fail("no tutorial system in the tree")
+		return
+	var w = tree.get_first_node_in_group("ward_day")
+	if w == null:
+		_fail("no ward to drive the tutorial with")
+		return
+	GameState.set_flag("tutorial_done", false)
+	t.set("_active", true)
+	t.set("_index", 0)
+	if t.has_method("_hook_the_ward"):
+		t.call("_hook_the_ward")
+	# Step one: open a chart.
+	EventBus.request_ui.emit("chart", {"patient_id": String(Cases.roster()[0]["id"])})
+	_ok(int(t.get("_index")) >= 1, "opening a chart advances the tutorial")
+	# Step two: write something.
+	w.write_entry(String(Cases.roster()[0]["id"]), ChartEntry.Claim.UNWELL,
+		"Reviewed.", w.minute)
+	_ok(int(t.get("_index")) >= 2, "and writing a note advances it again")
+	# Step three: decide a bed. This is the one that states the premise.
+	w.set_disposition(String(Cases.roster()[0]["id"]), "hold")
+	_ok(bool(GameState.flag("tutorial_done", false)),
+		"and deciding a bed finishes it, so it does not run again tomorrow")
+	# ...and the line it says is built from the economy rather than typed.
+	var owed := String(t.call("_owed_line")) if t.has_method("_owed_line") else ""
+	_ok(owed.find(UIKit.money_str(Cases.DEBT_DUE)) >= 0,
+		"and the premise line quotes what Vinnie actually wants (%s)" % owed)
 
 ## EVERY ROOM NAME IN THE SOURCE IS A ROOM THAT EXISTS.
 ##

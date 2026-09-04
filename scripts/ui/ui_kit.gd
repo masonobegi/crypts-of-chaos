@@ -209,11 +209,35 @@ static func toggle(text: String, value: bool, on_change: Callable) -> Control:
 	# ON and OFF in words, in colour, cannot be misread.
 	var state := value
 	var b := button("", Callable(), PANEL_LIGHT, 96)
+	# ALL FOUR STYLEBOXES, AND ON PAPER RATHER THAN ON A DARK SLAB.
+	#
+	# ON was GOOD (0.10,0.45,0.23) on (0.16,0.30,0.24): a contrast ratio of
+	# 1.61:1, which is not a readable pairing — the word "ON" was a smudge. OFF
+	# managed 2.27:1, and the two backgrounds differed by 1.28:1, so the slab
+	# carried no state either. Worse, only the `normal` box was overridden, so
+	# `hover` fell through to the cream default and `font_hover_color` was ACCENT
+	# for both states: putting the cursor on a toggle turned ON and OFF into
+	# exactly the same cream-and-teal control. That is the failure this widget
+	# was written to fix, on the four toggles in the settings screen.
+	#
+	# The card's own paper palette instead: green paper with green ink at about
+	# 9:1, grey paper with dim ink at about 6:1, and the hover and pressed boxes
+	# painted from the same colour so the state survives the cursor.
 	var paint := func() -> void:
 		b.text = "ON" if state else "OFF"
-		b.add_theme_color_override("font_color", GOOD if state else INK_DIM)
-		b.add_theme_stylebox_override("normal",
-			stylebox(Color(0.16, 0.30, 0.24) if state else Color(0.20, 0.21, 0.24), 6))
+		var ink: Color = Color(0.07, 0.36, 0.18) if state else Color(0.34, 0.36, 0.40)
+		var paper: Color = NOTE_GOOD if state else Color(0.88, 0.88, 0.89)
+		b.add_theme_color_override("font_color", ink)
+		b.add_theme_color_override("font_hover_color", ink)
+		b.add_theme_color_override("font_pressed_color", ink)
+		b.add_theme_color_override("font_focus_color", ink)
+		for box in ["normal", "hover", "pressed", "focus"]:
+			var shade: Color = paper
+			if box == "hover":
+				shade = paper.lightened(0.06)
+			elif box == "pressed":
+				shade = paper.darkened(0.08)
+			b.add_theme_stylebox_override(box, stylebox(shade, 6))
 	paint.call()
 	b.pressed.connect(func() -> void:
 		state = not state

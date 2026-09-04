@@ -1498,7 +1498,7 @@ func _check_writing_is_observed(w) -> void:
 	var pid := String(Cases.roster()[0]["id"])
 	# In the bay, where the patients are.
 	p.global_position = h.point_in("ward")
-	var before := _total_evidence(sus)
+	var before := _witnessed(sus)
 	# A PATTERN, not one note. The event is weighted low on purpose — a doctor
 	# writing at a bedside is also just a doctor writing at a bedside — and
 	# perception is a roll against observance and distance rather than a
@@ -1507,18 +1507,43 @@ func _check_writing_is_observed(w) -> void:
 	for i in 8:
 		w.write_entry(pid, ChartEntry.Claim.UNWELL, "Unsettled.", w.minute,
 			WardDay.TERMINAL_WARD)
-	var after := _total_evidence(sus)
+	# Witnessed on both sides: the claim on this side is that somebody SAW it,
+	# and counting the total would let a rumour about something else carry it.
+	var after := _witnessed(sus)
 	_ok(after > before,
 		"writing notes where people can see you gets noticed (%d -> %d)"
 			% [before, after])
 	# ...and in the office, with the door shut, it is not.
+	#
+	# WITNESSED ONLY, and this is not a nicety. The first version compared the
+	# TOTAL evidence in the building either side of the office writes and
+	# demanded it not move — but the bay writes above have just put eight
+	# observations into somebody's head, and `_gossip_pass` retells those to
+	# everybody else for the rest of the shift. So on a seed where the gossip
+	# happened to land between the two readings, the total grew with nobody
+	# having seen anything, and the check reported the office as public. Seed 3,
+	# found by sweeping ten of them. What this claims is that nobody SEES you in
+	# there; hearsay about something else is not a counterexample.
 	p.global_position = h.point_in("office")
-	var mid := _total_evidence(sus)
+	var mid := _witnessed(sus)
 	for i in 8:
 		w.write_entry(pid, ChartEntry.Claim.UNWELL, "Unsettled.", w.minute,
 			WardDay.TERMINAL_OFFICE)
-	_ok(_total_evidence(sus) == mid,
-		"and writing it in your own office is not, which is the whole point")
+	_ok(_witnessed(sus) == mid,
+		"and writing it in your own office is not, which is the whole point (%d -> %d)"
+			% [mid, _witnessed(sus)])
+
+## Evidence somebody SAW, as opposed to evidence that reached them.
+func _witnessed(sus) -> int:
+	var n := 0
+	for id in sus.minds:
+		var m = sus.minds[id]
+		if m == null:
+			continue
+		for e in m.evidence:
+			if e.source == Evidence.Source.WITNESSED:
+				n += 1
+	return n
 
 func _total_evidence(sus) -> int:
 	var n := 0
@@ -2122,11 +2147,23 @@ func _check_a_rebuilt_card_still_has_a_selection() -> void:
 	var ui = game.get("ui")
 	if ui == null:
 		return
-	EventBus.request_ui.emit("patient", {"patient_id": _anyone()})
+	# A CARD WITH SOMETHING ON IT. The patient card offers no verbs once the
+	# shift has ended — correctly, there is nothing left to do about anybody —
+	# and by this point in the run the day may or may not be over, depending on
+	# where the clock got to. So this check was passing and failing on the same
+	# seed, run to run, reporting "no selection" about a card that genuinely had
+	# nothing to select. The records terminal always has a Close on it.
+	var w = tree.get_first_node_in_group("ward_day")
+	var live: bool = w != null and not bool(w.ended)
+	if live:
+		EventBus.request_ui.emit("patient", {"patient_id": _anyone()})
+	else:
+		EventBus.request_ui.emit("records", {})
 	_defer(4, func():
 		var vp := tree.root.get_viewport()
 		var before = vp.gui_get_focus_owner() if vp else null
-		_ok(is_instance_valid(before), "a card opens with a selection on it")
+		_ok(is_instance_valid(before), "a card opens with a selection on it (screen '%s', %d buttons)"
+			% [String(ui.current_id), _button_count(ui)])
 		# AND THE CROSSHAIR LABEL STAYS DOWN WHILE IT IS UP. The patient card
 		# deliberately does not pause the world, so the interactor keeps
 		# raycasting and keeps emitting the bedside prompt for the very person
@@ -2143,7 +2180,8 @@ func _check_a_rebuilt_card_still_has_a_selection() -> void:
 			var vp2 := tree.root.get_viewport()
 			var after = vp2.gui_get_focus_owner() if vp2 else null
 			_ok(is_instance_valid(after),
-				"and still has one after it rebuilds itself")
+				"and still has one after it rebuilds itself (screen '%s', %d buttons)"
+					% [String(ui.current_id), _button_count(ui)])
 			if ui.has_method("close"):
 				ui.call("close")))
 
@@ -2187,6 +2225,11 @@ func _check_the_rebind_row_can_be_escaped() -> void:
 	Settings.reset_bindings()
 	if ui.has_method("close"):
 		ui.call("close")
+
+func _button_count(n: Node) -> int:
+	var b: Array = []
+	_collect_buttons(n, b)
+	return b.size()
 
 func _fail(msg: String) -> void:
 	errors.append(msg)

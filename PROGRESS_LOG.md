@@ -1715,6 +1715,32 @@ And one real one, in the game: the door's own prompt read "[Shift+E] slam it"
 place in the game that mentions the sprint modifier at all. The grep missed it
 because it was looking for "[E]" and this is "[Shift+E]". Both shapes now.
 
+### Two flaky checks, found by sweeping seeds rather than repeating one
+
+A green suite on three seeds is not evidence about the fourteenth. Fourteen
+smoke seeds and seven career seeds later, two checks were wrong rather than the
+game:
+
+**"Writing in your own office is not observed"** compared the TOTAL evidence in
+the building either side of eight office writes and demanded it not move. But
+the half of the check above it has just put eight observations into somebody's
+head, and `_gossip_pass` retells those to everybody else for the rest of the
+shift — so on a seed where the gossip happened to land between the two
+readings, the total grew with nobody having seen anything, and the check
+reported the office as public. It counts WITNESSED evidence on both sides now,
+which is what "nobody sees you in there" actually claims; hearsay about
+something else is not a counterexample.
+
+**"A card opens with a selection on it"** passed and failed on the same seed,
+run to run. The patient card offers no verbs once the shift has ended —
+correctly; there is nothing left to do about anybody — and by the time that
+check runs the day may or may not be over, depending on where the clock got to.
+It was reporting "no selection" about a card that genuinely had nothing to
+select. It asks the records terminal, which always has a Close on it, when the
+ward has closed.
+
+Fourteen smoke seeds and seven career seeds pass now, repeatedly.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather

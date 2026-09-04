@@ -1243,3 +1243,129 @@ screenshots ............................................. 22, including the
   toasts. Either give them bodies or delete the class.
 - The overlap audit named in CLAUDE.md does not appear to exist under that name
   any more. The floating and door-swing audits cover part of what it did.
+
+
+## Session 15, later — the harnesses, and the documentation
+
+The audit findings ran out around here and what was left was to go looking. Most
+of what follows was found by pointing an existing tool somewhere it had never
+been pointed.
+
+### Three of five seeds were untested
+
+A ward is five people drawn from a pool of ten per day, so the first ward alone
+can deal thirty-two boards. Every check in `smoke_impl.gd` named its patients —
+"oduya", "marchetti", "kerrigan", "brennan", "blake" — so the whole file, 131
+checks building a real world with a real UI, could only ever run against one of
+them. Pointing it anywhere else produced eight failures and all eight were the
+harness naming somebody who was not there.
+
+Exactly the same defect as the shot harness asking for "oduya" on a seed oduya
+is not on, and it hid the same way: a check that cannot run looks like a check
+that passes. `SMOKE_SEED=n` points it anywhere now; nine seeds pass; the suite
+runs three every time.
+
+Two of the fixes are worth keeping the note for. The test-result check ordered
+bloods on the first bed and asserted NORMAL — and on some wards the first bed is
+the genuinely unwell one, whose bloods correctly come back abnormal. And
+`_someone_unwell()` has to skip `only_visible_in_person` and `colleague_wrong`,
+because Gwen Ashworth is the whole argument of the fourth ward: the nurse goes
+and finds nothing and writes that down.
+
+### A probe that asserted something false about a quarter of the content
+
+The frontier search reported "signed off — never reached" on the fourth ward and
+printed "no clean day exists on this ward" underneath it. That is a claim about
+the ward, made from a fact about the search. The ward can be signed off.
+
+Writing the honest day out by hand took four goes and each one was the ward
+teaching me what it is for:
+
+```
+look at everybody, hold the two who are ill     FLAGGED  no reason recorded
+...and write it up                              FLAGGED  invited_contradiction 0.95
+...bloods for the kept, nurse for the sent home FLAGGED  invited_contradiction 0.60
+...and don't ask a man who has already told you SIGNED OFF, 3,650 of a 4,350 top
+```
+
+Every one of those traps is legible on the chart, which is what makes the ward
+fair — and none of them is legible to a search that applies every verb to every
+bed. All four wards sign off on the honest day now, and that is a criterion.
+
+### Two probes that printed FAILED and exited 0
+
+`career_run.gd` and `frontier_run.gd` both end by printing PASSED or FAILED in
+capital letters, and both called `quit()` with no argument. Same shape as
+`check.sh` not failing on a parse error, and the reason neither was in
+`run_tests.sh`: they could not be, because they could not fail. Both are in it
+now. The career probe is under a second and is the only thing that catches a
+balance inversion — it caught one this session, and it was not running with the
+suite at the time.
+
+### The documentation described a different game
+
+`README.md` opened with "You are $435,000 in debt and you make $240 a shift",
+explained that complications are the product, listed Ambient Dread and Ferrous
+Aura, described a nine-rung sanction ladder and a shredder, and pointed at six
+system files deleted several reworks ago.
+
+`docs/SPOILERS.md` was worse, because `CLAUDE.md` points at it as the
+developer-facing truth. It documented treatment-machine dials, complication
+chances per deviation band, substances, upgrades, and a statistical review team
+firing at 1.6x a 0.34-per-discharge baseline — which I had deleted from the code
+earlier the same night, for the same reason.
+
+`docs/REDESIGN.md` had drifted rather than rotted: $2,400 owed against a $2,200
+debt, an $850 admission against a $500 one, and a worked example running to
+23:10 on a day that ends at eight. Its "honest ceiling" was $2,650, which is
+what emptying the ward pays — but the honest day KEEPS the people who are ill,
+so the frontier probe measures it at $2,950 to $3,650. Honesty does not pay by
+$100 and tightly. It pays by a thousand, and what it costs is that you send home
+an 81-year-old who has nobody because she is well and you have nothing to write.
+
+README and SPOILERS rewritten, DESIGN deleted, REDESIGN corrected. This is not
+hypothetical: the session lost real time to `VisitorNPC`, and the docs are what
+somebody reads before the code.
+
+### And somebody is finally in the room
+
+`VisitorNPC` was 115 lines never instantiated anywhere, and broken with it —
+`_visit_bark` read `p.overdue_days`, which is not a property of `Patient`, so
+reading it aborts the function and the half that produces evidence could not run
+even if something had built one. Meanwhile "Ruth Kerrigan is here to see her
+mother. She has brought a flask." has printed at seven o'clock since the line
+was written.
+
+Three patients have a family authored and every one names the hour out loud in
+their own prose. That hour is a field now, the toast is built from the
+`family_note` that was already written and only a review finding ever used, and
+`_who_can_see_me` walks every registered mind — so standing her at the bedside
+makes a note typed in front of her a note she saw, with no new machinery.
+
+### The rest
+
+- **Everything hovered.** Compatibility has no SSAO, so nothing had anything
+  underneath it. Contact shadows, synthesised like the audio. Two wrong turns:
+  multiply is the right blend and Compatibility ignores the albedo texture under
+  it, which renders as a hard black rectangle and looks like a geometry bug.
+- **Adeyemi wrote the same sentence four times.** The round line was picked from
+  the patient id alone, deliberately — and produced four identical notes stacked
+  on the chart screen. Eight lines of each now, because a flagged night has eight
+  rounds on it.
+- **Signing off dropped the whole ward out of their beds.** Patients are pinned
+  half a metre up; standing them up unpinned them and let gravity do the rest.
+  Normally half a second nobody sees — except at eight o'clock, when the handover
+  card pauses the world and freezes five people mid-fall behind it.
+- **A third of the patient screen's verbs were below the fold**, because every
+  row was a panel wrapping a button that already had its own bordered panel.
+
+### Counts
+
+```
+unit + integration assertions ........................... 292
+smoke checks ............................................ 131, on three seeds
+day-level criteria ...................................... 7/7
+career-level criteria ................................... 6/6
+wards that sign off on the honest day ................... 4/4
+screenshots ............................................. 23
+```

@@ -216,7 +216,26 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	e.author = ChartEntry.Author.YOU
 	e.author_id = "player"
 	e.terminal_id = terminal
-	e.explains = explains
+	# WHAT THIS NOTE IS ADDING TO, worked out rather than asked for.
+	#
+	# `explains` had no writer anywhere in the project. Every call to this
+	# function left it "", so `_addendum_cascade` — an authored finding with a
+	# question, a severity and three answer branches built for it — could never
+	# fire once, and `WRITE_COST`'s own design note sells exactly the case it
+	# covers: "patching a lie three times costs the best part of an hour". It
+	# cost the hour and produced nothing.
+	#
+	# It does not need a control on the form. Writing the SAME claim about the
+	# SAME patient again is what an addendum is: the second note is not a new
+	# observation, it is the first one restated because the first one did not
+	# hold. So the chain builds itself out of what the player actually does, and
+	# by the third one the record is visibly arguing with itself — which is the
+	# finding, word for word.
+	#
+	# Same claim only. A note about the leg at ten and one about the chest at
+	# four are two observations, not a patch on a patch, and chaining those
+	# would have made ordinary thorough documentation look like a cover-up.
+	e.explains = explains if explains != "" else _restates(pid, claim)
 	e.seen_by = _who_can_see_me()
 	# ...AND THE PEOPLE WHO SAW IT KNOW THEY SAW IT.
 	#
@@ -251,6 +270,18 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	AudioMgr.play("paper", -12.0, 0.8 if e.is_backdated() else 1.0)
 	advance_to(minute + WRITE_COST)
 	return e
+
+## The most recent note of YOUR OWN making this same claim about this patient,
+## which the next one is an addendum to. Empty when this is the first.
+func _restates(pid: String, claim: int) -> String:
+	var last := ""
+	for e in records.entries:
+		if e.patient_id != pid or e.author != ChartEntry.Author.YOU:
+			continue
+		if int(e.claim) != claim:
+			continue
+		last = e.id
+	return last
 
 ## 2. ASK A LEADING QUESTION. The patient becomes the source — but only if they
 ## go along with it, and it only survives the morning if they remember doing so.

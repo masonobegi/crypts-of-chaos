@@ -1154,6 +1154,39 @@ func test_the_score_is_longer_than_the_thing_it_plays_under() -> void:
 		"the second pass is the one that drops out (%.0f, %.0f, %.0f, %.0f)"
 			% [per_pass[0], per_pass[1], per_pass[2], per_pass[3]])
 
+## THE FINDING THAT COULD NEVER FIRE. `ChartEntry.explains` had no writer
+## anywhere in the project — every call to `write_entry` left it "" — so
+## `_addendum_cascade` was an authored question with a severity and three
+## ReviewSystem answer branches built for it that no play could ever reach.
+## `WRITE_COST`'s own design note sells exactly this case: "patching a lie three
+## times costs the best part of an hour". It cost the hour and produced nothing.
+func test_patching_a_note_twice_is_a_record_arguing_with_itself() -> void:
+	var w := _day()
+	# One note is an observation.
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Warm to touch.", w.minute)
+	t.ok(not _kinds(w.review_findings()).has("addendum_cascade"),
+		"one note about somebody is just a note")
+	# Two is a correction.
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Still warm.", w.minute)
+	t.ok(not _kinds(w.review_findings()).has("addendum_cascade"),
+		"and two is a doctor changing their mind")
+	# Three explaining each other is the shape she notices.
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL, "Warmer, if anything.", w.minute)
+	t.ok(_kinds(w.review_findings()).has("addendum_cascade"),
+		"but three of them is the record arguing with itself")
+
+	# AND THOROUGH DOCUMENTATION IS NOT A COVER-UP. Three notes about three
+	# different things is what a careful doctor's chart looks like, and chaining
+	# those would have punished exactly the play the game wants to reward.
+	var q := _day()
+	q.write_entry("oduya", ChartEntry.Claim.UNWELL, "Leg warm.", q.minute)
+	q.write_entry("oduya", ChartEntry.Claim.ADMIN, "Bloods sent.", q.minute)
+	q.write_entry("oduya", ChartEntry.Claim.SOCIAL, "Nobody at home.", q.minute)
+	t.ok(not _kinds(q.review_findings()).has("addendum_cascade"),
+		"three notes about three different things are three observations")
+	w.queue_free()
+	q.queue_free()
+
 ## A NEW CAREER IS ACTUALLY NEW. `flags.clear()` used to run after the three
 ## calls that write the flags a career starts with, so the right state was being
 ## reached by accident through the defaults of the getters that read them — and

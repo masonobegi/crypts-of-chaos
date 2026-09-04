@@ -232,7 +232,26 @@ static func slider(text: String, value: float, min_v: float, max_v: float,
 	sl.value_changed.connect(func(v: float) -> void:
 		write.call(v)
 		on_change.call(v))
-	return row_box
+
+	# WHICH ROW THE SELECTION IS ON.
+	#
+	# Godot draws no focus mark on an HSlider that anybody can see against a
+	# paper card, and a slider is what takes the FIRST focus on the settings
+	# screen — so a pad player opened Settings, pressed a direction, and had no
+	# idea what they were about to change. The row gets a tinted panel with the
+	# margin rule down it while its slider holds focus, which is the same mark
+	# a focused button carries.
+	var wrap := PanelContainer.new()
+	# THE SAME CONTENT MARGINS ON BOTH, or the row shifts sideways the moment
+	# the selection lands on it. A StyleBoxFlat's border width does not affect
+	# what a container hands its child; its content margins do.
+	var quiet := _row_box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0)
+	var lit := _row_box(NOTE.lightened(0.04), MARGIN_RED, 8)
+	wrap.add_theme_stylebox_override("panel", quiet)
+	wrap.add_child(row_box)
+	sl.focus_entered.connect(func(): wrap.add_theme_stylebox_override("panel", lit))
+	sl.focus_exited.connect(func(): wrap.add_theme_stylebox_override("panel", quiet))
+	return wrap
 
 ## A labelled on/off switch. A CheckButton rather than a checkbox because at a
 ## glance "is this on" should be readable without reading.
@@ -280,14 +299,34 @@ static func toggle(text: String, value: bool, on_change: Callable) -> Control:
 				shade = paper.lightened(0.06)
 			elif box == "pressed":
 				shade = paper.darkened(0.08)
-			b.add_theme_stylebox_override(box, stylebox(shade, 6))
+			# ...AND THE FOCUS BOX IS NOT THE NORMAL ONE. It was painted from
+			# the same colour with the same border, so a toggle with the
+			# selection on it looked exactly like a toggle without it — which
+			# on a pad means the selection is invisible on half the rows of the
+			# settings screen.
+			if box == "focus":
+				b.add_theme_stylebox_override(box,
+					stylebox(shade.lightened(0.06), 6, 2, MARGIN_RED))
+			else:
+				b.add_theme_stylebox_override(box, stylebox(shade, 6))
 	paint.call()
 	b.pressed.connect(func() -> void:
 		state = not state
 		paint.call()
 		on_change.call(state))
 	row_box.add_child(b)
-	return row_box
+	# THE SAME WRAPPER AS A SLIDER ROW, for two reasons. The selection lands on
+	# the same kind of mark whichever row it is on — and without it the toggle
+	# rows sat eleven pixels to the left of the slider rows on the same card,
+	# because only one of the two was inside a panel with content margins.
+	var wrap := PanelContainer.new()
+	var quiet := _row_box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 0)
+	var lit := _row_box(NOTE.lightened(0.04), MARGIN_RED, 8)
+	wrap.add_theme_stylebox_override("panel", quiet)
+	wrap.add_child(row_box)
+	b.focus_entered.connect(func(): wrap.add_theme_stylebox_override("panel", lit))
+	b.focus_exited.connect(func(): wrap.add_theme_stylebox_override("panel", quiet))
+	return wrap
 
 static func rule(color := Color(INK.r, INK.g, INK.b, 0.22)) -> ColorRect:
 	var r := ColorRect.new()
@@ -525,6 +564,21 @@ static func first_focusable(n: Node) -> Control:
 		if found != null:
 			return found
 	return null
+
+## The background of one settings row, lit or not. Both boxes have identical
+## content margins so nothing moves when the selection arrives.
+static func _row_box(bg: Color, tab: Color, tab_w: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.set_corner_radius_all(2)
+	sb.content_margin_left = 8
+	sb.content_margin_right = 8
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
+	if tab_w > 0:
+		sb.border_width_left = tab_w
+		sb.border_color = tab
+	return sb
 
 static func _slip(color: Color, tab: Color, tab_w: int) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()

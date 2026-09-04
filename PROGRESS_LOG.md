@@ -1626,6 +1626,22 @@ NAME began with a 1, which happened to cover 10 through 19 and left
 `20_struck_off` — one of the two endings, the last thing a career shows
 anybody — unmeasured. It measures whenever there is a card up.
 
+### Half the settings screen could not show you where the selection was
+
+The focus box was written for Buttons. A slider takes the FIRST focus on the
+settings screen and Godot draws nothing on an HSlider that can be seen against
+a paper card, so a pad player opened Settings, pressed a direction, and had no
+idea what they were about to change. The toggles were worse in a quieter way:
+they DID override a focus stylebox, painted from the same colour as the normal
+one, so a selected toggle looked exactly like an unselected one.
+
+Both rows now sit in a panel that lights up with the margin rule down it —
+the same mark a focused button carries. Which turned up an alignment bug at the
+same time: the toggle rows had been sitting eleven pixels left of the slider
+rows on the same card, because only one of the two was inside a panel with
+content margins. Both boxes carry identical content margins so nothing moves
+when the selection arrives.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather

@@ -294,6 +294,14 @@ func _settings_screen() -> Control:
 
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("DISPLAY", 13, UIKit.INK_DIM))
+	# THE TEXT IS THE GAME. A chart, a board and an argument about a document —
+	# and every card was built at one size for one viewport, with no way to make
+	# any of it bigger. `content_scale_factor` scales the canvas layer and
+	# leaves the 3D viewport alone, so the ward stays the size it is and the
+	# paperwork grows; the cards already cap themselves against the viewport, so
+	# they stay on the screen as it does.
+	v.add_child(UIKit.slider("Interface size", Settings.get_value("ui_scale"),
+		0.8, 1.4, 0.05, func(x): Settings.set_value("ui_scale", x), pct))
 	v.add_child(UIKit.toggle("Fullscreen", Settings.get_value("fullscreen"),
 		func(b): Settings.set_value("fullscreen", b)))
 	v.add_child(UIKit.toggle("V-Sync", Settings.get_value("vsync"),

@@ -14,7 +14,7 @@ GODOT=/path/to/godot ./playfast.sh pad   # play it with a controller, headless
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 294 assertions, a 152-check smoke run through the real tree
+`run_tests.sh` is 294 assertions, a 153-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, a playthrough driven entirely by
@@ -261,6 +261,13 @@ with it because a lost afternoon does not care which.
 
 ## Design rules that are load-bearing
 
+- **Nothing tells the player to press a key by name.** There is a rebinding
+  screen and a controller layout, so a string literal saying "[E] use" is wrong
+  for anybody who has touched either — and four places had one, including the
+  first line on the title screen. `Settings.prompt_label(action)` is the only
+  honest answer and it prefers the pad when one is plugged in;
+  `Settings.binding_label` is the different question the rebind rows ask and
+  stays a key. The smoke run greps for the literals.
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no
   recovery delta, no "+3 days". A chart shows what it says and what it pays,
   and nothing anywhere scores the player's choice for them. Developer-facing
@@ -345,7 +352,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 294 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 152 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 153 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |
 | the fixture audit (in `smoke_run.gd`) | anything standing on nothing. Every `Fixture`'s footprint is tested against everything underneath it and reported as "chair floats by 4cm" or "bin is sunk by 11cm" — the failure two pieces of code that do not know about each other produce when they furnish the same square metre. |

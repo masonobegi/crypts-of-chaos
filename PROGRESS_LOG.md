@@ -1582,6 +1582,35 @@ to a method that is not there, and now found the same way: the smoke run greps
 every group name the source looks up and asserts something is actually in it.
 Eight groups, all live, and the check goes red if one empties out.
 
+### Four places told the player to press a key that might not be that key
+
+This game has a rebinding screen AND a controller layout, and the HUD's corner
+reminder was the only thing that read the InputMap. The carry prompt you see
+while holding something said "[RMB] throw   [LMB] drop"; the hold-to-use prompt
+said "hold [E]"; the title screen said "WASD move · E use · LMB grab". A player
+who moved "use" to F was told to press E for the rest of their career by three
+different parts of the game, and somebody on a pad was told to press E by all
+four.
+
+`Settings.prompt_label(action)` is the one honest answer and it prefers the pad
+when one is plugged in — deliberately a different function from
+`binding_label`, which is what the rebind rows under "KEYBOARD AND MOUSE" show
+and must stay a key even with a controller connected.
+
+The smoke run greps for `[E]`, `[LMB]`, `[RMB]`, `[Escape]` and `WASD` in any
+non-comment line of `scripts/` now. It found the fourth one — "hold [E]" — a
+minute after it was written, which is the entire argument for writing it.
+
+### Interface size
+
+The text IS this game: a chart, a board and an argument about a document. Every
+card was built at one size for one viewport and there was no way to make any of
+it bigger. `content_scale_factor` scales the canvas layer and leaves the 3D
+viewport alone, which is exactly the right knob — the ward stays the size it is
+and the paperwork grows. 80% to 140%, under DISPLAY, checked by rendering the
+patient card at both ends: at 140% the card stays on the screen and its list
+scrolls, at 80% the whole list fits without scrolling at all.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather
@@ -1595,7 +1624,7 @@ heading. Five new gotchas, four of them from tonight.
 
 ```
 unit + integration assertions ........................... 294
-smoke checks ............................................ 152, on three seeds
+smoke checks ............................................ 153, on three seeds
 input-layer checks ...................................... 12 on a pad, 12 on keys
 day-level criteria ...................................... 7/7
 career-level criteria ................................... 6/6, on three seeds

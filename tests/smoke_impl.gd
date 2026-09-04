@@ -1171,6 +1171,34 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 		% [Settings.DEFAULTS.size(), "" if dead.is_empty()
 			else " — nothing reads " + ", ".join(PackedStringArray(dead))])
 
+	# AND NOTHING TELLS THE PLAYER TO PRESS A KEY BY NAME.
+	#
+	# This game has a rebinding screen AND a controller layout, and three places
+	# printed a key at the player from a string literal: the HUD's corner
+	# reminder ("[E] use  [LMB] grab"), the carry prompt you see while holding
+	# something ("[RMB] throw  [LMB] drop"), and the title screen ("WASD move ·
+	# E use"). A player who moved "use" to F was told to press E for the rest of
+	# their career, by three different parts of the game, and somebody on a pad
+	# was told to press E by all of them. `Settings.prompt_label(action)` is the
+	# only honest answer, and it knows about the pad.
+	var hardcoded: Array = []
+	for path in _all_scripts("res://scripts"):
+		var src := FileAccess.get_file_as_string(path)
+		var n := 0
+		for line in src.split("\n"):
+			n += 1
+			var trimmed := line.strip_edges()
+			if trimmed.begins_with("#") or trimmed.begins_with("##"):
+				continue
+			if not line.contains("\""):
+				continue
+			for bad in ["[E]", "[LMB]", "[RMB]", "[MMB]", "[Escape]", "WASD"]:
+				if line.contains(bad):
+					hardcoded.append("%s:%d %s" % [path.get_file(), n, bad])
+	_ok(hardcoded.is_empty(), "no player-facing string names a key by hand%s"
+		% ("" if hardcoded.is_empty()
+			else " — " + ", ".join(PackedStringArray(hardcoded))))
+
 	# AND EVERY GROUP THE SOURCE LOOKS SOMETHING UP IN HAS SOMETHING IN IT.
 	#
 	# `get_first_node_in_group("codex")` sat in `StaffNPC` for as long as the

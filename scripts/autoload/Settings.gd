@@ -29,6 +29,12 @@ const DEFAULTS := {
 	## `show_damage_flash` lived here and was read by nothing at all: it was a
 	## setting for a health bar, in a game that has never had one. Gone rather
 	## than wired up — there is no damage to flash.
+	## HOW BIG THE WRITING IS. This game is a chart, a board and a conversation
+	## about a document, so the text IS the game — and the cards were built at
+	## one fixed size for one fixed viewport. `content_scale_factor` scales the
+	## whole canvas layer and leaves the 3D viewport alone, which is exactly the
+	## right knob: the ward stays the size it is and the paperwork gets bigger.
+	"ui_scale": 1.0,
 	"pad_look_sensitivity": 1.0,
 	"pad_vibration": true,
 }
@@ -158,6 +164,34 @@ func _add_pad_defaults() -> void:
 			InputMap.action_add_event(a, m)
 		InputMap.action_set_deadzone(a, PAD_DEADZONE)
 
+## WHAT TO TELL THE PLAYER TO PRESS, right now, on the thing in their hands.
+##
+## Different question from `binding_label`, which is what the rebind rows under
+## "KEYBOARD AND MOUSE" show and must stay a key even with a pad plugged in.
+## This one is for prompts in the world: it prefers the pad when there is one,
+## because somebody holding a controller is not looking at the keyboard.
+##
+## It exists because two of these were hardcoded. The HUD's corner reminder was
+## "[E] use [LMB] grab" in a build with a rebinding screen, so a player who
+## moved "use" to F was told to press E for the rest of their career; that one
+## was fixed and the carry prompt — "[RMB] throw [LMB] drop", the line you see
+## while holding something — was not.
+const PAD_LABELS := {
+	JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y",
+	JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB",
+	JOY_BUTTON_START: "Start", JOY_BUTTON_BACK: "Back",
+	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
+}
+
+func prompt_label(action: String) -> String:
+	if not InputMap.has_action(action):
+		return "?"
+	if not Input.get_connected_joypads().is_empty():
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton and PAD_LABELS.has(ev.button_index):
+				return String(PAD_LABELS[ev.button_index])
+	return binding_label(action)
+
 ## What this action is currently bound to, as something a person can read.
 func binding_label(action: String) -> String:
 	if not InputMap.has_action(action):
@@ -273,6 +307,13 @@ func _apply(key: String) -> void:
 			var p = _player()
 			if p != null and p.camera != null:
 				p.camera.fov = float(get_value("fov"))
+		"ui_scale":
+			if DisplayServer.get_name() == "headless":
+				return
+			var loop := Engine.get_main_loop()
+			if loop is SceneTree and (loop as SceneTree).root != null:
+				(loop as SceneTree).root.content_scale_factor = \
+					clampf(float(get_value("ui_scale")), 0.75, 1.5)
 
 func _player():
 	var loop := Engine.get_main_loop()

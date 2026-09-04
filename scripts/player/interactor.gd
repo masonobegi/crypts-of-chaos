@@ -120,7 +120,13 @@ func _show_carry_prompt() -> void:
 		if p.size() > 0 and String(p[0]) != "":
 			EventBus.interact_prompt.emit(String(p[0]), String(p[1]) if p.size() > 1 else "")
 			return
-	EventBus.interact_prompt.emit("Holding %s" % carried, "[RMB] throw   [LMB] drop")
+	# THE KEYS THEY ACTUALLY BOUND, and the buttons if they are on a pad. This
+	# read "[RMB] throw   [LMB] drop" in a build with a rebinding screen and a
+	# controller layout — the same bug the HUD's corner reminder had, in the one
+	# other place in the game that tells you which button to press.
+	EventBus.interact_prompt.emit("Holding %s" % carried,
+		"[%s] throw   [%s] drop" % [Settings.prompt_label("throw"),
+			Settings.prompt_label("grab")])
 
 ## Loose objects do not get to stand in front of people.
 ##
@@ -233,7 +239,8 @@ func _handle_use(delta: float) -> void:
 			_use_progress = 0.0
 		_use_progress += delta / hold_time
 		EventBus.interact_prompt.emit(
-			"%s  [%d%%]" % [_prompt_title(target), int(_use_progress * 100.0)], "hold [E]")
+			"%s  [%d%%]" % [_prompt_title(target), int(_use_progress * 100.0)],
+			"hold [%s]" % Settings.prompt_label("interact"))
 		if _use_progress >= 1.0:
 			_cancel_use()
 			target.call("interact", player, held)
@@ -253,6 +260,17 @@ func _cancel_use() -> void:
 	_long_fired = false
 
 # ------------------------------------------------------------------ grabbing
+#
+# THREE OF THE HOOKS BELOW ARE SEAMS, NOT FEATURES, and it is worth saying so
+# in one place rather than leaving a reader to work it out three times.
+# `can_grab`, `on_dropped` and `prompt_with_item` are all guarded with
+# `has_method` and NOTHING IN THE GAME IMPLEMENTS ANY OF THEM — they were the
+# interface the item system used, and the item system was cut. So every
+# grabbable is decided purely on mass, nothing is told when it is put down, and
+# carrying something always shows "Holding X" rather than what you could do
+# with it. They stay because they are the cheapest possible way to add an item
+# that behaves, and because a guarded call to a method nobody has costs
+# nothing. They are not a description of anything the player can see.
 func _can_grab(n: Node) -> bool:
 	if n is not RigidBody3D:
 		return false

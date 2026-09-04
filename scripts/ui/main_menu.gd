@@ -59,9 +59,12 @@ func _ready() -> void:
 
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.rule())
-	v.add_child(UIKit.label(
-		"WASD move · E use · LMB grab · RMB throw · Esc pause",
-		13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	# THE KEYS THEY ACTUALLY BOUND — or the buttons, if there is a pad plugged
+	# in. This was five hardcoded names on the first screen of a game with a
+	# rebinding screen AND a controller layout, which is the same bug the HUD's
+	# corner reminder had and the carry prompt had after it.
+	v.add_child(UIKit.label(_controls_line(), 13, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label(
 		"Everything in this game is fictional and extremely stupid on purpose.",
 		12, Color(UIKit.INK.r, UIKit.INK.g, UIKit.INK.b, 0.45),
@@ -91,6 +94,17 @@ func _ready() -> void:
 		# to look like it was waiting for something.
 		UIKit.focus_first(self)
 		AudioMgr.play_music()
+
+## Movement has four actions and one name, so it is the one line here that is
+## not a straight lookup: a pad walks on a stick rather than on four buttons.
+func _controls_line() -> String:
+	var pad := not Input.get_connected_joypads().is_empty()
+	var move := "Left stick" if pad else "%s%s%s%s" % [
+		Settings.prompt_label("move_forward"), Settings.prompt_label("move_left"),
+		Settings.prompt_label("move_back"), Settings.prompt_label("move_right")]
+	return "%s move · %s use · %s grab · %s throw · %s pause" % [move,
+		Settings.prompt_label("interact"), Settings.prompt_label("grab"),
+		Settings.prompt_label("throw"), Settings.prompt_label("pause")]
 
 ## The title screen looks through a window into the building.
 ##

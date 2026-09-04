@@ -64,6 +64,22 @@ DATA=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/draws_run.gd 2>&1 | grep -vE "$NOISE"
 DRAWS=${PIPESTATUS[0]}
 
+# DOES A CAREER HOLD ITS SHAPE. Eight policies played to their ending, against
+# the six criteria the design lives or dies by — honest play pays it off, a
+# restrained liar pays it off faster, doing it every night does not, greed is
+# struck off before it finishes. It is under a second and it is the only thing
+# that catches a balance inversion; it caught one this session, immediately
+# after a fix removed the mechanism that had been hiding it.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/career_run.gd 2>&1 | grep -vE "$NOISE"
+CAREER=${PIPESTATUS[0]}
+
+# AND CAN EVERY WARD BE SIGNED OFF BY PLAYING IT STRAIGHT. Twenty-six hundred
+# strategies a ward, plus one that is not a strategy: the day a careful person
+# plays, written out. The search alone reported the fourth ward as having no
+# clean day at all, which was a claim about the search.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/frontier_run.gd 2>&1 | grep -vE "$NOISE"
+FRONTIER=${PIPESTATUS[0]}
+
 # And finally the one route no other harness takes: the real entry point.
 # Everything above instantiates Game.tscn directly, which skips Boot and the
 # main menu entirely — the gap that hid both "the game is unplayable from the
@@ -72,8 +88,9 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$DRAWS" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA draws=$DRAWS boot=$BOOT)" >&2
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
+    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

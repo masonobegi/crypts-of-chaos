@@ -239,7 +239,7 @@ func _answer_policy(name: String) -> Callable:
 
 var _honest_failed := false
 
-func run() -> void:
+func run() -> bool:
 	GameState.start_new_career(31337)
 	for day in range(1, Cases.DAYS.size() + 1):
 		_search(day)
@@ -248,6 +248,7 @@ func run() -> void:
 		print("FRONTIER PROBE FAILED — a ward where playing it straight cannot sign off")
 	else:
 		print("FRONTIER PROBE PASSED — every ward can be signed off by playing it straight")
+	return not _honest_failed
 
 func _search(day: int) -> void:
 	GameState.day = day

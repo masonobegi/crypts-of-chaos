@@ -218,7 +218,7 @@ func _richest_well(w: WardDay, skip: Array) -> String:
 			best = pid
 	return best
 
-func run() -> void:
+func run() -> bool:
 	var policies := ["coast", "honest", "honest_corroborated", "restrained",
 		"skilled", "one_lie", "greedy", "adaptive"]
 	print("\n=== A WEEK ON WARD C — %d days per policy ===" % DAYS)
@@ -317,3 +317,4 @@ func run() -> void:
 	ok = ok and recover_ok
 
 	print("\n%s" % ("CAREER PROBE PASSED" if ok else "CAREER PROBE FAILED"))
+	return ok

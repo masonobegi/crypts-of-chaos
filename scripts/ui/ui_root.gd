@@ -242,7 +242,12 @@ func _shell(width: float, height: float, heading: String) -> Array:
 ## first-person game whose look speed cannot be changed is one somebody
 ## refunds rather than adjusts to.
 func _settings_screen() -> Control:
-	var parts := _shell(680, 720, "Settings")
+	# TALLER. The viewport is a fixed 1600x900 in canvas units whatever the
+	# monitor is, and 720 of it left three rows and the whole DISPLAY heading
+	# under the fold on a card with twelve rows on it. 830 leaves a clear
+	# thirty-five pixels top and bottom and shows three more of them; it still
+	# scrolls, because it always did.
+	var parts := _shell(680, 830, "Settings")
 	var outer: VBoxContainer = parts[1]
 	# The options scroll and the buttons do not.
 	#
@@ -342,7 +347,9 @@ func _settings_screen() -> Control:
 var _listening_for := ""
 
 func _controls_screen() -> Control:
-	var parts := _shell(660, 720, "Controls")
+	# Taller for the same reason as Settings: ten binding rows and a paragraph
+	# about the pad do not fit in 720 of a 900-tall viewport.
+	var parts := _shell(660, 830, "Controls")
 	var outer: VBoxContainer = parts[1]
 	var v := UIKit.vbox(4)
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL

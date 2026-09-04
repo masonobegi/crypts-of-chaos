@@ -1772,6 +1772,14 @@ The harness learned two things too: keep aiming at somebody while you close the
 last few frames on them, and take another step and try again rather than
 reporting a bed as unreachable because a chair was in the way.
 
+### The settings card was 720 tall in a 900-tall window
+
+Twelve rows, and three of them plus the entire DISPLAY heading — where the new
+Interface size slider lives — were under the fold. The viewport is a fixed
+1600x900 in canvas units whatever the monitor is, so 830 is safe on every
+machine and leaves thirty-five pixels top and bottom. Same for the key
+bindings, which is ten rows and a paragraph about the pad.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather

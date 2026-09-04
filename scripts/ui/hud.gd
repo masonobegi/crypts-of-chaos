@@ -125,8 +125,18 @@ func _build() -> void:
 	add_child(_crosshair)
 	# See _make_everything_click_through() at the end of _ready(). The crosshair
 	# in particular sits exactly where a captured cursor reports its position.
+	# A DARK RING ROUND A LIGHT DOT. A 3px white dot at 55% alpha is invisible
+	# against this building: the upper walls are cream (0.87,0.83,0.71) and the
+	# ceiling is near-white, which is most of what you look at while walking. A
+	# first-person game whose crosshair disappears for half the screen is one
+	# people describe as "hard to aim at things" without knowing why.
+	var halo := ColorRect.new()
+	halo.color = Color(0.05, 0.06, 0.08, 0.55)
+	halo.size = Vector2(7, 7)
+	halo.position = Vector2(-3.5, -3.5)
+	_crosshair.add_child(halo)
 	var dot := ColorRect.new()
-	dot.color = Color(1, 1, 1, 0.55)
+	dot.color = Color(1, 1, 1, 0.92)
 	dot.size = Vector2(3, 3)
 	dot.position = Vector2(-1.5, -1.5)
 	_crosshair.add_child(dot)
@@ -159,12 +169,20 @@ func _build() -> void:
 	add_child(_toasts)
 
 	# ---- controls reminder
-	var help := UIKit.label("[E] use   [LMB] grab   [RMB] throw   [Esc] pause",
-		12, Color(1, 1, 1, 0.5), HORIZONTAL_ALIGNMENT_RIGHT)
+	# THE KEYS THEY ACTUALLY BOUND. Rebinding is a headline setting with a whole
+	# screen behind it, and this line was hardcoded to E/LMB/RMB — so a player who
+	# moved "use" to F was told to press E for the rest of the game, by the HUD,
+	# permanently.
+	var help := UIKit.label(_controls_line(),
+		12, Color(1, 1, 1, 0.62), HORIZONTAL_ALIGNMENT_RIGHT)
 	help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	help.add_theme_constant_override("shadow_offset_y", 1)
 	UIKit.place(help, Control.PRESET_BOTTOM_RIGHT, -478, -32, 460, 22)
 	add_child(help)
+	# Follow a rebind while the game is running, rather than until next launch.
+	Settings.changed.connect(func(_k):
+		if is_instance_valid(help):
+			help.text = _controls_line())
 
 	# ---- off-screen objective arrow
 	_arrow = UIKit.label("", 26, Color(0.42, 0.90, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
@@ -269,6 +287,29 @@ func _refresh_objective_arrow() -> void:
 	_arrow.rotation = dir.angle() + PI * 0.5
 	_arrow.text = "▲"
 	_arrow.visible = true
+
+## The bottom-right reminder, built from the InputMap rather than typed, so it
+## follows a rebind. Rebuilt on `Settings.bindings_changed` for the same reason.
+func _controls_line() -> String:
+	var bits: Array = []
+	for pair in [["interact", "use"], ["grab", "grab"], ["throw", "throw"],
+			["pause", "pause"]]:
+		bits.append("[%s] %s" % [_key_for(String(pair[0])), String(pair[1])])
+	return "   ".join(bits)
+
+static func _key_for(action: String) -> String:
+	if not InputMap.has_action(action):
+		return "?"
+	for ev in InputMap.action_get_events(action):
+		if ev is InputEventKey:
+			return OS.get_keycode_string(ev.physical_keycode if ev.physical_keycode != 0
+				else ev.keycode)
+		if ev is InputEventMouseButton:
+			match ev.button_index:
+				MOUSE_BUTTON_LEFT: return "LMB"
+				MOUSE_BUTTON_RIGHT: return "RMB"
+				MOUSE_BUTTON_MIDDLE: return "MMB"
+	return "?"
 
 func _refresh_static() -> void:
 	_day.text = "Day %d" % GameState.day

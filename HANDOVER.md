@@ -1,103 +1,73 @@
-# Where this is, mid-surgery
+# Paused mid-polish — where to pick up
 
-Written because a session was interrupted. Everything below is committed and
-pushed on `claude/github-repo-deletion-3hf0gq`.
-
-## The suite is green and safe to build on
+Everything below is committed and pushed on `claude/github-repo-deletion-3hf0gq`
+(HEAD `1feed12`). Working tree clean. Suite green:
 
 ```
 GODOT=/tmp/Godot_v4.3-stable_linux.x86_64 ./run_tests.sh
-271 unit assertions · 70 smoke checks · 7/7 playtest criteria
-20 authored people across 4 wards · boot check · exit 0
+274 assertions · 79 smoke checks · 7/7 playtest criteria
+32 authored people · 32/32 deals playable · boot check · exit 0
 ```
 
-`/tmp/Godot_v4.3-stable_linux.x86_64` is the engine. Nothing in the game is
-broken; the unfinished work is a MEASUREMENT that disagrees with a hand-played
-result, described below.
+**NOTE:** the container has rolled back three times this session. If
+`scripts/systems/cases.gd` is missing or a `night_system.gd` appears, recover:
+`git checkout -- . && git clean -fdq && git fetch origin <branch> && git merge --ff-only origin/<branch>`
 
-## What landed this session
+## What this session fixed
 
-**The fourth ward — "the ones from last night".** Five new people
-(`Cases.DAY_FOUR`, `PRIOR_FOUR`), wired into `DAYS` / `PRIOR_BY_DAY`. The theme
-is that Dr Costa covered the night and every bed carries an opinion he already
-wrote; two of them are wrong, one in each direction.
+A 7-lens adversarial audit (64 agents, 43 verified findings) found things no
+screenshot could. The worst were real and are fixed:
 
-Three new mechanics support it:
+- **The crosshair printed the answer key.** Looking at a patient appended "fit
+  to go home", derived from `truly_well`. Walking the row for free answered the
+  only question the game asks. Guarded by a test now.
+- **No career could reach day two.** The handover's "Go home" emitted `day_over`
+  and then called `close()`, freeing the card it had just opened. Escape and the
+  paused-tree main-menu exits had the same class of hole.
+- **Two of three terminals were dead** and there was no `records` screen at all,
+  so writing a note anywhere private — the core of the whole "who saw you type
+  it" mechanic — was impossible. New `screen_records.gd`.
+- Settings on the title screen captured the cursor and left the game HUD on the
+  menu; the office terminal ended the shift on one unconfirmed keypress; the
+  debt's 10%/night interest was charged and never shown; every verb was
+  unpriced; the ward sister's opening line was at 1.5:1 contrast.
+- Visual: the empty half of the ward is dressed, signs no longer render
+  mirrored, patients no longer look walleyed, the verdict stamp encloses its
+  text, the patient card no longer hangs off the bottom of the window.
 
-- **`colleague_wrong`** (`WardDay.ask_colleague`). The registrar was an
-  infallible oracle — 25 minutes bought certainty AND the strongest defence in
-  the game. On a patient carrying this flag he restates his morning opinion
-  instead of looking again, in his own name, at your request. Which leaves
-  `examine` as the only verb that cannot be wrong, and it is the one that
-  writes nothing.
-- **`test_reveals`** (`WardDay.resolve_test`). `only_visible_in_person` hid a
-  patient from the rounds, the nurse AND the laboratory. Gwen Ashworth needed
-  exactly one corroboration route or the correct hold on the ward was
-  uncorroboratable by construction. Repeat bloods are it: 5 minutes to order,
-  75 to come back.
-- **`_leaned_on_last_night`** (`contradictions.gd`). A bed whose only support
-  was written before your shift, by somebody who has gone home. Gated on
-  `looked_at`, because the question it asks out loud is "did you see this
-  patient at all".
+## What is still open, in priority order
 
-And **a justified reversal is no longer a contradiction**. Holding somebody the
-night registrar wrongly cleared used to make the bed indefensible, so the
-correct play on ward four was punished exactly as hard as a lie. If you
-examined them AND they are genuinely unwell, severity drops to 0.12 — she still
-asks, the bed still stands. Graded like `backdated` rather than listed.
+The full ranked ship plan is in the workflow output:
+`/tmp/claude-0/.../tasks/w8gy9omi9.output` → `result.ranked` (read it with
+`json.load(...)["result"]["ranked"]`). If /tmp is gone, re-run the audit.
 
-## The one thing that is NOT finished
+1. **W11 — the answer key never moves.** Every genuinely ill patient sits on a
+   bed slot with exactly ONE candidate, so although the cast is drawn per
+   career, *which bed* is ill is fixed per ward. Fix by authoring an alternate
+   for each honest-hold slot (`marchetti` d1 b1, `bux`/`lomax` d2, `okwuosa`
+   d3, `ashworth`/`vane` d4) — same tier, same `truly_well`, per the data
+   check's interchangeability rule.
+2. **W5 — the returning test result is silent** and draws behind the open card.
+   It is the loop's only delayed payoff. `hud.gd:404` plays audio only for
+   "money"/"bad"; `ward_day.gd:74` emits it as "info".
+3. **W6 — settings toggles are 1.6:1 and ON/OFF look identical on hover.**
+   `ui_kit.gd:213`.
+4. **W8 — ambience picks four room keys that do not exist** (`lobby`,
+   `ward_101`, `ward_105`, `supply`), so two thirds of it emits from world
+   origin and the ward gets none. `ambience.gd:49`. Add a test asserting every
+   key passed to `Hospital.point_in` is in `LAYOUT`.
+5. **W9 — the off-screen objective arrow floats mid-screen** rather than at the
+   edge; it is in several first-minute screenshots. `hud.gd:249`.
+6. **W10 — two of three tutorial lines are unreachable** and one quotes $3,200
+   against a `DEBT_DUE` of $2,200. `tutorial.gd:45` — `note()` has one caller.
+7. Audio breadth generally: one 23-second music loop for a 2-3 hour career,
+   every character speaks with the same grunt, endings play in silence.
 
-**The frontier probe cannot find a signed-off day on ward four, but one
-exists.** Played by hand, this is SIGNED OFF, 0 indefensible, 0 solo, $2,750:
+## Known non-defect
 
-```
-order_test("ashworth", "Repeat bloods")   # 08:00, lands ~09:20
-examine("ashworth"); examine("vane")
-read_chart on pyne, petrossian, threlfall  # so nothing is decided blind
-advance to 11:00
-write_entry("ashworth", UNWELL, "...", now)
-hold ashworth + vane, discharge the other three
-```
-
-The probe reports "never reached" because its search space does not contain
-that combination. I widened it twice this session — added `diligent` runs
-(bloods on every held bed at 08:05, then look at everybody) and an `own_note`
-verb (examine, then write it up promptly in your own name, which the list
-genuinely lacked — every write-it-yourself strategy in there wrote at 17:20 or
-19:00, which is the CRIME shape). Ward four still reports no clean day.
-
-**Next step: find out which of the two it is.** Either the probe still lacks
-the combination, or something in the game makes the hand-played day
-unreachable under the probe's exact ordering. The way to tell is to make the
-probe replay the hand-played sequence verbatim as one extra strategy and see
-what verdict comes back. A scratch harness under `tests/scratch/` (gitignored,
-and skipped by `test_all_scripts_compile`) is the place for it.
-
-Do not "fix" ward four's content until that question is answered — the ward
-itself measured correctly by hand.
-
-## A probe bug fixed on the way out
-
-`frontier_impl._day()` cleared `remembered_beds` and `carried_debt` but not
-`Cases.READMIT_FLAG`, which was reset once per WARD and written by any run in
-which somebody bounced. So every strategy after the first wrongful discharge
-searched a different roster from the ones before it. The ward-four numbers
-changed shape twice between identical runs while nothing about the ward
-changed, which is what gave this away. Same lesson as CLAUDE.md 16.
-
-**The last full frontier run predates that fix**, so its numbers are not
-trustworthy. Re-run it before drawing any conclusion:
-
-```
-godot --headless --path . --script res://tests/probe/frontier_run.gd   # ~25 min
-```
-
-## Also outstanding
-
-- A background workflow (`chronic-care-perfection-hunt`) was auditing the code
-  for dead constants, unreachable findings and broken UI promises. Its findings
-  had not come back. Re-run it or audit by hand.
-- The career probe has not been run since ward four landed. It plays eight
-  policies over twenty nights and asserts six properties; a fourth ward changes
-  the rotation, so it needs re-measuring.
+The frontier probe still reports "no clean day" on ward four. A clean day there
+is real — played by hand twice, signed off, 0 indefensible, 0 solo. The probe
+applies ONE verb uniformly to every held bed, and the honest ward-four day needs
+different treatment per bed. `only_if_needed` narrowed it (ward four now reaches
+the top figure at 'noted'). The property the probe defends still holds on all
+four wards: the most money anybody makes is never available signed off.

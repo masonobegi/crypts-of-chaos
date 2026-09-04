@@ -772,9 +772,11 @@ func advance_to(m: int) -> void:
 func _advance_locally(m: int) -> void:
 	var from := minute
 	minute = maxi(minute, m)
-	for r in rounds_today():
-		if int(r) > from and int(r) <= minute:
-			_routine_round(int(r))
+	var todays: Array = rounds_today()
+	for i in todays.size():
+		var r: int = int(todays[i])
+		if r > from and r <= minute:
+			_routine_round(r, i)
 	_self_discharges(from)
 	# ...and only if her mother is in one of the beds. Ruth is Dot Kerrigan's
 	# daughter, and she was announcing herself at seven o'clock on the second
@@ -880,7 +882,7 @@ func rounds_today() -> Array:
 	dense.sort()
 	return dense
 
-func _routine_round(at: int) -> void:
+func _routine_round(at: int, which := 0) -> void:
 	for c in Cases.roster():
 		var pid := String(c["id"])
 		var st: Dictionary = state[pid]
@@ -903,22 +905,34 @@ func _routine_round(at: int) -> void:
 		# game. It was written for Ivo Marchetti's cellulitis on the first ward
 		# and then said about all forty people.
 		#
-		# Picked per patient rather than per note, so somebody's chart reads as
-		# one nurse describing one person all day instead of a shuffle.
-		var pick: int = absi(hash(pid)) % ROUND_LINES_UNWELL.size()
+		# PER PATIENT AND PER ROUND. Picking on the patient alone was meant to
+		# make a chart read as one nurse describing one person all day rather
+		# than as a shuffle — but four rounds then produced four notes that were
+		# identical word for word, stacked on the chart screen, which is the
+		# screen the whole game happens on. A nurse who looks at somebody four
+		# times writes four notes; she says the same THING, not the same words,
+		# and a column of copy-paste reads as a bug however it was reasoned.
+		#
+		# The patient still decides where in the list she starts, so their chart
+		# keeps its own voice; the round walks on from there.
+		var start: int = absi(hash(pid))
 		if reads_as_well(pid):
 			e.claim = ChartEntry.Claim.SETTLED
-			e.text = String(ROUND_LINES_WELL[absi(hash(pid)) % ROUND_LINES_WELL.size()])
+			e.text = String(ROUND_LINES_WELL[(start + which) % ROUND_LINES_WELL.size()])
 		else:
 			e.claim = ChartEntry.Claim.UNWELL
-			e.text = String(ROUND_LINES_UNWELL[pick])
+			e.text = String(ROUND_LINES_UNWELL[(start + which) % ROUND_LINES_UNWELL.size()])
 		records.add(e)
 	_log("round", {"at": at})
 
-## What a nurse writes at a bedside four times a night. Deliberately unspecific:
-## she is recording that she looked and what she found, not making a diagnosis,
-## and a line that names a body part is a line that is wrong about most of the
-## ward.
+## What a nurse writes at a bedside four times a night — EIGHT on a watched day,
+## which is why there are eight of each. Any fewer and a flagged night, the one
+## where the chart is being read hardest, is the one where the same line comes
+## round twice on the same patient.
+##
+## Deliberately unspecific: she is recording that she looked and what she found,
+## not making a diagnosis, and a line that names a body part is a line that is
+## wrong about most of the ward.
 const ROUND_LINES_UNWELL := [
 	"Round: no better than this morning. Obs unchanged.",
 	"Round: still uncomfortable. Asked for something for it.",
@@ -926,6 +940,8 @@ const ROUND_LINES_UNWELL := [
 	"Round: poor colour. Slept badly.",
 	"Round: still not right. Reviewed with the co-ordinator.",
 	"Round: no improvement since handover.",
+	"Round: needed help back to bed. Unsteady.",
+	"Round: declined supper. Says it is no worse.",
 ]
 
 const ROUND_LINES_WELL := [
@@ -934,6 +950,9 @@ const ROUND_LINES_WELL := [
 	"Round: eating and drinking. No complaints.",
 	"Round: comfortable. Asking when they can go.",
 	"Round: no concerns. Obs stable.",
+	"Round: dressed and sitting out. Waiting on a lift.",
+	"Round: slept through. Nothing to report.",
+	"Round: independent to the bathroom. Wants to know the plan.",
 ]
 
 # ------------------------------------------------------------ close of play

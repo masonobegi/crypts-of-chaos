@@ -231,6 +231,7 @@ func _check_the_verbs_work() -> void:
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
 	_check_the_doors_have_room_to_swing()
+	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
@@ -775,6 +776,53 @@ func _check_nothing_is_said_into_a_closed_card() -> bool:
 func _toast_count(hud) -> int:
 	var col = hud.get("_toasts")
 	return col.get_child_count() if col != null else -1
+
+## FOUR ROUNDS, FOUR NOTES.
+##
+## The round line was picked from the patient's id alone, on purpose — so that
+## a chart read as one nurse describing one person all day rather than as a
+## shuffle. What it actually produced was four notes that were identical word
+## for word, stacked on the chart screen, which is the screen the whole game
+## happens on. A nurse who looks at somebody four times writes four notes: she
+## says the same THING, not the same words, and a column of copy-paste reads as
+## a bug however well it was reasoned.
+func _check_the_nurse_does_not_copy_and_paste() -> void:
+	# ON A WATCHED DAY, which is the hard case and the one that matters: a flag
+	# doubles her rounds to eight, so anything shorter than eight lines comes
+	# round twice on the same patient — on the night the chart is being read
+	# hardest. It is also the only version of this check that can fail.
+	var was: bool = GameState.flag("watched", false)
+	GameState.set_flag("watched", true)
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	w.advance_to(Cases.DEBT_DUE_MINUTE - 1)
+
+	var worst := 0
+	var who := ""
+	var repeated := 0
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		var seen := {}
+		var n := 0
+		for e in w.records.entries:
+			if e.patient_id != pid or e.author != ChartEntry.Author.NURSE:
+				continue
+			n += 1
+			seen[e.text] = int(seen.get(e.text, 0)) + 1
+		if n > worst:
+			worst = n
+			who = pid
+		for t in seen:
+			if int(seen[t]) > 1:
+				repeated += 1
+	_ok(worst >= 8, "a watched ward has Adeyemi writing %s up %d times" % [who, worst])
+	_ok(repeated == 0,
+		"and no two of anybody's round notes are the same words (%d repeats)"
+			% repeated)
+	GameState.set_flag("watched", was)
+	tree.root.remove_child(w)
+	w.free()
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

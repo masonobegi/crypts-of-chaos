@@ -429,7 +429,12 @@ static func _ward(h: Hospital, r: Room) -> void:
 		# over the same bed. Directly above the head the two sat on top of each
 		# other and every bedside shot read "Sam Oduya" with a "4" printed
 		# through it. Beside the head is also where a real bed number is.
-		_wall_sign(h, str(n), Vector3(slot.x - 0.86, 2.30, far_z + into * 0.14),
+		# 1.35m out, not 0.86. The patient's name tag is a billboard floating at
+		# the bed centre; the number is fixed on the wall behind it. They are
+		# 70cm apart vertically, so this is a projection overlap rather than a
+		# collision — but at the angle you stand at to talk to somebody they
+		# still landed on top of each other. Beds are 4m apart, so there is room.
+		_wall_sign(h, str(n), Vector3(slot.x - 1.35, 2.30, far_z + into * 0.14),
 			_far_rot(r), 0.16)
 		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, far_z + into * 0.30), _far_rot(r))
 

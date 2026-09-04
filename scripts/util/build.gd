@@ -96,7 +96,11 @@ static func box_mesh(size: Vector3) -> Mesh:
 ##
 ## Radius is clamped to half the smallest dimension, so a thin panel becomes a
 ## rounded slab rather than turning inside out.
-static func rbox_mesh(size: Vector3, radius := 0.05, segments := 8) -> ArrayMesh:
+## `segments` was 8, which is 8 radial and 4 rings — a corner made of two
+## facets. That is a chamfer, not a round, and at any size big enough to notice
+## the rounding you could count the flats. 14 reads as a curve and still shares
+## one cached mesh across every object of the same size.
+static func rbox_mesh(size: Vector3, radius := 0.05, segments := 14) -> ArrayMesh:
 	var r: float = minf(radius, minf(size.x, minf(size.y, size.z)) * 0.49)
 	var key := "rbox%s_%.4f_%d" % [size, r, segments]
 	if _mesh_cache.has(key):
@@ -180,7 +184,9 @@ static func taper_mesh(bottom: Vector2, top: Vector2, height: float,
 	_mesh_cache[key] = am
 	return am
 
-static func cyl_mesh(radius: float, height: float, sides := 12) -> CylinderMesh:
+## 12 sides is a dodecagon and reads as one on every IV pole, table leg, bin and
+## handrail in the building. 24 is round at the distances this game is played at.
+static func cyl_mesh(radius: float, height: float, sides := 24) -> CylinderMesh:
 	var key := "cyl%.3f_%.3f_%d" % [radius, height, sides]
 	if _mesh_cache.has(key):
 		return _mesh_cache[key]
@@ -200,8 +206,10 @@ static func sphere_mesh(radius: float) -> SphereMesh:
 	var s := SphereMesh.new()
 	s.radius = radius
 	s.height = radius * 2.0
-	s.radial_segments = 12
-	s.rings = 6
+	# 12x6 is a d20 with pretensions, and a patient's head is the closest object
+	# to the camera in the entire game.
+	s.radial_segments = 24
+	s.rings = 12
 	_mesh_cache[key] = s
 	return s
 
@@ -212,8 +220,8 @@ static func capsule_mesh(radius: float, height: float) -> CapsuleMesh:
 	var c := CapsuleMesh.new()
 	c.radius = radius
 	c.height = maxf(height, radius * 2.0 + 0.01)
-	c.radial_segments = 10
-	c.rings = 4
+	c.radial_segments = 20
+	c.rings = 8
 	_mesh_cache[key] = c
 	return c
 
@@ -237,11 +245,25 @@ static func box_mi(size: Vector3, color: Color, pos := Vector3.ZERO, rough := 0.
 ## How hard to round something of this size. Small objects get a proportionally
 ## generous radius (it is what makes a prop read as moulded plastic rather than
 ## a cube); large ones get a fixed small chamfer so walls stay walls.
+## HOW ROUNDED A BOX OF THIS SIZE SHOULD BE.
+##
+## The cap used to be 0.075. On anything chunky that is invisible: a 50cm
+## cabinet, a bin, a monitor, a bedside locker all have a smallest dimension of
+## 40-60cm, so the fraction wanted 13-20cm of corner and got seven and a half —
+## a radius small enough that the eye reads the silhouette as a hard rectangle.
+## Everything in the building is built from these, so everything looked like it
+## was made of bricks.
+##
+## The FRACTION is what keeps architecture safe. A wall is 15cm thick, so it
+## asks for 0.28 * 0.15 = 4cm and never reaches the cap however high the cap
+## goes — walls, floors and panels stay square-edged and keep meeting each other
+## cleanly. Only objects whose SMALLEST dimension is large get the bigger radius,
+## and those are exactly the ones that were reading as boxes.
 static func corner_for(size: Vector3) -> float:
 	var smallest: float = minf(size.x, minf(size.y, size.z))
-	return clampf(smallest * 0.34, 0.006, 0.075)
+	return clampf(smallest * 0.28, 0.006, 0.16)
 
-static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 12) -> MeshInstance3D:
+static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 24) -> MeshInstance3D:
 	return mi(cyl_mesh(radius, height, sides), mat(color), pos)
 
 # ------------------------------------------------------------------ static geo

@@ -299,10 +299,11 @@ func on_heard_noise(evt: WorldEvent) -> void:
 	_investigate_target = evt.pos
 	_investigate_room = evt.room
 	_enter(State.INVESTIGATE)
-	if evt.tags.has("noise") or evt.tags.has("chaos"):
-		var cdx = get_tree().get_first_node_in_group("codex")
-		if cdx:
-			cdx.note_distraction()
+	# A CODEX ENTRY WAS RECORDED HERE. The Codex — the notebook that wrote a
+	# player a line about a mechanism once they had caused the same effect
+	# twice — went with the redesign, and nothing has been in the "codex" group
+	# since. The lookup returned null, the guard swallowed it, and the two lines
+	# read as a working feature every time anybody scrolled past them.
 	if _talk_cooldown <= 0.0:
 		_talk_cooldown = 8.0
 		say(String(RNG.pick("noise_bark", [

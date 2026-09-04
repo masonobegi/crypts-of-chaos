@@ -30,6 +30,16 @@ window/size/viewport_width=1600
 window/size/viewport_height=900
 window/stretch/mode="canvas_items"
 
+; expand, NOT the engine default of "keep".
+;
+; "keep" pins the whole game to 16:9 and pillarboxes anything else, so an
+; ultrawide or a 16:10 laptop gets black bars down the sides of a first-person
+; 3D game — which reads as a game that does not know what monitor it is on.
+; "expand" widens the viewport instead: the camera sees more of the room, the
+; HUD plates stay in the corners they are anchored to, and the cards measure
+; themselves against the real viewport (see ScreenBase.card_shell).
+window/stretch/aspect="expand"
+
 [input]
 
 move_forward={

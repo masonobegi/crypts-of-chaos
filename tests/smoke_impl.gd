@@ -1171,6 +1171,37 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 		% [Settings.DEFAULTS.size(), "" if dead.is_empty()
 			else " — nothing reads " + ", ".join(PackedStringArray(dead))])
 
+	# AND EVERY GROUP THE SOURCE LOOKS SOMETHING UP IN HAS SOMETHING IN IT.
+	#
+	# `get_first_node_in_group("codex")` sat in `StaffNPC` for as long as the
+	# Codex has been deleted — returning null, guarded by `if cdx:`, and reading
+	# as a working feature to anybody scrolling past. A group lookup for a group
+	# nothing joins is the same silent nothing as a call to a method that is not
+	# there, and it is found the same way.
+	var empty_groups: Array = []
+	var group_names: Dictionary = {}
+	for path in _all_scripts("res://scripts"):
+		var src := FileAccess.get_file_as_string(path)
+		for line in src.split("\n"):
+			if line.strip_edges().begins_with("#"):
+				continue
+			for call in ["get_first_node_in_group(\"", "get_nodes_in_group(\""]:
+				var at := line.find(call)
+				while at >= 0:
+					var from: int = at + call.length()
+					var end := line.find("\"", from)
+					if end < 0:
+						break
+					group_names[line.substr(from, end - from)] = path.get_file()
+					at = line.find(call, end)
+	for g in group_names:
+		if tree.get_first_node_in_group(String(g)) == null:
+			empty_groups.append("%s (%s)" % [g, group_names[g]])
+	_ok(group_names.size() >= 5, "%d groups looked up by name" % group_names.size())
+	_ok(empty_groups.is_empty(), "and something is in every one of them%s"
+		% ("" if empty_groups.is_empty()
+			else " — nothing is in " + ", ".join(PackedStringArray(empty_groups))))
+
 	# AND EVERY RECIPE ACTUALLY MAKES A NOISE.
 	#
 	# The check above proves every name the source asks for is in the table. It

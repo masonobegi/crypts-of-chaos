@@ -397,10 +397,55 @@ func _save(name: String) -> void:
 		var hidden := _below_the_fold(game.ui)
 		note = "   [%.0f%% below the fold%s]" % [hidden * 100.0,
 			"  <-- TOO MUCH" if hidden >= 0.5 else ""]
+		var buried := _hud_under_the_card()
+		if buried != "":
+			note += "   [UNDER THE CARD: %s]" % buried
 	print("  shot: ", ProjectSettings.globalize_path(path), note)
 
 ## The worst overflow on any scrolling area in the screen, as a fraction of its
 ## own content height. 0.0 means everything fits without scrolling.
+## WHAT THE CARD IS SITTING ON TOP OF.
+##
+## Only measurable here, for the same reason as the fold: under `--headless` the
+## root window is 64 pixels tall and every global rect is nonsense. The patient
+## card is a sheet pinned to the right of the screen and the HUD's controls
+## reminder is anchored to the bottom-right CORNER — so with a card open the
+## only part of that line anybody could see was the last three letters of
+## "pause" sticking out past the card's left edge, on every monitor, for as long
+## as both have existed. It reads as a rendering fault, not a hint.
+func _hud_under_the_card() -> String:
+	if game == null or game.ui == null or game.ui.current == null:
+		return ""
+	var hud = tree.get_first_node_in_group("hud")
+	if hud == null:
+		return ""
+	var sheet := Rect2()
+	for c in _controls_in(game.ui.current):
+		if c is PanelContainer and c.size.x > 40.0 and c.size.y > 40.0:
+			sheet = c.get_global_rect()
+			break
+	if sheet.size.x <= 0.0:
+		return ""
+	var hit: Array = []
+	for c in _controls_in(hud):
+		if not (c is Label or c is PanelContainer):
+			continue
+		if not c.is_visible_in_tree() or c.size.x < 8.0 or c.size.y < 8.0:
+			continue
+		if c is Label and String((c as Label).text).strip_edges() == "":
+			continue
+		if sheet.intersects(c.get_global_rect()):
+			hit.append(c.name if c is PanelContainer else String((c as Label).text).left(24))
+	return "" if hit.is_empty() else ", ".join(PackedStringArray(hit))
+
+func _controls_in(n: Node) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		if c is Control:
+			out.append(c)
+		out.append_array(_controls_in(c))
+	return out
+
 func _below_the_fold(n: Node) -> float:
 	var worst := 0.0
 	if n is ScrollContainer:

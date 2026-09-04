@@ -23,6 +23,8 @@ var _prompt_sub: Label
 var _prompt_panel: PanelContainer
 var _subtitle: Label
 var _subtitle_panel: PanelContainer
+## The bottom-right controls reminder, kept so a modal can hide it.
+var _help: Label = null
 var _toasts: VBoxContainer
 var _arrow: Label
 var _toast_queue: Array = []
@@ -189,6 +191,7 @@ func _build() -> void:
 	# permanently.
 	var help := UIKit.label(_controls_line(),
 		12, Color(1, 1, 1, 0.62), HORIZONTAL_ALIGNMENT_RIGHT)
+	_help = help
 	help.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
 	help.add_theme_constant_override("shadow_offset_y", 1)
 	UIKit.place(help, Control.PRESET_BOTTOM_RIGHT, -478, -32, 460, 22)
@@ -439,6 +442,15 @@ var _modal_open := false
 ## screen caught it: `Would the doctor who left ... please co`.
 func set_modal(on: bool) -> void:
 	_modal_open = on
+	# AND THE CONTROLS REMINDER GOES WITH THEM. The patient card is a sheet
+	# pinned to the right of the screen, and this line sits in the bottom-right
+	# corner UNDER it — so with a card open the only part of it a player could
+	# see was the last three letters of "pause" poking out past the card's left
+	# edge, which reads as a rendering fault rather than a hint. It is also the
+	# least useful moment for it: what [E] does in the world is not the question
+	# while a form is up.
+	if _help != null and is_instance_valid(_help):
+		_help.visible = not on
 	if on:
 		_subtitle_timer = 0.0
 		if _subtitle_panel != null:

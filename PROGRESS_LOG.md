@@ -1547,6 +1547,41 @@ lesson is the one this project keeps relearning: a harness that watches one
 surface reports on one surface, and everything green everywhere else is not
 evidence about the surface it is not watching.
 
+### The game was pillarboxed on every monitor that is not 16:9
+
+`display/window/stretch/aspect` was never set, so Godot's default of `keep`
+applied: the whole game pinned to 1600x900 and black bars down the sides of
+anything wider. On a first-person 3D game that reads as a game that does not
+know what monitor it is on, and ultrawide and 16:10 are most of a Steam
+library's laptops. Set to `expand`, and checked by rendering the whole
+screenshot set at 2560x1080: the camera sees more of the room, the HUD plates
+stay in the corners they are anchored to, and the cards measure themselves
+against the real viewport exactly as they did.
+
+Which is how the next one turned up. The patient card is a sheet pinned to the
+RIGHT of the screen and the controls reminder is anchored to the bottom-right
+CORNER, so with a card open the only part of that line visible was the last
+three letters of "pause" poking out past the card's left edge — on every
+monitor, at every aspect, for as long as both have existed. It reads as a
+rendering fault, not a hint, and it is the least useful moment for it: what
+[E] does in the world is not the question while a form is up. The HUD hides it
+with the subtitles, on the modal signal it already had.
+
+`shot_impl.gd` now measures it: for every card it photographs, it intersects
+the sheet's rect with every visible HUD label and panel and prints
+`[UNDER THE CARD: ...]`. Only measurable there — under `--headless` the root
+window is 64 pixels tall and every global rect is nonsense (CLAUDE.md 19).
+Verified by putting the bug back and watching three screens report it.
+
+### A group lookup for a group nothing has been in since the redesign
+
+`get_first_node_in_group("codex")` in `StaffNPC`, guarded by `if cdx:` — the
+Codex went with the rework and the two lines have read as a working feature to
+everybody who has scrolled past them since. The same silent nothing as a call
+to a method that is not there, and now found the same way: the smoke run greps
+every group name the source looks up and asserts something is actually in it.
+Eight groups, all live, and the check goes red if one empties out.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather
@@ -1560,7 +1595,7 @@ heading. Five new gotchas, four of them from tonight.
 
 ```
 unit + integration assertions ........................... 294
-smoke checks ............................................ 150, on three seeds
+smoke checks ............................................ 152, on three seeds
 input-layer checks ...................................... 12 on a pad, 12 on keys
 day-level criteria ...................................... 7/7
 career-level criteria ................................... 6/6, on three seeds

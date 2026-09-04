@@ -1198,7 +1198,11 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 				continue
 			if not line.contains("\""):
 				continue
-			for bad in ["[E]", "[LMB]", "[RMB]", "[MMB]", "[Escape]", "WASD"]:
+			# "[Shift+E]" was missed by the first version of this list, which
+			# looked for "[E]" — the door's slam hint, and the only place in the
+			# game that mentions the sprint modifier at all.
+			for bad in ["[E]", "+E]", "[LMB]", "[RMB]", "[MMB]", "[Escape]",
+					"[Shift", "WASD"]:
 				if line.contains(bad):
 					hardcoded.append("%s:%d %s" % [path.get_file(), n, bad])
 	_ok(hardcoded.is_empty(), "no player-facing string names a key by hand%s"

@@ -130,6 +130,15 @@ FRONTIER=${PIPESTATUS[0]}
   --script res://tests/play_run.gd -- pad 2>&1 | grep -vE "$NOISE"
 PLAY_IN=${PIPESTATUS[0]}
 
+# ...AND A WHOLE SHIFT, WITH NOTHING BUT A CONTROLLER. Walk to all five beds,
+# open each card, move the selection to a decision and press it; then find the
+# office through a shut door, open the records, sign off, and answer the ward
+# sister until the End of Shift card is on the screen. Three seconds, and it is
+# the only thing in this repo that asserts the game can be COMPLETED.
+"$GODOT" --headless --fixed-fps 60 --path "$DIR" \
+  --script res://tests/play_run.gd -- day 2>&1 | grep -vE "$NOISE"
+PLAY_DAY=${PIPESTATUS[0]}
+
 # ...AND THE GAME SAYS NOTHING IT SHOULD NOT WHILE BEING PLAYED.
 #
 # `boot_check.sh` asserts this for the way IN — Boot and the main menu — and
@@ -173,8 +182,8 @@ GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
 if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
-    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN boot=$BOOT)" >&2
+    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$PLAY_DAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN day=$PLAY_DAY boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

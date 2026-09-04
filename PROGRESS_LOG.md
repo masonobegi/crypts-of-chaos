@@ -1665,6 +1665,43 @@ rebuilds the screen by closing and reopening it, so clearing the flag on close
 unset the thing that had just been set and no row listened at all. Close first,
 then arm.
 
+### A whole shift, with nothing but a controller
+
+The `day` plan. Walk to all five beds, open each card, move the selection to a
+decision and press it; then find the office through a shut door, open the
+records, sign off, and answer the ward sister until the End of Shift card is on
+the screen. Nine checks, three seconds, and it is the only thing in this repo
+that asserts the game can be COMPLETED rather than merely started.
+
+Six things it found on the way to passing, all of them harness bugs and every
+one of them the kind that would also have been a player's problem:
+
+- **Aiming was yaw only.** Fine for a patient, whose head is at eye height.
+  The office terminal sits on a desk, so the ray left the camera horizontally,
+  passed over it and hit the door behind — the doctor stood 1.6m from the thing
+  that ends the shift with the crosshair offering to open the door they had
+  just walked through, for three attempts and two thousand frames.
+- **A press is not a result until the frame after it.** Counting the decision
+  in the same tick that pressed the button read the state from before the
+  press, on every bed: five decisions made, "0 of 5" reported.
+- **Stuck is something to get out of.** A person who catches the corner of a
+  bedside table backs off and goes round it. The first version walked into it
+  and stayed there, and reported the building as impassable. Three goes:
+  reverse, lean to one side, re-plan.
+- **Stuck at the end of a column is not the same as not there.** Godot works
+  focus neighbours out geometrically, so `ui_down` from the last control on a
+  card moves nothing — a seek that only presses down sits on "Close" pressing
+  it forty times. It turns round now.
+- **"Go home" is the crosshair; the button says "Sign off for the night".**
+  Forty presses looking for the wrong words.
+- **The office has a door on it**, and the walk ended at the desk's radius with
+  the door still shut in between. It opens doors on the way now.
+
+And one real one, in the game: the door's own prompt read "[Shift+E] slam it"
+— the fifth hardcoded key in a build with a rebinding screen, and the only
+place in the game that mentions the sprint modifier at all. The grep missed it
+because it was looking for "[E]" and this is "[Shift+E]". Both shapes now.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather

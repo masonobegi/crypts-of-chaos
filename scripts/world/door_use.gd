@@ -9,7 +9,11 @@ func prompt(_player) -> Array:
 	if door == null:
 		return ["", ""]
 	if door.is_open():
-		return ["Pull door shut", "[Shift+E] slam it"]
+		# THE KEY THEY ACTUALLY BOUND. This said "[Shift+E]" in a build with a
+		# rebinding screen and a controller layout, and it is the only place in
+		# the game that mentions the sprint modifier at all.
+		return ["Pull door shut", "[%s+%s] slam it" % [
+			Settings.prompt_label("sprint"), Settings.prompt_label("interact")]]
 	return ["Open door", "or just walk into it"]
 
 func interact(player, _held) -> void:

@@ -458,30 +458,46 @@ static func chart_header(text: String, tint := ACCENT) -> Control:
 ## A rubber stamp: capitals in a box, at an angle, in one flat colour. Used for
 ## the handful of statuses that ought to hit you before you have read anything.
 static func stamp(text: String, tint := BAD) -> Control:
-	var holder := Control.new()
-	# 46 was a whole line of body text of clear air around a stamp that is 28
-	# tall. On a card with five choices on it that is the fifth choice.
-	holder.custom_minimum_size = Vector2(180, 34)
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# LET THE CONTAINER DO THE LAYOUT.
+	#
+	# This used to be a PanelContainer parented to a plain Control, positioned
+	# and sized by hand. A plain Control is not a container, so nothing ever laid
+	# the panel out: it kept a zero size, the Label inside it sat at (0,0) on the
+	# top border, and the border was drawn through the middle of the letters with
+	# the final T of "FLAGGED FOR AUDIT" outside the box. That is the payoff
+	# image of an entire shift and it is seen twice a night.
+	#
+	# Three rounds of measuring the string by hand and positioning the label by
+	# hand each got closer and none got it right, because everything about a
+	# Control's size outside the tree is a guess. Returned as a bare
+	# PanelContainer instead: it goes straight into the card's VBox, which is a
+	# real container, so Godot sizes it from the Label's own minimum size the way
+	# it sizes everything else on the card. SHRINK_BEGIN so the VBox does not
+	# stretch it to the full width — a stamp is the width of what it says.
 	var p := PanelContainer.new()
+	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(tint.r, tint.g, tint.b, 0.10)
 	sb.border_color = tint
 	sb.set_border_width_all(3)
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	sb.content_margin_top = 4
-	sb.content_margin_bottom = 4
+	sb.content_margin_left = 14
+	sb.content_margin_right = 14
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
 	p.add_theme_stylebox_override("panel", sb)
 	var l := Label.new()
 	l.text = text.to_upper()
 	l.add_theme_font_size_override("font_size", 20)
 	l.add_theme_color_override("font_color", tint)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	p.add_child(l)
-	p.rotation = -0.09
-	p.position = Vector2(4, 2)
-	holder.add_child(p)
-	return holder
+	# The tilt is what makes it read as a rubber stamp rather than a button.
+	# Rotation is not touched by container layout, so this survives.
+	p.rotation = -0.055
+	p.pivot_offset = Vector2(40, 17)
+	return p
 
 ## A form field: a label, a dotted leader, and a value. The leader is what makes
 ## a row of these read as a document rather than as a settings screen.

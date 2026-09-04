@@ -31,7 +31,10 @@ func _build() -> void:
 	# they find it by opening the record, which is the only reason it is
 	# interesting that Winifred Blake looks like the easiest hold on the ward.
 	if c.has("audit_flag"):
-		var flag := UIKit.panel(Color(0.32, 0.20, 0.14), 4, 1, UIKit.BAD)
+		# Same dark-on-dark pairing as the review opener, on the game's best hidden
+		# reveal — the reason Winifred Blake looks like the easiest hold on the
+		# ward, findable only by opening her record.
+		var flag := UIKit.panel(UIKit.NOTE_BAD, 4, 1, UIKit.BAD)
 		var fv := UIKit.vbox(2)
 		fv.add_child(UIKit.label("ON FILE", 11, UIKit.BAD))
 		fv.add_child(UIKit.label(String(c["audit_flag"]), 13, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))

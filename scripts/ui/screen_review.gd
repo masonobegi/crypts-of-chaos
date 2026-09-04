@@ -28,7 +28,12 @@ func _build() -> void:
 	# until there is a shape to open with.
 	var opener := String(_rv.record.opening_line()) if _rv.record != null else ""
 	if opener != "":
-		var pre := UIKit.panel(Color(0.30, 0.22, 0.16), 4, 1, UIKit.WARN)
+		# NOT near-black on dark brown. INK is (0.12,0.13,0.15) and that
+		# background was (0.30,0.22,0.16): a contrast ratio of about 1.5:1, on
+		# the single most dramatic line in the game and the one place the player
+		# learns the ward sister has been keeping score. It was effectively
+		# invisible. The card's own warning paper is 12.9:1.
+		var pre := UIKit.panel(UIKit.NOTE_WARN, 4, 1, UIKit.WARN)
 		pre.add_child(UIKit.label("\"%s\"" % opener, 15, UIKit.INK,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 		v.add_child(pre)

@@ -325,7 +325,11 @@ func _on_reached_investigation() -> void:
 			say(String(RNG.pick("shrug", ["Nothing.", "Must've been the pipes.", "Hm."])), 2.0)
 		return
 	say(String(RNG.pick("gripe", gripes)).capitalize() + ".", 3.0)
-	GameState.adjust_rep("patient_sat", -0.004)
+	# `GameState.adjust_rep()` used to be called here and it DOES NOT EXIST —
+	# the reputation tracks went with the meta layer. Calling it threw, and a
+	# throw ABORTS the function, so everything below this line was unreachable:
+	# a nurse who walked in on a tampered room said her line and then never
+	# recorded that she had found it.
 	# A nurse who walks in on a freezing ward with the window open now KNOWS
 	# the environment was tampered with, even if she never saw you do it.
 	if r.window_open or not r.lights_on:
@@ -340,39 +344,6 @@ func _on_reached_investigation() -> void:
 		ev.summary = "found %s with the environment interfered with" % r.display
 		if mind:
 			mind.add_evidence(ev)
-
-func interrupt_for_talk() -> void:
-	_enter(State.TALK)
-
-## Send them somewhere on an errand. This is the player's own distraction tool:
-## the same effect a thrown bedpan has, except you chose the destination and
-## nobody heard anything.
-func send_to_room(room_key: String, seconds: float) -> void:
-	var h = get_tree().get_first_node_in_group("hospital")
-	if h == null:
-		return
-	_approached = true          # they are busy; no propositions mid-errand
-	_enter(State.TASK)
-	_timer = seconds
-	goto(h.point_in(room_key, "errand_pt"), false)
-	say(String(RNG.pick("errand_bark", [
-		"Right, I'll go and look.", "Give me a minute.",
-		"On my way.", "If you like.",
-	])), 2.6)
-
-## Where to send someone so they are genuinely out of your way.
-func farthest_ward_from(pos: Vector3) -> String:
-	var h = get_tree().get_first_node_in_group("hospital")
-	if h == null:
-		return "corridor"
-	var best := "corridor"
-	var best_d := -1.0
-	for r in h.wards():
-		var d: float = r.center().distance_to(pos)
-		if d > best_d:
-			best_d = d
-			best = r.key
-	return best
 
 # A member of staff was somebody you could talk to: prompt() offered it and
 # interact() opened the dialogue screen. That screen went with Dialogue and

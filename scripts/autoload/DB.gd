@@ -179,12 +179,6 @@ func trait_of(arch: String, key: String, fallback: float = -9999.0) -> float:
 		return fallback
 	return float(TRAIT_DEFAULTS.get(key, 0.5))
 
-func archetype_name(arch: String) -> String:
-	return String(archetype_data(arch).get("name", arch.capitalize()))
-
-func archetype_blurb(arch: String) -> String:
-	return String(archetype_data(arch).get("blurb", ""))
-
 ## Build a Mind pre-configured from an archetype.
 
 ## Build a Mind pre-configured from an archetype.
@@ -207,6 +201,3 @@ const INSURANCE := {
 	"standard": {"name": "Standard cover", "blurb": "Pays eventually."},
 	"state": {"name": "State", "blurb": "Pays what it decides to pay."},
 }
-
-func insurance_name(id: String) -> String:
-	return String(INSURANCE.get(id, {}).get("name", id))

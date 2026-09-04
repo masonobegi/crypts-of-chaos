@@ -64,9 +64,6 @@ func suspicion(now: int, active_covers: Dictionary = {}) -> float:
 	# Squash so suspicion approaches but never reaches 1 from evidence alone.
 	return clampf(1.0 - exp(-total), 0.0, 1.0)
 
-func suspicion_pct(now: int, active_covers: Dictionary = {}) -> int:
-	return int(round(suspicion(now, active_covers) * 100.0))
-
 ## 0=calm 1=uneasy 2=suspicious 3=convinced 4=acting on it
 func tier(now: int, active_covers: Dictionary = {}) -> int:
 	var s := suspicion(now, active_covers)
@@ -91,19 +88,6 @@ func add_evidence(ev: Evidence) -> Evidence:
 	evidence.append(ev)
 	return ev
 
-func has_evidence_about(pid: String) -> bool:
-	for ev in evidence:
-		if ev.patient_id == pid and not ev.neutralized:
-			return true
-	return false
-
-func evidence_about(pid: String) -> Array[Evidence]:
-	var out: Array[Evidence] = []
-	for ev in evidence:
-		if ev.patient_id == pid:
-			out.append(ev)
-	return out
-
 ## The single most damning thing they hold — what they'll bring up in dialogue.
 func strongest(now: int) -> Evidence:
 	var best: Evidence = null
@@ -123,14 +107,6 @@ func prune(now: int) -> void:
 		if not ev.is_stale(now):
 			kept.append(ev)
 	evidence = kept
-
-func forget_all() -> void:
-	evidence.clear()
-	reacted_tier = 0
-
-# --------------------------------------------------------------- trust
-func adjust_trust(delta: float) -> void:
-	trust = clampf(trust + delta, 0.0, 1.0)
 
 func burn_cover(tag: String) -> void:
 	burned_covers[tag] = int(burned_covers.get(tag, 0)) + 1

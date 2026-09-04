@@ -43,15 +43,6 @@ func place(actor: String, minute: int, room: String, witness: String, expected: 
 		"room": room, "witness": witness, "expected": expected,
 	}
 
-## The chain of entries that argue a patient should still be here. This is what
-## the reviewer walks when she asks "why was the bed still occupied".
-func justification_chain(pid: String) -> Array:
-	var out: Array = []
-	for e in for_patient(pid):
-		if e.supports_stay():
-			out.append(e)
-	return out
-
 func to_dict() -> Dictionary:
 	var arr: Array = []
 	for e in entries:

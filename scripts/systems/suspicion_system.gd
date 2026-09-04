@@ -369,7 +369,13 @@ func file_complaint(from_id: String, severity: float) -> void:
 	var press := bool(GameState.flag("press_present", false))
 	EventBus.complaint_filed.emit("player", from_id, severity)
 	if press:
-		GameState.adjust_rep("gov_scrutiny", severity * 0.10)
+		# `GameState.adjust_rep()` used to be called here and it DOES NOT EXIST
+		# — the reputation tracks went with the meta layer. Calling a method an
+		# autoload does not have throws, and a throw ABORTS the function
+		# (CLAUDE.md 11), so on a press day this whole function died on this
+		# line: no toast, and the complaint never reached the institutional
+		# mind below. The comment above promises "the day everything costs
+		# roughly three times as much", and it cost nothing at all.
 		EventBus.toast.emit(
 			"%s complained. The reporter in the lobby wrote it all down." % who, "bad")
 	else:

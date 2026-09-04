@@ -68,11 +68,6 @@ func complaints() -> Array[String]:
 		out.append("this room is a state")
 	return out
 
-## True when the room is in a condition someone could reasonably blame on
-## facilities rather than on you — provided you filed the ticket.
-func has_plausible_fault() -> bool:
-	return window_open or not lights_on or cleanliness < 0.5
-
 # The window unit, the light switch and the thermostat that used to drive all
 # of this were deleted with the rest of the ward's fittings, so nothing in the
 # building sets these any more: they are read-only weather now. What is left is

@@ -81,9 +81,6 @@ func label() -> String:
 		return summary
 	return kind.replace("_", " ")
 
-func source_label() -> String:
-	return ["saw it", "heard it", "was told", "found it in the file", "worked it out"][int(source)]
-
 static func from_world_event(e: WorldEvent, src: Source, weight: float, cert: float) -> Evidence:
 	var ev := Evidence.new()
 	ev.kind = e.kind

@@ -41,9 +41,6 @@ func case() -> Dictionary:
 func condition_name() -> String:
 	return String(case().get("condition", ""))
 
-func dept() -> String:
-	return "ward"
-
 func is_overdue() -> bool:
 	return days_admitted > expected_stay_days
 

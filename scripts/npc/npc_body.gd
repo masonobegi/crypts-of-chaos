@@ -417,11 +417,6 @@ func _build_body() -> void:
 	_speech.visible = false
 	add_child(_speech)
 
-func set_colours(p_skin: Color, p_outfit: Color, p_hair: Color) -> void:
-	skin = p_skin
-	outfit = p_outfit
-	hair = p_hair
-
 ## THE WHOLE LOOK, from `Appearance.of()`. Must be called before the body is
 ## built — everything here is baked into meshes in `_build_body`.
 func set_look(look: Dictionary) -> void:

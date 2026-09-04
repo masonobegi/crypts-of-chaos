@@ -250,6 +250,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
 	_check_the_day_gives_you_warning()
+	_check_nothing_calls_a_method_that_is_not_there()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
@@ -1045,6 +1046,89 @@ func _check_the_day_gives_you_warning() -> void:
 			% [WardDay.COLLEAGUE, comings, WardDay.COLLEAGUE_HOURS.size()])
 	_ok(goings == WardDay.COLLEAGUE_HOURS.size(),
 		"and so is him leaving (%d)" % goings)
+
+## NOTHING CALLS AN AUTOLOAD METHOD THAT DOES NOT EXIST.
+##
+## `GameState.adjust_rep()` was called from two live code paths and had been
+## deleted with the meta layer. Calling a method an autoload does not have
+## throws, and a throw ABORTS the function it is in (CLAUDE.md 11) — so both
+## paths died on that line and everything below them was unreachable:
+##
+##   * on a press day, a formal complaint produced no toast and never reached
+##     the institutional mind, on the day the design comment promises
+##     "everything costs roughly three times as much"
+##   * a nurse who walked in on a tampered room said her line and then never
+##     recorded that she had found it
+##
+## Neither errored anywhere anybody was looking, because the throw is the abort.
+## This greps the source for `Autoload.method(` and asks the autoload whether it
+## has one — the cheapest possible check for the most silent failure in the
+## project.
+const AUTOLOADS := ["GameState", "EventBus", "AudioMgr", "RNG", "DB", "Settings",
+	"SaveSystem", "Log"]
+
+func _check_nothing_calls_a_method_that_is_not_there() -> void:
+	var missing: Array = []
+	var checked := 0
+	for path in _all_scripts("res://scripts"):
+		var src := FileAccess.get_file_as_string(path)
+		for name in AUTOLOADS:
+			var node := tree.root.get_node_or_null(NodePath(name))
+			if node == null:
+				continue
+			for m in _calls_on(src, name):
+				checked += 1
+				# A property read looks the same to a regex; only flag things
+				# that are definitely calls and definitely absent.
+				if not node.has_method(m) and not (m in node):
+					missing.append("%s.%s() in %s" % [name, m, path.get_file()])
+	_ok(checked > 20, "%d autoload calls to check" % checked)
+	_ok(missing.is_empty(), "and every one of them exists%s"
+		% ("" if missing.is_empty() else " — " + ", ".join(PackedStringArray(missing))))
+
+## `Name.method(` occurrences in a source file, outside comments.
+func _calls_on(src: String, autoload: String) -> Array:
+	var out: Array = []
+	for line in src.split("\n"):
+		var bare := line.strip_edges()
+		if bare.begins_with("#"):
+			continue
+		var from := 0
+		while true:
+			var at := line.find(autoload + ".", from)
+			if at < 0:
+				break
+			from = at + 1
+			# Must be a whole word before the dot.
+			if at > 0 and (line[at - 1].is_valid_identifier() or line[at - 1] == "_"):
+				continue
+			var rest := line.substr(at + autoload.length() + 1)
+			var open := rest.find("(")
+			if open <= 0:
+				continue
+			var name := rest.substr(0, open)
+			if not name.is_valid_identifier():
+				continue
+			if not out.has(name):
+				out.append(name)
+	return out
+
+func _all_scripts(dir: String) -> Array:
+	var out: Array = []
+	var d := DirAccess.open(dir)
+	if d == null:
+		return out
+	d.list_dir_begin()
+	var f := d.get_next()
+	while f != "":
+		var full := dir + "/" + f
+		if d.current_is_dir():
+			out.append_array(_all_scripts(full))
+		elif f.ends_with(".gd"):
+			out.append(full)
+		f = d.get_next()
+	d.list_dir_end()
+	return out
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

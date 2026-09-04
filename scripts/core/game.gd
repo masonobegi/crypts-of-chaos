@@ -554,8 +554,3 @@ func _physics_process(delta: float) -> void:
 	_place_accum = 0.0
 	var room := String(hospital.room_at(player.global_position))
 	ward.observe_player(room, ward._who_can_see_me())
-
-## The slice has no endings table. A day closes at the handover and that screen
-## says what happened; anything past it belongs to a game that has more days.
-func _on_game_over(_reason: String) -> void:
-	EventBus.request_ui.emit("review", {})

@@ -1673,6 +1673,13 @@ records, sign off, and answer the ward sister until the End of Shift card is on
 the screen. Nine checks, three seconds, and it is the only thing in this repo
 that asserts the game can be COMPLETED rather than merely started.
 
+It plays it as a STRANGER would, too: every other harness in this repo sets
+`tutorial_done` at boot and has therefore never once been through the three
+lines a new player is actually shown. The day plan does not — and reads a chart
+and writes a note on the way, on the pad, which nothing had ever done through a
+keypress either (every other harness calls `w.write_entry()` directly). Two
+verbs, four screens, and the tutorial keeping up behind it.
+
 It goes one screen further than the shift: "Work tomorrow" is the only thing
 that advances a career, and the join from one day to the next is what has
 broken most often in this project — so the plan presses it and asserts the day

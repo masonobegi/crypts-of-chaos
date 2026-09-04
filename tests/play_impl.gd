@@ -56,6 +56,7 @@ var _replans := 0
 var _reach := REACH
 var _office_tries := 0
 var _day_was := 0
+var _wrote := false
 
 const REACH := 2.4
 ## How long a single approach gets. The office is at the far end of the
@@ -80,7 +81,12 @@ func start() -> void:
 	# A FIXED WARD. `start_new_career(0)` means "seed off the clock", so this
 	# played a different building every run and a failure could not be repeated.
 	GameState.start_new_career(20260821)
-	GameState.set_flag("tutorial_done", true)
+	# THE DAY PLAN PLAYS IT AS A STRANGER WOULD. Every other harness in this
+	# repo sets `tutorial_done` and therefore has never once been through the
+	# three lines a new player is actually shown, or found out whether they get
+	# in the way of anything.
+	if plan != "day":
+		GameState.set_flag("tutorial_done", true)
 	EventBus.interact_prompt.connect(func(t, _s): _prompts.append(String(t)))
 	EventBus.ui_opened.connect(func(id): _opened.append(String(id)))
 	var packed: PackedScene = load("res://scenes/Game.tscn")
@@ -280,6 +286,16 @@ func tick() -> bool:
 					# reported it as the office not working.
 					_bed += 1
 					_next_bed(p)
+				elif _bed == 0 and not _wrote:
+					# THE TWO VERBS THAT MATTER, ONCE, THROUGH THE UI. Reading a
+					# chart and writing a note are the whole game and nothing
+					# had ever driven either of them with a keypress — every
+					# other harness calls `w.write_entry()`.
+					_want = ["Read the chart"]
+					_tries = 0
+					_dir = 0
+					_last_focus = ""
+					_to("chart_open")
 				else:
 					_want = _DECIDE
 					_tries = 0
@@ -307,6 +323,34 @@ func tick() -> bool:
 			elif _since() > 12:
 				_bed += 1
 				_next_bed(p)
+		"chart_open":
+			if _seek():
+				_seek_next(["Write a note"], "chart_write")
+		"chart_write":
+			if _since() < 8:
+				pass
+			elif _seek():
+				_seek_next(["Something is wrong"], "chart_claim")
+		"chart_claim":
+			if _since() < 8:
+				pass
+			elif _seek():
+				_seek_next(["Reports transient dizziness"], "chart_line")
+		"chart_line":
+			if _since() < 8:
+				pass
+			elif _seek():
+				_to("chart_close")
+		"chart_close":
+			if _since() == 8:
+				_check_a_note_can_be_written()
+				_tap("back", true)
+			elif _since() == 10:
+				_tap("back", false)
+			elif _since() > 20:
+				# Back to the bedside to decide, now that the chart is read.
+				_wrote = true
+				_to("bed_use")
 		"office_walk":
 			# DOORS ON THE WAY. The office is a room with a door on it, and the
 			# doctor was arriving at the desk's REACH radius with the door still
@@ -464,6 +508,32 @@ func _check_the_office_opens(p) -> void:
 				p.current_room() if p != null and p.has_method("current_room") else "?",
 				_round(_target.global_position) if _target else "?",
 				_wp, _path.size()])
+
+## Line up the next label to hunt for, and the stage to hunt for it in.
+func _seek_next(want: Array, next: String) -> void:
+	_want = want
+	_tries = 0
+	_dir = 0
+	_last_focus = ""
+	_to(next)
+
+func _check_a_note_can_be_written() -> void:
+	var w = tree.get_first_node_in_group("ward_day")
+	var pid: String = String(_roster_ids()[0]) if not _roster_ids().is_empty() else ""
+	var mine := 0
+	if w != null and pid != "":
+		for e in w.records.for_patient(pid):
+			if e.author == ChartEntry.Author.YOU:
+				mine += 1
+	_ok(mine > 0, "a chart can be read and a note written, on the pad alone")
+	# ...AND THE THREE LINES A STRANGER IS SHOWN GET SHOWN. Every other harness
+	# in this repo sets `tutorial_done` at boot and has therefore never once
+	# been through the onboarding; this plan does not, so by the time a chart
+	# has been opened and a note written, two of the three steps are behind us.
+	var t = tree.get_first_node_in_group("tutorial")
+	_ok(t != null and int(t.get("_index")) >= 2,
+		"and the tutorial followed along (step %d of 3)"
+			% [int(t.get("_index")) if t != null else -1])
 
 func _check_tomorrow_arrives() -> void:
 	_ok(GameState.day == _day_was + 1,

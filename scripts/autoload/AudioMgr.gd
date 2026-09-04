@@ -609,9 +609,14 @@ func refresh_music_volume() -> void:
 
 ## The hum's level BEFORE the sliders, remembered so refresh_music_volume() can
 ## re-apply them to it without start_ambience() being called again.
-var _hum_base_db := -30.0
+var _hum_base_db := -18.0
 
-func start_ambience(volume_db := -30.0) -> void:
+## -18, not -30. The music sits at -4, so a continuous room tone twenty-six
+## decibels under it is not quiet, it is absent — and the hum is the only
+## constant ambience in the building and the thing the "Ambience" slider is
+## named after. A player who turned that slider down heard no difference,
+## because there was nothing there to turn down.
+func start_ambience(volume_db := -18.0) -> void:
 	_ensure_voices()
 	if _hum_player == null:
 		_hum_player = AudioStreamPlayer.new()

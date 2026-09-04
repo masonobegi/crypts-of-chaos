@@ -11,6 +11,10 @@ var _done := false
 var _committed := false
 
 func _build() -> void:
+	# She opens the folder. The handover is the climax of a shift and it began
+	# in silence.
+	if not _committed:
+		AudioMgr.play("paper", -10.0, 0.9)
 	var w = ward()
 	if w == null:
 		close()

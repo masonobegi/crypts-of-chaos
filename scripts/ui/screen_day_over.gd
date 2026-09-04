@@ -27,6 +27,12 @@ func _build() -> void:
 		_ending_card(ending)
 		return
 
+	# THE VERDICT MAKES A SOUND. This card — the stamp, what Vinnie wanted, what
+	# he got, what tomorrow is like — arrived in total silence, and so did both
+	# ending cards, which are the last thing anybody sees. A rubber stamp is the
+	# one object in this game that has an obvious noise.
+	AudioMgr.play("stamp", -6.0,
+		0.82 if verdict == ReviewSystem.OUTCOME_ESCALATED else 1.0)
 	var v := card_shell(720, 620, "END OF SHIFT",
 		"Day %d  ·  Ward C" % GameState.day)
 
@@ -162,6 +168,9 @@ func _carry(verdict: String, short: bool) -> void:
 ## rounds, indefinitely" has nothing at the top of its own risk curve.
 func _ending_card(ending: String) -> void:
 	var won: bool = ending == GameState.ENDING_PAID
+	# Paying it off is the only good news in the game and it deserves the one
+	# rising tone in the bank. Being struck off gets the low one.
+	AudioMgr.play("money" if won else "error", -4.0, 1.0 if won else 0.7)
 	var v := card_shell(760, 640, "THE END OF IT",
 		"Day %d  ·  Ward C" % GameState.day)
 	v.add_child(UIKit.stamp("PAID" if won else "STRUCK OFF",

@@ -827,7 +827,35 @@ func say(text: String, seconds := 3.2) -> void:
 	# which made the whole channel read as UI noise rather than as the ward.
 	if _player_can_hear():
 		EventBus.subtitle.emit(display, text, seconds)
-	AudioMgr.play_at_var("grunt", global_position, -26.0, 0.3)
+	# EIGHT PEOPLE ON A WARD SHOULD NOT BE ONE MAN CLEARING HIS THROAT.
+	#
+	# Every line anybody spoke — Adeyemi, the patients, Ruth Kerrigan, Ms
+	# Ferrand, the man in the corridor — played the same 220ms saw at 130 Hz with
+	# a random 30% wobble. The wobble made it inconsistent WITHIN a character
+	# without making any two characters different from each other, which is the
+	# worst of both: nobody had a voice and nobody sounded steady.
+	#
+	# Pitch is derived from who they are instead, so a character sounds the same
+	# every time they speak and different from the person in the next bed. The
+	# small remaining jitter is per-utterance, so a voice is recognisable without
+	# being robotic.
+	AudioMgr.play_at("grunt", global_position, -24.0,
+		_voice_pitch() * randf_range(0.97, 1.03))
+
+## A steady pitch per character, spread across roughly an octave. Cached, so it
+## cannot drift between two lines from the same person.
+var _voice := 0.0
+
+func _voice_pitch() -> float:
+	if _voice > 0.0:
+		return _voice
+	var who := npc_id if npc_id != "" else display
+	var h: int = absi(hash(who))
+	# 0.74 to 1.42 — deep enough for an eighty-year-old man, high enough for a
+	# twenty-two-year-old, and every step in between is audibly a different
+	# person rather than the same one on a bad day.
+	_voice = 0.74 + float(h % 1000) / 1000.0 * 0.68
+	return _voice
 
 func _player_can_hear() -> bool:
 	var p = get_tree().get_first_node_in_group("player") if is_inside_tree() else null

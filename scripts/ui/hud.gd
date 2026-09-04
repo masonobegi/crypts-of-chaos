@@ -476,7 +476,17 @@ func _drain_toasts(delta: float) -> void:
 		return
 	_last_toast_text = String(next["text"])
 	_last_toast_count = 1
-	_toast_gap = 0.5
+	# A BACKLOG DRAINS FASTER THAN A TRICKLE.
+	#
+	# Half a second between toasts is right when they arrive one at a time. It
+	# is wrong the moment there is a queue — and there is now, because the queue
+	# holds while a card is up, and the day has real things to say: three
+	# warnings in the last hour, a round every ninety minutes (twice that when
+	# you are watched), the registrar coming and going, a lab result, somebody's
+	# family. Close a card on ten of those and the last of them arrives five
+	# seconds later, by which point the first three have already been pushed off
+	# the bottom of a column that holds three.
+	_toast_gap = 0.5 if _toast_queue.size() < 3 else 0.18
 	_show_toast(String(next["text"]), String(next["kind"]))
 
 func _show_toast(text: String, kind: String) -> void:

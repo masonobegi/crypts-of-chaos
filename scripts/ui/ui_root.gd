@@ -22,12 +22,39 @@ var hud: HUD
 var current: Control = null
 var current_id := ""
 
+## Set by the TITLE SCREEN before this is added to the tree.
+##
+## `MainMenu._open_menu_screen` builds its own UIRoot, because UIRoot lives in
+## the game scene and a player should not have to start a career to turn the
+## volume down. But UIRoot assumes it is in a game: it builds a HUD, and
+## `_set_modal(false)` puts the mouse back to CAPTURED because that is what
+## closing a card in the ward should do.
+##
+## So clicking Settings on the title screen and then Back left the full in-game
+## HUD — "Day 1", "8:00 AM", "$900", "[E] use [LMB] grab" — painted permanently
+## over the main menu, and captured the cursor, so no button on the title screen
+## could be clicked again. Settings is one of the first things anybody presses.
+var menu_mode := false
+
+## Rate-limited, because HSlider emits value_changed on every STEP of a drag and
+## not on release. Range 0..1 at step 0.05 is twenty steps, so one sweep of the
+## Effects slider fired twenty 880 Hz beeps inside a fraction of a second.
+var _last_audition := 0
+
+func _audition() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _last_audition < 140:
+		return
+	_last_audition = now
+	AudioMgr.play("beep", -8.0)
+
 func _ready() -> void:
 	layer = 10
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	hud = HUD.new()
-	hud.name = "HUD"
-	add_child(hud)
+	if not menu_mode:
+		hud = HUD.new()
+		hud.name = "HUD"
+		add_child(hud)
 	EventBus.request_ui.connect(open)
 
 ## The screen a phase could not be left without used to be put back here when
@@ -115,7 +142,10 @@ func _set_modal(on: bool, pauses := true) -> void:
 	var subs = get_tree().get_first_node_in_group("hud")
 	if subs != null and subs.has_method("set_modal"):
 		subs.call("set_modal", on)
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if on else Input.MOUSE_MODE_CAPTURED
+	# On the title screen there is no first-person view to go back to, so the
+	# cursor stays.
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if (on or menu_mode) \
+		else Input.MOUSE_MODE_CAPTURED
 	var p = get_tree().get_first_node_in_group("player")
 	if p:
 		p.input_locked = on
@@ -175,7 +205,7 @@ func _settings_screen() -> Control:
 			Settings.set_value("sfx_volume", x)
 			# Play something at the new level, so the slider answers the
 			# question it is actually being asked.
-			AudioMgr.play("beep", -8.0), pct))
+			_audition(), pct))
 	v.add_child(UIKit.slider("Ambience", Settings.get_value("music_volume"),
 		0.0, 1.0, 0.05, func(x): Settings.set_value("music_volume", x), pct))
 

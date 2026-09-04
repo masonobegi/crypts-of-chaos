@@ -190,7 +190,13 @@ func _continue() -> void:
 ## does not exist yet — a player should not have to start a career to turn the
 ## volume down.
 func _open_menu_screen(id: String) -> void:
-	var ui: Node = load("res://scripts/ui/ui_root.gd").new()
-	ui.name = "MenuUI"
-	add_child(ui)
+	# ONE menu UI, reused. A fresh UIRoot per visit stacked another CanvasLayer
+	# on the title screen every time somebody opened Settings and came back.
+	var ui: Node = get_node_or_null("MenuUI")
+	if ui == null:
+		ui = load("res://scripts/ui/ui_root.gd").new()
+		ui.name = "MenuUI"
+		# Set before add_child, so `_ready` sees it and never builds a HUD.
+		ui.set("menu_mode", true)
+		add_child(ui)
 	ui.open(id, {})

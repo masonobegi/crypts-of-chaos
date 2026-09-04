@@ -95,7 +95,12 @@ func list_saves() -> Array[Dictionary]:
 		out.append({
 			"slot": slot,
 			"day": int(gs.get("day", 1)),
-			"money": int(gs.get("pm", 0)),
+			# "cash", not "pm". `pm` was the field name in the save schema that
+			# was deleted in the redesign, so the one place the game summarises
+			# a saved career for the player — "Continue — Day 9, $0" — read zero
+			# on every save that has ever existed, which looks exactly like a
+			# corrupt save.
+			"money": int(gs.get("cash", 0)),
 			"saved_at": parsed.get("saved_at", "?"),
 		})
 	return out

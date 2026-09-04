@@ -154,6 +154,12 @@ func _back() -> void:
 func close() -> void:
 	if current == null:
 		return
+	# LEAVING THE CONTROLS SCREEN STOPS IT LISTENING. `Back` and `Reset` both
+	# cleared this by hand and every other way out of the screen did not — so
+	# closing it with Escape mid-rebind left `_listening_for` set, and the next
+	# visit opened already waiting for a key nobody had asked it to want.
+	if current_id == "controls":
+		_listening_for = ""
 	current.queue_free()
 	current = null
 	current_id = ""
@@ -392,22 +398,33 @@ func _binding_row(action: String, label: String) -> Control:
 	return h
 
 func _start_listening(action: String) -> void:
+	# CLOSE FIRST, THEN ARM. `close()` clears `_listening_for` on the way out of
+	# the controls screen, and this rebuilds that screen by closing and
+	# reopening it — so setting the field first meant closing it immediately
+	# unset the thing that had just been set, and no row ever listened.
+	close()
 	_listening_for = action
 	set_process_input(true)
-	close()
 	open("controls", {})
 
 func _input(event: InputEvent) -> void:
 	if _listening_for == "" or current_id != "controls":
 		return
-	var usable: bool = (event is InputEventKey and event.pressed and not event.echo) \
+	# A PAD BUTTON CANCELS. Pad bindings are deliberately fixed, so `rebind`
+	# refuses a joypad event — which meant somebody who pressed A on a binding
+	# row got "press a key…" and, with no keyboard in reach, no way out of it at
+	# all: B was not a key either, so the row listened forever. Any pad button
+	# now backs out of it, which is what B would have done anywhere else.
+	var cancelled: bool = event is InputEventJoypadButton and event.pressed
+	var usable: bool = cancelled \
+		or (event is InputEventKey and event.pressed and not event.echo) \
 		or (event is InputEventMouseButton and event.pressed)
 	if not usable:
 		return
 	get_viewport().set_input_as_handled()
 	var action := _listening_for
 	_listening_for = ""
-	if event is InputEventKey and event.keycode == KEY_ESCAPE:
+	if cancelled or (event is InputEventKey and event.keycode == KEY_ESCAPE):
 		AudioMgr.play("error", -16.0)
 	elif Settings.rebind(action, event):
 		AudioMgr.play("ding", -14.0)

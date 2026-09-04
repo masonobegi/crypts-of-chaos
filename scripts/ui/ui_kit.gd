@@ -484,12 +484,20 @@ static func scroll(child: Control) -> ScrollContainer:
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# THE VIEW FOLLOWS THE SELECTION. `follow_focus` defaults to FALSE, and
+	# every long card in this game is a scroll region: the settings screen, the
+	# key bindings, the patient's list of verbs. Without it a pad or a keyboard
+	# walks the selection straight off the bottom of the visible area and keeps
+	# going, with nothing moving on screen — which is indistinguishable from
+	# navigation not working at all.
+	s.follow_focus = true
 	child.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.add_child(child)
 	return s
 
 static func scroll_horizontal(child: Control) -> ScrollContainer:
 	var s := ScrollContainer.new()
+	s.follow_focus = true
 	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	s.custom_minimum_size.y = 44
 	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL

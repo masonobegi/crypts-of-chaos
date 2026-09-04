@@ -1642,6 +1642,29 @@ rows on the same card, because only one of the two was inside a panel with
 content margins. Both boxes carry identical content margins so nothing moves
 when the selection arrives.
 
+### The selection walked off the bottom of the page, and "press a key…" had no way out
+
+`ScrollContainer.follow_focus` defaults to FALSE, and every long card in this
+game is a scroll region — the settings screen, the key bindings, the list of
+verbs on a patient. So a pad or a keyboard walked the selection off the bottom
+of the visible area and kept going with nothing moving on screen, which is
+indistinguishable from navigation not working at all. Watched go from a scroll
+offset of 0 to 143 under Xvfb once it was on, and asserted as a property in the
+smoke run, because under `--headless` no layout is real.
+
+And pad bindings are deliberately fixed, so `Settings.rebind` refuses a joypad
+event: somebody who pressed A on a binding row got "press a key…" and, with no
+keyboard in reach, nothing that would end it — B is not a key either, so the
+row listened for ever. Any pad button backs out of it now. Closing the screen
+also disarms it, which only `Back` and `Reset` had been doing by hand, so
+Escape mid-rebind left the next visit already waiting for a key nobody had
+asked it to want.
+
+Fixing that introduced its own bug and the check caught it: `_start_listening`
+rebuilds the screen by closing and reopening it, so clearing the flag on close
+unset the thing that had just been set and no row listened at all. Close first,
+then arm.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather
@@ -1655,7 +1678,7 @@ heading. Five new gotchas, four of them from tonight.
 
 ```
 unit + integration assertions ........................... 294
-smoke checks ............................................ 154, on three seeds
+smoke checks ............................................ 161, on three seeds
 input-layer checks ...................................... 12 on a pad, 12 on keys
 day-level criteria ...................................... 7/7
 career-level criteria ................................... 6/6, on three seeds

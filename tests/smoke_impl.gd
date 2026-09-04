@@ -110,6 +110,12 @@ func tick() -> bool:
 			stage = "toasts"
 		"toasts":
 			if _check_nothing_is_said_into_a_closed_card():
+				# THE SYNCHRONOUS ONE FIRST. The card check opens a screen and
+				# defers its assertions four frames; anything that opens another
+				# screen after it has replaced the card those assertions are
+				# about, and all three of them failed on a screen they did not
+				# mean. A deferred check owns the UI until it comes due.
+				_check_the_rebind_row_can_be_escaped()
 				_check_a_rebuilt_card_still_has_a_selection()
 				stage = "settle"
 		"settle":
@@ -1925,6 +1931,21 @@ func _check_screens_actually_draw() -> bool:
 	var holder: Control = vp.gui_get_focus_owner() if vp else null
 	_ok(holder != null, "and the %s screen has a selection on it for a pad%s"
 		% [name, "" if holder != null else " — nothing has focus"])
+	# AND THE VIEW FOLLOWS IT DOWN THE PAGE.
+	#
+	# `ScrollContainer.follow_focus` defaults to FALSE, and every long card in
+	# this game is a scroll region — the settings screen, the key bindings, the
+	# list of verbs on a patient. Without it the selection walks off the bottom
+	# of the visible area and keeps going with nothing moving on screen, which
+	# is indistinguishable from navigation not working at all. Asserted as a
+	# PROPERTY rather than by measuring the scroll offset, because under
+	# --headless the root window is 64 pixels tall and no layout is real
+	# (CLAUDE.md 19); the offset was watched move from 0 to 143 under Xvfb.
+	var unfollowing: Array[String] = []
+	_scrollers(ui, unfollowing)
+	_ok(unfollowing.is_empty(), "and the view follows it down the %s screen%s"
+		% [name, "" if unfollowing.is_empty()
+			else " — " + ", ".join(unfollowing) + " does not follow focus"])
 	# HOW MUCH OF THE CARD IS BELOW THE FOLD.
 	#
 	# A control can have a perfectly good size and still be somewhere nobody
@@ -1938,6 +1959,12 @@ func _check_screens_actually_draw() -> bool:
 		return false
 	EventBus.request_ui.emit(String(_screen_queue[0][0]), _screen_queue[0][1])
 	return true
+
+func _scrollers(n: Node, out: Array[String]) -> void:
+	for c in n.get_children():
+		if c is ScrollContainer and not (c as ScrollContainer).follow_focus:
+			out.append(String(c.name))
+		_scrollers(c, out)
 
 ## THE WHOLE EVENING, THROUGH THE ACTUAL SCREENS.
 ##
@@ -2115,6 +2142,47 @@ func _check_a_rebuilt_card_still_has_a_selection() -> void:
 				"and still has one after it rebuilds itself")
 			if ui.has_method("close"):
 				ui.call("close")))
+
+## "PRESS A KEY…" HAS TO HAVE A WAY OUT OF IT.
+##
+## Pad bindings are deliberately fixed, so `Settings.rebind` refuses a joypad
+## event — which meant somebody who pressed A on a binding row got "press a
+## key…" and, with no keyboard in reach, nothing that would end it: B is not a
+## key either, so the row listened for ever. And every way out of the screen
+## except the two buttons that cleared it by hand left `_listening_for` set, so
+## the next visit opened already waiting for a key nobody had asked it to want.
+func _check_the_rebind_row_can_be_escaped() -> void:
+	var ui = game.get("ui")
+	if ui == null:
+		return
+	ui.open("controls", {})
+	ui._start_listening("interact")
+	_ok(String(ui._listening_for) == "interact", "a binding row can be armed")
+	var pad := InputEventJoypadButton.new()
+	pad.device = 0
+	pad.button_index = JOY_BUTTON_A
+	pad.pressed = true
+	ui._input(pad)
+	_ok(String(ui._listening_for) == "",
+		"and a pad button gets back out of it")
+	# ...AND CLOSING THE SCREEN DISARMS IT.
+	ui._start_listening("interact")
+	ui.close()
+	_ok(String(ui._listening_for) == "",
+		"and leaving the screen stops it listening")
+	# ...AND REBINDING STILL WORKS, which is the thing all of that is guarding.
+	ui.open("controls", {})
+	ui._start_listening("interact")
+	var key := InputEventKey.new()
+	key.keycode = KEY_F
+	key.physical_keycode = KEY_F
+	key.pressed = true
+	ui._input(key)
+	_ok(Settings.binding_label("interact") == "F",
+		"and a key still rebinds (%s)" % Settings.binding_label("interact"))
+	Settings.reset_bindings()
+	if ui.has_method("close"):
+		ui.call("close")
 
 func _fail(msg: String) -> void:
 	errors.append(msg)

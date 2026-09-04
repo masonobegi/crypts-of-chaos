@@ -105,6 +105,23 @@ pause={
 
 textures/vram_compression/import_etc2_astc=true
 
-renderer/rendering_method="forward_plus"
+; gl_compatibility, NOT forward_plus.
+;
+; Godot 4.3 does not fall back. On a machine without a Vulkan-capable driver it
+; tries X11+Vulkan, fails, tries Wayland, fails, prints "Your video card drivers
+; seem not to support the required Vulkan version", suggests a command-line flag
+; and exits 1. The game never reaches its first frame. No Steam customer is
+; going to relaunch anything from a terminal, and that is a refund.
+;
+; It is also the only configuration this project has ever been run in. Every
+; screenshot, every boot check and every visual judgement made during
+; development used gl_compatibility, because the build container has no Vulkan
+; either — so shipping forward_plus would have shipped a renderer the game had
+; literally never started under.
+;
+; The cost is SSAO, which is Forward+ only and was providing contact shading.
+; Nothing else in the look depends on it: the style is flat, stylised, and
+; carried by the outline pass and the palette, both of which work here.
+renderer/rendering_method="gl_compatibility"
 anti_aliasing/quality/msaa_3d=2
 environment/defaults/default_clear_color=Color(0.13, 0.15, 0.18, 1)

@@ -25,7 +25,12 @@ OUT=$(mktemp)
 # Rendered, not headless: the main menu is a Control tree and half of what can
 # go wrong on the way in is layout.
 if command -v xvfb-run >/dev/null 2>&1; then
-  timeout 180 xvfb-run -a "$GODOT" --rendering-method gl_compatibility \
+  # NO --rendering-method. This check exists to boot the game the way a player
+  # boots it, and forcing the renderer here is exactly how "the shipping
+  # renderer does not start on this machine at all" stayed invisible: the
+  # project was set to forward_plus, Godot 4.3 does not fall back, and every
+  # harness in the repo passed a flag that quietly avoided it.
+  timeout 180 xvfb-run -a "$GODOT" \
     --path "$DIR" --quit-after "$FRAMES" >"$OUT" 2>&1
 else
   timeout 180 "$GODOT" --headless --path "$DIR" --quit-after "$FRAMES" >"$OUT" 2>&1

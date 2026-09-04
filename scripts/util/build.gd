@@ -479,8 +479,20 @@ const CEILING := Color(0.66, 0.67, 0.66)
 const TRIM := Color(0.13, 0.50, 0.54)
 const BED_FRAME := Color(0.90, 0.92, 0.95)
 const LINEN := Color(0.96, 0.97, 0.99)
-const SCRUB_BLUE := Color(0.20, 0.56, 0.94)
-const SCRUB_GREEN := Color(0.16, 0.78, 0.56)
+## SCRUBS THE SAME AGE AS THE BUILDING.
+##
+## These were (0.20, 0.56, 0.94) and (0.16, 0.78, 0.56) — fully saturated
+## primaries in a world made of washed teal, cream and pale green, on the one
+## character the player looks at most. With the rim pass on top of them she did
+## not read as a nurse standing in a ward, she read as a nurse from a different
+## game standing in front of one, and her sleeves went to flat slabs of colour
+## with no shading left in them.
+##
+## Muted to something a hospital laundry has had for a while. Still the only
+## blue figure in a room of pale gowns, which is all the distinctness the
+## suspicion layer needs from a colour.
+const SCRUB_BLUE := Color(0.29, 0.47, 0.63)
+const SCRUB_GREEN := Color(0.31, 0.53, 0.46)
 ## Not really metal any more — see the metallic values at its call sites. A
 ## stylised interior has no reflection probes, so anything above about 0.2
 ## metallic has nothing to reflect and renders as grey mud. Chrome in this game

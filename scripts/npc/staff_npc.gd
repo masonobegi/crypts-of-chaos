@@ -162,145 +162,56 @@ func _tick_state(delta: float) -> void:
 
 ## Nurses do rounds. This is not flavour: a round is how an undocumented
 ## complication gets NOTICED, which is the clock the player is racing.
+## Nurses do rounds. This is the VISIBLE half of Adeyemi being on the ward: the
+## chart entries she writes at ten, one, four and seven are produced by WardDay,
+## but somebody has to actually walk to the bed.
+##
+## None of this worked. `_begin_round` targeted `h.point_in(p.room, ...)` and
+## Patient has no `room` — accessing a property that is not there aborts the
+## function, silently, so `_round_target` stayed empty and the nurse never once
+## left the station. `_do_round` then called `ps.unnoticed_complications()` and
+## `ps.notice_complication()`, and `_note_injury_pattern` called
+## `p.acquired_injuries()` — none of which exist on PatientSystem or Patient.
+## All of it is left over from a complications-and-injuries model that was
+## deleted, and the only reason it never crashed is that the first dead property
+## access killed the function before it could reach the rest.
 func _begin_round() -> void:
 	_round_target = ""
 	if role != "nurse":
 		return
 	var ps = get_tree().get_first_node_in_group("patient_system")
-	var h = get_tree().get_first_node_in_group("hospital")
-	if ps == null or h == null:
+	if ps == null:
 		return
 	var list: Array = ps.active()
 	if list.is_empty():
 		return
-	# A lazy nurse does not do rounds. That is worth knowing about her.
 	if archetype == "lazy" and RNG.chance("lazy_skip_round", 0.7):
 		return
 	var p = RNG.pick("round_pick", list)
-	_round_target = p.id
-	goto(h.point_in(p.room, "round_pt"), false)
+	var body = ps.get_body(String(p.id))
+	if body == null or not is_instance_valid(body) or not body.is_inside_tree():
+		return
+	_round_target = String(p.id)
+	# Stop a metre short, on the side the bed is open. Walking into the mattress
+	# is what the nav margin is for.
+	goto(body.global_position + Vector3(0.0, 0.0, 1.1), false)
 
-## What a nurse checking on somebody eventually notices is not any one injury —
-## it is the SHAPE of them. This person came in with an ankle and has since
-## acquired a wrist and a head. That is not a clinical observation, it is an
-## arithmetic one, and it does not require anybody to have seen anything.
-##
-## Attribution is the other half. How sure they are runs off how many people
-## were in the building when it happened: a wrist that went during a night shift
-## with one nurse on it is not a mystery anybody has to solve, and there is no
-## cover story for arithmetic.
-func _note_injury_pattern(p) -> void:
-	if mind == null:
-		return
-	var acquired: Array = p.acquired_injuries()
-	if acquired.size() < 2:
-		return
-	if not RNG.chance("injury_pattern_note", 0.5 + mind.observance * 0.5):
-		return
-	var fewest := 99
-	for c in acquired:
-		fewest = mini(fewest, c.staff_present)
-	say(String(RNG.pick("injury_pattern_bark", [
-		"How many things is that now, for %s?" % p.display_name,
-		"They came in with one problem. They have three.",
-		"That's the second one this week on this bed.",
-		"Nobody's written down how any of this happened.",
-	])), 4.0)
-	var ev := Evidence.new()
-	ev.kind = "ward_acquired_injuries"
-	ev.about_actor = "player"
-	ev.patient_id = p.id
-	ev.source = Evidence.Source.INFERRED
-	ev.time = GameState.career_minutes
-	ev.base_weight = clampf(0.25 + 0.22 * float(acquired.size()), 0.25, 0.9)
-	ev.certainty = clampf(1.15 - 0.13 * float(fewest), 0.4, 1.0)
-	ev.summary = "%s has picked up %d separate injuries on this ward" % [
-		p.display_name, acquired.size()]
-	mind.add_evidence(ev)
-	make_a_note()
-
-## Somebody still on a trolley in Intake most of a shift later is not an
-## emergency any more, it is a decision somebody made. The act of ramping them
-## is witnessed at the time; this is the half that keeps mattering afterwards,
-## and it is what stops leaving a patient out there being free.
-func _note_if_left_in_the_corridor(p) -> void:
-	if mind == null or p.room != "intake" or p.corridor_minutes < 240.0:
-		return
-	if not RNG.chance("corridor_note", 0.55 + mind.observance * 0.45):
-		return
-	var hours: float = p.corridor_minutes / 60.0
-	say(String(RNG.pick("corridor_bark", [
-		"%s is still out here, you know." % p.display_name,
-		"Are we finding %s a bed at any point?" % p.display_name,
-		"This one's been on a trolley since this morning.",
-		"We can't keep leaving people out here.",
-	])), 3.6)
-	var ev := Evidence.new()
-	ev.kind = "patient_left_in_corridor"
-	ev.about_actor = "player"
-	ev.patient_id = p.id
-	ev.source = Evidence.Source.WITNESSED
-	ev.time = GameState.career_minutes
-	# Grows with how long they have been out there, so a couple of hours is
-	# nothing and most of a day is a complaint.
-	ev.base_weight = clampf(0.12 + hours * 0.05, 0.12, 0.6)
-	ev.certainty = 0.9
-	ev.cover_tag = "bed_shortage"
-	ev.summary = "%s left on a trolley in Intake for %.0f hours" % [p.display_name, hours]
-	mind.add_evidence(ev)
-	make_a_note()
-
+## At the bedside. She looks at them, and sometimes says something — which is
+## most of what makes the ward feel staffed rather than decorated.
 func _do_round() -> void:
 	var ps = get_tree().get_first_node_in_group("patient_system")
-	if ps == null or mind == null:
+	if ps == null:
 		return
-	var p = ps.get_patient(_round_target)
-	if p == null or p.discharged:
+	var body = ps.get_body(_round_target)
+	if body == null or not is_instance_valid(body) or not body.is_inside_tree():
 		return
-	_note_if_left_in_the_corridor(p)
-	_note_injury_pattern(p)
-	var unnoticed: Array = ps.unnoticed_complications(p)
-	if unnoticed.is_empty():
-		if RNG.chance("round_quiet", 0.3):
-			say(String(RNG.pick("round_ok", [
-				"All fine here.", "No change.", "Doing nicely, this one.",
-			])), 2.4)
-		return
-	for c in unnoticed:
-		# Severe things are hard to miss; subtle ones need somebody attentive.
-		var chance: float = clampf(0.25 + c.severity * 0.8 + mind.observance * 0.4, 0.1, 0.98)
-		if not RNG.chance("round_notice", chance):
-			continue
-		ps.notice_complication(p, c, npc_id, display)
-		say(String(RNG.pick("round_notice_bark", [
-			"Hang on — when did this start?",
-			"This wasn't in the notes.",
-			"Doctor? You'll want to see this.",
-			"That's new, that is.",
-		])), 3.4)
-		# She stops at the bed and writes it down. This is the round made
-		# visible: the player watches a nurse walk into Room 103, stand there,
-		# and minute something — and that is the entire game in a five-second
-		# observation, with nothing announced and no number on screen.
-		make_a_note()
-		# Finding something undocumented on your ward is not proof of anything,
-		# but it is exactly the kind of thing that accumulates.
-		if c.documented_cause == "":
-			var ev := Evidence.new()
-			ev.kind = "undocumented_complication_seen"
-			ev.about_actor = "player"
-			ev.patient_id = p.id
-			ev.source = Evidence.Source.WITNESSED
-			ev.time = GameState.career_minutes
-			ev.base_weight = 0.18 + c.severity * 0.3
-			ev.certainty = 0.8
-			ev.cover_tag = "clinical_findings"
-			ev.summary = "found %s on %s with nothing in the notes" % [
-				c.display_name, p.display_name]
-			mind.add_evidence(ev)
-		return
+	look_toward(body.global_position + Vector3(0, 1.2, 0))
+	if RNG.chance("round_quiet", 0.45):
+		say(String(RNG.pick("round_ok", [
+			"All fine here.", "No change.", "Doing nicely, this one.",
+			"Obs are stable.", "I'll write that up.",
+		])), 2.4)
 
-## Only worth crossing the ward for if they actually have something on you.
 func _wants_a_word() -> bool:
 	if mind == null or mind.deal_state != "none":
 		return false

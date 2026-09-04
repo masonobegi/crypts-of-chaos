@@ -221,6 +221,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_tutorial_finishes()
 	_check_writing_is_observed(w)
 	_check_discharged_patients_leave(w)
+	_check_the_nurse_does_rounds()
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
@@ -272,6 +273,45 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## THE NURSE ACTUALLY WALKS TO A BED.
+##
+## `_begin_round` targeted `h.point_in(p.room, ...)` and Patient has no `room`.
+## Accessing a property that is not there aborts the function silently, so
+## `_round_target` stayed empty and Adeyemi never once left the nurses' station
+## in the entire life of the game. `_do_round` was worse: it called
+## `unnoticed_complications()` and `notice_complication()` on PatientSystem and
+## `acquired_injuries()` on Patient, none of which exist — all left over from a
+## complications model that was deleted. The only reason none of it ever crashed
+## is that the first dead property access killed the function before it reached
+## the rest.
+func _check_the_nurse_does_rounds() -> void:
+	var nurse = null
+	for n in _all_nodes(tree.root):
+		# GUARDED. `get()` on a node without the property returns null, and
+		# String(null) throws — which aborts this whole check mid-function
+		# without erroring, so it asserted nothing and the smoke count did not
+		# move. Same trap as CLAUDE.md 11, and the count is the only tell.
+		if n.get("npc_id") == null:
+			continue
+		if String(n.get("npc_id")) == "nurse_0":
+			nurse = n
+			break
+	if nurse == null:
+		_fail("no nurse on the ward")
+		return
+	# Drive her into the state that starts a round, the way her own timer does.
+	nurse.call("_enter", 6)          # State.TASK — enum index, checked
+	var target := String(nurse.get("_round_target"))
+	_ok(target != "",
+		"the nurse picks somebody to go and look at%s"
+			% ("" if target != "" else " — she never leaves the station"))
+	if target == "":
+		return
+	# ...and it is a real patient, not a name from a table that no longer exists.
+	var ps = tree.get_first_node_in_group("patient_system")
+	_ok(ps != null and ps.get_patient(target) != null,
+		"and the person she picked is on this ward (%s)" % target)
 
 ## SOMEBODY YOU SEND HOME GOES HOME.
 ##

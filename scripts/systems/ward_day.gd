@@ -1153,11 +1153,15 @@ func review_truth() -> Dictionary:
 			"flagged": is_flagged(pid),
 			"tells_everyone": bool(c.get("tells_everyone", false)),
 			"was_asked": bool(st["asked_symptom"]),
-			## Somebody outside the hospital reads this chart. On the first ward
-			## that is Ruth Kerrigan, who arrives at seven; on the second it is
-			## Gordon's daughter, who asked for a copy before you got here.
+			## Somebody outside the hospital reads this chart — either because
+			## they asked for a copy before you got here, which is authored, or
+			## because they are standing at the bed having turned up.
+			##
+			## This named Ruth Kerrigan, and she was the only family in the game
+			## who could ever arrive. Now that all three do, the rule is what it
+			## always meant: whoever is here reads it.
 			"family_reads_charts": bool(c.get("family_reads_charts", false))
-				or (pid == "kerrigan" and _family_been.has("kerrigan")),
+				or _family_been.has(pid),
 			## ...and one patient reads it herself.
 			"reads_own_chart": bool(c.get("reads_own_chart", false)),
 			"family": String(c.get("family", "The family")),

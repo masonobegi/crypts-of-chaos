@@ -70,7 +70,10 @@ func tick() -> bool:
 			stage = "chain"
 		"chain":
 			if _check_the_screens_chain():
-				stage = "done"
+				stage = "buttons"
+		"buttons":
+			_check_the_handover_button_reaches_tomorrow()
+			stage = "done"
 		"done":
 			_report()
 			return true
@@ -537,6 +540,63 @@ func _check_the_screens_chain() -> bool:
 			"remembered": PackedStringArray(["oduya"])}
 	EventBus.request_ui.emit(String(_chain[_chain_at]), ctx)
 	return false
+
+## THE ONE BUTTON THAT ENDS A SHIFT, PRESSED.
+##
+## Everything above reaches a screen by emitting `request_ui` for it, which is
+## how the End of Shift card kept passing every check while being unreachable in
+## the actual game. The review screen's "Go home" did:
+##
+##     EventBus.request_ui.emit("day_over", ...)   # opens the card
+##     close()                                     # ...and frees it
+##
+## `UIRoot.open()` closes whatever is up before building the next screen, and a
+## signal runs inline, so by the time that lambda continued `current` WAS the
+## End of Shift card. The only button that ends the first shift threw the whole
+## shift away: the card flashed, the player was dumped into a ward with a dead
+## clock, and "Work tomorrow" — the sole caller of `_carry()`, which increments
+## the day, carries the debt forward and saves — could never be pressed. No
+## career could reach day two, and 273 assertions, 74 smoke checks, 31
+## playtests and four probes all passed.
+##
+## So this presses the real button and then looks at what is on screen.
+func _check_the_handover_button_reaches_tomorrow() -> void:
+	var ui = game.get("ui")
+	if ui == null:
+		_fail("no UI to press")
+		return
+	EventBus.request_ui.emit("review", {})
+	if String(ui.get("current_id")) != "review":
+		_fail("the handover would not open to be pressed")
+		return
+	var go = _find_button(ui.get("current"), "Go home")
+	_ok(go != null, "the handover has a button that ends the shift")
+	if go == null:
+		return
+	go.emit_signal("pressed")
+	_ok(String(ui.get("current_id")) == "day_over",
+		"and pressing it leaves the End of Shift card UP (got '%s')"
+			% String(ui.get("current_id")))
+	var tomorrow = _find_button(ui.get("current"), "Work tomorrow")
+	_ok(tomorrow != null, "with the button that starts tomorrow on it")
+	# ...and Escape must not be able to take it away again.
+	if ui.has_method("_unhandled_input"):
+		var ev := InputEventAction.new()
+		ev.action = "pause"
+		ev.pressed = true
+		ui.call("_unhandled_input", ev)
+		_ok(String(ui.get("current_id")) == "day_over",
+			"and Escape does not strand you in a finished ward")
+	if ui.has_method("close"):
+		ui.call("close")
+
+func _find_button(root, label: String):
+	if root == null:
+		return null
+	for n in _all_nodes(root):
+		if n is Button and String(n.text).findn(label) >= 0:
+			return n
+	return null
 
 ## TOMORROW IS FIVE DIFFERENT PEOPLE, IN THE BEDS.
 ##

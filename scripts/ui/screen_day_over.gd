@@ -68,7 +68,7 @@ func _build() -> void:
 		close()
 		EventBus.request_ui.emit("morning", {})))
 	foot.add_child(UIKit.button("Main menu", func():
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
+		_leave("res://scenes/MainMenu.tscn")))
 	card_footer(foot)
 
 ## What last night actually costs you, said out loud rather than stored in a
@@ -208,10 +208,26 @@ func _ending_card(ending: String) -> void:
 	var foot := UIKit.vbox(6)
 	foot.add_child(UIKit.button("Start again", func():
 		GameState.start_new_career()
-		get_tree().change_scene_to_file("res://scenes/Game.tscn")))
+		_leave("res://scenes/Game.tscn")))
 	foot.add_child(UIKit.button("Main menu", func():
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn")))
+		_leave("res://scenes/MainMenu.tscn")))
 	card_footer(foot)
 
 func ward():
 	return get_tree().get_first_node_in_group("ward_day")
+
+## LEAVING A SCREEN THAT STOPPED THE WORLD.
+##
+## This card pauses the tree, and all three of its exits called
+## `change_scene_to_file` directly — so the main menu loaded with
+## `SceneTree.paused` still true and every button on it was inert. The player
+## finished a career, chose "Main menu", and arrived at a title screen that did
+## not respond to anything. `UIRoot`'s own pause menu had always got this right;
+## the ending cards never did.
+##
+## The mouse goes back too. It is captured for the first-person view and a menu
+## you cannot point at is the same dead end by a different route.
+func _leave(scene_path: String) -> void:
+	get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	get_tree().change_scene_to_file(scene_path)

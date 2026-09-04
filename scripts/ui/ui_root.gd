@@ -29,11 +29,22 @@ func _ready() -> void:
 ## The screen a phase could not be left without used to be put back here when
 ## Escape dismissed it. There are no phases left to strand: the day runs on one
 ## clock and the morning review is simply not dismissible.
+## Screens that own the only route forward. Escape must not close these.
+const UNDISMISSABLE := ["review", "day_over"]
+
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("pause"):
 		if current != null:
-			if current_id == "review":
-				return          # she is not finished with you
+			# THE SCREENS YOU DO NOT GET TO DISMISS.
+			#
+			# `review` was guarded and the screen AFTER it was not, so Escape —
+			# the universal close-this reflex — killed the End of Shift card and
+			# stranded the player in a finished ward: dead clock, blank
+			# objective, and "Work tomorrow" gone, which is the only thing that
+			# advances the day. The two ending cards had the same hole, and
+			# there is nothing behind those at all.
+			if current_id in UNDISMISSABLE:
+				return
 			close()
 		else:
 			open("pause", {})

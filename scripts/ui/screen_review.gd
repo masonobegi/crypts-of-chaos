@@ -171,10 +171,19 @@ func _closing(v: VBoxContainer, w) -> void:
 	if not _committed:
 		_committed = true
 		_rv.commit(w.review_findings())
+	# NO close() AFTER THE REQUEST. `UIRoot.open()` closes whatever is currently
+	# up before it builds the next screen, and `request_ui` is a plain signal, so
+	# it runs to completion inline: by the time this lambda continues, `current`
+	# is already the End of Shift card — and `close()` then freed it.
+	#
+	# The only button that ends the first shift threw the whole shift away. The
+	# card flashed and vanished, the player was dumped back into a ward with a
+	# dead clock, and "Work tomorrow" — the one caller of `_carry()`, which is
+	# what increments the day, pays Vinnie's balance forward and saves — could
+	# never be pressed. No career could reach day two.
 	card_footer(UIKit.button("Go home", func():
 		EventBus.request_ui.emit("day_over", {"verdict": verdict,
-			"remembered": o.get("remembered", PackedStringArray())})
-		close()))
+			"remembered": o.get("remembered", PackedStringArray())})))
 
 func ward():
 	return get_tree().get_first_node_in_group("ward_day")

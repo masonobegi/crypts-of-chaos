@@ -947,6 +947,7 @@ func rounds_today() -> Array:
 	return dense
 
 func _routine_round(at: int, which := 0) -> void:
+	var wrote := 0
 	for c in Cases.roster():
 		var pid := String(c["id"])
 		var st: Dictionary = state[pid]
@@ -987,6 +988,26 @@ func _routine_round(at: int, which := 0) -> void:
 			e.claim = ChartEntry.Claim.UNWELL
 			e.text = String(ROUND_LINES_UNWELL[(start + which) % ROUND_LINES_UNWELL.size()])
 		records.add(e)
+		wrote += 1
+	# ...AND THE PLAYER IS TOLD IT HAPPENED.
+	#
+	# Writing in the gap between her rounds is the central timing skill of this
+	# game, and the rounds were silent. They appear on the chart, so a player
+	# who opens one afterwards can work backwards — but the pattern is the thing
+	# to learn, and you cannot learn a rhythm you never hear. The board lists
+	# the times; this is the beat.
+	#
+	# It is also the only way the watched day reads as what it is. A flag
+	# doubles her rounds, and the card says so in words — but words on a card at
+	# the end of a night are not the same as noticing, twice as often, that she
+	# has just been round again.
+	# `wrote`, not `state.size()`: she does not write up a bed whose occupant
+	# went home two hours ago, so the roster size is wrong from the first
+	# discharge onward — and this line is on screen precisely when the player
+	# is deciding whether their timing worked.
+	if wrote > 0:
+		EventBus.toast.emit("%s has been round. %d note%s on the chart."
+			% [DB.WARD_NURSE, wrote, "" if wrote == 1 else "s"], "info")
 	_log("round", {"at": at})
 
 ## What a nurse writes at a bedside four times a night — EIGHT on a watched day,

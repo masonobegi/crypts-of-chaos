@@ -755,6 +755,7 @@ func _check_the_money_on_the_hud_is_the_money_you_get() -> void:
 ## Its own stage, because it is the one check in this file that needs frames to
 ## pass in the middle of it. Returns true when it is finished.
 var _toast_step := 0
+var _rounds_announced := 0
 var _toasts_before := 0
 
 func _check_nothing_is_said_into_a_closed_card() -> bool:
@@ -816,10 +817,16 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 	# hardest. It is also the only version of this check that can fail.
 	var was: bool = GameState.flag("watched", false)
 	GameState.set_flag("watched", true)
+	_rounds_announced = 0
+	var heard := func(text: String, _kind: String):
+		if text.begins_with("%s has been round" % DB.WARD_NURSE):
+			_rounds_announced += 1
+	EventBus.toast.connect(heard)
 	var w := WardDay.new()
 	tree.root.add_child(w)
 	w.start()
 	w.advance_to(Cases.DEBT_DUE_MINUTE - 1)
+	EventBus.toast.disconnect(heard)
 
 	var worst := 0
 	var who := ""
@@ -840,6 +847,12 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 			if int(seen[t]) > 1:
 				repeated += 1
 	_ok(worst >= 8, "a watched ward has Adeyemi writing %s up %d times" % [who, worst])
+	# AND SHE SAYS SO. Writing in the gap between her rounds is the central
+	# timing skill of the game and the rounds were silent — a rhythm nobody can
+	# hear is a rhythm nobody learns, and the doubling a flag buys reads as
+	# nothing at all without it.
+	_ok(_rounds_announced >= 8,
+		"and every round she does is announced (%d)" % _rounds_announced)
 	_ok(repeated == 0,
 		"and no two of anybody's round notes are the same words (%d repeats)"
 			% repeated)

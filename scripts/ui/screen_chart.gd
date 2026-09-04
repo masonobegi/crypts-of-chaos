@@ -14,6 +14,15 @@ var _stated := 0
 var _claim := ChartEntry.Claim.UNWELL
 
 func _build() -> void:
+	# THE PERSON STAYS ALIVE WHILE YOU READ ABOUT THEM.
+	#
+	# `pauses_world` defaults to true and this screen stopped overriding it, so
+	# opening a card froze the entire tree. Both cards are deliberately drawn as
+	# an undimmed side panel — `card_shell` exists so the patient stays in shot —
+	# and the whole point is that the clock keeps costing you while you read.
+	# The `_init()` that set this was lost in a rewrite; the terminal screen four
+	# metres away had it right.
+	pauses_world = false
 	_pid = String(ctx.get("patient_id", ""))
 	var c := Cases.by_id(_pid)
 	if c.is_empty():
@@ -80,7 +89,12 @@ func _build() -> void:
 			_stated = w.minute
 			rebuild()))
 		acts.add_child(UIKit.button("Close", close))
-		v.add_child(acts)
+		# PINNED, like every other card. `card_shell` has already made `v` the
+		# inner scrolling box, so these went to the bottom of a list that grows
+		# with every round Adeyemi writes — and on a watched night she writes
+		# seven. The way out of a screen must never be the thing you have to
+		# scroll to find.
+		card_footer(acts)
 
 ## One line of chart, and its metadata underneath in the colour of small print.
 func _entry_row(e: ChartEntry) -> Control:

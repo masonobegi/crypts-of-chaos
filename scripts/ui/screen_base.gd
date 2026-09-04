@@ -62,7 +62,16 @@ func card_shell(width: float, height: float, heading: String, subheading := "") 
 	# Clear of the HUD plates, which are about ninety tall, and no more. The old
 	# margin of 116 left fifty pixels of nothing above and below a card that had
 	# a row of itself under the fold.
-	height = minf(height, get_viewport_rect().size.y - 84.0)
+	# ...AND THE 52px THE PLACER NUDGES IT DOWN.
+	#
+	# `UIKit.place` offsets a side panel by `-height * 0.5 + 52.0`, so a card
+	# capped at exactly `viewport - 84` finished 10px BELOW the bottom of the
+	# window on every machine — the viewport is pinned at 1600x900 with
+	# canvas_items stretch, so it was identical on every monitor rather than a
+	# stray-resolution bug. The patient card is the only one that reaches the
+	# cap, and it is the screen the player lives in: its bottom border, its
+	# content margin and the last button's corner all fell off the screen.
+	height = minf(height, get_viewport_rect().size.y - 84.0 - 52.0)
 	var panel := UIKit.side_panel(width, height)
 	add_child(panel)
 

@@ -46,6 +46,11 @@ func _build() -> void:
 	mv.add_child(UIKit.row("He got",
 		UIKit.money_str(int(res.get("paid", 0))),
 		UIKit.MONEY if not short else UIKit.BAD, 18))
+	# The line that stops this reading as theft.
+	var interest := int(res.get("interest", 0))
+	if interest > 0:
+		mv.add_child(UIKit.row("Interest, 10%% a night on the balance",
+			"+" + UIKit.money_str(interest), UIKit.BAD))
 	mv.add_child(UIKit.rule())
 	mv.add_child(UIKit.row("Still owed",
 		UIKit.money_str(GameState.debt_remaining()), UIKit.BAD, 18))

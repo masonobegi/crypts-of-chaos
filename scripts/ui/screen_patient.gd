@@ -9,6 +9,15 @@ var _pid := ""
 var _said := ""
 
 func _build() -> void:
+	# THE PERSON STAYS ALIVE WHILE YOU READ ABOUT THEM.
+	#
+	# `pauses_world` defaults to true and this screen stopped overriding it, so
+	# opening a card froze the entire tree. Both cards are deliberately drawn as
+	# an undimmed side panel — `card_shell` exists so the patient stays in shot —
+	# and the whole point is that the clock keeps costing you while you read.
+	# The `_init()` that set this was lost in a rewrite; the terminal screen four
+	# metres away had it right.
+	pauses_world = false
 	_pid = String(ctx.get("patient_id", ""))
 	var c := Cases.by_id(_pid)
 	var w = ward()
@@ -25,9 +34,14 @@ func _build() -> void:
 	# WIDER, because six verbs is a lot of card. At 660 in a 1600-wide window
 	# every subtitle wrapped onto a second line and the last two verbs sat
 	# below the fold; the window has the room and the card was not using it.
+	# THE CLOCK GOES ON THE CARD. Every verb below now states what it costs, and
+	# a price is unusable without the balance: the skill in this game is fitting
+	# an action into the gap between Adeyemi's rounds and getting a test back
+	# before you have to decide. The time was on the HUD behind the card, which
+	# is the one place the player is not looking while choosing a verb.
 	var v := card_shell(820, 830, String(c["name"]).to_upper(),
-		"%s  ·  bed %d  ·  %s" % [String(c["condition"]), int(c["bed"]),
-			Cases.tier_name(int(c["tier"]))])
+		"%s  ·  bed %d  ·  %s  ·  %s" % [String(c["condition"]), int(c["bed"]),
+			Cases.tier_name(int(c["tier"])), ChartEntry._hhmm(w.minute)])
 
 	v.add_child(UIKit.label("\"%s\"" % (_said if _said != "" else String(c["opening"])),
 		16, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
@@ -57,11 +71,11 @@ func _build() -> void:
 	acts.add_child(UIKit.label("FINDING OUT", 11, UIKit.INK_DIM))
 
 	acts.add_child(_act("Read the chart",
-		"Everything written today, and when it was written.",
+		"%d min  ·  everything written today, and when it was written." % WardDay.READ_COST,
 		func(): _go("chart")))
 
 	acts.add_child(_act("Ask how they have been",
-		"Whatever they say goes no further unless you write it down.",
+		"free  ·  whatever they say goes no further unless you write it down.",
 		func():
 			_said = w.what_they_say(_pid)
 			rebuild()))
@@ -74,7 +88,7 @@ func _build() -> void:
 		acts.add_child(_note("You examined them.", String(w.examination_of(_pid))))
 	else:
 		acts.add_child(_act("Examine them",
-			"Fifteen minutes, curtains round. It goes in no notes — but you will know.",
+			"%d min  ·  curtains round. It goes in no notes — but you will know." % WardDay.EXAMINE_COST,
 			func():
 				_said = w.examine(_pid)
 				rebuild()))
@@ -85,7 +99,7 @@ func _build() -> void:
 	# ASK THE REGISTRAR. He is in the second group: he writes, in his own name.
 	if WardDay.colleague_available(w.minute):
 		acts.add_child(_act("Ask %s for a second opinion" % WardDay.COLLEAGUE,
-			"A peer, in his own name. He reads the whole chart first.",
+			"%d min  ·  a peer, in his own name. He reads the whole chart first." % WardDay.COLLEAGUE_COST,
 			func():
 				var e = w.ask_colleague(_pid)
 				_said = ("\"Agreed. I wouldn't send him anywhere today.\""
@@ -102,7 +116,7 @@ func _build() -> void:
 	# The leading question. Phrased as a clinical enquiry, because that is what
 	# it looks like from the outside — and from the inside, on a good day.
 	acts.add_child(_act("Ask whether they have felt faint at all",
-		"Some people agree with anything. Not all of them remember agreeing.",
+		"%d min  ·  some people agree with anything. Not all of them remember agreeing." % WardDay.ASK_COST,
 		func():
 			var e = w.ask_patient(_pid, "feeling faint this evening")
 			_said = ("\"...Now you mention it. Maybe. A bit.\"" if e != null
@@ -110,14 +124,15 @@ func _build() -> void:
 			rebuild()))
 
 	acts.add_child(_act("Ask Adeyemi to review them",
-		"She writes what she finds, in her own name. That is the point.",
+		"%d min  ·  she writes what she finds, in her own name. That is the point." % WardDay.NURSE_COST,
 		func():
 			w.nurse_check(_pid)
 			_said = "\"I'll look in on him now, doctor.\""
 			rebuild()))
 
 	acts.add_child(_act("Order bloods and a lying/standing BP",
-		"A result is a result. It will say what it says.",
+		"%d min to order, %d to come back  ·  a result is a result." % [
+			WardDay.ORDER_COST, WardDay.TEST_TURNAROUND],
 		func():
 			var o = w.order_test(_pid, "lying and standing BP")
 			_said = "\"Someone will be along for that.\""

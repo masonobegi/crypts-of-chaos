@@ -816,8 +816,11 @@ func end_day() -> Dictionary:
 	# or not. It is the only money mechanism in the game: a bad night is never
 	# charged twice, it simply takes longer to get out from under. And it is
 	# what makes coasting diverge instead of merely being slow.
+	var interest := 0
 	if still_owed > 0:
+		var before_interest := still_owed
 		still_owed = int(round(float(still_owed) * (1.0 + Cases.DEBT_INTEREST)))
+		interest = still_owed - before_interest
 		GameState.set_flag("debt_remaining", still_owed)
 	cash = in_hand - handed_over
 	GameState.cash = cash
@@ -825,6 +828,15 @@ func end_day() -> Dictionary:
 	var res := {
 		"earned": p["earned"], "paid": handed_over, "cash": cash,
 		"still_owed": still_owed, "wanted": debt_tonight,
+		# EXPORTED SO A SCREEN CAN SAY IT. Ten per cent a night compounding is
+		# the only money mechanism in the game and no screen mentioned it: night
+		# one on the honest path hands over $3,350 against a $15,500 debt and
+		# then reads "Still owed $13,365", when 15,500 - 3,350 is 12,150. In a
+		# game whose entire score is one number owed, $1,215 appeared from
+		# nowhere on the wrong side of the ledger. On a bad night tomorrow's
+		# figure is LARGER than today's after you handed over real money, which
+		# reads as the game cheating rather than as a loan shark.
+		"interest": interest,
 		"short": short, "held": held_ids(), "discharged": discharged_ids(),
 		"findings": review_findings(),
 	}

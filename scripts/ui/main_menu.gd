@@ -177,9 +177,54 @@ func _new_career() -> void:
 	if _seed_field and _seed_field.text.strip_edges() != "":
 		var txt := _seed_field.text.strip_edges()
 		s = int(txt) if txt.is_valid_int() else hash(txt)
+	# ASK FIRST IF THERE IS SOMETHING TO DESTROY.
+	#
+	# There is one save slot. "New Career" is the big dark-filled button and
+	# "Continue — Day 9" sits directly under it, so the misclick is one row and
+	# it silently erases eight or nine completed shifts with no way back.
+	if SaveSystem.has_save(SaveSystem.AUTOSAVE) and not _confirming:
+		_confirming = true
+		_ask_before_erasing(s)
+		return
+	_confirming = false
 	GameState.start_new_career(s)
 	SaveSystem.delete_save(SaveSystem.AUTOSAVE)
 	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+
+var _confirming := false
+
+func _ask_before_erasing(s: int) -> void:
+	# AUTOSAVE is a String slot name, not an index.
+	var what := "your current career"
+	for row in SaveSystem.list_saves():
+		if String(row.get("slot", "")) == SaveSystem.AUTOSAVE:
+			what = "Day %d" % int(row.get("day", 1))
+			break
+	var ui: Node = get_node_or_null("MenuUI")
+	if ui == null:
+		ui = load("res://scripts/ui/ui_root.gd").new()
+		ui.name = "MenuUI"
+		ui.set("menu_mode", true)
+		add_child(ui)
+	var card := Control.new()
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.add_child(UIKit.dim_background())
+	var panel := UIKit.center_panel(560, 260)
+	card.add_child(panel)
+	var v := UIKit.vbox(10)
+	panel.add_child(v)
+	v.add_child(UIKit.title("START AGAIN?", 26, UIKit.BAD))
+	v.add_child(UIKit.label(
+		"This erases %s. There is only one save and it does not come back."
+			% what, 15, UIKit.INK, HORIZONTAL_ALIGNMENT_LEFT, true))
+	v.add_child(UIKit.spacer(6))
+	v.add_child(UIKit.button("Erase it and start again", func():
+		card.queue_free()
+		_new_career(), Color(0.30, 0.16, 0.16)))
+	v.add_child(UIKit.button("Keep my career", func():
+		_confirming = false
+		card.queue_free()))
+	ui.add_child(card)
 
 func _continue() -> void:
 	GameState.set_flag("continue_save", true)

@@ -123,7 +123,12 @@ func _closing(v: VBoxContainer, w) -> void:
 	# The money, and what it did or did not cover. Vinnie came at eight; this is
 	# what he found. Being short is not a game over — it is tomorrow being worse.
 	v.add_child(UIKit.rule())
-	var short: bool = w.cash < 0
+	# `w.cash` is `in_hand - min(in_hand, debt_remaining)` and can never be
+	# negative, so this was false on every night that has ever been played: a
+	# night $300 short printed "Left over $0" in the GREEN money border and the
+	# authored paragraph for coming up short could not render. The end-of-shift
+	# card documents this exact bug being fixed there and not here.
+	var short: bool = bool(w.end_day().get("short", false))
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD if short else UIKit.MONEY)
 	var mv := UIKit.vbox(2)
 	mv.add_child(UIKit.row("Owed", UIKit.money_str(w.debt_tonight), UIKit.INK_DIM))

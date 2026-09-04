@@ -51,6 +51,14 @@ func _build() -> void:
 		"A discharge pays %s. A night in a bed pays more, and the difference depends on who is paying for the bed."
 			% UIKit.money_str(Cases.DISCHARGE_FEE),
 		12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	# THE ONLY PLACE THE INTEREST IS STATED BEFORE IT IS CHARGED. The morning
+	# card calls itself the place the premise is stated, and it left out the
+	# compounding — which is the single mechanism that decides whether a career
+	# ends in PAID or STRUCK OFF.
+	mv.add_child(UIKit.label(
+		"Whatever is still owed at the end of the night grows by %d%% before the next one."
+			% int(round(Cases.DEBT_INTEREST * 100.0)),
+		12, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
 	m.add_child(mv)
 	v.add_child(m)
 

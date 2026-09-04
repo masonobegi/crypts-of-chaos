@@ -463,15 +463,19 @@ func farthest_ward_from(pos: Vector3) -> String:
 			best = r.key
 	return best
 
-func prompt(_player) -> Array:
-	var sub := ""
-	if mind:
-		var tier := mind.tier(GameState.career_minutes, GameState.active_covers)
-		sub = ["", "seems a bit off with you", "is watching you", "does not trust you",
-			"has made up their mind about you"][clampi(tier, 0, 4)]
-	return ["Talk to %s" % display, sub]
-
-func interact(player, _held) -> void:
-	interrupt_for_talk()
-	look_toward(player.global_position if player else global_position)
-	EventBus.request_ui.emit("dialogue", {"npc_id": npc_id})
+# A member of staff was somebody you could talk to: prompt() offered it and
+# interact() opened the dialogue screen. That screen went with Dialogue and
+# there is nothing behind the keypress any more — `request_ui.emit("dialogue")`
+# reaches a router that has no "dialogue" in it, logs a warning nobody sees, and
+# returns. So the prompt goes too, rather than hanging on a door that no longer
+# opens. This is the same cleanup VisitorNPC already had; StaffNPC was missed.
+#
+# It was the worst-placed one of the pair. Adeyemi is the only other person on
+# the ward, she is named in the morning briefing, and she talks in subtitles —
+# so everybody presses E on her inside two minutes and gets a woman who turns
+# her head and says nothing. Holding E also parked her in State.TALK, which is
+# excluded from both suspicion escalation and noise investigation, so the one
+# witness in the building could be frozen by leaning on a key.
+#
+# She watches, and she writes it up in the morning. That was always the
+# dangerous half.

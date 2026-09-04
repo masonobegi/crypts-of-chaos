@@ -73,7 +73,10 @@ func tick() -> bool:
 				stage = "buttons"
 		"buttons":
 			_check_the_handover_button_reaches_tomorrow()
-			stage = "done"
+			stage = "toasts"
+		"toasts":
+			if _check_nothing_is_said_into_a_closed_card():
+				stage = "done"
 		"done":
 			_report()
 			return true
@@ -713,6 +716,65 @@ func _check_the_money_on_the_hud_is_the_money_you_get() -> void:
 	tree.root.remove_child(q)
 	q.free()
 	GameState.minute_of_day = was
+
+## A TOAST RAISED BEHIND A CARD IS STILL THERE WHEN THE CARD GOES.
+##
+## A toast lived six real seconds from the moment it was shown, and that clock
+## ran whether or not there was a 700-pixel briefing panel on top of it. The
+## first line of teaching in the game is emitted on the same frame the morning
+## card opens — five patient rows and three money figures to read — so the one
+## instruction that tells a new player what the first verb is had reliably
+## expired before they pressed "Start the round", and never came back. A lab
+## result landing while a chart was open died the same way: five minutes to
+## order, seventy-five to wait, and nobody ever saw it.
+##
+## Its own stage, because it is the one check in this file that needs frames to
+## pass in the middle of it. Returns true when it is finished.
+var _toast_step := 0
+var _toasts_before := 0
+
+func _check_nothing_is_said_into_a_closed_card() -> bool:
+	var hud = tree.get_first_node_in_group("hud")
+	if hud == null or not hud.has_method("set_modal"):
+		_fail("no HUD to talk to")
+		return true
+	_toast_step += 1
+	if _toast_step == 1:
+		_toasts_before = _toast_count(hud)
+		hud.set_modal(true)
+		# A LINE NOTHING ELSE SAYS. `_drain_toasts` merges a repeat of the line
+		# already at the bottom into a tally on the existing label rather than
+		# adding a panel — so a check that counts panels and reuses a line the
+		# run has already spoken watches the count not move and calls it a bug.
+		EventBus.toast.emit("Blue folder, third shelf, behind the kettle.", "info")
+		return false
+	# The queue also holds a half-second gap between toasts, so "after the card
+	# closes" is a window rather than a frame. Poll it.
+	if _toast_step < 120:
+		if _toast_count(hud) != _toasts_before:
+			_fail("a toast was drawn behind a card (%d, was %d)"
+				% [_toast_count(hud), _toasts_before])
+			return true
+		return false
+	if _toast_step == 120:
+		_ok(_toast_count(hud) == _toasts_before,
+			"nothing is drawn behind a card (%d, was %d)"
+				% [_toast_count(hud), _toasts_before])
+		hud.set_modal(false)
+		return false
+	if _toast_count(hud) > _toasts_before:
+		_ok(true, "and it arrives when there is a screen to see it on (%d, was %d)"
+			% [_toast_count(hud), _toasts_before])
+		return true
+	if _toast_step > 260:
+		_ok(false, "and it arrives when there is a screen to see it on — it did not")
+		return true
+	return false
+
+## The HUD's toast column.
+func _toast_count(hud) -> int:
+	var col = hud.get("_toasts")
+	return col.get_child_count() if col != null else -1
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

@@ -59,7 +59,23 @@ func _ready() -> void:
 	# Deferred because the ward is built after this: connecting here would find
 	# no WardDay in the group yet.
 	call_deferred("_hook_the_ward")
-	call_deferred("_say")
+	# ...AND THE FIRST LINE WAITS FOR THE BRIEFING TO CLOSE.
+	#
+	# There are three lines of teaching in this game. The first one — "Five
+	# beds. Read somebody's chart before you decide anything." — was emitted on
+	# the same frame the morning card opens, and the morning card is a
+	# 700-pixel panel with five patient rows and three money figures on it.
+	# Nobody reads that in six seconds.
+	#
+	# The toast queue no longer ages behind a card, which fixes the general
+	# case, but this one deserves better than "still there when you look": the
+	# player is being told what to do first, so it should arrive at the moment
+	# they can do it. `start_day()` is what "Start the round" presses.
+	if not GameState.day_started.is_connected(_on_day_started):
+		GameState.day_started.connect(_on_day_started)
+
+func _on_day_started(_d: int) -> void:
+	_say()
 
 func _hook_the_ward() -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")

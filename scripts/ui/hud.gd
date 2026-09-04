@@ -400,8 +400,11 @@ func _on_prompt_cleared() -> void:
 ## stayed clipped until the player closed the card.
 var _modal_open := false
 
-func drop_subtitle() -> void:
-	set_modal(true)
+# `drop_subtitle()` used to live here. It had no callers anywhere in the
+# project and its whole body was `set_modal(true)` — a latch nothing else would
+# ever have cleared. Harmless while `_modal_open` only suppressed subtitles;
+# now that it also holds the toast queue, one stray call would have silenced
+# every toast for the rest of the shift.
 
 ## A CARD IS UP FOR AS LONG AS IT IS UP, not just for the instant it opens.
 ##
@@ -444,6 +447,23 @@ func _on_toast(text: String, kind: String) -> void:
 	_toast_queue.append({"text": text, "kind": kind})
 
 func _drain_toasts(delta: float) -> void:
+	# NOTHING IS SHOWN BEHIND A CARD, and nothing ages behind one either.
+	#
+	# A toast lives six seconds from the moment it is shown, and that clock ran
+	# whether or not there was a 700-pixel briefing card sitting on top of it.
+	# The very first line of teaching in the game — "Five beds. Read somebody's
+	# chart before you decide anything." — is emitted on the same frame the
+	# morning card opens, and the morning card has five patient rows and three
+	# money figures on it. Nobody reads that in six seconds, so the instruction
+	# that tells a new player what the first verb is had reliably expired
+	# before they pressed "Start the round", and it never came back.
+	#
+	# The same applied to a lab result landing while a chart was open: five
+	# minutes to order, seventy-five to wait, and it could arrive and die
+	# entirely unseen. They queue instead, and the queue is not drained until
+	# there is a screen to see them on. Subtitles already worked this way.
+	if _modal_open:
+		return
 	_toast_gap = maxf(0.0, _toast_gap - delta)
 	if _toast_queue.is_empty() or _toast_gap > 0.0:
 		return
@@ -501,7 +521,16 @@ func _show_toast(text: String, kind: String) -> void:
 	# and resuming on a freed node throws.
 	if not is_inside_tree():
 		return
-	await get_tree().create_timer(6.0).timeout
+	# Six seconds OF BEING VISIBLE. `create_timer` runs while the tree is
+	# paused, so a toast shown a frame before a card opened spent its whole
+	# life behind it.
+	var left := 6.0
+	while left > 0.0:
+		await get_tree().process_frame
+		if not is_instance_valid(p) or not is_inside_tree():
+			return
+		if not _modal_open:
+			left -= get_process_delta_time()
 	if not is_instance_valid(p) or not is_inside_tree():
 		return
 	var tw := create_tween()

@@ -91,21 +91,35 @@ func _play(day: int, picks: Array) -> Dictionary:
 	return {"verdict": String(o["verdict"]), "paid": int(res["paid"]),
 		"indef": int(o["indefensible"]), "who": names, "kept": keep.size()}
 
+## Turn a roster back into per-slot candidate indices, which is what
+## `Cases.forced_picks` speaks.
+func _picks_for(day: int, deal: Array) -> Array:
+	var by_bed := {}
+	for c in Cases.pool_for(day):
+		var b := int(c["bed"])
+		if not by_bed.has(b):
+			by_bed[b] = []
+		by_bed[b].append(String(c["id"]))
+	var beds: Array = by_bed.keys()
+	beds.sort()
+	var picks: Array = []
+	for i in beds.size():
+		picks.append(int(Array(by_bed[beds[i]]).find(String(deal[i]["id"]))))
+	return picks
+
 func run() -> void:
 	print("\n=== EVERY DEAL, PLAYED HONESTLY ===")
 	for day in range(1, Cases.DAYS.size() + 1):
-		var sizes: Array = Cases.slot_sizes(day)
-		var total := 1
-		for n in sizes:
-			total *= int(n)
+		# EVERY WARD THIS DAY CAN DEAL, not every product of its slots. Two beds
+		# on each ward are paired — exactly one of them is ill — so half the
+		# cartesian product is a board the game cannot produce, including boards
+		# with nobody ill on them at all, which no honest play can survive.
+		var deals: Array = Cases.enumerate_draws(day)
+		var total := deals.size()
 		var worst := ""
 		var lowest := 999999
-		for combo in total:
-			var picks: Array = []
-			var rest := combo
-			for n in sizes:
-				picks.append(rest % int(n))
-				rest /= int(n)
+		for deal in deals:
+			var picks: Array = _picks_for(day, deal)
 			var r := _play(day, picks)
 			played += 1
 			if String(r["verdict"]) == ReviewSystem.OUTCOME_ESCALATED:
@@ -157,9 +171,7 @@ func _check_the_draw_is_actually_random() -> void:
 		careers[key] = true
 	GameState.seed_value = was
 	for d in range(1, Cases.DAYS.size() + 1):
-		var possible := 1
-		for n in Cases.slot_sizes(d):
-			possible *= int(n)
+		var possible: int = Cases.enumerate_draws(d).size()
 		var got: int = Dictionary(per_ward[d]).size()
 		if got < possible:
 			_fail("ward %d deals only %d of its %d possible wards in 2000 seeds"

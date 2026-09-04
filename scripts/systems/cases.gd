@@ -311,6 +311,55 @@ const DAY_ONE := [
 		"readmit_discharge": "Again. Right. I'll be keeping my own notes.",
 		"readmit_exam": "Symptom free by the time you get to her, and unimpressed.",
 	},
+	## ---- THE PAIR. Bed one and bed four swap which of them is genuinely ill,
+	## so the bed you have to find is not the same bed every career. Both are
+	## premium, so the money on the ward is identical either way.
+	{
+		"id": "vantol", "name": "Marisol van Tol", "age": 39, "bed": 1,
+		"condition": "Cellulitis, resolved",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.35,
+		"recall": 0.9,
+		"summary": "Margins receded well inside the line. Apyrexial. Oral switch done.",
+		"opening": "It's gone down. Look — it's gone right down, hasn't it.",
+		"later": "I've been walking on it all morning and it's fine.",
+		"evening": "My husband's outside. He's been outside since four.",
+		"pressed": "You keep coming back to the leg. Is it the leg?",
+		"on_your_note": "What have you put? I'd like to know what you've put.",
+		"on_hold": "Another night? For a leg that's better?",
+		"on_discharge": "Thank you. Right. I'll get my shoes.",
+		"exam_well": "The leg is cool, the margin is well inside the pen line, and she is right about all of it.",
+		"note": "Premium cover, and completely better. She knows it and she can prove it.",
+		"readmit_summary": "Back at 23:20 with the margin above the line again.",
+		"readmit_opening": "It came back up the leg. In one evening.",
+		"readmit_hold": "Yes. Fine. I'm not going to argue.",
+		"readmit_discharge": "You cannot be serious. Look at it.",
+		"readmit_exam": "Hot, spreading, and nothing like the leg she showed you this morning.",
+	},
+	{
+		"id": "sarkisian", "name": "Aram Sarkisian", "age": 62, "bed": 4,
+		"condition": "Chest pain, troponin rise",
+		"tier": Tier.PREMIUM,
+		"truly_well": false,
+		"suggestible": 0.15,
+		"recall": 0.9,
+		"summary": "Second troponin up on the first. ECG unchanged. Cardiology aware.",
+		"opening": "They said the second blood test was worse. Is that right?",
+		"later": "It's like a band. It's been like a band since Tuesday.",
+		"evening": "It's worse lying flat. I've been sat up since lunchtime.",
+		"pressed": "I'm not making it up. I've never made anything up in my life.",
+		"on_your_note": "Does that say what I told you? Only I want it saying properly.",
+		"on_hold": "Thank you. I didn't fancy the drive, if I'm honest.",
+		"on_discharge": "With the blood test like that? Are you sure?",
+		"exam_unwell": "Grey, clammy, and the pain comes back while you are standing there. The second troponin was not a laboratory error.",
+		"note": "Premium cover and a genuine rise. The one bed on this ward that is not a decision.",
+		"readmit_summary": "Arrested in the car park at 21:05. ROSC after two minutes.",
+		"readmit_opening": "I got as far as the barrier.",
+		"readmit_hold": "Aye. I'll stop where I'm put.",
+		"readmit_discharge": "No. No, not again.",
+		"readmit_exam": "Far worse, and on a monitor this time.",
+	},
 ]
 
 ## DAY TWO IS NOT DAY ONE WITH NEW NAMES.
@@ -564,6 +613,53 @@ const DAY_TWO := [
 		"readmit_discharge": "As you wish. I shall add it to the others.",
 		"readmit_exam": "Nothing to find, and a man writing down that you found nothing.",
 	},
+	## ---- THE PAIR, both premium.
+	{
+		"id": "renshaw", "name": "Gordon Renshaw", "age": 58, "bed": 4,
+		"condition": "Back pain, imaging clear",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.4,
+		"recall": 0.85,
+		"summary": "MRI reported normal. Mobilising. Analgesia stepped down twice.",
+		"opening": "The scan's clear. They told me last night the scan's clear.",
+		"later": "I've been up and down that corridor to prove a point.",
+		"evening": "So what is it that's keeping me here, exactly?",
+		"pressed": "I'd rather you asked me straight than went round the houses.",
+		"on_your_note": "That's a strong word for what I said.",
+		"on_hold": "On the basis of what? The scan's clear.",
+		"on_discharge": "Good. Sensible. Thank you.",
+		"exam_well": "Full range, no deficit, and he demonstrates it twice without being asked.",
+		"note": "Premium cover, normal imaging, and articulate about both.",
+		"readmit_summary": "Represented 22:40 unable to weight-bear. Imaging clear again.",
+		"readmit_opening": "It went on the stairs at home. Same stairs.",
+		"readmit_hold": "Fine. But somebody explain it to me this time.",
+		"readmit_discharge": "Twice. I have been sent home twice.",
+		"readmit_exam": "In real pain and still with nothing on the scan.",
+	},
+	{
+		"id": "ibarra", "name": "Celia Ibarra", "age": 71, "bed": 5,
+		"condition": "Pulmonary embolism, anticoagulated",
+		"tier": Tier.PREMIUM,
+		"truly_well": false,
+		"suggestible": 0.2,
+		"recall": 0.75,
+		"summary": "CTPA positive. On treatment dose. Still desaturating on exertion.",
+		"opening": "I can talk to you sat down. It's the walking.",
+		"later": "I got to the door of the bay and had to sit on the chair.",
+		"evening": "They keep saying the numbers are fine. I'm telling you about the walking.",
+		"pressed": "I've said. It's when I move. Sitting here I'm perfectly all right.",
+		"on_your_note": "Have you put about the walking? That's the whole of it.",
+		"on_hold": "Thank you. I'd have been frightened at home tonight.",
+		"on_discharge": "Right. Well. I'll take it slowly.",
+		"exam_unwell": "Fine at rest and drops eight points walking four metres. The numbers on the chart were all taken sitting down.",
+		"note": "Confirmed PE, still desaturating on exertion. Every observation on her chart was taken at rest.",
+		"readmit_summary": "Collapsed at home at 02:30. Brought in by ambulance.",
+		"readmit_opening": "I only went to the kitchen.",
+		"readmit_hold": "Yes please. Yes.",
+		"readmit_discharge": "Please don't. Please.",
+		"readmit_exam": "Worse at rest now, which she was not this morning.",
+	},
 ]
 
 
@@ -783,6 +879,53 @@ const DAY_THREE := [
 		"readmit_hold": "Fine.",
 		"readmit_discharge": "Yeah. Course.",
 		"readmit_exam": "Awake, flat, and answering in single words.",
+	},
+	## ---- THE PAIR, both standard.
+	{
+		"id": "achterberg", "name": "Pieter Achterberg", "age": 68, "bed": 4,
+		"condition": "Chest infection, resolved",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 0.8,
+		"summary": "Apyrexial 48 hours. CRP normal. Eating and walking the corridor.",
+		"opening": "I've had the last of the tablets. That's me finished, isn't it.",
+		"later": "I've done the corridor four times. The nurse counted.",
+		"evening": "My neighbour's got the key. She's expecting me.",
+		"pressed": "There's nothing to tell. I got better. People do.",
+		"on_your_note": "That doesn't sound like me at all, that.",
+		"on_hold": "What for? I've finished the course.",
+		"on_discharge": "Grand. I'll ring her from the front.",
+		"exam_well": "Chest clear, apyrexial, and he walks the bay to prove it without being asked.",
+		"note": "Finished the course and better. Nothing hidden anywhere.",
+		"readmit_summary": "Back at 04:15 with a temperature of 39.1.",
+		"readmit_opening": "It came back in the night. It came back all at once.",
+		"readmit_hold": "Aye. I'll stop.",
+		"readmit_discharge": "With this? You're having me on.",
+		"readmit_exam": "Febrile and crackly, and nothing like the man who walked the corridor.",
+	},
+	{
+		"id": "ollerenshaw", "name": "Nita Ollerenshaw", "age": 57, "bed": 1,
+		"condition": "Diverticulitis, not settling",
+		"tier": Tier.STANDARD,
+		"truly_well": false,
+		"suggestible": 0.25,
+		"recall": 0.85,
+		"summary": "Still tender. CRP up on yesterday. Not tolerating diet.",
+		"opening": "I tried the soup at lunch and I couldn't finish it.",
+		"later": "It's the left side. It's been the left side all week.",
+		"evening": "I've said to three people now and it's still there.",
+		"pressed": "I'm not exaggerating it. If anything I've played it down.",
+		"on_your_note": "Have you written that it's worse? Because it is worse.",
+		"on_hold": "Thank you. I didn't want to be a nuisance about it.",
+		"on_discharge": "Oh. Right. If you think so.",
+		"exam_unwell": "Guarding in the left iliac fossa and she cannot let you press. Her CRP went the wrong way overnight.",
+		"note": "Genuinely not settling, and quiet about it, which is why nobody has noticed.",
+		"readmit_summary": "Returned 23:55 with a perforation. Straight to theatre.",
+		"readmit_opening": "It went, about nine. I knew as soon as it went.",
+		"readmit_hold": "Yes. Whatever you need to do.",
+		"readmit_discharge": "No. Please. Something's happened.",
+		"readmit_exam": "Rigid, and this is now a surgical abdomen.",
 	},
 ]
 
@@ -1048,6 +1191,54 @@ const DAY_FOUR := [
 		"readmit_discharge": "Fine. Two nights of my life for a faint.",
 		"readmit_exam": "Normal again, in every position you can put her in.",
 	},
+	## ---- THE PAIR, both standard. On this ward the pair also decides WHICH of
+	## the night registrar's two decisions was the wrong one.
+	{
+		"id": "brightwell", "name": "Enid Brightwell", "age": 74, "bed": 1,
+		"condition": "Urinary infection, treated",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.45,
+		"recall": 0.6,
+		"summary": "Afebrile. Bloods normalised. Reviewed by Dr Costa 06:40, for discharge.",
+		"opening": "He said this morning I could go. The young doctor.",
+		"later": "I've been sat ready since seven with my bag on the bed.",
+		"evening": "Is somebody coming? Only I've been ready a long while.",
+		"pressed": "I feel quite well. I keep saying so and nobody writes it down.",
+		"on_your_note": "You've put something different to him. Which of you is it?",
+		"on_hold": "Oh. But he said. He said this morning.",
+		"on_discharge": "Lovely. Thank you, doctor. I'll get off.",
+		"exam_well": "Warm, well, steady on her feet, and entirely ready to go. The night registrar was right about her.",
+		"note": "Cleared for home by the night registrar, and he was right. Nothing here.",
+		"readmit_summary": "Returned 22:00 having been unable to get into the house.",
+		"readmit_opening": "The key wasn't where our Julie said it'd be.",
+		"readmit_hold": "That's very kind. I'm sorry to be a nuisance.",
+		"readmit_discharge": "Right. Yes. I'll sit in the foyer, then.",
+		"readmit_exam": "Perfectly well, rather cold, and embarrassed about the whole thing.",
+	},
+	{
+		"id": "castellanos", "name": "Rubén Castellanos", "age": 66, "bed": 3,
+		"condition": "Fall, discharged 05:00",
+		"tier": Tier.STANDARD,
+		"truly_well": false,
+		"suggestible": 0.3,
+		"recall": 0.7,
+		"summary": "Discharged by Dr Costa at 05:00. Transport not arrived. Still on the ward.",
+		"opening": "They've written me down for home but I'm not right.",
+		"later": "My head's not been right since I went over. It's not the leg.",
+		"evening": "I keep losing the thread of things. That's not me.",
+		"pressed": "I've told the nurse twice. It's in here, not the leg.",
+		"on_your_note": "Is that about my head? Somebody's finally put it down.",
+		"on_hold": "Thank God. Thank you.",
+		"on_discharge": "But I've told you. I've told all of you.",
+		"exam_unwell": "Drowsy, slow to answer, and his pupils are not the same size. He was discharged at five this morning.",
+		"note": "Discharged overnight by a colleague and quietly deteriorating. Only an examination finds it.",
+		"readmit_summary": "Blue-lighted back at 21:30 with a subdural. Straight to CT.",
+		"readmit_opening": "I said about my head. I did say.",
+		"readmit_hold": "...Yes.",
+		"readmit_discharge": "No. No, listen to me.",
+		"readmit_exam": "Markedly worse, and now unmistakable to anybody who looks.",
+	},
 ]
 
 const PRIOR_FOUR := [
@@ -1200,6 +1391,22 @@ static func draw_five(day: int, picks: Array = []) -> Array:
 	var beds: Array = by_bed.keys()
 	beds.sort()
 	var out: Array = []
+	# WHICH BED IS THE ILL ONE, decided once for the pair.
+	#
+	# Drawing each slot independently was not enough. Every candidate for a slot
+	# has to be interchangeable — same tier, same truth — or a draw could deal a
+	# ward with nothing wrong on it. But that means the ILL bed is a property of
+	# the WARD, not of the draw: bed one was the ill one on three of the four
+	# wards and bed four on three, every career, forever. A second career still
+	# had you reading five charts to find something you already knew, which is
+	# most of the way back to the problem the drawn cast was built to fix.
+	#
+	# So two beds on each ward are PAIRED, and the pair is one coin flip rather
+	# than two draws: whichever of them comes up ill, the other comes up well.
+	# The ward keeps exactly the number of ill people it was balanced with, both
+	# candidates for a slot still share a tier so the money is unchanged, and
+	# which bed you have to find moves between careers.
+	var flip := _pair_flip(day)
 	for i in beds.size():
 		var b = beds[i]
 		var cands: Array = by_bed[b]
@@ -1209,8 +1416,118 @@ static func draw_five(day: int, picks: Array = []) -> Array:
 		if cands.size() == 1 or GameState.seed_value == 0:
 			out.append(cands[0])
 			continue
+		var want_ill: int = _paired_want_ill(day, int(b), flip)
+		if want_ill >= 0:
+			# ...and STILL draw among the candidates that match. Taking the first
+			# one meant a paired bed with two well alternates could only ever
+			# deal the first of them, so adding a third person to that slot
+			# bought nothing.
+			var matching: Array = []
+			for c2 in cands:
+				if (not bool(c2.get("truly_well", true))) == (want_ill == 1):
+					matching.append(c2)
+			if not matching.is_empty():
+				var hp: int = _mix(GameState.seed_value, day, int(b) + 41)
+				out.append(matching[hp % matching.size()])
+				continue
 		var h: int = _mix(GameState.seed_value, day, int(b))
 		out.append(cands[h % cands.size()])
+	return out
+
+## THE TWO BEDS THAT SWAP. Per day, [bed, bed]: exactly one of them holds the
+## genuinely ill patient and the other holds a well one. Both beds must offer a
+## candidate of each kind, at the same tier as each other, or the pair is
+## ignored and the slots draw independently — which is what happens on any ward
+## that has not been given the alternates yet.
+const ILL_PAIR_BY_DAY := {1: [1, 4], 2: [4, 5], 3: [4, 1], 4: [1, 3]}
+
+## Which way the coin came down for this career and this ward. Same mixer as the
+## slot draw, on a key that cannot collide with a bed number.
+static func _pair_flip(day: int) -> int:
+	return _mix(GameState.seed_value, day, 97) % 2
+
+## 1 if this bed should hold the ill candidate, 0 if the well one, -1 if this
+## bed is not part of the ward's pair.
+static func _paired_want_ill(day: int, bed: int, flip: int) -> int:
+	var pair = ILL_PAIR_BY_DAY.get((day - 1) % DAYS.size() + 1, null)
+	if pair == null:
+		return -1
+	if bed == int(pair[0]):
+		return 1 if flip == 0 else 0
+	if bed == int(pair[1]):
+		return 0 if flip == 0 else 1
+	return -1
+
+## EVERY WARD THIS DAY CAN ACTUALLY DEAL, as a list of rosters.
+##
+## The probes used to enumerate draws by forcing a candidate index per slot,
+## which walks the CARTESIAN PRODUCT of the slots — and since two beds are
+## paired, half of that product is unreachable: it deals wards with two ill
+## people where the ward is balanced for one, and wards with NOBODY ill at all,
+## which no honest play can survive because there is nothing to hold. The draw
+## check reported 32 failures against boards the game cannot produce.
+##
+## So the enumeration lives here, next to the draw, and produces exactly what a
+## career can produce: the product of the unpaired slots, doubled by the coin
+## flip that decides which end of the pair is the ill one.
+static func enumerate_draws(day: int) -> Array:
+	var pool: Array = DAYS[(day - 1) % DAYS.size()]
+	var by_bed := {}
+	for c in pool:
+		var b := int(c["bed"])
+		if not by_bed.has(b):
+			by_bed[b] = []
+		by_bed[b].append(c)
+	var beds: Array = by_bed.keys()
+	beds.sort()
+	var pair = ILL_PAIR_BY_DAY.get((day - 1) % DAYS.size() + 1, [])
+	var out: Array = [[]]
+	for b in beds:
+		var cands: Array = by_bed[b]
+		var options: Array = cands
+		if Array(pair).has(int(b)):
+			# A paired bed contributes nothing on its own; the flip below picks
+			# both ends together.
+			options = [null]
+		var grown: Array = []
+		for partial in out:
+			for opt in options:
+				var next: Array = partial.duplicate()
+				next.append(opt)
+				grown.append(next)
+		out = grown
+	# ...and now resolve the pair, both ways round.
+	if Array(pair).size() == 2:
+		var doubled: Array = []
+		for partial in out:
+			for flip in [0, 1]:
+				var row: Array = []
+				for i in beds.size():
+					var b2 := int(beds[i])
+					if not Array(pair).has(b2):
+						row.append(partial[i])
+						continue
+					var want_ill: bool = (b2 == int(pair[0])) == (flip == 0)
+					var matching2: Array = []
+					for c3 in by_bed[b2]:
+						if bool(c3.get("truly_well", true)) != want_ill:
+							matching2.append(c3)
+					row.append(matching2)
+				# A paired bed contributed a list of matching candidates, so
+				# expand those into separate rosters the way the unpaired slots
+				# were expanded above.
+				var expanded: Array = [[]]
+				for cell in row:
+					var opts: Array = cell if cell is Array else [cell]
+					var grow: Array = []
+					for partial2 in expanded:
+						for o in opts:
+							var nx: Array = partial2.duplicate()
+							nx.append(o)
+							grow.append(nx)
+					expanded = grow
+				doubled.append_array(expanded)
+		out = doubled
 	return out
 
 ## Every authored person on a ward, drawn or not. The data check walks this;

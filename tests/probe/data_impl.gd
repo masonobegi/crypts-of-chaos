@@ -71,14 +71,42 @@ func run() -> void:
 			var cands: Array = beds[b]
 			var t0: int = int(cands[0]["tier"])
 			var w0: bool = bool(cands[0].get("truly_well", true))
+			# TIER IS ALWAYS SHARED — that is what keeps the night worth the same
+			# money whoever is in the bed. TRUTH is shared too, EXCEPT on the two
+			# beds a ward declares as its pair: those two swap which of them is
+			# ill, decided by one coin flip for the pair, so each of them must
+			# offer both a well and an ill candidate. Bed one was the ill one on
+			# three of the four wards and bed four on three, every career; a
+			# second career still had you reading five charts to find something
+			# you already knew.
+			var pair = Cases.ILL_PAIR_BY_DAY.get(day + 1, [])
+			var is_paired: bool = Array(pair).has(int(b))
 			for alt in cands:
 				if int(alt["tier"]) != t0:
 					_fail("ward %d slot %d: %s is a different tier from %s"
 						% [day + 1, int(b), String(alt["id"]), String(cands[0]["id"])])
-				if bool(alt.get("truly_well", true)) != w0:
+				if not is_paired and bool(alt.get("truly_well", true)) != w0:
 					_fail("ward %d slot %d: %s is not as ill as %s"
 						% [day + 1, int(b), String(alt["id"]), String(cands[0]["id"])])
-			if not w0:
+			if is_paired:
+				# A paired bed has to be able to go either way, or the flip has
+				# nothing to choose between and the pair silently does nothing.
+				var has_ill := false
+				var has_well := false
+				for alt in cands:
+					if bool(alt.get("truly_well", true)):
+						has_well = true
+					else:
+						has_ill = true
+				if not (has_ill and has_well):
+					_fail("ward %d slot %d is paired but cannot go both ways"
+						% [day + 1, int(b)])
+				# Exactly one of the pair is ill on any draw, so the ward's count
+				# of genuinely ill people is unchanged by the flip. Counted once,
+				# on the lower-numbered bed of the pair.
+				if int(b) == mini(int(pair[0]), int(pair[1])):
+					unwell += 1
+			elif not w0:
 				unwell += 1
 			if t0 == Cases.Tier.PREMIUM:
 				premium += 1

@@ -14,6 +14,15 @@ var failed := false
 ## each time somebody else fell behind. The frontier tables in three successive
 ## audits were measured against a debt that depended on the order of the list.
 func _clean_slate() -> void:
+	# THE CANONICAL WARD, IN EVERY SCENARIO. A ward is a draw from a pool now,
+	# and the draw is a pure function of the career seed — so criterion 6's
+	# `start_new_career(31337)` left 31337 in GameState and every scenario after
+	# it played a RANDOMLY DRAWN ward while asserting things about named
+	# patients. Divergence fell from 84% to 48% and lies stopped compounding,
+	# which reads as a design regression and is a harness leak. Seed 0 is the
+	# authored five, and it is what all 31 scenarios were written against.
+	# (`test_ward.gd::setup` carries the same line for the same reason.)
+	GameState.seed_value = 0
 	GameState.set_flag("remembered_beds", PackedStringArray())
 	GameState.reset_debt()
 	DoctorRecord.wipe()

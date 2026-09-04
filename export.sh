@@ -62,6 +62,7 @@ build() {
 
 [ "$WHAT" = "all" ] || [ "$WHAT" = "windows" ] && build "Windows" "$DIR/build/windows/ChronicCare.exe"
 [ "$WHAT" = "all" ] || [ "$WHAT" = "linux" ] && build "Linux" "$DIR/build/linux/ChronicCare.x86_64"
+[ "$WHAT" = "all" ] || [ "$WHAT" = "macos" ] && build "macOS" "$DIR/build/macos/ChronicCare.zip"
 
 # And then actually run the thing, because an export that produces a file and
 # an export that produces a GAME are different claims.
@@ -69,8 +70,13 @@ if [ -x "$DIR/build/linux/ChronicCare.x86_64" ]; then
   echo "=== running the exported build ==="
   out=$(mktemp)
   if command -v xvfb-run >/dev/null 2>&1; then
+    # NO --rendering-method. This is the one check that runs the artefact a
+    # player downloads, and passing the flag here is exactly how "the shipping
+    # renderer does not start at all" stayed invisible last time: the project
+    # was set to forward_plus, Godot 4.3 does not fall back, and every harness
+    # in the repo quietly avoided it. boot_check.sh carries the same note.
     timeout 180 xvfb-run -a "$DIR/build/linux/ChronicCare.x86_64" \
-      --rendering-method gl_compatibility --quit-after 300 >"$out" 2>&1
+      --quit-after 300 >"$out" 2>&1
   else
     timeout 180 "$DIR/build/linux/ChronicCare.x86_64" --headless --quit-after 300 >"$out" 2>&1
   fi

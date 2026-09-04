@@ -226,6 +226,8 @@ func _check_the_verbs_work() -> void:
 	_check_a_watched_day_can_still_be_written_in()
 	_check_a_readmission_waits_for_the_morning()
 	_check_nobody_is_misgendered()
+	_check_nothing_floats_or_sinks()
+	_check_the_doors_have_room_to_swing()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
 ##
@@ -464,6 +466,192 @@ func _quoted(line: String) -> Array:
 	for i in parts.size():
 		if i % 2 == 1:
 			out.append(String(parts[i]))
+	return out
+
+## THINGS THAT STAND ON THINGS ACTUALLY STAND ON THEM.
+##
+## All three EHR terminals were built around an origin somewhere inside the
+## case, so the lowest part of the model sat 0.39 above it — and all three
+## callers placed the origin by eye. The ward and office machines floated
+## nineteen centimetres over their desks; the station one was five centimetres
+## inside the worktop. Nobody had put a number on it because the only way to
+## see it is to go and look, and the screenshots point at the room rather than
+## at one desk.
+##
+## So: measure. For each fixture that is meant to rest on something, take the
+## lowest point of its geometry, find the highest surface underneath its
+## footprint, and insist they meet. Wall-mounted pieces are excluded by being
+## absent from the list — `Dressing` has its own rule and its own bug history.
+const STANDS_ON_SOMETHING := ["RecordsTerminal"]
+const RESTS_TOLERANCE := 0.02
+
+func _check_nothing_floats_or_sinks() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	# Everything with a shape, in world space, once.
+	var boxes: Array = []
+	var standers: Array = []
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null:
+			continue
+		var aabb: AABB = mi.global_transform * mi.mesh.get_aabb()
+		var owner_name := _fixture_kind(mi)
+		# The fixture this part belongs to, so a terminal's own base is not
+		# mistaken for the desk it is supposed to be standing on.
+		var owner_node := _fixture_ancestor(mi)
+		boxes.append({"aabb": aabb, "owner": owner_name, "of": owner_node})
+		if owner_name in STANDS_ON_SOMETHING:
+			standers.append({"aabb": aabb, "owner": owner_name, "node": mi})
+
+	_ok(not standers.is_empty(),
+		"there are %d pieces of geometry that have to rest on something"
+			% standers.size())
+
+	# Group each fixture's parts back together — a terminal is four boxes and
+	# only the lowest of them is standing on the desk.
+	var by_fixture: Dictionary = {}
+	for st in standers:
+		var f = _fixture_ancestor(st["node"])
+		var key := str(f.get_instance_id())
+		if not by_fixture.has(key):
+			by_fixture[key] = {"node": f, "aabb": st["aabb"]}
+		else:
+			by_fixture[key]["aabb"] = by_fixture[key]["aabb"].merge(st["aabb"])
+
+	var floating: Array = []
+	for key in by_fixture:
+		var f = by_fixture[key]["node"]
+		var box: AABB = by_fixture[key]["aabb"]
+		var foot := box.position.y
+		var best := 0.0                     ## the floor, if nothing else
+		for b in boxes:
+			var other: AABB = b["aabb"]
+			if b["of"] == f:
+				continue
+			# Directly underneath, in plan, and topping out below this thing.
+			if not _overlaps_in_plan(box, other):
+				continue
+			var top: float = other.position.y + other.size.y
+			if top <= foot + RESTS_TOLERANCE and top > best:
+				best = top
+		var gap: float = foot - best
+		if absf(gap) > RESTS_TOLERANCE:
+			floating.append("%s %s by %.0fcm" % [_fixture_kind(f),
+				"floats" if gap > 0.0 else "is sunk", absf(gap) * 100.0])
+	_ok(floating.is_empty(),
+		"and every one of them does%s" % ("" if floating.is_empty()
+			else " — " + ", ".join(PackedStringArray(floating))))
+
+## Two boxes seen from above.
+func _overlaps_in_plan(a: AABB, b: AABB) -> bool:
+	return a.position.x < b.position.x + b.size.x \
+		and b.position.x < a.position.x + a.size.x \
+		and a.position.z < b.position.z + b.size.z \
+		and b.position.z < a.position.z + a.size.z
+
+func _fixture_ancestor(n: Node) -> Node:
+	var cur := n
+	while cur != null:
+		if cur is Fixture:
+			return cur
+		cur = cur.get_parent()
+	return n
+
+func _fixture_kind(n: Node) -> String:
+	var cur := n
+	while cur != null:
+		var scr = cur.get_script()
+		if scr != null:
+			var g := String(scr.get_global_name())
+			if g != "":
+				return g
+		cur = cur.get_parent()
+	return ""
+
+## AND THE DOORS CAN ACTUALLY OPEN.
+##
+## The ward's hand-gel dispenser was mounted ten centimetres from the door jamb,
+## and a SwingDoor opens either way — `_open_dir` is decided by which side the
+## person came from — so the leaf swept a two-hundred-degree arc straight
+## through it. Scenery has no collision by design, which is exactly what lets
+## there be a lot of it and exactly why nothing in the engine was ever going to
+## complain: the leaf passed through the dispenser silently, every time anybody
+## walked into the ward.
+##
+## Nothing decorative may stand inside the disc a leaf sweeps. Checked against
+## the door's real width and hinge, so a wider door moves the rule with it.
+func _check_the_doors_have_room_to_swing() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	var doors: Array = []
+	for n in _all_nodes(h):
+		if n is SwingDoor:
+			doors.append(n)
+	_ok(doors.size() >= 2, "the building has %d swinging doors" % doors.size())
+
+	var blocked: Array = []
+	var checked := 0
+	for d in doors:
+		# The hinge is the door's own origin and the leaf extends along local
+		# +Z, so the swept disc has the leaf's width for a radius.
+		var hinge: Vector3 = d.global_position
+		var reach: float = float(d.width)
+		for piece in tree.get_nodes_in_group("dressing"):
+			if not (piece is Node3D):
+				continue
+			var box := _world_box(piece)
+			if box.size == Vector3.ZERO:
+				continue
+			# Only things at door height matter: a floor tile under the swing
+			# and a light fitting above it are both fine.
+			if box.position.y > SwingDoor.HEIGHT or box.position.y + box.size.y < 0.05:
+				continue
+			checked += 1
+			if _nearest_in_plan(box, hinge) < reach:
+				var c := box.get_center()
+				blocked.append("%s (%s) centred %.1f,%.1f comes within %.2fm of the %s hinge at %.1f,%.1f (sweeps %.2f)"
+					% [piece.name, _dressing_kind(piece), c.x, c.z,
+						_nearest_in_plan(box, hinge), String(d.room_key),
+						hinge.x, hinge.z, reach])
+	_ok(checked > 0, "with %d pieces of scenery near enough to matter" % checked)
+	for b in blocked:
+		notes.append("  .. " + String(b))
+	_ok(blocked.is_empty(), "and no leaf sweeps through any of it (%d in the way)"
+		% blocked.size())
+
+func _dressing_kind(n: Node) -> String:
+	var p := n.get_parent()
+	return "%s under %s" % [n.get_class(), p.name if p != null else "?"]
+
+## The closest point of a box to a point, seen from above.
+func _nearest_in_plan(box: AABB, p: Vector3) -> float:
+	var nx: float = clampf(p.x, box.position.x, box.position.x + box.size.x)
+	var nz: float = clampf(p.z, box.position.z, box.position.z + box.size.z)
+	return Vector2(p.x - nx, p.z - nz).length()
+
+## Every mesh under a node, merged, in world space.
+func _world_box(n: Node) -> AABB:
+	var out := AABB()
+	var first := true
+	for m in _all_nodes(n):
+		if not (m is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = m
+		if mi.mesh == null:
+			continue
+		var b: AABB = mi.global_transform * mi.mesh.get_aabb()
+		if first:
+			out = b
+			first = false
+		else:
+			out = out.merge(b)
 	return out
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:

@@ -42,6 +42,12 @@ const CEILING_GROUP := "ceiling_fitting"
 
 static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0) -> Node3D:
 	h.add_child(n)
+	# EVERYTHING DECORATIVE ANSWERS TO ONE NAME. Scenery has no collision and no
+	# navigation footprint, which is what lets there be a lot of it — and also
+	# means nothing in the engine will ever object to a piece of it standing in
+	# the arc of a door. The smoke run checks that instead, and it needs to be
+	# able to tell a poster from a wall.
+	n.add_to_group("dressing")
 	n.position = pos + Vector3(sin(rot_y), 0.0, cos(rot_y)) * depth * 0.5
 	n.rotation.y = rot_y
 	return n

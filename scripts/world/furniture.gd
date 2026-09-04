@@ -169,7 +169,11 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	# The board the shift is actually run off, and the gel nobody uses.
 	Dressing.whiteboard(h, _door_wall(r, 0.30, 1.62), _door_rot(r), 2.0, 1.15)
 	Dressing.noticeboard(h, _door_wall(r, 0.62, 1.58), _door_rot(r), 1.7, 1.05)
-	Dressing.dispenser(h, _door_wall(r, 0.46, 1.32), _door_rot(r))
+	# THE GEL, CLEAR OF THE DOOR. It was at t=0.46, which on a twenty-metre wall
+	# is x=9.2 — ten centimetres from a jamb at 9.3, and the leaf sweeps 1.4m
+	# from there in either direction. It is still the first thing on the wall
+	# you pass walking in; it is just no longer inside the door.
+	Dressing.dispenser(h, _door_wall(r, 0.375, 1.32), _door_rot(r))
 	Dressing.extinguisher(h, _door_wall(r, 0.86, 1.05), _door_rot(r))
 
 	# Where people wait. Two chairs and something to put a cup on, at the end of
@@ -189,8 +193,14 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	# because a rail across a fire door is the sort of detail that makes a room
 	# read as generated rather than built.
 	var door_x := _door_x(r)
+	# THE GAP IS THE ARC, NOT THE OPENING. A 1.5m cut clears the 1.4m doorway
+	# with room to spare and is still nowhere near enough: the leaf is hinged at
+	# the jamb and sweeps its own width, either way — `_open_dir` is decided by
+	# which side the person came from — so a rail 45cm past the frame is inside
+	# the swing. It has no collision, so the leaf went through it in silence
+	# every time anybody walked onto the ward.
 	Dressing.handrail_run(h, lx + 5.2, rx - 5.2, dz - into * 0.06,
-		[Vector2(door_x - 1.5, door_x + 1.5)], 0.92)
+		[_swing_gap(door_x, _door_w(r))], 0.92)
 	# The near half of the bay, which is otherwise a lot of empty floor between
 	# the door and the people.
 	var hmp := Vector3(r.rect.position.x + 1.0, 0, _door_wall_z(r) - into * 2.4)
@@ -221,12 +231,12 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 			continue
 		var rect: Rect2 = entry["rect"]
 		var centre := float(entry.get("door", rect.get_center().x))
-		var w := float(entry.get("door_w", Hospital.DOOR_W)) * 0.5 + 0.45
+		var gap := _swing_gap(centre, float(entry.get("door_w", Hospital.DOOR_W)))
 		# A room north of the corridor opens onto the corridor's north wall.
 		if rect.position.y > 0.0:
-			north_gaps.append(Vector2(centre - w, centre + w))
+			north_gaps.append(gap)
 		else:
-			south_gaps.append(Vector2(centre - w, centre + w))
+			south_gaps.append(gap)
 	Dressing.handrail_run(h, x0, x1, z0 + 0.12, south_gaps)
 	Dressing.handrail_run(h, x0, x1, z1 - 0.12, north_gaps)
 	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88))
@@ -470,7 +480,9 @@ static func _ward(h: Hospital, r: Room) -> void:
 	t.mode = "ehr"
 	h.add_child(t)
 	t.build("Ward Terminal", false)
-	t.position = Vector3(term_x, 0.55, term_z)
+	# ON the desk. `_table` puts its 6cm top plate centred at `height`, so the
+	# surface is height + 0.03, and the terminal's origin is its foot.
+	t.position = Vector3(term_x, 0.78, term_z)
 	t.rotation.y = _far_rot(r)
 	_occupy(term_x, term_z, 0.7, 0.5)
 
@@ -480,6 +492,27 @@ static func _ward(h: Hospital, r: Room) -> void:
 ## Which way is "into the room" from the far wall.
 static func _toward(r: Room) -> float:
 	return -1.0 if _door_on_min_z(r) else 1.0
+
+## How much wall a door leaf needs on either side of its centre.
+##
+## A `SwingDoor` is hinged at one jamb and its leaf is as long as the opening is
+## wide, so the far tip reaches half the opening plus a whole leaf from centre —
+## and since the door opens whichever way it is pushed, that applies on both
+## sides and both faces. Anything decorative inside that is swept, silently,
+## because scenery has no collision.
+static func _swing_gap(centre: float, door_w: float) -> Vector2:
+	var reach: float = door_w * 1.5 + 0.12
+	return Vector2(centre - reach, centre + reach)
+
+## THIS ROOM'S opening, which is not always the default. The ward's is 1.6 and
+## the rail was cut for 1.4, so the gap was twenty centimetres short at each end
+## and the leaf still reached the rail — the shape of bug that survives a fix
+## because the fix looked right.
+static func _door_w(r: Room) -> float:
+	for entry in Hospital.LAYOUT:
+		if String(entry["key"]) == r.key:
+			return float(entry.get("door_w", Hospital.DOOR_W))
+	return Hospital.DOOR_W
 
 static func _door_x(r: Room) -> float:
 	for entry in Hospital.LAYOUT:
@@ -559,7 +592,8 @@ static func _station(h: Hospital, r: Room) -> void:
 	t.mode = "ehr"
 	h.add_child(t)
 	t.build("Station Terminal", false)
-	t.position = Vector3(c.x + 3.0, 0.70, corridor_z)
+	# The worktop is an 8cm plate centred at 1.12, so its surface is 1.16.
+	t.position = Vector3(c.x + 3.0, 1.16, corridor_z)
 	t.rotation.y = PI
 
 	_table(h, Vector3(c.x - 2.4, 0, c.z + 2.6), 1.6, 0.8, 0.75)
@@ -621,7 +655,7 @@ static func _office(h: Hospital, r: Room) -> void:
 	t.mode = "admin"
 	h.add_child(t)
 	t.build("Your Terminal", true)
-	t.position = Vector3(c.x - 0.3, 0.55, c.z + 0.7)
+	t.position = Vector3(c.x - 0.3, 0.78, c.z + 0.7)
 	_occupy(c.x - 0.3, c.z + 0.7, 0.7, 0.5)
 
 	_block(h, Vector3(1.0, 1.5, 0.5), Color(0.5, 0.52, 0.48), Vector3(r.rect.position.x + 0.8, 0.75, c.z - 2.4))

@@ -15,15 +15,25 @@ func build(disp: String, private: bool) -> void:
 	is_private = private
 	var case_mat := Build.mat(Color(0.24, 0.26, 0.30))
 	var screen := Build.mat(Color(0.08, 0.14, 0.12), 0.15, 0.0, Color(0.08, 0.30, 0.24))
+	# ITS ORIGIN IS ITS FOOT. Every part used to be measured from a floating
+	# point somewhere inside the case, so the lowest thing on the model — the
+	# keyboard tray — sat 0.39 above the origin, and all three callers placed
+	# the origin by eye. The ward and office machines hovered nineteen
+	# centimetres over their desks and the station one was buried in the
+	# counter. Now a caller passes the height of the surface it stands on and
+	# nobody has to know how a computer is put together.
+	#
+	# Same rule as `Dressing._add()` and its own depth. The piece knows its
+	# shape; the room knows where the shape goes.
 	setup_body(Vector3(0.66, 0.62, 0.36), [
-		{"mesh": Build.box_mesh(Vector3(0.62, 0.42, 0.05)), "mat": case_mat, "pos": Vector3(0, 0.75, 0)},
-		{"mesh": Build.box_mesh(Vector3(0.56, 0.36, 0.01)), "mat": screen, "pos": Vector3(0, 0.75, 0.031)},
-		{"mesh": Build.box_mesh(Vector3(0.14, 0.2, 0.12)), "mat": case_mat, "pos": Vector3(0, 0.5, 0)},
-		{"mesh": Build.box_mesh(Vector3(0.4, 0.02, 0.16)), "mat": Build.mat(Color(0.4, 0.42, 0.45)), "pos": Vector3(0, 0.4, 0.25)},
-	], Vector3(0, 0.6, 0))
+		{"mesh": Build.box_mesh(Vector3(0.62, 0.42, 0.05)), "mat": case_mat, "pos": Vector3(0, 0.36, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.56, 0.36, 0.01)), "mat": screen, "pos": Vector3(0, 0.36, 0.031)},
+		{"mesh": Build.box_mesh(Vector3(0.14, 0.2, 0.12)), "mat": case_mat, "pos": Vector3(0, 0.11, 0)},
+		{"mesh": Build.box_mesh(Vector3(0.4, 0.02, 0.16)), "mat": Build.mat(Color(0.4, 0.42, 0.45)), "pos": Vector3(0, 0.01, 0.25)},
+	], Vector3(0, 0.21, 0))
 
 	var glow := Build.label3d("EHR", 0.06, Color(0.4, 1.0, 0.8), false)
-	glow.position = Vector3(0, 0.93, 0.04)
+	glow.position = Vector3(0, 0.54, 0.04)
 	add_child(glow)
 
 func prompt(_player) -> Array:

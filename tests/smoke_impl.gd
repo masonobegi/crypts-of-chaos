@@ -223,6 +223,97 @@ func _check_the_verbs_work() -> void:
 	_check_discharged_patients_leave(w)
 	_check_the_nurse_does_rounds()
 	_check_tests_in_flight_come_back(w)
+	_check_a_watched_day_can_still_be_written_in()
+
+## A WATCHED DAY IS HARDER, NOT AIRLESS.
+##
+## The extra rounds a flag buys you used to be placed at the MIDPOINT between
+## two existing ones, which put every round ninety minutes from its neighbour.
+## `ChartEntry.SAME_MOMENT` is forty-five, and `same_moment_as` uses `<=`, so
+## each round owns a ninety-one minute window — and those windows tiled the
+## whole shift end to end. There was no minute left in the day at which a note
+## could be written without reading as two people disagreeing about the same
+## half hour, and the findings that produces are what get you flagged again.
+## One bad night was an inescapable spiral, and it looked like difficulty.
+##
+## So this asserts the property the placement exists to guarantee, computed
+## from the real constants rather than from the numbers that happen to be in
+## `Cases.ROUNDS` today: on a watched day there is still somewhere to write.
+func _check_a_watched_day_can_still_be_written_in() -> void:
+	var was_watched: bool = GameState.flag("watched", false)
+	var w := WardDay.new()
+	tree.root.add_child(w)
+
+	GameState.set_flag("watched", false)
+	var calm: Array = w.rounds_today()
+	GameState.set_flag("watched", true)
+	var watched: Array = w.rounds_today()
+
+	_ok(watched.size() > calm.size(),
+		"a flag does buy the ward more rounds (%d, was %d)"
+			% [watched.size(), calm.size()])
+
+	# Every minute of the shift that is not inside any round's window. This is
+	# the same comparison `ChartEntry.same_moment_as` makes, so a change to
+	# either the constant or the operator moves this check with it.
+	var free_calm := _writable_minutes(calm)
+	var free_watched := _writable_minutes(watched)
+	_ok(free_calm > 0, "an ordinary day has room to write in (%d min)" % free_calm)
+	_ok(free_watched > 0,
+		"and a watched day still does — this is the spiral guard (%d min)"
+			% free_watched)
+	# Harder is the point: it must cost, or doubling the rounds meant nothing.
+	_ok(free_watched < free_calm,
+		"but there is less of it than on a quiet day (%d against %d)"
+			% [free_watched, free_calm])
+	# And the room that is left has to be usable, AFTER THE FIRST ROUND.
+	#
+	# Measured across the whole shift this passes on a day with no gaps at all,
+	# because the stretch from clocking on at eight to the first round at ten is
+	# free whatever the rounds do afterwards — and a note written before Adeyemi
+	# has been anywhere is not the timing skill this is guarding. So the window
+	# has to be found in the part of the day she is walking through, and it has
+	# to be long enough to read a chart and write the note that reading suggests.
+	var need: int = WardDay.READ_COST + WardDay.WRITE_COST
+	var first: int = int(watched[0])
+	var longest := _longest_writable_run(watched, first)
+	_ok(longest >= need,
+		"and one unbroken window after her first round is long enough to read "
+			+ "and write in (%d >= %d)" % [longest, need])
+	# Twice, in fact — one window is a single note, and the ward has five beds.
+	_ok(_writable_minutes(watched, first) >= need * 2,
+		"with enough left over for a second (%d min after %d:00)"
+			% [_writable_minutes(watched, first), first / 60])
+
+	GameState.set_flag("watched", was_watched)
+	tree.root.remove_child(w)
+	w.free()
+
+## Minutes of the shift at which a note would collide with no round.
+func _writable_minutes(rounds: Array, from := -1) -> int:
+	var n := 0
+	for m in range(maxi(from, Cases.DAY_START_MINUTE), Cases.DEBT_DUE_MINUTE):
+		if _clear_of(m, rounds):
+			n += 1
+	return n
+
+## The longest unbroken stretch of them.
+func _longest_writable_run(rounds: Array, from := -1) -> int:
+	var best := 0
+	var run := 0
+	for m in range(maxi(from, Cases.DAY_START_MINUTE), Cases.DEBT_DUE_MINUTE):
+		if _clear_of(m, rounds):
+			run += 1
+			best = maxi(best, run)
+		else:
+			run = 0
+	return best
+
+func _clear_of(minute: int, rounds: Array) -> bool:
+	for r in rounds:
+		if absi(minute - int(r)) <= ChartEntry.SAME_MOMENT:
+			return false
+	return true
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

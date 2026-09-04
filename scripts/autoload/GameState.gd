@@ -17,7 +17,7 @@ signal minute_passed(minute_of_day: int)
 signal day_started(day: int)
 
 var day: int = 1
-var minute_of_day: int = 8 * 60
+var minute_of_day: int = Cases.DAY_START_MINUTE
 var clock_running: bool = false
 var seed_value: int = 0
 
@@ -73,7 +73,7 @@ func start_new_career(with_seed: int = 0) -> void:
 	seed_value = with_seed if with_seed != 0 else int(Time.get_unix_time_from_system())
 	RNG.reseed(seed_value)
 	day = 1
-	minute_of_day = 8 * 60
+	minute_of_day = Cases.DAY_START_MINUTE
 	clock_running = false
 	# CLEAR FIRST, THEN SET. `flags.clear()` used to run AFTER reset_debt(),
 	# DoctorRecord.wipe() and the readmission list — all three of which write
@@ -175,7 +175,7 @@ func to_dict() -> Dictionary:
 
 func from_dict(d: Dictionary) -> void:
 	day = int(d.get("day", 1))
-	minute_of_day = int(d.get("minute", 8 * 60))
+	minute_of_day = int(d.get("minute", Cases.DAY_START_MINUTE))
 	cash = int(d.get("cash", 0))
 	seed_value = int(d.get("seed", 0))
 	flags = Dictionary(d.get("flags", {})).duplicate(true)

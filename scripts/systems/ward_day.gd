@@ -786,11 +786,33 @@ func rounds_today() -> Array:
 			base.append(int(r))
 	if not GameState.flag("watched", false):
 		return base
+	# HARDER, NOT IMPOSSIBLE.
+	#
+	# The extra rounds used to go at the MIDPOINT between two existing ones, so
+	# a watched day ran 10, 11:30, 13, 14:30, 16, 17:30, 19 — ninety minutes
+	# apart, every one of them. `ChartEntry.SAME_MOMENT` is forty-five minutes,
+	# so each round claims a ninety-minute window and those windows tile the
+	# entire shift edge to edge. There was not one minute between quarter past
+	# nine and quarter to eight at night when a note could be written without
+	# reading as two people disagreeing about the same half hour.
+	#
+	# Writing in the gap between rounds is the central timing skill of this game.
+	# Doubling the rounds should make that skill harder to exercise; instead it
+	# deleted the skill, and since the findings that produces get you flagged
+	# again, one bad night was a spiral with no way out of it.
+	#
+	# She writes up twice now — same number of notes, same "Adeyemi has started
+	# writing her rounds up twice" on the card — but the second one follows the
+	# first by forty-five minutes rather than splitting the gap. That leaves
+	# three real windows in the day, about forty-five minutes each, and finding
+	# them is the whole point.
 	var dense: Array = []
 	for i in base.size():
 		dense.append(base[i])
-		if i + 1 < base.size():
-			dense.append(int((base[i] + base[i + 1]) * 0.5))
+		var second: int = base[i] + ChartEntry.SAME_MOMENT
+		if i + 1 >= base.size() or second + ChartEntry.SAME_MOMENT < base[i + 1]:
+			dense.append(second)
+	dense.sort()
 	return dense
 
 func _routine_round(at: int) -> void:

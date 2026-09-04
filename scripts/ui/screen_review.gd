@@ -177,6 +177,15 @@ func _closing(v: VBoxContainer, w) -> void:
 			if standing != "":
 				v.add_child(UIKit.label("· " + standing, 13, UIKit.BAD,
 					HORIZONTAL_ALIGNMENT_LEFT, true))
+			# AND THE OTHER LADDER. Strikes go up and down where the player can
+			# feel them; the rate of beds only you ever saw does not, and crossing
+			# it turns a flag into a referral — one strike into three. It ended more
+			# careers than the strike count did and there was nowhere in the game
+			# it was written down.
+			var habit := String(_rv.record.habit_warning())
+			if habit != "":
+				v.add_child(UIKit.label("· " + habit, 13, UIKit.BAD,
+					HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("THE CONVERSATION", 12, UIKit.INK_DIM))

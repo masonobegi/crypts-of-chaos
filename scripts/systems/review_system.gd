@@ -20,6 +20,20 @@ const OUTCOME_QUESTIONS := "noted"
 const OUTCOME_FLAGGED := "flagged for audit"
 const OUTCOME_ESCALATED := "referred"
 
+## THE TWO RATES. How often you have taken a bed nobody else ever saw a reason
+## for, measured across the career rather than tonight — one bad night is a bad
+## night and a ward runs on those; it is the ratio that describes a person.
+##
+## At a half she stops accepting "only I saw it" as a defence of the bed. At
+## three-quarters she stops accepting it as a defence of you, and one bed is a
+## referral. Both wait for a few nights first, so nobody is described by their
+## first Tuesday. Everything about the difficulty curve of a career is these
+## four numbers.
+const HABIT_NIGHTS := 4
+const HABIT_RATE := 0.5
+const ENTRENCHED_NIGHTS := 5
+const ENTRENCHED_RATE := 0.75
+
 ## She opens with the softest thing she found and works inward. A reviewer who
 ## leads with her best question teaches you what she knows before you have to
 ## answer it.
@@ -291,8 +305,31 @@ func outcome() -> Dictionary:
 	# Measured as a RATE, not a career total, so a long careful run is not
 	# punished for its length: once you are averaging an uncorroborated bed
 	# every other night, "only you saw it" stops being something she accepts.
-	var habitual: bool = record != null and record.nights >= 4 \
-		and float(record.times("uncorroborated_stay")) / float(record.nights) >= 0.5
+	var rate: float = record.uncorroborated_rate() if record != null else 0.0
+	var habitual: bool = record != null and record.nights >= HABIT_NIGHTS \
+		and rate >= HABIT_RATE
+	# AND THE RATE ABOVE THAT ONE, which is a different conversation.
+	#
+	# `habitual` turns a solo bed into an indefensible one, and one indefensible
+	# bed is FLAGGED — worth a single strike, which a clean night pays straight
+	# back. So the doctor who took exactly one bed on his own word EVERY night
+	# sat at "flagged for audit" forever: five strikes takes five bad nights and
+	# the debt clears in six, so the most dishonest policy in the game was also
+	# the fastest way out of it. Escalation needed TWO indefensible beds in one
+	# night, and a once-a-night liar never produces two.
+	#
+	# The one-night measure could not see him, because there was nothing wrong
+	# with any single night of it. What is wrong is the sequence, and the record
+	# is the only thing that holds the sequence. So above three-quarters — she
+	# has asked about this on three nights in four and heard the same answer —
+	# one bed is enough. This is the ladder `opening_line()` has always narrated
+	# ("I have started keeping a list") and the verdict never climbed.
+	#
+	# The gap between the two rates is deliberate and it is the whole game: an
+	# uncorroborated bed every other night stays survivable forever, and that is
+	# the policy the design is trying to make findable.
+	var entrenched: bool = record != null and record.nights >= ENTRENCHED_NIGHTS \
+		and rate >= ENTRENCHED_RATE
 	var indefensible: Array = []
 	var solo: Array = []
 	for b in beds:
@@ -306,7 +343,7 @@ func outcome() -> Dictionary:
 				solo.append(b)
 
 	var verdict := OUTCOME_CLEAR
-	if indefensible.size() >= 2:
+	if indefensible.size() >= 2 or (entrenched and indefensible.size() >= 1):
 		verdict = OUTCOME_ESCALATED
 	elif indefensible.size() == 1 or solo.size() >= 2:
 		verdict = OUTCOME_FLAGGED

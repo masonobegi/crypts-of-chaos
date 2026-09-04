@@ -100,6 +100,14 @@ static func wipe() -> void:
 func times(kind: String) -> int:
 	return int(counts.get(kind, 0))
 
+## The number the review reads to decide how much of this is a habit. A rate and
+## not a total, so a long careful career is not punished for being long: forty
+## clean nights with four bad ones in them is a tenth, and a tenth is nothing.
+func uncorroborated_rate() -> float:
+	if nights <= 0:
+		return 0.0
+	return float(times("uncorroborated_stay")) / float(nights)
+
 ## How much heavier a finding of this kind is, given how often she has raised it
 ## before. The FIRST one is worth what it says on the tin — a discrepancy is a
 ## discrepancy and a ward runs on them. It is the fourth that describes you.
@@ -145,6 +153,23 @@ func standing() -> String:
 	if left <= 1:
 		return "One more bad night and the Board writes to you."
 	return "%d more bad nights and the Board writes to you." % left
+
+## THE OTHER LADDER, IN WORDS. `standing()` counts strikes, which the player can
+## feel going up and down. This one counts the rate, which they cannot — and
+## crossing it turns a flag into a referral, three strikes instead of one. A
+## threshold nobody can see coming is a threshold that feels arbitrary when it
+## lands, and this is the one that ends most careers.
+func habit_warning() -> String:
+	if nights < ReviewSystem.HABIT_NIGHTS:
+		return ""
+	var rate := uncorroborated_rate()
+	if rate >= ReviewSystem.ENTRENCHED_RATE and nights >= ReviewSystem.ENTRENCHED_NIGHTS:
+		return "She no longer asks about these one at a time. The next bed " \
+			+ "you are the only witness for goes straight to the panel."
+	if rate >= ReviewSystem.HABIT_RATE:
+		return "\"Only you saw it\" has stopped being a reason, doctor. " \
+			+ "Keep this up and it stops being a question, too."
+	return ""
 
 ## What she says before she says anything else. Empty on a clean record, which
 ## is the point — the first few days she has no reason to open with anything.

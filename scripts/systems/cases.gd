@@ -84,6 +84,11 @@ const DEBT_DUE := 2200
 ## night is never charged twice, it simply takes longer to get out from under.
 const DEBT_INTEREST := 0.10
 
+## The two ends of a shift. You are on the ward at eight and Vinnie is at the
+## door at eight, and everything the day is — four rounds, a seventy-five minute
+## lab, six verbs with a price in minutes — is shaped by the twelve hours in
+## between. Both ends were spelled `8 * 60` and `20 * 60` in five files.
+const DAY_START_MINUTE := 8 * 60
 const DEBT_DUE_MINUTE := 20 * 60
 
 ## `truly_well` is the simulation's own opinion and is never shown. It decides

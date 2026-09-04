@@ -1011,6 +1011,41 @@ func _check_the_day_gives_you_warning() -> void:
 			% [WardDay.LAST_CALL.size(), warnings])
 	_ok(counted, "and it says how many beds are still undecided")
 
+	# AND THE REGISTRAR'S FOUR HOURS ARE ANNOUNCED. He is the strongest
+	# corroboration a bed can have and he is here for four hours of twelve. The
+	# patient screen says when he is next about, which only helps if you happen
+	# to be looking at a patient — and the window you want him in is usually the
+	# one you are busy in. Missing it was silent.
+	#
+	# Driven a minute at a time rather than by advancing a ward, because the
+	# announcements hang off the WORLD clock — one ward, one voice — and this
+	# file already has a live ward on the same clock that has been walked to
+	# gone five by the checks above it.
+	var heard: Array = []
+	var listen := func(text: String, _kind: String): heard.append(text)
+	EventBus.toast.connect(listen)
+	var q := WardDay.new()
+	tree.root.add_child(q)
+	q.start()
+	for m in range(Cases.DAY_START_MINUTE, Cases.DEBT_DUE_MINUTE):
+		q._registrar_moves(m)
+	EventBus.toast.disconnect(listen)
+	tree.root.remove_child(q)
+	q.free()
+
+	var comings := 0
+	var goings := 0
+	for t in heard:
+		if String(t) == "%s is on the ward." % WardDay.COLLEAGUE:
+			comings += 1
+		elif String(t).begins_with("%s has gone back" % WardDay.COLLEAGUE):
+			goings += 1
+	_ok(comings == WardDay.COLLEAGUE_HOURS.size(),
+		"%s arriving is announced once per window (%d of %d)"
+			% [WardDay.COLLEAGUE, comings, WardDay.COLLEAGUE_HOURS.size()])
+	_ok(goings == WardDay.COLLEAGUE_HOURS.size(),
+		"and so is him leaving (%d)" % goings)
+
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
 	if ps == null:

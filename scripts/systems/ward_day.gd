@@ -53,6 +53,10 @@ const RUTH_ARRIVES := 19 * 60
 var _family_been: Dictionary = {}
 ## minutes-before-eight -> already called today.
 var _called: Dictionary = {}
+## Whether Dr Costa was on the ward the last time anybody looked, and whether
+## anybody has looked yet today.
+var _registrar_here := false
+var _registrar_known := false
 
 ## Tonight's number. Usually Cases.DEBT_DUE; more if last night came up short.
 var debt_tonight := Cases.DEBT_DUE
@@ -100,10 +104,42 @@ func _on_minute(now: int) -> void:
 	# read DEBT_DUE_MINUTE — a player could wander until three in the morning
 	# at no cost, which is the pressure the design is built on simply absent.
 	_last_call(now)
+	_registrar_moves(now)
 	if now >= Cases.DEBT_DUE_MINUTE:
 		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
 		sign_off()
 		EventBus.request_ui.emit("review", {})
+
+## THE REGISTRAR COMES AND GOES, and you are told which.
+##
+## He is the strongest corroboration a bed can have and he is here for four
+## hours of a twelve-hour day. The patient screen says when he is next about,
+## which is the right place for it — but only if you happen to be looking at a
+## patient, and the window you want him in is usually the one you are busy in.
+## Missing it is a real loss and it happened silently.
+func _registrar_moves(now: int) -> void:
+	var here := colleague_available(now)
+	# THE FIRST LOOK SETS THE BASELINE AND SAYS NOTHING. At eight in the morning
+	# he is already away, and "Dr Costa has gone" before you have done anything
+	# is a notification about nothing.
+	#
+	# This guard was AFTER the no-change check, which meant the early return
+	# fired every quiet minute and the "first evaluation" branch was reached by
+	# the first real TRANSITION instead — so eleven o'clock, when he actually
+	# arrives, was the one arrival that went unannounced.
+	if not _registrar_known:
+		_registrar_known = true
+		_registrar_here = here
+		return
+	if here == _registrar_here:
+		return
+	_registrar_here = here
+	if here:
+		EventBus.toast.emit("%s is on the ward." % COLLEAGUE, "good")
+	else:
+		var back := colleague_next(now)
+		EventBus.toast.emit("%s has gone back to the other ward.%s" % [COLLEAGUE,
+			"" if back < 0 else " Back at %d:%02d." % [back / 60, back % 60]], "info")
 
 ## THE RUN-UP TO EIGHT.
 ##
@@ -197,6 +233,7 @@ func start() -> void:
 		}
 	_family_been.clear()
 	_called.clear()
+	_registrar_known = false
 	for pe in Cases.prior_entries():
 		var e := ChartEntry.new()
 		e.patient_id = String(pe["patient"])

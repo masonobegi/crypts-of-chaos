@@ -768,7 +768,11 @@ func _self_discharges(from: int) -> void:
 		e.terminal_id = TERMINAL_STATION
 		records.add(e)
 		_log("self_discharge", {"pid": pid, "at": at})
-		EventBus.toast.emit("%s has signed herself out." % String(c.get("name", pid)), "bad")
+		# NOT "herself". The toast said it about whoever walked, and a ward of
+		# five is drawn from forty people — so the game misgendered the patient
+		# roughly half the times it fired, at the moment it most wanted to land.
+		EventBus.toast.emit(Cases.about(pid,
+			"%s has signed {themselves} out." % String(c.get("name", pid))), "bad")
 		AudioMgr.play("door", -10.0)
 		patient_changed.emit(pid)
 		_update_objective()
@@ -974,7 +978,7 @@ func end_day() -> Dictionary:
 		if String(st["disposition"]) != "discharge":
 			continue
 		if bool(st.get("self_discharged", false)):
-			continue          ## she signed herself out. That one is not yours.
+			continue          ## they signed themselves out. That one is not yours.
 		if bool(Cases.by_id(pid).get("truly_well", true)):
 			continue
 		if bool(Cases.by_id(pid).get("readmitted", false)):

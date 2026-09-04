@@ -97,6 +97,7 @@ const DEBT_DUE_MINUTE := 20 * 60
 const DAY_ONE := [
 	{
 		"id": "marchetti", "name": "Ivo Marchetti", "age": 54, "bed": 1,
+		"they": "he",
 		"condition": "Cellulitis, left lower leg",
 		"tier": Tier.PREMIUM,
 		"truly_well": false,          ## GENUINELY borderline — you can hold him honestly
@@ -123,6 +124,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "kerrigan", "name": "Dot Kerrigan", "age": 81, "bed": 2,
+		"they": "she",
 		"condition": "Mechanical fall, no fracture",
 		"tier": Tier.STATE,
 		"truly_well": true,
@@ -157,6 +159,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "brennan", "name": "Hal Brennan", "age": 39, "bed": 3,
+		"they": "he",
 		"condition": "Day 2 post appendicectomy",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -183,6 +186,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "oduya", "name": "Sam Oduya", "age": 62, "bed": 4,
+		"they": "he",
 		"condition": "Atypical chest pain, investigations negative",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -212,6 +216,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "blake", "name": "Winifred Blake", "age": 47, "bed": 5,
+		"they": "she",
 		"condition": "Migraine, resolved",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -246,6 +251,7 @@ const DAY_ONE := [
 	## careers is who you are having the conversation with, not what the ward is.
 	{
 		"id": "bassong", "name": "Sylvie Bassong", "age": 79, "bed": 2,
+		"they": "she",
 		"condition": "Fall, no fracture",
 		"tier": Tier.STATE,
 		"truly_well": true,
@@ -271,6 +277,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "whitcombe", "name": "Rory Whitcombe", "age": 31, "bed": 3,
+		"they": "he",
 		"condition": "Appendicectomy, day two",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -294,6 +301,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "nwankwo", "name": "Cordelia Nwankwo", "age": 55, "bed": 5,
+		"they": "she",
 		"condition": "Vertigo, settled",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -321,6 +329,7 @@ const DAY_ONE := [
 	## premium, so the money on the ward is identical either way.
 	{
 		"id": "vantol", "name": "Marisol van Tol", "age": 39, "bed": 1,
+		"they": "she",
 		"condition": "Cellulitis, resolved",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -344,6 +353,7 @@ const DAY_ONE := [
 	},
 	{
 		"id": "sarkisian", "name": "Aram Sarkisian", "age": 62, "bed": 4,
+		"they": "they",
 		"condition": "Chest pain, troponin rise",
 		"tier": Tier.PREMIUM,
 		"truly_well": false,
@@ -384,6 +394,7 @@ const DAY_ONE := [
 const DAY_TWO := [
 	{
 		"id": "bux", "name": "Nasreen Bux", "age": 34, "bed": 1,
+		"they": "she",
 		"condition": "Pyelonephritis, day 3 IV antibiotics",
 		"tier": Tier.STATE,
 		"truly_well": false,          ## the honest hold, and it pays almost nothing
@@ -410,6 +421,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "achebe_fry", "name": "Gordon Achebe-Fry", "age": 71, "bed": 2,
+		"they": "he",
 		"condition": "Post-operative AF, rate controlled",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -442,6 +454,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "ferreira", "name": "Tallulah Ferreira", "age": 26, "bed": 3,
+		"they": "she",
 		"condition": "Diabetic ketoacidosis, resolved",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -472,6 +485,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "lomax", "name": "Peter Lomax", "age": 58, "bed": 4,
+		"they": "he",
 		"condition": "Alcohol withdrawal, CIWA falling",
 		## PREMIUM ON PURPOSE, and it is the whole arithmetic of the second ward.
 		## The only bed that both needs holding and pays for the night is the one
@@ -515,6 +529,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "voss", "name": "Imelda Voss", "age": 68, "bed": 5,
+		"they": "she",
 		"condition": "Observation post-collapse, cause unclear",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -546,6 +561,7 @@ const DAY_TWO := [
 	## ---- ALTERNATES.
 	{
 		"id": "haldane", "name": "Moira Haldane", "age": 66, "bed": 2,
+		"they": "she",
 		"condition": "TIA, investigations complete",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -572,6 +588,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "grieve", "name": "Danny Grieve", "age": 27, "bed": 3,
+		"they": "he",
 		"condition": "Asthma exacerbation, resolved",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -596,6 +613,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "delacroix", "name": "Yves Delacroix", "age": 61, "bed": 5,
+		"they": "he",
 		"condition": "Atypical chest pain, workup negative",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -621,6 +639,7 @@ const DAY_TWO := [
 	## ---- THE PAIR, both premium.
 	{
 		"id": "renshaw", "name": "Gordon Renshaw", "age": 58, "bed": 4,
+		"they": "he",
 		"condition": "Back pain, imaging clear",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -644,6 +663,7 @@ const DAY_TWO := [
 	},
 	{
 		"id": "ibarra", "name": "Celia Ibarra", "age": 71, "bed": 5,
+		"they": "she",
 		"condition": "Pulmonary embolism, anticoagulated",
 		"tier": Tier.PREMIUM,
 		"truly_well": false,
@@ -685,6 +705,7 @@ const DAY_TWO := [
 const DAY_THREE := [
 	{
 		"id": "tsang", "name": "Errol Tsang", "age": 44, "bed": 1,
+		"they": "they",
 		"condition": "Cellulitis, resolving",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -708,6 +729,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "doust", "name": "Maryam Doust", "age": 58, "bed": 2,
+		"they": "she",
 		"condition": "COPD exacerbation, back to baseline",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -735,6 +757,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "aldridge", "name": "Kit Aldridge", "age": 19, "bed": 3,
+		"they": "he",
 		"condition": "Overdose, medically cleared",
 		"tier": Tier.STATE,
 		"truly_well": true,
@@ -762,6 +785,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "okwuosa", "name": "Bernard Okwuosa", "age": 76, "bed": 4,
+		"they": "he",
 		"condition": "Chest infection, treated",
 		"tier": Tier.STANDARD,
 		"truly_well": false,           ## and he will tell you the opposite
@@ -785,6 +809,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "fry", "name": "Rosalind Fry", "age": 52, "bed": 5,
+		"they": "she",
 		"condition": "Chest pain, investigations negative",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -814,6 +839,7 @@ const DAY_THREE := [
 	## ---- ALTERNATES.
 	{
 		"id": "mbeki", "name": "Josiah Mbeki", "age": 49, "bed": 1,
+		"they": "he",
 		"condition": "Renal colic, stone passed",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -837,6 +863,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "ferrero", "name": "Bianca Ferrero", "age": 63, "bed": 2,
+		"they": "she",
 		"condition": "Cellulitis, treated",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -862,6 +889,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "quill", "name": "Tam Quill", "age": 22, "bed": 3,
+		"they": "they",
 		"condition": "Self-harm, wounds sutured",
 		"tier": Tier.STATE,
 		"truly_well": true,
@@ -888,6 +916,7 @@ const DAY_THREE := [
 	## ---- THE PAIR, both standard.
 	{
 		"id": "achterberg", "name": "Pieter Achterberg", "age": 68, "bed": 4,
+		"they": "he",
 		"condition": "Chest infection, resolved",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -911,6 +940,7 @@ const DAY_THREE := [
 	},
 	{
 		"id": "ollerenshaw", "name": "Nita Ollerenshaw", "age": 57, "bed": 1,
+		"they": "she",
 		"condition": "Diverticulitis, not settling",
 		"tier": Tier.STANDARD,
 		"truly_well": false,
@@ -989,6 +1019,7 @@ const PRIOR_THREE := [
 const DAY_FOUR := [
 	{
 		"id": "ashworth", "name": "Gwen Ashworth", "age": 71, "bed": 1,
+		"they": "she",
 		"condition": "Urinary sepsis, treated",
 		"tier": Tier.STANDARD,
 		## HE CLEARED HER AT TWENTY TO SEVEN AND HE WAS WRONG.
@@ -1024,6 +1055,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "pyne", "name": "Douglas Pyne", "age": 58, "bed": 2,
+		"they": "he",
 		"condition": "Chest pain, admitted overnight, workup negative",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -1049,6 +1081,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "petrossian", "name": "Alma Petrossian", "age": 84, "bed": 3,
+		"they": "she",
 		"condition": "Fall, no injury. Discharged 05:00.",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -1072,6 +1105,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "vane", "name": "Hollis Vane", "age": 47, "bed": 4,
+		"they": "he",
 		"condition": "Pancreatitis, not settling",
 		"tier": Tier.PREMIUM,
 		## LOUD, AND RIGHT. Everybody stopped listening on Tuesday.
@@ -1098,6 +1132,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "threlfall", "name": "Ivy Threlfall", "age": 34, "bed": 5,
+		"they": "she",
 		"condition": "Migraine with aura, resolved",
 		"tier": Tier.STANDARD,
 		## AND HE WAS WRONG THE OTHER WAY. His four-twenty note says she stays.
@@ -1126,6 +1161,7 @@ const DAY_FOUR := [
 	## ---- ALTERNATES.
 	{
 		"id": "okereke", "name": "Ngozi Okereke", "age": 44, "bed": 2,
+		"they": "she",
 		"condition": "Palpitations, admitted overnight, monitoring normal",
 		"tier": Tier.PREMIUM,
 		"truly_well": true,
@@ -1150,6 +1186,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "hollins", "name": "Bert Hollins", "age": 81, "bed": 3,
+		"they": "he",
 		"condition": "Chest infection, treated. Discharged 04:30.",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -1173,6 +1210,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "sarraf", "name": "Yasmin Sarraf", "age": 29, "bed": 5,
+		"they": "she",
 		"condition": "Syncope, cardiac workup negative",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -1200,6 +1238,7 @@ const DAY_FOUR := [
 	## the night registrar's two decisions was the wrong one.
 	{
 		"id": "brightwell", "name": "Enid Brightwell", "age": 74, "bed": 1,
+		"they": "she",
 		"condition": "Urinary infection, treated",
 		"tier": Tier.STANDARD,
 		"truly_well": true,
@@ -1223,6 +1262,7 @@ const DAY_FOUR := [
 	},
 	{
 		"id": "castellanos", "name": "Rubén Castellanos", "age": 66, "bed": 3,
+		"they": "he",
 		"condition": "Fall, discharged 05:00",
 		"tier": Tier.STANDARD,
 		"truly_well": false,
@@ -1286,6 +1326,62 @@ const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR]
 ## who was not fit to go is in a bed tomorrow, worse, and takes the place of one
 ## of the scheduled admissions — so a readmission costs a bed as well as a
 ## conversation, and the ward you walk onto is one you made.
+## ------------------------------------------------------------ who they are
+##
+## EVERY PATIENT CARRIES THEIR OWN PRONOUN, and nothing in the game derives one
+## from a name. Six strings had one welded in — the self-discharge toast said
+## "%s has signed herself out" about whoever walked, and five of the reviewer's
+## questions asked about "him" or "her" regardless of who was in the bed. On a
+## ward of five people drawn from forty, that is wrong about half the time, in
+## the two places the writing is supposed to be at its most careful: the moment
+## somebody walks out on you, and the moment you are asked to account for them.
+##
+## The values are read off each patient's OWN authored prose — "he walks the bay
+## to prove it", "she is right about all of it" — and three people whose prose
+## commits to nothing keep they/them, which is also what an unknown id gets.
+const PRONOUNS := {
+	"he": {"they": "he", "them": "him", "their": "his", "theirs": "his",
+		"themselves": "himself", "are": "is", "have": "has", "were": "was",
+		"do": "does", "They": "He", "Them": "Him", "Their": "His"},
+	"she": {"they": "she", "them": "her", "their": "her", "theirs": "hers",
+		"themselves": "herself", "are": "is", "have": "has", "were": "was",
+		"do": "does", "They": "She", "Them": "Her", "Their": "Her"},
+	"they": {"they": "they", "them": "them", "their": "their", "theirs": "theirs",
+		"themselves": "themselves", "are": "are", "have": "have", "were": "were",
+		"do": "do", "They": "They", "Them": "Them", "Their": "Their"},
+}
+
+## One patient's set. Unknown ids get they/them rather than a guess.
+static func pronouns_of(pid: String) -> Dictionary:
+	return PRONOUNS[String(anyone(pid).get("they", "they"))]
+
+## Fill a sentence written with the neutral forms as placeholders. Verbs are the
+## half of this a pronoun table alone gets wrong — "they are" against "she is" —
+## so they are handled too. The irregulars are in the table above; any regular
+## verb is written `{v:read}` and simply takes an s for he and she:
+##
+##     Cases.about("blake", "{They} {are} asking for {their} coat.")
+##     -> "She is asking for her coat."
+##     Cases.about("haldane", "{They} {v:read} {their} own chart.")
+##     -> "She reads her own chart."
+static func about(pid: String, line: String) -> String:
+	var pr := pronouns_of(pid)
+	var out := line
+	for k in pr:
+		out = out.replace("{%s}" % k, String(pr[k]))
+	var singular: bool = String(pr["are"]) == "is"
+	while true:
+		var at := out.find("{v:")
+		if at < 0:
+			break
+		var close := out.find("}", at)
+		if close < 0:
+			break            ## unclosed placeholder; leave the rest alone
+		var verb := out.substr(at + 3, close - at - 3)
+		out = out.substr(0, at) + (verb + "s" if singular else verb) \
+			+ out.substr(close + 1)
+	return out
+
 const READMIT_FLAG := "readmissions"
 
 ## AND WHERE TONIGHT'S GO UNTIL MORNING.
@@ -1638,6 +1734,15 @@ static func by_id(id: String) -> Dictionary:
 ## on Tuesday. `by_id` correctly returns nothing for them, and every caller that
 ## only wanted to print a NAME therefore printed the internal id — the end of
 ## day screen was telling the player "oduya's file has a note on it now".
+## EVERY AUTHORED PERSON, across all four wards. The tests walk this to assert
+## referential integrity, and it is the only place that knows the pool is DAYS
+## flattened rather than a list of its own.
+static func everyone() -> Array:
+	var out: Array = []
+	for day_roster in DAYS:
+		out.append_array(day_roster)
+	return out
+
 static func anyone(id: String) -> Dictionary:
 	for day_roster in DAYS:
 		for c in day_roster:

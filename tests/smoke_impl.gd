@@ -225,6 +225,7 @@ func _check_the_verbs_work() -> void:
 	_check_tests_in_flight_come_back(w)
 	_check_a_watched_day_can_still_be_written_in()
 	_check_a_readmission_waits_for_the_morning()
+	_check_nobody_is_misgendered()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
 ##
@@ -386,6 +387,84 @@ func _check_a_readmission_waits_for_the_morning() -> void:
 	tree.root.remove_child(w)
 	w.free()
 	GameState.minute_of_day = was
+
+## NOBODY IS DESCRIBED BY SOMEBODY ELSE'S PRONOUN.
+##
+## Six strings had one welded in. The self-discharge toast said "%s has signed
+## herself out" about whoever walked out, and five of Sister Nkemelu's questions
+## asked about "him" or "her" regardless of who was in the bed — so on a ward of
+## five drawn from forty, the game got it wrong about half the time it spoke, in
+## the two places the writing is trying hardest: the moment somebody walks out
+## on you, and the moment you are asked to account for them.
+##
+## Both halves are checked. The data half, that all forty people have a pronoun
+## and that it is one the table knows. And the source half, by grepping the
+## strings themselves — because the fix is a template and a template is only as
+## good as the next person remembering to use it.
+func _check_nobody_is_misgendered() -> void:
+	var missing := 0
+	var unknown := 0
+	for c in Cases.everyone():
+		var they := String(c.get("they", ""))
+		if they == "":
+			missing += 1
+		elif not Cases.PRONOUNS.has(they):
+			unknown += 1
+	_ok(missing == 0 and unknown == 0,
+		"all %d authored patients carry their own pronoun (%d missing, %d unknown)"
+			% [Cases.everyone().size(), missing, unknown])
+
+	# The template does the agreement, which is the half a lookup table alone
+	# gets wrong: "they are" against "she is".
+	var she := Cases.about(_someone_who("she"), "{They} {are} asking for {their} coat.")
+	var they2 := Cases.about(_someone_who("they"), "{They} {are} asking for {their} coat.")
+	_ok(she == "She is asking for her coat.", "she reads as she (%s)" % she)
+	_ok(they2 == "They are asking for their coat.", "they reads as they (%s)" % they2)
+	_ok(Cases.about(_someone_who("he"), "{They} {v:read} {their} chart.")
+		== "He reads his chart.", "and a regular verb agrees with either")
+	# An id nobody has heard of gets they/them, not a guess.
+	_ok(Cases.about("nobody_at_all", "{They} {are} here.") == "They are here.",
+		"an unknown patient is they, never an assumption")
+
+	# AND NOTHING NEW SNEAKS ONE BACK IN. A gendered pronoun in the same string
+	# as a `%s` is the shape of the bug: a name substituted into a sentence that
+	# has already decided who the person is.
+	var offenders: Array = []
+	for path in ["res://scripts/systems/contradictions.gd",
+			"res://scripts/systems/ward_day.gd", "res://scripts/systems/review_system.gd"]:
+		var src := FileAccess.get_file_as_string(path)
+		var n := 0
+		for line in src.split("\n"):
+			n += 1
+			var bare := line.strip_edges()
+			if bare.begins_with("#") or not bare.contains("%s"):
+				continue
+			# Only inside the quoted parts — a trailing comment on a line of
+			# real code is prose and is allowed to say "she" about Adeyemi.
+			for chunk in _quoted(bare):
+				for word in ["he ", "him ", "his ", "she ", "her ", "hers ",
+						"himself", "herself"]:
+					if (" " + chunk.to_lower()).contains(" " + word):
+						offenders.append("%s:%d %s" % [path.get_file(), n, chunk.substr(0, 48)])
+						break
+	_ok(offenders.is_empty(),
+		"no templated line decides the patient's gender for them%s"
+			% ("" if offenders.is_empty() else " — " + String(offenders[0])))
+
+func _someone_who(kind: String) -> String:
+	for c in Cases.everyone():
+		if String(c.get("they", "")) == kind:
+			return String(c["id"])
+	return ""
+
+## The double-quoted runs of a line, so a trailing comment is not searched.
+func _quoted(line: String) -> Array:
+	var out: Array = []
+	var parts := line.split("\"")
+	for i in parts.size():
+		if i % 2 == 1:
+			out.append(String(parts[i]))
+	return out
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

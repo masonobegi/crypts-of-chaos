@@ -1081,7 +1081,7 @@ func test_the_woman_who_asks_you_to() -> void:
 	w.advance_to(17 * 60 + 20)
 	w.write_entry("fry", ChartEntry.Claim.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 	w.set_disposition("fry", "hold")
-	t.ok(_kinds(w.review_findings()).has("she_asked_you_to"),
+	t.ok(_kinds(w.review_findings()).has("they_asked_you_to"),
 		"doing what she asked is a finding")
 	var beds := Contradictions.audit_beds(w.records.entries, w.review_truth(),
 		w.review_findings())
@@ -1098,7 +1098,7 @@ func test_saying_no_to_her_costs_nothing() -> void:
 	w.set_disposition("okwuosa", "hold")
 	for id in ["tsang", "aldridge", "fry"]:
 		w.set_disposition(id, "discharge")
-	t.ok(not _kinds(w.review_findings()).has("she_asked_you_to"),
+	t.ok(not _kinds(w.review_findings()).has("they_asked_you_to"),
 		"telling her no produces no finding at all")
 	w.queue_free()
 	GameState.day = 1

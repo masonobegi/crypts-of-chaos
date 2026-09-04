@@ -87,7 +87,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_reversed_a_colleague(pid, list, t))
 		out.append_array(_written_in_front_of_them(pid, list, t))
 		out.append_array(_reads_own_chart(pid, list, t))
-		out.append_array(_she_asked_you_to(pid, list, t))
+		out.append_array(_they_asked_you_to(pid, list, t))
 		out.append_array(_addendum_cascade(pid, list))
 		out.append_array(_leaned_on_last_night(pid, list, t))
 
@@ -182,8 +182,10 @@ static func _sent_home_unwell(by_patient: Dictionary, truth: Dictionary) -> Arra
 		if peer != null:
 			f.entries = PackedStringArray([peer.id])
 			f.severity = 0.85
-			f.question = ("You asked %s to review %s. He said not today. "
-				+ "They went home at teatime.") % [peer.author_id, _who(t)]
+			# NOT "He". `peer.author_id` is whoever wrote the entry, and on
+			# this ward that is as often Adeyemi as the registrar.
+			f.question = ("You asked %s to review %s, and the answer came back: "
+				+ "not today. They went home at teatime.") % [peer.author_id, _who(t)]
 			f.because = "You obtained an opinion that they were not fit to go, and discharged them anyway."
 		elif examined:
 			f.entries = PackedStringArray([last_stay.id]) if last_stay != null \
@@ -294,8 +296,9 @@ static func _conflicting_observations(pid: String, list: Array) -> Array:
 				# You sent her. She looked. She wrote the opposite of what you
 				# needed, and you kept him anyway.
 				f.severity = 0.60
-				f.question = ("You asked Adeyemi to review him and she came back "
-					+ "with %s. You kept him in regardless. Why ask?") % _short(
+				f.question = Cases.about(f.patient_id,
+					"You asked Adeyemi to review {them} and she came back with "
+					+ "%s. You kept {them} in regardless. Why ask?") % _short(
 						b if b.at_your_request else a)
 				f.because = ("You requested a second opinion, got one that "
 					+ "disagreed with you, and billed the night anyway.")
@@ -472,8 +475,9 @@ static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
 			+ "how long. Did you speak to them?") % who
 		f.because = "%s read the chart and followed it up." % who
 	else:
-		f.question = ("%s read the notes and there was nothing in them about "
-			+ "keeping him in. %s") % [who, note]
+		f.question = Cases.about(f.patient_id,
+			"%s read the notes and there was nothing in them about keeping "
+			+ "{them} in. %s") % [who, note]
 		f.because = ("%s read the chart before there was any reason written in "
 			+ "it. %s") % [who, note]
 	out.append(f)
@@ -489,7 +493,7 @@ static func _family_read_it(pid: String, list: Array, t: Dictionary) -> Array:
 ## And consent is not a defence, because the person consenting is the person
 ## who tells the ward sister about it in the morning. She is grateful, she is
 ## specific, and she has no idea she is describing a fraud.
-static func _she_asked_you_to(pid: String, list: Array, t: Dictionary) -> Array:
+static func _they_asked_you_to(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
 	if not bool(t.get("asks_to_stay", false)) or not bool(t.get("held", false)):
 		return out
@@ -500,19 +504,21 @@ static func _she_asked_you_to(pid: String, list: Array, t: Dictionary) -> Array:
 	if yours == null:
 		return out
 	var f := Finding.new()
-	f.kind = "she_asked_you_to"
+	f.kind = "they_asked_you_to"
 	f.patient_id = pid
 	f.entries = PackedStringArray([yours.id])
 	f.axis = "who wanted this"
 	f.severity = 0.72
-	f.question = ("%s told me she'd asked you to keep her in. She was very "
+	f.question = Cases.about(pid,
+		"%s told me {they}'d asked you to keep {them} in. {They} {were} very "
 		+ "warm about it. Is that what this note is?") % _who(t)
-	f.because = ("She asked you to, you wrote it down as a symptom, and she "
-		+ "told the ward sister that she had asked.")
+	f.because = Cases.about(pid,
+		"{They} asked you to, you wrote it down as a symptom, and {they} told "
+		+ "the ward sister that {they} had asked.")
 	out.append(f)
 	return out
 
-## SHE READS HER OWN NOTES.
+## THEY READ THEIR OWN NOTES.
 ##
 ## Winifred Blake's trap was a flag on a file, and the player finds it by opening
 ## the record. Imelda Voss is the same trap turned inside out: there is nothing
@@ -540,15 +546,20 @@ static func _reads_own_chart(pid: String, list: Array, t: Dictionary) -> Array:
 	var watched: bool = not yours.seen_by.is_empty()
 	f.severity = 0.80 if watched else 0.66
 	if watched:
-		f.question = ("%s read what you wrote about her, in front of her, and "
-			+ "asked me what the indication was. She had the wording.") % _who(t)
-		f.because = ("She reads her own chart every evening, and you typed that "
-			+ "line standing where she could see the screen.")
+		f.question = Cases.about(pid,
+			"%s read what you wrote about {them}, in front of {them}, and asked "
+			+ "me what the indication was. {They} had the wording.") % _who(t)
+		f.because = Cases.about(pid,
+			"{They} {v:read} {their} own chart every evening, and you "
+			+ "typed that line standing where {they} could see the screen.")
 	else:
-		f.question = ("%s read her own notes last night. She wanted to know who "
-			+ "had observed %s, because nobody had been near her.") % [
+		f.question = Cases.about(pid,
+			"%s read {their} own notes last night. {They} wanted to know who "
+			+ "had observed %s, because nobody had been near {them}.") % [
 			_who(t), _short(yours)]
-		f.because = "She reads her own chart, and she remembers what was not in it yesterday."
+		f.because = Cases.about(pid,
+			"{They} {v:read} {their} own chart, and {they} {v:remember} "
+			+ "what was not in it yesterday.")
 	out.append(f)
 	return out
 
@@ -1131,7 +1142,7 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at",
 					"written_in_front_of_them", "reads_own_chart",
-					"readmitted_after_your_discharge", "she_asked_you_to"]:
+					"readmitted_after_your_discharge", "they_asked_you_to"]:
 				contradicted = true
 
 		# A DISCHARGE IS AUDITED THE OTHER WAY UP. There is no "reason for the

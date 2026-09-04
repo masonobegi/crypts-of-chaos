@@ -254,26 +254,21 @@ func _maybe_wander() -> void:
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h == null:
 		return
-	# A psychiatric admission with a day room to sit in will use it, and will
-	# stay a good while. That matters more than it looks: recovery is scored
-	# against the comfort of the room they are ACTUALLY in, so a cold, dark day
-	# room slows down every psych patient on the floor at once, from a
-	# thermostat nobody associates with any of them.
-	var day_room := false  # there is no day room; the ward is the ward
-	if day_room:
-		urge = maxf(urge, 0.45)
+	# THE DAY ROOM IS GONE, and so is the recovery-by-room-comfort model the
+	# branch below was scoring against. What was left was a `day_room` local
+	# hard-coded to false, three dead conditionals reading it, four barks that
+	# could never be said, and a `point_in("day_room")` that resolved to
+	# Vector3.ZERO through a push_error nobody sees — so a patient who got up
+	# walked to the corner where the corridor meets the station rather than
+	# anywhere in the building.
 	if not RNG.chance("patient_wander", urge):
 		return
 	state = State.WANDERING
-	_timer = 40.0 if day_room else 12.0
-	goto(h.point_in("day_room", "day_room_pt") if day_room
-		else h.point_in("corridor", "patient_wander_pt"))
+	_timer = 12.0
+	goto(h.point_in("corridor", "patient_wander_pt"))
 	say(String(RNG.pick("wander_bark", [
 		"I'm just going to stretch my legs.", "Where's the tea?",
 		"I need to speak to someone.", "Is this the way out?",
-	]) if not day_room else RNG.pick("day_room_bark", [
-		"I'll be in the day room.", "There's a jigsaw. I'm told it's missing a piece.",
-		"The telly's on. It's always on.", "I prefer it in there. It's warmer.",
 	])), 3.0)
 	WorldEvent.new("patient_wandering", "").at(global_position, current_room()) \
 		.about(data.id).heard(0.0, 10.0).tag("chaos") \
@@ -346,7 +341,10 @@ func discharge_and_leave() -> void:
 		bed.occupant = null
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h:
-		goto(h.point_in("lobby", "discharge_pt"), false)
+		# "lobby" was demolished in the redesign, so a discharged patient walked
+		# to Vector3.ZERO — the corner where the corridor meets the station —
+		# rather than out of the building, after a push_error nobody sees.
+		goto(h.point_in("corridor", "discharge_pt"), false)
 	say(String(RNG.pick("leave_bark", [
 		"Thanks, doctor.", "Finally.", "I'll not be coming back here.",
 		"Cheers. I think.",

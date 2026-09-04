@@ -39,7 +39,7 @@ signal item_dropped(item: Node)
 signal item_broke(item: Node)
 
 # ---------------------------------------------------------------- ui / feedback
-signal toast(text: String, kind: String)   ## kind: info|good|bad|money|suspicion
+signal toast(text: String, kind: String)   ## info|good|bad|money|result|suspicion
 signal subtitle(speaker: String, text: String, seconds: float)
 ## Fixtures ask the UI layer to open a screen. context carries whatever the
 ## screen needs (patient id, machine reference, terminal mode).

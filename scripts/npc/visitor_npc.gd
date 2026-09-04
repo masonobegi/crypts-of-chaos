@@ -105,7 +105,8 @@ func _leave() -> void:
 	state = State.LEAVING
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h:
-		goto(h.point_in("lobby", "visitor_leave_pt"))
+		# "lobby" is not a room in this building any more.
+		goto(h.point_in("corridor", "visitor_leave_pt"))
 
 # A visitor was somebody you could talk to: prompt() offered it and interact()
 # opened the dialogue screen. That screen went with Dialogue, and there is

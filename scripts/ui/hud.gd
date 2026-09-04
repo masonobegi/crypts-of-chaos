@@ -246,7 +246,18 @@ func _refresh_objective_arrow() -> void:
 	if dir.length() < 1.0:
 		dir = Vector2(0, -1)
 	dir = dir.normalized()
-	var edge: Vector2 = centre + dir * (minf(rect.x, rect.y) * 0.5 - margin)
+	# TO THE EDGE OF THE SCREEN, which is what the two comments above this both
+	# claim it does. A circle inscribed in the SHORTER axis has a radius of 404px
+	# on 1600x900, so a marker off to the left or right put its arrow at x=396 or
+	# x=1204 — four hundred pixels inside the frame, floating in mid-air over a
+	# wall or a curtain. It is a pale teal triangle on a ward with a teal dado,
+	# and it reads as a stray placeholder mesh rather than as a pointer. Scaled
+	# to the rectangle instead: whichever axis the ray leaves through decides the
+	# distance, so it lands ON the border on any aspect ratio.
+	var half: Vector2 = centre - Vector2(margin, margin)
+	var tx: float = half.x / maxf(absf(dir.x), 0.0001)
+	var ty: float = half.y / maxf(absf(dir.y), 0.0001)
+	var edge: Vector2 = centre + dir * minf(tx, ty)
 	_arrow.position = edge - Vector2(14, 18)
 	_arrow.rotation = dir.angle() + PI * 0.5
 	_arrow.text = "▲"
@@ -401,10 +412,22 @@ func _show_toast(text: String, kind: String) -> void:
 	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_last_toast_label = l
-	if kind == "money":
-		AudioMgr.play("money", -14.0)
-	elif kind == "bad":
-		AudioMgr.play("error", -14.0)
+	# EVERY TOAST MAKES A SOUND EXCEPT THE ONES THAT SHOULD NOT.
+	#
+	# Only "money" and "bad" played anything, and nothing in the project ever
+	# emits "money" — so in practice one toast kind in the game had audio. The
+	# returning test result is the single delayed payoff in the whole loop: you
+	# spend five minutes ordering it and seventy-five waiting, and it arrived as
+	# a small grey rectangle in the corner with no sound, frequently while a card
+	# was open on top of it. It could land and expire completely unseen.
+	match kind:
+		"money": AudioMgr.play("money", -14.0)
+		"bad": AudioMgr.play("error", -14.0)
+		"result": AudioMgr.play("beep", -10.0, 1.35)
+		# Deliberately silent: suspicion toasts are the game telling you
+		# something you are supposed to notice out of the corner of your eye.
+		"suspicion": pass
+		_: AudioMgr.play("paper", -20.0, 1.1)
 	while _toasts.get_child_count() > 3:
 		_toasts.get_child(0).free()
 	# Guard every await: the HUD can be torn down while a toast is still

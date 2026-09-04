@@ -46,8 +46,17 @@ func _play_one() -> void:
 	# Deliberately placed AWAY from the player, so ambience never gets confused
 	# with a prop falling over next to them.
 	var player = get_tree().get_first_node_in_group("player")
+	# THE ROOMS THAT EXIST, WEIGHTED TOWARD THE ONE YOU ARE STANDING IN.
+	#
+	# This picked from six keys and the building has four: `lobby`, `ward_101`,
+	# `ward_105` and `supply` were all demolished in the redesign. Four of every
+	# six picks missed, fell through `Hospital.point_in`'s push_error to
+	# Vector3.ZERO, and played from the corner where the corridor meets the
+	# station — audible right across a 29m building on a 30m falloff. And the
+	# five-bed bay, where the entire game happens, was never named at all: the
+	# ward had no ambience of its own for as long as it has existed.
 	var pos := hospital.point_in(String(RNG.pick("ambience_room",
-		["corridor", "lobby", "station", "ward_101", "ward_105", "supply"])), "ambience_pt")
+		["ward", "ward", "ward", "corridor", "station", "office"])), "ambience_pt")
 	if player != null and pos.distance_to(player.global_position) < 8.0:
 		return
 	AudioMgr.play_at_var(String(spec[0]), pos, float(spec[1]), float(spec[2]))

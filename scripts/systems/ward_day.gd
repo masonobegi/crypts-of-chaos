@@ -71,7 +71,10 @@ func _on_minute(now: int) -> void:
 		var order := records.by_id(String(eid))
 		if order != null and order.fulfilled_by == "":
 			var r := resolve_test(order)
-			EventBus.toast.emit("%s is back." % order.order_kind.capitalize(), "info")
+			# "result", not "info". This is the only delayed payoff in the loop —
+			# five minutes to order, seventy-five to come back — and it shared a
+			# silent toast kind with every hint in the game.
+			EventBus.toast.emit("%s is back." % order.order_kind.capitalize(), "result")
 	# Vinnie does not wait, and neither does the day. The whole pitch is a
 	# number owed at eight o'clock, and until this existed nothing anywhere
 	# read DEBT_DUE_MINUTE — a player could wander until three in the morning

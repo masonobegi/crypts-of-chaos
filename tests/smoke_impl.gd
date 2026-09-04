@@ -154,6 +154,7 @@ func _check_the_chart_works() -> void:
 	_check_the_new_verbs(w)
 	_check_the_room_is_watching(w)
 	_check_no_sign_is_mirrored()
+	_check_every_room_named_in_source_exists()
 	_check_the_crosshair_keeps_the_secret(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
@@ -256,6 +257,70 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## EVERY ROOM NAME IN THE SOURCE IS A ROOM THAT EXISTS.
+##
+## `Hospital.point_in` push_errors and returns Vector3.ZERO for a room it does
+## not have, and push_error goes to a log nobody reads during play. Four rooms
+## were demolished in the redesign — `lobby`, `day_room`, `ward_101`,
+## `ward_105`, `supply` — and five call sites went on asking for them: the
+## ambience system picked four of its six rooms from that list, so two thirds of
+## the hospital's ambient sound came from the one corner where the corridor
+## meets the station, on a 30m falloff in a 29m building, and the five-bed bay
+## where the whole game happens was never named at all. A discharged patient
+## walked to the origin instead of out; so did a leaving visitor.
+##
+## Greps the source rather than exercising the paths, because the wandering and
+## discharge branches are rare and the ambience one is a random pick — none of
+## them is reliably reachable in a smoke run, which is exactly why they survived.
+func _check_every_room_named_in_source_exists() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital")
+		return
+	var known := {}
+	for r in h.room_list():
+		known[String(r.key)] = true
+	var bad: Array = []
+	var checked := 0
+	for path in ["res://scripts/systems/ambience.gd", "res://scripts/npc/patient_npc.gd",
+			"res://scripts/npc/visitor_npc.gd", "res://scripts/npc/staff_npc.gd",
+			"res://scripts/core/game.gd", "res://scripts/systems/patient_system.gd"]:
+		var f := FileAccess.open(path, FileAccess.READ)
+		if f == null:
+			continue
+		# COMMENTS ARE NOT CALL SITES. The first run of this failed on
+		# `day_room` and the only remaining mention of it in the project was the
+		# comment explaining that it had been removed.
+		var lines: PackedStringArray = f.get_as_text().split("\n")
+		f.close()
+		var kept: PackedStringArray = PackedStringArray()
+		for ln in lines:
+			if String(ln).strip_edges().begins_with("#"):
+				continue
+			kept.append(String(ln))
+		var src := "\n".join(kept)
+		var re := RegEx.new()
+		re.compile('point_in\\(\\s*"([a-z_0-9]+)"')
+		for m in re.search_all(src):
+			checked += 1
+			var key := m.get_string(1)
+			if not known.has(key) and not bad.has(key):
+				bad.append(key)
+		# ...and the room lists the ambience system picks from by name.
+		var re2 := RegEx.new()
+		re2.compile('ambience_room",\\s*\\[([^\\]]*)\\]')
+		for m2 in re2.search_all(src):
+			for raw in m2.get_string(1).split(","):
+				var k := raw.strip_edges().replace('"', "")
+				if k == "":
+					continue
+				checked += 1
+				if not known.has(k) and not bad.has(k):
+					bad.append(k)
+	_ok(checked > 5, "there are room names in the source to check (%d)" % checked)
+	_ok(bad.is_empty(), "and every one of them is a room that exists%s"
+		% ("" if bad.is_empty() else ": " + ", ".join(bad)))
 
 ## NO SIGN IN THE BUILDING RENDERS ITS OWN MIRROR IMAGE.
 ##

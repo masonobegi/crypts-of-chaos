@@ -1611,6 +1611,21 @@ and the paperwork grows. 80% to 140%, under DISPLAY, checked by rendering the
 patient card at both ends: at 140% the card stays on the screen and its list
 scrolls, at 80% the whole list fits without scrolling at all.
 
+### The crosshair kept talking from behind the card
+
+The patient card deliberately does not pause the world, so the interactor keeps
+raycasting while you read it — and kept emitting the bedside prompt for the
+very person the card is about. A crosshair label with no crosshair under it
+(the crosshair is hidden by the modal), saying at a glance what the form beside
+it says at length. It goes down with the subtitles now, on the modal signal the
+HUD already had, and a new smoke check emits a prompt by hand while a card is
+up and asserts it stays down — "it was already hidden" is not the assertion.
+
+And the screenshot harness measured its two layout numbers only when the shot's
+NAME began with a 1, which happened to cover 10 through 19 and left
+`20_struck_off` — one of the two endings, the last thing a career shows
+anybody — unmeasured. It measures whenever there is a card up.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather
@@ -1624,7 +1639,7 @@ heading. Five new gotchas, four of them from tonight.
 
 ```
 unit + integration assertions ........................... 294
-smoke checks ............................................ 153, on three seeds
+smoke checks ............................................ 154, on three seeds
 input-layer checks ...................................... 12 on a pad, 12 on keys
 day-level criteria ...................................... 7/7
 career-level criteria ................................... 6/6, on three seeds

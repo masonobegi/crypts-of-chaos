@@ -386,6 +386,13 @@ func _on_objective(text: String) -> void:
 	_objective.text = text
 
 func _on_prompt(text: String, sub: String) -> void:
+	# NOT BEHIND A CARD. The patient card deliberately does not pause the world,
+	# so the interactor keeps raycasting while you read it and keeps emitting the
+	# bedside prompt for the person you are already looking at a card about — a
+	# crosshair label with no crosshair under it, next to a form that says the
+	# same thing at greater length.
+	if _modal_open:
+		return
 	_prompt.text = text
 	_prompt_sub.text = sub
 	_prompt_sub.visible = sub != ""
@@ -429,6 +436,8 @@ func set_modal(on: bool) -> void:
 	# while a form is up.
 	if _help != null and is_instance_valid(_help):
 		_help.visible = not on
+	if on and _prompt_panel != null:
+		_prompt_panel.visible = false
 	if on:
 		_subtitle_timer = 0.0
 		if _subtitle_panel != null:

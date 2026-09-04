@@ -2096,6 +2096,16 @@ func _check_a_rebuilt_card_still_has_a_selection() -> void:
 		var vp := tree.root.get_viewport()
 		var before = vp.gui_get_focus_owner() if vp else null
 		_ok(is_instance_valid(before), "a card opens with a selection on it")
+		# AND THE CROSSHAIR LABEL STAYS DOWN WHILE IT IS UP. The patient card
+		# deliberately does not pause the world, so the interactor keeps
+		# raycasting and keeps emitting the bedside prompt for the very person
+		# the card is about — a crosshair label with no crosshair under it.
+		# Emitted by hand, because a smoke run's doctor is not necessarily
+		# looking at anybody and "it was already hidden" is not the assertion.
+		var hud = tree.get_first_node_in_group("hud")
+		EventBus.interact_prompt.emit("Talk to somebody", "and it should not show")
+		_ok(hud != null and not hud._prompt_panel.visible,
+			"and nothing the crosshair would have said gets in behind it")
 		if ui.current != null and ui.current.has_method("rebuild"):
 			ui.current.rebuild()
 		_defer(6, func():

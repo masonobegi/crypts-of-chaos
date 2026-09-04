@@ -386,7 +386,10 @@ func _save(name: String) -> void:
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)
 	var note := ""
-	if name.begins_with("1") and game != null and game.ui != null:
+	# WHENEVER THERE IS A CARD UP, not "whenever the shot's name starts with a
+	# 1". That happened to cover 10 through 19 and left `20_struck_off` — one of
+	# the two endings, and the last thing a career shows anybody — unmeasured.
+	if game != null and game.ui != null and game.ui.current != null:
 		# HOW MUCH OF THE CARD IS BELOW THE FOLD.
 		#
 		# Only measurable HERE. Under --headless the root Window is 64 pixels

@@ -54,9 +54,7 @@ func _ready() -> void:
 	v.add_child(opts)
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.label("Run seed (optional)", 13, UIKit.INK_DIM))
-	_seed_field = LineEdit.new()
-	_seed_field.placeholder_text = "leave blank for random"
-	_seed_field.add_theme_font_size_override("font_size", 15)
+	_seed_field = UIKit.text_field("leave blank for random")
 	v.add_child(_seed_field)
 
 	v.add_child(UIKit.spacer(10))

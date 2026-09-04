@@ -138,6 +138,35 @@ static func button(text: String, cb: Callable, color := PANEL_LIGHT, min_w := 0.
 		b.pressed.connect(cb)
 	return b
 
+## A TYPED FIELD THAT BELONGS TO THE SAME GAME AS EVERYTHING ELSE.
+##
+## The run-seed box on the title screen was a bare `LineEdit.new()` — Godot's
+## stock grey slab, on the first screen of the game, directly under buttons the
+## paper theme had gone to some trouble over. It was the only unstyled control
+## anywhere, and it was on the one screen every player looks at.
+##
+## Same slip as `button`: paper, a hairline border, and the accent tab down the
+## left that everything pressable in this game has.
+## NOT `field` — that name was already taken, two hundred lines down, by the
+## dotted-leader "Key . . . . Value" row the chart is made of.
+static func text_field(placeholder := "", size := 15) -> LineEdit:
+	var e := LineEdit.new()
+	e.placeholder_text = placeholder
+	e.add_theme_font_size_override("font_size", size)
+	e.add_theme_color_override("font_color", INK)
+	e.add_theme_color_override("font_placeholder_color",
+		Color(INK_DIM.r, INK_DIM.g, INK_DIM.b, 0.85))
+	e.add_theme_color_override("caret_color", ACCENT)
+	e.add_theme_color_override("selection_color", Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.28))
+	e.add_theme_stylebox_override("normal", _slip(PANEL_LIGHT, ACCENT, 4))
+	e.add_theme_stylebox_override("focus", _slip(Color(1, 1, 1), ACCENT, 8))
+	e.add_theme_stylebox_override("read_only", _slip(PANEL, INK_DIM, 4))
+	# The same two noises every other control makes. A field that is silent on a
+	# screen where the buttons click reads as decoration.
+	e.text_submitted.connect(func(_t): AudioMgr.play("beep", -20.0, 1.18))
+	e.mouse_entered.connect(func(): AudioMgr.play("tick", -30.0, 1.45))
+	return e
+
 static func vbox(sep := 8) -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", sep)

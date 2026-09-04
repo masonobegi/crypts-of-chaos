@@ -3,6 +3,9 @@ extends RefCounted
 ## looking at it, and every one of them was invisible to the tests.
 var tree: SceneTree = null
 var game: Node = null
+var menu: Node = null
+var menu_index := 0
+var menu_opened := false
 var frames := 0
 var index := 0
 var settle := 0
@@ -37,6 +40,16 @@ const SHOTS := [
 	["20_struck_off", "ui:struck_off"],
 ]
 
+## THE FIRST THING ANYBODY SEES, and nothing had ever photographed it.
+##
+## This harness instantiates Game.tscn directly, so the title screen — the
+## screen every single player looks at before anything else — was outside every
+## visual check the project has. That is how a patient sitting INSIDE the bed on
+## the backdrop and an unstyled stock LineEdit sitting under the game's own
+## buttons both survived: the only way to see either is to look, and nothing
+## looked.
+const MENU_SHOTS := ["00_title", "00b_title_settings"]
+
 func start() -> void:
 	GameState.start_new_career(20260822)
 	GameState.set_flag("tutorial_done", true)
@@ -45,6 +58,14 @@ func start() -> void:
 	# rendered run — it wants the real UI.
 	out_dir = "user://shots"
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	menu = load("res://scenes/MainMenu.tscn").instantiate()
+	tree.root.add_child(menu)
+
+## Swap the title screen for the ward, once its shots are taken.
+func _into_the_game() -> void:
+	tree.root.remove_child(menu)
+	menu.queue_free()
+	menu = null
 	game = load("res://scenes/Game.tscn").instantiate()
 	tree.root.add_child(game)
 	GameState.start_day()
@@ -54,6 +75,30 @@ func tick() -> bool:
 	tree.paused = false
 	if frames < 20:
 		return false
+
+	# The title screen first, then the ward.
+	if menu != null:
+		if menu_index >= MENU_SHOTS.size():
+			_into_the_game()
+			settle = 0
+			return false
+		settle += 1
+		if settle < 6:
+			return false
+		settle = 0
+		# The second one with a submenu up, because Settings and Controls are
+		# built by a different path and are the two most likely to be wrong.
+		# Opened on the pass BEFORE the shot, so the settle counter above gives
+		# it frames to lay out in — opening and saving in the same pass
+		# photographed the title screen twice and never the submenu.
+		if menu_index == 1 and not menu_opened and menu.has_method("_open_menu_screen"):
+			menu._open_menu_screen("settings")
+			menu_opened = true
+			return false
+		_save(String(MENU_SHOTS[menu_index]))
+		menu_index += 1
+		return false
+
 	if index >= SHOTS.size():
 		print("captured %d frames to %s" % [SHOTS.size(),
 			ProjectSettings.globalize_path(out_dir)])
@@ -155,8 +200,8 @@ func _stage_ui(which: String, w) -> void:
 				var ps2 = tree.get_first_node_in_group("patient_system")
 				if ps2 != null and ps2.has_method("reset_day"):
 					ps2.reset_day()
-				w.examine("lomax")
-			EventBus.request_ui.emit("patient", {"patient_id": "lomax"})
+				w.examine(_someone())
+			EventBus.request_ui.emit("patient", {"patient_id": _someone()})
 		"day_over":
 			EventBus.request_ui.emit("day_over", {
 				"verdict": ReviewSystem.OUTCOME_FLAGGED,

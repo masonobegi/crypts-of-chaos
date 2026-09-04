@@ -165,7 +165,15 @@ func _set_modal(on: bool, pauses := true) -> void:
 	elif _froze_clock:
 		GameState.clock_running = _clock_was_running
 		_froze_clock = false
-	get_tree().paused = on and pauses
+	# GUARDED. `get_tree()` is null for a node that has left the tree, and this
+	# runs from `close()` — which is exactly what happens on the way out of a
+	# scene: the screenshot harness swapping the title screen for the ward threw
+	# "Invalid assignment of property 'paused' on a null instance" twice, and
+	# quitting to the menu takes the same path.
+	var t := get_tree()
+	if t == null:
+		return
+	t.paused = on and pauses
 	# Half a tannoy line behind the card is worse than no tannoy line — and the
 	# world keeps talking for as long as the card is up, because most screens do
 	# not pause it.

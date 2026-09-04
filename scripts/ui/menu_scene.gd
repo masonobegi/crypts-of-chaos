@@ -100,22 +100,34 @@ var sitter: NPCBody = null
 func _people() -> void:
 	nurse = NPCBody.new()
 	nurse.display = ""
-	nurse.set_colours(Color(0.88, 0.73, 0.60), Build.SCRUB_GREEN, Color(0.22, 0.16, 0.13))
+	# The same look the ward's own nurse gets, so the face on the title screen
+	# is the face you meet on the first shift.
+	var look := Appearance.anyone("nurse_0", 38)
+	look["outfit"] = Build.SCRUB_GREEN
+	nurse.set_look(look)
 	add_child(nurse)
 	nurse.position = Vector3(-3.55, 0, -0.35)
 	# Facing the chair, which is the whole reason to have her in the shot.
 	nurse.rotation.y = 2.59
 
-	# And somebody in the chair. A ward room with an empty chair in it is a
-	# picture of some furniture; the game is about the person in it.
+	# And somebody in the bed. A ward room with an empty bed in it is a picture
+	# of some furniture; the game is about the person in it.
+	#
+	# IN THE BED, NOT INSIDE IT. This used `set_seated`, which is the
+	# waiting-room pose — hips dropped 0.30 and knees folded off the front of a
+	# chair — on a body standing at floor level on top of a PatientBed. The
+	# result, on the first screen of the game, was a man submerged in the
+	# mattress to the waist with the bed frame passing through his thighs.
+	# `PatientSystem._spawn` has always put a patient at the bed's origin plus
+	# 0.5 and used `set_in_bed`; the title screen is the one place a person is
+	# put on a bed by hand, and it did neither.
 	sitter = NPCBody.new()
 	sitter.display = ""
-	sitter.set_colours(Color(0.80, 0.62, 0.47), Color(0.62, 0.72, 0.86),
-		Color(0.30, 0.22, 0.16))
+	sitter.set_look(Appearance.anyone("menu_patient", 58))
 	add_child(sitter)
-	sitter.position = Vector3(-3.05, 0, -1.5)
+	sitter.position = Vector3(-3.05, 0.5, -1.5)
 	sitter.rotation.y = 0.55
-	sitter.set_seated(true)
+	sitter.set_in_bed(true)
 
 func _light() -> void:
 	var we := WorldEnvironment.new()

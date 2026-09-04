@@ -2056,3 +2056,88 @@ The pixels never changed; only the account of them did.
 A default is only a default until somebody passes the old value explicitly, and
 when they do, the code and the comment disagree and the picture sides with the
 code.
+
+## Session 16 — state of play, and what is left
+
+Everything below was checked against HEAD (96fa1a0) rather than written from
+memory, because twice this session what I believed had shipped and what the
+code actually did were different things.
+
+### What shipped, with the numbers that are actually in the file
+
+```
+Build.LINE_GAIN ......................... 0.66   (was 0.22)
+Build.line_for cap ...................... thin * 0.21, floor 0.0015
+Build.ink_for ........................... hue-derived, v * 0.14, clamp 0.022-0.15
+Build.shadow_texture STRENGTH ........... 0.62   (was 0.52), flat core * 1.45
+Surfaces.WEAVE .......................... 180.0  (one constant, one call site)
+NPCBody.SKIN_ROUGH ...................... 0.52   (was 0.85)
+ceiling self_lit ........................ 0.22   (was 0.55)
+wall ao_depth ........................... 0.20
+floor edge_depth ........................ 0.16
+ambient_light_energy .................... 1.15   (was 0.30)
+tonemap exposure / white ................ 0.70 / 3.2
+adjustment saturation / contrast ........ 1.35 / 1.16
+glow_hdr_threshold ...................... 1.05
+sun.shadow_enabled ...................... false
+```
+
+Mechanisms confirmed present: `_reface` called from both Minkowski builders;
+`taper_mesh` at 18 segments; `cyl_mesh` returning a rounded-rim ArrayMesh;
+`_fit_line` rebuilding from a recipe and guarding every meta read with
+`has_meta`; the wall shader's local renamed to `streak` so it stops shadowing
+the shared varying; `apply_shift_look` on `minute_passed`; `set_lamp_look`
+using `lit_panel`; door linings. No `duplicate()` survives in any material
+path — the three remaining mentions are the comments warning against it, and
+one legitimate `StandardMaterial3D` copy.
+
+Reverted and confirmed gone: `BACKLIGHT`, `glass_mat`, `_glaze`, `skin_mat`,
+`tests/_evening_*`.
+
+### What is left, in the order I would take it
+
+1. **A view outside, and then windows.** The two have to land together and
+   that is the whole lesson of the reverted attempt. The sky is built and
+   re-tinted every minute and nothing can see it; `Room.window_open` is a
+   saved, loaded state that a complaint line reads out loud about a window
+   that does not exist. Glazing alone makes it worse, because with no terrain
+   an opening at eye level fills with the sky's murky green ground hemisphere.
+   Build a horizon band, a massed building or a treeline FIRST. Rebalance the
+   dado at the same time — teal to a 1.15 sill swallows the lower two thirds
+   of every wall. The glazing code that was reverted is in `04c87ce` if it
+   helps; it was sound, and only cull mode and shading mode needed care
+   (unshaded, back-faces culled, or a software rasteriser crawls).
+
+2. **Character form is a GEOMETRY problem, not a lighting one.** Measured:
+   see gotcha 44. Faces are lit from two directions already. What reads flat
+   is an egg with decal eyes, so the next attempt belongs in `npc_body.gd`'s
+   head construction — a brow ridge, a cheekbone, eyes set into sockets rather
+   than laid on the surface — not in the shader.
+
+3. **Does tripling the outline weight cost real fill?** `LINE_GAIN` went from
+   0.22 to 0.66, which triples the ink area, and 917 of 1315 meshes on a live
+   ward already draw twice. This could not be isolated here: the only
+   rasteriser available is llvmpipe, frame times on it are not trustworthy,
+   and the box had rogue renders stealing cores for much of the session.
+   Measure it on hardware before assuming it is free.
+
+4. **Smaller, all previously audited and none of them done:** `cyl_mesh`'s
+   segment count is a magic number at 25 call sites; `corner_for` uses one
+   radius for all three axes so medium props are marshmallows; the bedside
+   screenshot vantage frames its patient badly, which is a harness choice
+   rather than a rendering fault.
+
+### Two things about this machine, not the game
+
+The working tree was being written by something other than this session: a
+looping `perf.gd`, stray `screenshots.sh` runs, and a pair of
+`tests/_evening_*` probes that PATCH SOURCE FILES AT RUNTIME to sample the
+ward at different times of day. That is what silently reverted two `build.gd`
+edits mid-session and cost two rounds of confused debugging. They are killed
+and deleted, and `.gitignore` now covers `tests/_*.gd` rather than only
+`tests/_check.gd` — the rule was enforcing the underscore convention while
+naming one file, which is the failure its own comment warns about.
+
+And: on a four-core box two rogue renders halve everything. If a render seems
+impossibly slow, `ps aux | grep Godot` before concluding anything about the
+change under test.

@@ -19,7 +19,15 @@ var A = ReviewSystem.Answer
 const DAYS := 20
 
 func _fresh_career() -> void:
-	GameState.start_new_career(31337)
+	# OVERRIDABLE. A career is nine wards drawn from four pools, and this probe
+	# has only ever played the nine that seed 31337 deals — the same gap the
+	# smoke run had, where three seeds out of five turned out to be untested.
+	var seed_v := 31337
+	var env := OS.get_environment("CAREER_SEED")
+	if env != "" and env.is_valid_int():
+		seed_v = int(env)
+		print("  (seed %d)" % seed_v)
+	GameState.start_new_career(seed_v)
 	GameState.day = 1
 	GameState.set_flag("watched", false)
 	GameState.set_flag("auditor_present", false)

@@ -96,6 +96,21 @@ DRAWS=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/career_run.gd 2>&1 | grep -vE "$NOISE"
 CAREER=${PIPESTATUS[0]}
 
+# ...ON TWO CAREERS IT HAS NEVER PLAYED. A career is nine wards drawn from four
+# pools and this probe has only ever played the nine that seed 31337 deals —
+# the same gap the smoke run had, where three seeds in five turned out to be
+# untested. Twelve pass by hand; two run every time, for a second each.
+for s in 4242 90210; do
+  out=$(CAREER_SEED="$s" "$GODOT" --headless --path "$DIR" \
+    --script res://tests/probe/career_run.gd 2>&1)
+  code=$?
+  echo "  seed $s: $(echo "$out" | grep -E 'CAREER PROBE' | head -1)"
+  if [ "$code" -ne 0 ]; then
+    echo "$out" | grep -E "FAIL" | sed 's/^/    /'
+    CAREER=1
+  fi
+done
+
 # AND CAN EVERY WARD BE SIGNED OFF BY PLAYING IT STRAIGHT. Twenty-six hundred
 # strategies a ward, plus one that is not a strategy: the day a careful person
 # plays, written out. The search alone reported the fourth ward as having no

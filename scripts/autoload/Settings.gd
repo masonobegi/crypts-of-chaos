@@ -26,7 +26,9 @@ const DEFAULTS := {
 	"camera_shake": 1.0,          ## 0 turns it off entirely — accessibility
 	"head_bob": 1.0,
 	"subtitles": true,
-	"show_damage_flash": true,
+	## `show_damage_flash` lived here and was read by nothing at all: it was a
+	## setting for a health bar, in a game that has never had one. Gone rather
+	## than wired up — there is no damage to flash.
 	"pad_look_sensitivity": 1.0,
 	"pad_vibration": true,
 }
@@ -58,8 +60,10 @@ const BINDABLE := [
 ##
 ## Not rebindable and deliberately so: the point of shipping gamepad support is
 ## that somebody can pick up a controller and play, and a controller layout that
-## has to be configured first is a controller layout nobody uses. The sticks are
-## handled in Player; these are the buttons.
+## has to be configured first is a controller layout nobody uses.
+##
+## RIGHT stick only is handled in Player, and for a long time that sentence was
+## the whole of "the sticks are handled in Player" — see PAD_AXES.
 const PAD_DEFAULTS := {
 	"jump": JOY_BUTTON_A,
 	"sprint": JOY_BUTTON_LEFT_STICK,
@@ -69,6 +73,48 @@ const PAD_DEFAULTS := {
 	"throw": JOY_BUTTON_LEFT_SHOULDER,
 	"pause": JOY_BUTTON_START,
 }
+
+## THE LEFT STICK, which is the half of "a pad works" that did not.
+##
+## The Controls screen has always said "left stick walks, right stick looks".
+## Looking is read straight off the axis in `Player._handle_pad_look`, so that
+## half was true. Walking is `Input.get_vector` over four ACTIONS, and those
+## four actions had a keyboard event each and nothing else — so a player with a
+## pad in their hands could look around the ward in every direction and not
+## take a single step. CLAUDE.md 15: a promise the game makes in copy and does
+## not keep in code, and the copy had been on the screen for months.
+##
+## Axis events rather than a `get_joy_axis` read in Player, so that rebinding,
+## the deadzone and `Input.get_vector`'s own circular clamp all work on the
+## stick exactly as they do on the keys.
+const PAD_AXES := {
+	"move_left": [JOY_AXIS_LEFT_X, -1.0],
+	"move_right": [JOY_AXIS_LEFT_X, 1.0],
+	"move_forward": [JOY_AXIS_LEFT_Y, -1.0],
+	"move_back": [JOY_AXIS_LEFT_Y, 1.0],
+}
+
+## THE TWO BUTTONS THE ENGINE LEAVES OUT.
+##
+## Godot's built-in UI actions ship with the D-pad and the left stick bound to
+## `ui_up`/`ui_down`/`ui_left`/`ui_right` — but `ui_accept` is Enter, Kp Enter
+## and Space, and `ui_cancel` is Escape, and neither has a pad button on it. So
+## with a controller you could move the selection around a card perfectly well
+## and had no way whatsoever to PRESS the thing you had selected, or to back out
+## of the screen. That is the whole of menu navigation missing one button.
+##
+## A is also `jump` and B is also `crouch`; both of those are gated on
+## `can_move`, which a screen turns off, so nothing double-fires.
+const PAD_UI := {
+	"ui_accept": JOY_BUTTON_A,
+	"ui_cancel": JOY_BUTTON_B,
+}
+
+## The project file gives every action a deadzone of 0.5, which is the editor's
+## default and is enormous: half the throw of the stick does nothing at all, and
+## the other half goes from a standstill to a walk. It costs nothing on a key,
+## which is 0 or 1, so it was invisible until the stick was wired up.
+const PAD_DEADZONE := 0.2
 
 ## action -> keycode, for anything the player has changed. Only overrides are
 ## stored, so a new default in a later build reaches everybody who never touched
@@ -83,17 +129,34 @@ func _ready() -> void:
 	apply_bindings()
 
 func _add_pad_defaults() -> void:
-	for action in PAD_DEFAULTS:
+	for action in PAD_DEFAULTS.keys() + PAD_UI.keys():
 		if not InputMap.has_action(String(action)):
 			continue
 		var ev := InputEventJoypadButton.new()
-		ev.button_index = int(PAD_DEFAULTS[action])
+		ev.button_index = int(PAD_DEFAULTS[action] if PAD_DEFAULTS.has(action)
+			else PAD_UI[action])
 		var already := false
 		for e in InputMap.action_get_events(String(action)):
 			if e is InputEventJoypadButton and e.button_index == ev.button_index:
 				already = true
 		if not already:
 			InputMap.action_add_event(String(action), ev)
+	for action in PAD_AXES:
+		var a := String(action)
+		if not InputMap.has_action(a):
+			continue
+		var spec: Array = PAD_AXES[action]
+		var m := InputEventJoypadMotion.new()
+		m.axis = int(spec[0])
+		m.axis_value = float(spec[1])
+		var have := false
+		for e in InputMap.action_get_events(a):
+			if e is InputEventJoypadMotion and e.axis == m.axis \
+					and signf(e.axis_value) == signf(m.axis_value):
+				have = true
+		if not have:
+			InputMap.action_add_event(a, m)
+		InputMap.action_set_deadzone(a, PAD_DEADZONE)
 
 ## What this action is currently bound to, as something a person can read.
 func binding_label(action: String) -> String:

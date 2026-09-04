@@ -1426,3 +1426,144 @@ career-level criteria ................................... 6/6, on three seeds
 wards that sign off on the honest day ................... 4/4
 the game says nothing it should not, while being played . asserted
 ```
+
+## Session 15, the input layer — "a pad works without setting anything up"
+
+The Controls screen has said that sentence for months. It was not true, and
+nothing in the project could have told anybody, because every harness in
+`tests/` reaches PAST the input layer: the smoke run calls `w.write_entry()`,
+the playtest calls `w.set_disposition()`, the screenshot run calls `ui.open()`.
+All of them pass on a build where nothing is bound to anything.
+
+### What was actually wrong
+
+Three things, and each of them is the whole feature for somebody:
+
+1. **The left stick did nothing.** Walking is `Input.get_vector` over four
+   ACTIONS, and those four actions had one keyboard event each and no axis.
+   Looking is read straight off `JOY_AXIS_RIGHT_*` in `Player._handle_pad_look`,
+   so that half worked — which means a player with a pad could turn all the way
+   round the ward, in both axes, smoothly, and never take a step. The most
+   convincing possible version of "the controller is supported".
+2. **No screen in the game ever took focus.** Godot navigates a Control tree
+   with `ui_up`/`ui_down`/`ui_accept` for free and every Button is focusable by
+   default — but navigation starts from whatever holds focus, and nothing ever
+   took it. So the D-pad moved a selection that did not exist.
+3. **A and B were not bound to `ui_accept` and `ui_cancel`.** Godot's own
+   defaults are not symmetrical: `ui_up`/`ui_down`/`ui_left`/`ui_right` ship
+   with the D-pad AND the left stick on them, and `ui_accept` ships with Enter,
+   Kp Enter and Space. So even with focus, there was no button that pressed the
+   thing you had selected and none that backed out of the card.
+
+Fixed in `Settings.PAD_AXES` (the left stick, as axis events rather than a
+`get_joy_axis` read, so the deadzone and `get_vector`'s circular clamp work on
+it exactly as on the keys), `Settings.PAD_UI` (A and B), `UIKit.focus_first`
+(reading order, never steals from a control that already has focus) called from
+`ScreenBase`, `UIRoot.open` and `MainMenu`, and a visible focus stylebox on
+every button — Godot's default focus outline against paper-coloured card on a
+paper-coloured screen is invisible, so the selection could have moved without
+anybody being able to see that it had.
+
+`ui_cancel` closes an open screen but deliberately does NOT open the pause menu
+when nothing is open: B is also crouch, and every crouch in the ward would
+otherwise stop the game.
+
+Deadzone dropped from the editor default of 0.5 to 0.2 on the four move
+actions. Half the throw of a stick doing nothing at all costs nothing on a key,
+which is 0 or 1, so it was invisible until the stick was wired up.
+
+### The harness that would have caught it, and had been dead for three sessions
+
+`play.sh` and `playfast.sh` both ran `res://tests/play_run.gd`, which was
+deleted with the world it tested. They printed an engine error and **exited 0**,
+which is CLAUDE.md 21 in miniature: a harness that cannot fail.
+
+Rebuilt as `tests/play_run.gd` + `tests/play_impl.gd`, with two plans:
+
+- **`pad`** — a controller and nothing else. Closes the briefing with A, walks
+  the doctor across the ward on the left stick, aims with the right, taps X to
+  open the card, moves the selection with the D-pad, backs out with B. Runs
+  headless, and is in `run_tests.sh`.
+- **`keys`** — WASD, a real mouse and [E]. Mouse look needs a captured cursor,
+  which the dummy display driver will not give, so this plan says so and stops
+  rather than passing by doing nothing. `./play.sh` runs it under Xvfb, where
+  the capture is real and it passes all twelve checks.
+
+Two things it taught immediately. `Input.action_press()` dispatches NO
+InputEvent — it sets the polled state an `is_action_pressed()` reads and
+nothing else — so the first version could not close the morning briefing and
+nothing in the UI could hear it at all. And `NavigationServer3D`'s map is empty
+in this project: the building is procedural and headless and navigates on its
+own A* grid, so asking the server for a route returns a zero-length path with
+no error, which reads exactly like "there is no way into the ward". The doctor
+walks the route `Hospital.nav` gives the nurses, and steers and walks it on
+real input.
+
+### Two settings that were read by nothing
+
+`show_damage_flash` — a setting for a health bar, in a game that has never had
+one. Deleted. `pad_vibration` — saved, restored, defaulted, read by nothing.
+Now wired to `Player.shake()`, which is already reserved for the handful of
+beats the game wants you to feel rather than read, so the rumble rides on the
+same call instead of becoming a second thing to remember.
+
+And a check, so the next one is found by the suite rather than by grep: every
+key in `Settings.DEFAULTS` must be read by something in `scripts/`.
+
+### And the focus code found its own bug on the way in
+
+A card rebuilds itself after every action taken on it — and `rebuild()` freed
+every control and DEFERRED the rebuild, so the deferred focus grab ran while the
+old buttons were still children and put the selection on one that was already
+queued for deletion. A pad player could open a card, press one thing, and find
+the selection gone with no way back to it except a mouse.
+
+Then the fix for that could not run, for the reason this project has written
+down twice: `gui_get_focus_owner()` returns the freed control, and reading it
+into a TYPED local raises "Trying to assign invalid previously freed instance"
+and ABORTS the function (CLAUDE.md 11). `rebuild()` now removes children from
+the tree before freeing them, and `UIKit.focus_first` reads the owner untyped
+and tests it with `is_instance_valid`.
+
+`smoke_impl.gd` grew the `_defer(n, callable)` helper CLAUDE.md has claimed it
+had for two sessions — an assertion made in the same frame as its setup reads
+last frame's value, and a rebuilt screen has not laid out yet. The run refuses
+to report while one is outstanding, so a check that never comes due is a
+failure rather than a quietly smaller number. Verified by inverting the
+assertion and watching the suite go red.
+
+### The quiet check was only watching half the game
+
+It greps what the SMOKE run prints, and stops there — so the unit run had been
+printing `Cannot call method 'queue_free' on a previously freed instance` twice
+on every single invocation, for as long as anybody has looked at it. Two tests
+take a SECOND day, `_day()` calls `setup()`, and setup frees every WardDay in
+the tree — so the tidy-up line at the bottom freed a ward that was already gone,
+threw, and (CLAUDE.md 11) aborted the function before the line that freed the
+ward it actually had. Both of them leaked the thing they were cleaning up.
+
+Fixed with a guarded `_drop()`, and the quiet check now reads both runs. The
+lesson is the one this project keeps relearning: a harness that watches one
+surface reports on one surface, and everything green everywhere else is not
+evidence about the surface it is not watching.
+
+### CLAUDE.md
+
+Corrected against the code: the counts, forty people across four wards rather
+than thirty-two, the testing table (eleven layers, and the "overlap audit" row
+described a check that does not exist under that name — what is actually there
+is a fixture audit that catches anything standing on nothing). The two numbered
+lists that both started at 14 are now one sequence, and the second has its own
+heading. Five new gotchas, four of them from tonight.
+
+### Counts
+
+```
+unit + integration assertions ........................... 294
+smoke checks ............................................ 150, on three seeds
+input-layer checks ...................................... 12 on a pad, 12 on keys
+day-level criteria ...................................... 7/7
+career-level criteria ................................... 6/6, on three seeds
+wards that sign off on the honest day ................... 4/4
+the game says nothing it should not, while being played . asserted
+```

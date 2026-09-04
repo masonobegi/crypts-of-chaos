@@ -132,12 +132,31 @@ func player():
 ## patch individual widgets after an action changes the underlying data.
 func rebuild() -> void:
 	for c in get_children():
+		# OUT OF THE TREE FIRST. `queue_free()` alone leaves the old controls as
+		# children for the rest of the frame, and the deferred `_focus_first`
+		# below then walks them and grabs focus on a button that is about to be
+		# deleted — so every rebuild ended with the screen's selection on a
+		# freed object, which is no selection at all.
+		remove_child(c)
 		c.queue_free()
 	body = null
 	call_deferred("_build")
+	# After the rebuild, in the same deferred queue and therefore after it.
+	call_deferred("_focus_first")
 
 func _ready() -> void:
 	_build()
+	# Deferred, because the controls this walks do not exist until the frame
+	# after `_build()` has added them — and a `grab_focus()` on a control that
+	# is not in the tree yet is silently nothing.
+	call_deferred("_focus_first")
 
 func _build() -> void:
 	pass
+
+## WHERE A KEYBOARD OR A PAD IS STANDING WHEN A SCREEN OPENS.
+##
+## The walk itself is `UIKit.focus_first`, because the pause menu, the settings
+## and the title screen are not ScreenBases and need exactly the same thing.
+func _focus_first() -> void:
+	UIKit.focus_first(self)

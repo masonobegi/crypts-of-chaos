@@ -197,6 +197,13 @@ func _build() -> void:
 	Settings.changed.connect(func(_k):
 		if is_instance_valid(help):
 			help.text = _controls_line())
+	# ...AND A PAD BEING PLUGGED IN MID-GAME. The line is the only place the
+	# game tells you which button does what while you are playing, and it said
+	# "[E] use" to somebody holding a controller. Godot announces the joypad, so
+	# there is no reason to make them go and look at the Controls screen.
+	Input.joy_connection_changed.connect(func(_device, _connected):
+		if is_instance_valid(help):
+			help.text = _controls_line())
 
 	# ---- off-screen objective arrow
 	_arrow = UIKit.label("", 26, Color(0.42, 0.90, 0.82), HORIZONTAL_ALIGNMENT_CENTER)
@@ -311,9 +318,24 @@ func _controls_line() -> String:
 		bits.append("[%s] %s" % [_key_for(String(pair[0])), String(pair[1])])
 	return "   ".join(bits)
 
+## WHAT IS IN THEIR HANDS. A pad plugged in wins, because somebody holding one
+## is not looking at the keyboard — and every one of these actions has a pad
+## button on it now.
+const PAD_NAMES := {
+	JOY_BUTTON_A: "A", JOY_BUTTON_B: "B", JOY_BUTTON_X: "X", JOY_BUTTON_Y: "Y",
+	JOY_BUTTON_LEFT_SHOULDER: "LB", JOY_BUTTON_RIGHT_SHOULDER: "RB",
+	JOY_BUTTON_START: "Start", JOY_BUTTON_BACK: "Back",
+	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
+}
+
 static func _key_for(action: String) -> String:
 	if not InputMap.has_action(action):
 		return "?"
+	if not Input.get_connected_joypads().is_empty():
+		for ev in InputMap.action_get_events(action):
+			if ev is InputEventJoypadButton \
+					and PAD_NAMES.has(ev.button_index):
+				return String(PAD_NAMES[ev.button_index])
 	for ev in InputMap.action_get_events(action):
 		if ev is InputEventKey:
 			return OS.get_keycode_string(ev.physical_keycode if ev.physical_keycode != 0

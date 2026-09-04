@@ -346,8 +346,26 @@ func _handle_bob(delta: float) -> void:
 
 ## Kick the camera. `amount` is roughly "how much of a full jolt", 0..1; they do
 ## not stack past one, so a pile-up of small events cannot black out the screen.
+##
+## ...AND THE PAD, on the same moments and nothing else. `pad_vibration` was a
+## saved, defaulted, persisted setting that NOTHING READ — the exact shape of
+## CLAUDE.md 15, minus the copy: a promise the options menu would have made if
+## anybody had put it on the screen. The camera kick is already reserved for the
+## handful of beats the game wants you to feel rather than read, so the rumble
+## rides on the same call rather than becoming a second thing to remember.
+const RUMBLE_SECONDS := 0.32
+
 func shake(amount: float) -> void:
 	_shake = clampf(maxf(_shake, amount * float(Settings.get_value("camera_shake"))), 0.0, 1.0)
+	if not bool(Settings.get_value("pad_vibration")):
+		return
+	# Only while a pad is actually connected: `start_joy_vibration` on device 0
+	# with nothing plugged in is harmless, but asking first keeps this honest
+	# about what it is doing.
+	if Input.get_connected_joypads().is_empty():
+		return
+	var a := clampf(amount, 0.0, 1.0)
+	Input.start_joy_vibration(0, a * 0.55, a, RUMBLE_SECONDS)
 
 ## Where the player is, in room terms — used by perception and events.
 func current_room() -> String:

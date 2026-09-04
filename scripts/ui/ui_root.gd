@@ -68,7 +68,13 @@ func _ready() -> void:
 const UNDISMISSABLE := ["review", "day_over"]
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause"):
+	# `ui_cancel` is B on a pad and Escape on a keyboard; `pause` is Escape and
+	# Start. Only "get me out of this screen" is shared — B ALSO CROUCHES, so
+	# `ui_cancel` deliberately does not open the pause menu when nothing is
+	# open, or every crouch in the ward would stop the game.
+	var closing := event.is_action_pressed("pause") \
+		or (current != null and event.is_action_pressed("ui_cancel"))
+	if closing:
 		if current != null:
 			# THE SCREENS YOU DO NOT GET TO DISMISS.
 			#
@@ -118,9 +124,19 @@ func open(id: String, ctx: Dictionary = {}) -> void:
 	current = screen
 	current_id = id
 	add_child(screen)
+	# The pause menu, settings, controls and credits are plain Controls built by
+	# `_build_simple`, not ScreenBases, so they have no `_focus_first` of their
+	# own — and they are the screens a pad player reaches first. Deferred: the
+	# buttons do not exist until the frame after `_ready` has built them.
+	call_deferred("_focus_into", screen)
 	_set_modal(true, bool(screen.get("pauses_world") if screen.get("pauses_world") != null else true))
 	# After it is genuinely up, and regardless of who asked. See EventBus.
 	EventBus.ui_opened.emit(id)
+
+## Focus the first control on a screen, whatever kind of screen it is.
+func _focus_into(screen: Control) -> void:
+	if is_instance_valid(screen) and screen.is_inside_tree():
+		UIKit.focus_first(screen)
 
 ## Out of a submenu, back to the menu that opened it — or out to the world if
 ## nothing did. "Back" from Settings used to call `close()`, which dropped the
@@ -325,10 +341,17 @@ func _controls_screen() -> Control:
 		v.add_child(_binding_row(String(entry[0]), String(entry[1])))
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("CONTROLLER", 13, UIKit.INK_DIM))
+	# EVERY LINE OF THIS IS NOW TRUE, WHICH IT WAS NOT. "Left stick walks" was
+	# copy and not code for as long as this screen has existed: walking is
+	# `Input.get_vector` over four actions that had a key each and no axis, so a
+	# player holding a pad could look all the way round the ward without taking
+	# a step. Menus were worse — the D-pad moved a selection nothing had taken,
+	# and A and B were not bound to `ui_accept`/`ui_cancel` at all.
 	v.add_child(UIKit.label(
 		"A pad works without setting anything up: left stick walks, right stick "
-		+ "looks, A jumps, X uses, right bumper picks up, left bumper throws, "
-		+ "Start pauses.", 13, UIKit.INK_DIM,
+		+ "looks, A jumps, B crouches, X uses, left stick click hurries, right "
+		+ "bumper picks up, left bumper throws, Start pauses. In a menu the "
+		+ "D-pad moves, A chooses and B goes back.", 13, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	outer.add_child(UIKit.spacer(6))

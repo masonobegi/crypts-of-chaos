@@ -6,11 +6,28 @@ primitives at runtime and every sound is synthesised on first play.
 ## Always
 
 ```bash
-GODOT=/path/to/godot ./run_tests.sh      # 273 assertions, a headless shift, 31 playtests, the data and draw checks
+GODOT=/path/to/godot ./run_tests.sh      # all of it, ~4 min
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
-godot --headless --path . --script res://tests/probe/career_run.gd    # a whole career, eight ways
-godot --headless --path . --script res://tests/probe/frontier_run.gd  # ~12 min, 3,300 strategies
+GODOT=/path/to/godot ./export.sh all     # windows, linux, macos — and RUNS the linux one
+GODOT=/path/to/godot ./playfast.sh pad   # play it with a controller, headless
+GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
+```
+
+`run_tests.sh` is 294 assertions, a 150-check smoke run through the real tree
+on three different wards, 31 playtests against seven success criteria, the
+authored-data and draw checks, a career played eight ways on three seeds, a
+2,601-strategy adversarial search per ward, a playthrough driven entirely by
+the input actions a controller sends, a check that the game prints nothing it
+should not while being played, and a boot through the real main menu. Every
+phase exits non-zero on its own and the runner reports which.
+
+Two seeds are overridable, and it is the cheapest way to catch a harness that
+only works on the board it happens to have been written against:
+
+```bash
+SMOKE_SEED=99  godot --headless --path . --script res://tests/smoke_run.gd
+CAREER_SEED=99 godot --headless --path . --script res://tests/probe/career_run.gd
 ```
 
 Run the tests before committing. Run the screenshots after any UI or world
@@ -110,6 +127,128 @@ change — five real bugs have been caught only by looking at the game.
     inspected objects reading as coverage. Find sets of things by GROUP
     (`Dressing.CEILING_GROUP`), never by name.
 
+18. **`BLEND_MODE_MUL` does not sample the albedo texture on the Compatibility
+    renderer.** A contact shadow built as a black-to-transparent texture and
+    multiplied over the floor rendered as a hard black RECTANGLE: right
+    material, right texture, flat result, because the renderer this project
+    ships never read the texture at all. Shadows are `BLEND_MODE_MIX` with the
+    falloff in ALPHA, which both backends agree about. Anything that looks
+    right in the editor and wrong in a screenshot — suspect the renderer before
+    the maths.
+19. **A texture built with no mipmaps samples FLAT** under the default
+    `LINEAR_WITH_MIPMAPS` filter, at every distance. `Build.shadow_texture()`
+    calls `generate_mipmaps()` and it is not optional: without it the falloff
+    exists in the image, is uploaded correctly, and never appears on screen.
+    The same symptom as 18 from an unrelated cause, which is why the shadows
+    took two goes.
+20. **Gotcha 11 fires for a method that does not exist, too.** Calling
+    `GameState.adjust_rep()` — deleted with the reputation system — is a
+    runtime error, and a runtime error ABORTS THE CALLING FUNCTION, so the
+    press-day complaint and the nurse who finds a tampered room had both
+    silently done nothing for weeks with every test around them green.
+    `smoke_impl.gd` now greps every `Autoload.method(` call site in `scripts/`
+    against that autoload's real method list, because the compiler will not.
+21. **A harness whose last pipeline stage is `head`, or whose runner calls
+    `quit()` with no argument, CANNOT FAIL.** `check.sh` ended in `| head -40`
+    and so exited 0 on every parse error it had just printed — and it is the
+    "does this file compile" tool the whole project leans on. Capture the
+    output, test it for emptiness, exit on that. Feed any new harness a
+    deliberately broken input once and watch it actually go red.
+
+22. **`Input.action_press()` dispatches NOTHING.** It sets the polled state of
+    an action, which is all `is_action_pressed()` reads — but no InputEvent is
+    created, so `_input`, `_unhandled_input` and every Control in the tree never
+    hear it. Half the game listens for events: the pause key, every screen, the
+    focus navigation. The first version of `play_impl.gd` used it and could not
+    close the morning briefing. `Input.parse_input_event()` is the one that
+    presses a button for real.
+23. **The dummy display driver ignores `Input.mouse_mode`.** Setting it to
+    `MOUSE_MODE_CAPTURED` headless leaves it at 0, and `Player._unhandled_input`
+    gates mouse look on the capture — so mouse LOOK cannot be tested without a
+    display, and a harness that tries will pass by doing nothing. `./play.sh`
+    runs the keyboard plan under Xvfb, where the capture is real; the pad plan
+    needs no cursor and runs anywhere.
+24. **Godot binds the D-pad to `ui_up`/`ui_down` and nothing to `ui_accept`.**
+    Out of the box `ui_accept` is Enter, Kp Enter and Space, and `ui_cancel` is
+    Escape — no pad buttons on either — while the directions get both the D-pad
+    and the left stick. So a controller could move a selection perfectly and had
+    no way to press it. `Settings.PAD_UI` adds A and B. Check the defaults
+    rather than assuming them: they are not symmetrical.
+25. **`NavigationServer3D`'s map is EMPTY in this project** — no regions, no
+    error, and `map_get_path` returns a zero-length path that reads as "there is
+    no way in". The building is procedural and headless, so it navigates on its
+    own deterministic A* grid: `Hospital.nav` (`NavGrid.find_path`) is what the
+    nurses use and what anything else routing across the floor must use too.
+
+## Systems gotchas, which have cost exactly as much
+
+The list above is the engine's fault. These are ours, and they are numbered
+with it because a lost afternoon does not care which.
+
+26. **There is ONE clock, and it lives in `GameState`.** Every verb on the ward
+    costs minutes (`WardDay.READ_COST` and friends) and those minutes were
+    being spent on `WardDay.minute` alone, while the HUD, the force-end and
+    everything else driven by `minute_passed` went on counting real seconds —
+    so the chart said half past seven and the corner of the screen said five
+    past eleven, and the gap widened the more the player did. `advance_to()`
+    calls `GameState.skip_to()`, which re-enters `_on_minute` immediately;
+    anything that advances the clock must therefore be re-entrancy safe.
+    `end_day()` was not, and took the debt off the takings twice.
+27. **Under `--headless` the root Window is 64 pixels tall.** Every Control
+    lays out against it, so a card capped at `viewport height - 116` gets a
+    negative height and reports as three-quarters below the fold. Layout
+    measurements belong in `screenshots.sh`, which runs a real 1600x900 window
+    under Xvfb. Setting `tree.root.size` does not help — the dummy display
+    driver ignores it.
+
+28. **A harness that reuses `GameState` must clear the whole carry, not part of
+    it.** The playtest cleared `remembered_beds` between runs and left
+    `carried_debt` alone, so from the first strategy that came up short every
+    later one owed Vinnie more than the last — three successive audits reported
+    a risk/reward frontier that depended on the order of the list, and "one
+    well-timed lie" was recorded as worth $150 when it is worth $850.
+    `_clean_slate()` clears all of it and `_day()` fails loudly if a run starts
+    owing anything but `Cases.DEBT_DUE`. The one measurement that WANTS a carry
+    (criterion 6) builds its ward through `_carried_day()` instead.
+29. **`Cases.roster()` is a function of `GameState.day`, so anything that
+    changes the day mid-run must change it back at the right moment.** Setting
+    it back before `end_day()` meant the force-discharge loop walked the first
+    ward's roster while the `WardDay` still held the second ward's patients, and
+    every lookup errored. Reset after the review, not after the play.
+30. **What a document says is not what is true, and the second ward is built on
+    the gap.** `WardDay.reads_as_well()` is what the rounds, a nurse review and
+    a test report; `truly_well` is what an examination and the registrar find.
+    A patient marked `only_visible_in_person` differs between the two. Without
+    it Adeyemi's ten o'clock round simply announced Peter Lomax and there was no
+    reason to go and look at anybody.
+
+31. **A gate on something the PLAYER does is a reward for doing nothing.**
+    `_sent_home_unwell` used to `continue` unless the discharge was documented,
+    examined, or overruled — all three player-initiated. So the way to make a
+    wrongful discharge invisible was to never read a chart, never examine
+    anybody and never ask: **information had strictly negative expected value**,
+    because looking at a patient was the only way to manufacture the evidence
+    that convicted you of the decision you then made. Any new rule that asks
+    "did the player produce a document about this" needs a rung for "no, and
+    that is worse", not an early return. `_they_came_back` and
+    `_never_laid_eyes_on_them` are ungated on purpose.
+32. **`WardDay.start()` runs every morning, so anything assigned in it is
+    assigned every morning.** `cash = Cases.STARTING_CASH` sat there and minted
+    the player nine hundred pounds a night out of nowhere — a third of a night's
+    takings, under every strategy, in every measurement this project ever took,
+    and it made "he takes everything at eight" vacuous because nothing survived
+    the night. One-off state belongs in `GameState.start_new_career`.
+33. **A verdict tier nothing reaches is content behind a trigger that never
+    fires.** `struck_off()` read only REFERRED verdicts, and the money-optimal
+    play lands on FLAGGED on both wards and never on REFERRED (that needs two
+    indefensible beds, and every two-indefensible variant earns less). So the
+    optimal player accrued zero strikes forever and the auditor never spawned.
+    Score every night on a scale instead of matching a verdict NAME.
+34. **A carried flag recomputed from last night lasts one night.** The auditor
+    was `verdict == ESCALATED`, recomputed in `_carry`, so a single clean shift
+    made her vanish. Anything meant to persist needs its own countdown
+    (`auditor_shifts`), not a re-derivation.
+
 ## Design rules that are load-bearing
 
 - **Nothing in the UI is ever labelled "questionable".** No suspicion cost, no
@@ -162,7 +301,7 @@ change — five real bugs have been caught only by looking at the game.
   strike total that never reset. There are no achievements and no stats
   dictionary — both existed, both were read by nothing, and both were cut.
 - **Content lives in `Cases`, and adding a patient must not require touching a
-  system.** Thirty-two people across four wards, each a dictionary of authored
+  system.** Forty people across four wards, each a dictionary of authored
   strings; `tests/probe/data_run.gd` walks every one and fails on any field a
   system would otherwise silently default. If a new kind of patient needs a new
   `if` in `WardDay`, the data model is wrong, not the patient.
@@ -187,18 +326,21 @@ change — five real bugs have been caught only by looking at the game.
 
 ## Testing philosophy
 
-`tests/` has seven layers, and each has caught things the others could not:
+`tests/` has eleven layers, and each has caught things the others could not:
 
 | Layer | Catches |
 |---|---|
-| unit + integration | maths, serialisation, the audit rules, floor connectivity |
-| `smoke_run.gd` | "everything compiles and nothing works" |
-| `playtest_run.gd` | design inversions, over 31 authored strategies on all three wards. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 294 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| `smoke_run.gd` | "everything compiles and nothing works" — 150 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `screenshots.sh` | anything you can only see |
-| overlap audit (in `smoke_run.gd`) | two objects placed in the same cubic metre by two pieces of code that do not know about each other |
-| `tests/probe/data_run.gd` | the authored content itself — fifteen people across three wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
-| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays twenty nights eight ways (coast, honest, honest+corroborated, restrained, skilled, one lie, greedy, adaptive). It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. |
-| `tests/probe/frontier_run.gd` | dominant strategies. Three thousand three hundred plays — all three wards, every subset of beds up to three, crossed with eleven ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with how you answer in the room — reported as the most money made at each verdict. Slow (~12 min), so it is not in `run_tests.sh`; run it after touching the economy, the contradiction rules, the bed audit or a roster. The property it exists to defend: **the top figure must not be reachable signed off.** |
+| the fixture audit (in `smoke_run.gd`) | anything standing on nothing. Every `Fixture`'s footprint is tested against everything underneath it and reported as "chair floats by 4cm" or "bin is sunk by 11cm" — the failure two pieces of code that do not know about each other produce when they furnish the same square metre. |
+| `tests/probe/data_run.gd` | the authored content itself — forty people across four wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
+| `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays twenty nights eight ways (coast, honest, honest+corroborated, restrained, skilled, one lie, greedy, adaptive). It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. Run on three seeds, because nine wards drawn from four pools is not the same nine wards twice; `CAREER_SEED` overrides. |
+| `tests/probe/frontier_run.gd` | dominant strategies. 2,601 plays a ward — every subset of beds up to three, crossed with thirteen ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with whether the day was played DILIGENTLY, crossed with how you answer in the room — reported as the most money made at each verdict. Two properties: **the top figure must not be reachable signed off**, and **every ward must have an honest day that signs off**. The second is why the 2,601st play is not a strategy at all but the day a careful person plays, written out by hand: the search alone reported ward four as having no clean day, and that was a claim about the search. In `run_tests.sh`; re-run it after touching the economy, the contradiction rules, the bed audit or a roster. |
+| `play_run.gd` (`./playfast.sh`, `./play.sh`) | whether it can be PLAYED. Every other layer reaches past the input layer and calls the method a keypress would have called, so all of them pass on a build where nothing is bound to anything. This one presses the buttons: closes the briefing, walks the doctor to a bed on the stick, aims with the other stick, taps use, moves the selection on the card that opens and backs out. On its first run it found that a pad could look all the way round the ward without taking a step (the four move actions had a key each and no axis), that no screen in the game ever took focus, and that A and B were not bound to `ui_accept`/`ui_cancel` at all — on a build whose own Controls screen promised the opposite. The `pad` plan is in `run_tests.sh`; the `keys` plan needs a display, so it lives in `./play.sh`. |
+| the quiet check (in `run_tests.sh`) | anything the game PRINTS while it is being played. `boot_check.sh` asserts this for the way in and stops at the title screen, so nothing had ever looked at what Game.tscn says once it is loaded — which is where the world, the NPCs and every system are. It cost a warning on every launch of the shipped build: the environment enabled SSAO, which is Forward+ only, on a project that ships Compatibility. Six harnesses ran past it. It reads the UNIT run too, which it did not: that one had been printing "Cannot call method 'queue_free' on a previously freed instance" twice on every invocation, from two tests that tidied up a ward `setup()` had already freed, and the throw took the line after it with it. A check that watches one surface reports on one surface. |
+| `boot_check.sh` | the real entry point. Everything else instantiates Game.tscn directly and skips Boot and the main menu, which is how "the game is unplayable from the main menu" survived 1,500 assertions. |
 
 `playtest_run.gd` exits non-zero when a success criterion regresses, so a
 design inversion fails `run_tests.sh` rather than printing a report nobody
@@ -208,67 +350,3 @@ assertions after it never run and the suite reports green.
 
 Where a fix corrects a subtle behaviour, add the test that would have caught it
 and say in the comment *why* the obvious thing was wrong.
-
-14. **There is ONE clock, and it lives in `GameState`.** Every verb on the ward
-    costs minutes (`WardDay.READ_COST` and friends) and those minutes were
-    being spent on `WardDay.minute` alone, while the HUD, the force-end and
-    everything else driven by `minute_passed` went on counting real seconds —
-    so the chart said half past seven and the corner of the screen said five
-    past eleven, and the gap widened the more the player did. `advance_to()`
-    calls `GameState.skip_to()`, which re-enters `_on_minute` immediately;
-    anything that advances the clock must therefore be re-entrancy safe.
-    `end_day()` was not, and took the debt off the takings twice.
-15. **Under `--headless` the root Window is 64 pixels tall.** Every Control
-    lays out against it, so a card capped at `viewport height - 116` gets a
-    negative height and reports as three-quarters below the fold. Layout
-    measurements belong in `screenshots.sh`, which runs a real 1600x900 window
-    under Xvfb. Setting `tree.root.size` does not help — the dummy display
-    driver ignores it.
-
-16. **A harness that reuses `GameState` must clear the whole carry, not part of
-    it.** The playtest cleared `remembered_beds` between runs and left
-    `carried_debt` alone, so from the first strategy that came up short every
-    later one owed Vinnie more than the last — three successive audits reported
-    a risk/reward frontier that depended on the order of the list, and "one
-    well-timed lie" was recorded as worth $150 when it is worth $850.
-    `_clean_slate()` clears all of it and `_day()` fails loudly if a run starts
-    owing anything but `Cases.DEBT_DUE`. The one measurement that WANTS a carry
-    (criterion 6) builds its ward through `_carried_day()` instead.
-17. **`Cases.roster()` is a function of `GameState.day`, so anything that
-    changes the day mid-run must change it back at the right moment.** Setting
-    it back before `end_day()` meant the force-discharge loop walked the first
-    ward's roster while the `WardDay` still held the second ward's patients, and
-    every lookup errored. Reset after the review, not after the play.
-18. **What a document says is not what is true, and the second ward is built on
-    the gap.** `WardDay.reads_as_well()` is what the rounds, a nurse review and
-    a test report; `truly_well` is what an examination and the registrar find.
-    A patient marked `only_visible_in_person` differs between the two. Without
-    it Adeyemi's ten o'clock round simply announced Peter Lomax and there was no
-    reason to go and look at anybody.
-
-19. **A gate on something the PLAYER does is a reward for doing nothing.**
-    `_sent_home_unwell` used to `continue` unless the discharge was documented,
-    examined, or overruled — all three player-initiated. So the way to make a
-    wrongful discharge invisible was to never read a chart, never examine
-    anybody and never ask: **information had strictly negative expected value**,
-    because looking at a patient was the only way to manufacture the evidence
-    that convicted you of the decision you then made. Any new rule that asks
-    "did the player produce a document about this" needs a rung for "no, and
-    that is worse", not an early return. `_they_came_back` and
-    `_never_laid_eyes_on_them` are ungated on purpose.
-20. **`WardDay.start()` runs every morning, so anything assigned in it is
-    assigned every morning.** `cash = Cases.STARTING_CASH` sat there and minted
-    the player nine hundred pounds a night out of nowhere — a third of a night's
-    takings, under every strategy, in every measurement this project ever took,
-    and it made "he takes everything at eight" vacuous because nothing survived
-    the night. One-off state belongs in `GameState.start_new_career`.
-21. **A verdict tier nothing reaches is content behind a trigger that never
-    fires.** `struck_off()` read only REFERRED verdicts, and the money-optimal
-    play lands on FLAGGED on both wards and never on REFERRED (that needs two
-    indefensible beds, and every two-indefensible variant earns less). So the
-    optimal player accrued zero strikes forever and the auditor never spawned.
-    Score every night on a scale instead of matching a verdict NAME.
-22. **A carried flag recomputed from last night lasts one night.** The auditor
-    was `verdict == ESCALATED`, recomputed in `_carry`, so a single clean shift
-    made her vanish. Anything meant to persist needs its own countdown
-    (`auditor_shifts`), not a re-derivation.

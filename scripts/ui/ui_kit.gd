@@ -124,6 +124,20 @@ static func button(text: String, cb: Callable, color := PANEL_LIGHT, min_w := 0.
 	b.add_theme_stylebox_override("hover", _slip(color.lightened(0.06), ACCENT, 8))
 	b.add_theme_stylebox_override("pressed", _slip(color.darkened(0.10), ACCENT, 8))
 	b.add_theme_stylebox_override("disabled", _slip(color.darkened(0.05), INK_DIM, 4))
+	# WHERE THE KEYBOARD AND THE PAD ARE STANDING. Godot's default focus box is
+	# a thin grey outline drawn over whatever theme the control has, and against
+	# a paper-coloured button on a paper-coloured card it is invisible — so a
+	# player without a mouse could move the selection around a screen and never
+	# see it move. This is the hover slip with the margin rule turned up, which
+	# is the same mark the cursor makes, because they mean the same thing.
+	var focus_slip := _slip(color.lightened(0.10), MARGIN_RED, 8)
+	# ...and a rule all the way round it, not just the tab. On the pale buttons
+	# the tab alone is enough; on the amber and dark-green ones the whole card
+	# is already a strong colour and an 8px mark down one edge of it disappears.
+	focus_slip.set_border_width(SIDE_TOP, 2)
+	focus_slip.set_border_width(SIDE_RIGHT, 2)
+	focus_slip.set_border_width(SIDE_BOTTOM, 2)
+	b.add_theme_stylebox_override("focus", focus_slip)
 	b.add_theme_color_override("font_disabled_color", INK_DIM)
 	if min_w > 0.0:
 		b.custom_minimum_size.x = min_w
@@ -460,6 +474,58 @@ static func rep_color(track: String, value: float) -> Color:
 	return GOOD if value > 0.6 else (WARN if value > 0.35 else BAD)
 
 ## The card-with-a-tab stylebox every button uses.
+## ---------------------------------------------------------------- focus
+## GIVE A KEYBOARD AND A PAD SOMEWHERE TO START.
+##
+## Godot navigates a Control tree with `ui_up`/`ui_down`/`ui_accept` for free
+## and every Button is focusable by default — but navigation begins from
+## whatever holds focus, and nothing in this game ever took it. So `ui_down` had
+## nowhere to go from, and every button on every screen, the title screen
+## included, was unreachable without a mouse. The Controls screen has promised
+## the opposite the whole time.
+##
+## Never steals: if something inside `root` is already focused, this leaves it
+## alone, because screens rebuild themselves on every action taken inside them.
+## Returns whatever ended up with focus, so a caller can check.
+static func focus_first(root: Node) -> Control:
+	if root == null or not root.is_inside_tree():
+		return null
+	var vp := root.get_viewport()
+	if vp == null:
+		return null
+	# UNTYPED, AND `is_instance_valid`. `gui_get_focus_owner()` hands back the
+	# control that had focus a moment ago, and after `ScreenBase.rebuild()` that
+	# control has been freed — so reading it into a TYPED local raises "Trying
+	# to assign invalid previously freed instance" and ABORTS THIS FUNCTION
+	# (CLAUDE.md 11). Which is precisely what happened: every rebuild left the
+	# screen with no selection at all, silently, and the rebuild is what runs
+	# after every action taken inside a card.
+	var owner = vp.gui_get_focus_owner()
+	if is_instance_valid(owner) and root is Node and (root as Node).is_ancestor_of(owner):
+		return owner as Control
+	# READING ORDER, and nothing cleverer. An earlier version preferred a text
+	# field wherever a screen had one, which is right for the note you are
+	# writing and wrong for the title screen — where the seed box is the last
+	# control on the page and "New Career" is the first, so a pad player would
+	# have landed in an optional text field instead of on the button that starts
+	# the game.
+	var target := first_focusable(root)
+	if target != null:
+		target.grab_focus()
+	return target
+
+## Depth-first, in the order a reader meets them.
+static func first_focusable(n: Node) -> Control:
+	for c in n.get_children():
+		var ctl := c as Control
+		if ctl != null and ctl.visible and ctl.focus_mode != Control.FOCUS_NONE \
+				and not ctl.is_queued_for_deletion():
+			return ctl
+		var found := first_focusable(c)
+		if found != null:
+			return found
+	return null
+
 static func _slip(color: Color, tab: Color, tab_w: int) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = color

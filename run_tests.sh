@@ -118,6 +118,18 @@ done
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/frontier_run.gd 2>&1 | grep -vE "$NOISE"
 FRONTIER=${PIPESTATUS[0]}
 
+# AND CAN IT BE PLAYED WITH THE THING IN YOUR HANDS. Every harness above this
+# line reaches past the input layer and calls the method a keypress would have
+# called, so all of them pass on a build where nothing is bound to anything.
+# This one presses the buttons: it closes the briefing, walks the doctor to a
+# bed on the stick, taps use, moves the selection on the card that opens and
+# backs out again. It found on its first run that a pad could look all the way
+# round the ward without taking a step, and that no screen in the game ever
+# took focus — on a build whose own Controls screen promised otherwise.
+"$GODOT" --headless --fixed-fps 60 --path "$DIR" \
+  --script res://tests/play_run.gd -- pad 2>&1 | grep -vE "$NOISE"
+PLAY_IN=${PIPESTATUS[0]}
+
 # ...AND THE GAME SAYS NOTHING IT SHOULD NOT WHILE BEING PLAYED.
 #
 # `boot_check.sh` asserts this for the way IN — Boot and the main menu — and
@@ -132,8 +144,18 @@ FRONTIER=${PIPESTATUS[0]}
 # The same ignore list boot_check.sh uses, for the same reasons: this container
 # has no sound card, no vsync and a dummy renderer.
 QUIET_IGNORE='ALSA lib|snd_|audio_driver_alsa|All audio drivers failed|Could not set V-Sync|PulseAudio|pcm\.c|conf\.c|confmisc\.c|Unknown PCM|ERR_CANT_OPEN|init_output_device|ObjectDB instances leaked|PagedAllocator|Unreferenced static string|RID allocations|resources still in use|Parameter "m" is null|mesh_get_surface_count|^ *at: '
-NOISY=$("$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1 \
-  | grep -E "ERROR|SCRIPT ERROR|WARNING" | grep -vE "$QUIET_IGNORE" || true)
+# BOTH RUNS. This watched the smoke run and only the smoke run, and the unit run
+# had been printing "Cannot call method 'queue_free' on a previously freed
+# instance" twice on every single invocation for as long as anybody has looked —
+# two tests that took a second day, which frees the first one underneath them,
+# and then tidied up the ward that setup() had already freed. A throw aborts the
+# function (CLAUDE.md 11), so each of them also leaked the ward it had just
+# built. Nothing was reading the output because everything was green.
+NOISY=$(
+  "$GODOT" --headless --path "$DIR" --script res://tests/smoke_run.gd 2>&1
+  "$GODOT" --headless --path "$DIR" --script res://tests/run_tests.gd 2>&1
+)
+NOISY=$(echo "$NOISY" | grep -E "ERROR|SCRIPT ERROR|WARNING" | grep -vE "$QUIET_IGNORE" || true)
 QUIET=0
 if [ -n "$NOISY" ]; then
   echo ""
@@ -151,8 +173,8 @@ GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
 if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
-    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER boot=$BOOT)" >&2
+    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

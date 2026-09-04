@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-# Drive the real game through the real input actions and photograph it.
-#   GODOT=/path/to/godot ./play.sh [plan]
-# plans: first_shift (default) | walk_test | honest | reckless | careful_criminal
-#        | opportunist | idiot_chaos | doors
+# Play the game through the real input actions, with a real window behind it.
+#   GODOT=/path/to/godot ./play.sh [pad|keys]
+#
+# Xvfb and the GL Compatibility renderer, same as screenshots.sh — and unlike
+# ./playfast.sh this gives the game a real display, which is the only way the
+# mouse cursor can be captured and therefore the only way the `keys` plan can
+# test looking around.
 set -uo pipefail
 GODOT="${GODOT:-godot}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
-PLAN="${1:-first_shift}"
+PLAN="${1:-keys}"
 command -v xvfb-run >/dev/null 2>&1 || { echo "xvfb-run not found" >&2; exit 2; }
 "$GODOT" --headless --path "$DIR" --import >/dev/null 2>&1
 exec xvfb-run -a -s "-screen 0 1600x900x24" "$GODOT" \

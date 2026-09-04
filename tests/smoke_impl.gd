@@ -51,9 +51,32 @@ func start() -> void:
 	game = packed.instantiate()
 	tree.root.add_child(game)
 
+## AN ASSERTION MADE IN THE SAME FRAME AS ITS SETUP READS LAST FRAME'S VALUE.
+##
+## Anything a node writes in `_process`, `_physics_process` or a `call_deferred`
+## has not happened yet when the setup line returns — a rebuilt screen has not
+## laid out, a freed node has not gone, a grabbed focus has not landed. `_defer`
+## puts the assertion `n` frames later; `_report()` refuses to declare a result
+## while one is still outstanding, so a check that never runs is a failure
+## rather than a silently smaller number.
+var _later: Array = []
+
+func _defer(n: int, what: Callable) -> void:
+	_later.append({"at": frames + n, "do": what})
+
+func _drain_deferred() -> void:
+	var still: Array = []
+	for job in _later:
+		if frames >= int(job["at"]):
+			(job["do"] as Callable).call()
+		else:
+			still.append(job)
+	_later = still
+
 func tick() -> bool:
 	frames += 1
 	tree.paused = false
+	_drain_deferred()
 	match stage:
 		"boot":
 			if frames > 8:
@@ -87,6 +110,11 @@ func tick() -> bool:
 			stage = "toasts"
 		"toasts":
 			if _check_nothing_is_said_into_a_closed_card():
+				_check_a_rebuilt_card_still_has_a_selection()
+				stage = "settle"
+		"settle":
+			# Nothing to do but let the deferred checks above come due.
+			if _later.is_empty():
 				stage = "done"
 		"done":
 			_report()
@@ -1123,6 +1151,55 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(bad_sounds.is_empty(), "and every one is a recipe that exists%s"
 		% ("" if bad_sounds.is_empty() else " — " + ", ".join(PackedStringArray(bad_sounds))))
 
+	# AND EVERY SETTING IS READ BY SOMETHING.
+	#
+	# CLAUDE.md 15, made automatic. `show_damage_flash` and `pad_vibration` were
+	# both saved to disk, both restored on load, both defaulted, and both read
+	# by NOTHING — one of them a setting for a health bar in a game that has
+	# never had a health bar. A dead key is a promise the options menu is one
+	# line away from making, and the only way to find one is to look for it.
+	var dead: Array = []
+	var src_all := ""
+	for path in _all_scripts("res://scripts"):
+		if path.ends_with("Settings.gd"):
+			continue
+		src_all += FileAccess.get_file_as_string(path)
+	for key in Settings.DEFAULTS:
+		if not src_all.contains("get_value(\"%s\")" % String(key)):
+			dead.append(String(key))
+	_ok(dead.is_empty(), "every one of the %d settings is read by something%s"
+		% [Settings.DEFAULTS.size(), "" if dead.is_empty()
+			else " — nothing reads " + ", ".join(PackedStringArray(dead))])
+
+	# AND EVERY RECIPE ACTUALLY MAKES A NOISE.
+	#
+	# The check above proves every name the source asks for is in the table. It
+	# says nothing about whether the table's entry SOUNDS like anything: every
+	# sound in this game is synthesised from six numbers, and a decay of 90 on a
+	# quarter-second sample, or a duration of zero, produces a perfectly valid
+	# silent stream that no harness and no player can tell from a sound that
+	# never played. Build all of them and look at the peak.
+	var silent: Array = []
+	for name in AudioMgr.RECIPES:
+		var st: AudioStreamWAV = AudioMgr._build(String(name))
+		if st == null or st.data.size() < 200:
+			silent.append("%s (no samples)" % name)
+			continue
+		var peak := 0
+		var d: PackedByteArray = st.data
+		# Every 16th sample: a stream that is audible anywhere is audible on a
+		# sixteenth of itself, and this runs over forty of them.
+		for i in range(0, d.size() - 1, 32):
+			var v: int = d[i] | (d[i + 1] << 8)
+			if v >= 32768:
+				v -= 65536
+			peak = maxi(peak, absi(v))
+		if peak < 2000:
+			silent.append("%s (peak %d)" % [name, peak])
+	_ok(silent.is_empty(), "all %d sound recipes make a noise%s"
+		% [AudioMgr.RECIPES.size(), "" if silent.is_empty()
+			else " — silent: " + ", ".join(PackedStringArray(silent))])
+
 ## `Name.method(` occurrences in a source file, outside comments.
 func _calls_on(src: String, autoload: String) -> Array:
 	var out: Array = []
@@ -1766,6 +1843,29 @@ func _check_screens_actually_draw() -> bool:
 	_ok(not buttons.is_empty(), "the %s screen has controls on it" % name)
 	_ok(dead.is_empty(), "and every control on %s has a size%s" % [name,
 		"" if dead.is_empty() else ": " + ", ".join(dead)])
+	# AND EVERY ONE OF THEM DOES SOMETHING WHEN IT IS PRESSED.
+	#
+	# `UIKit.button` guards its callback with `cb.is_valid()`, so a button built
+	# with an empty Callable is a button that clicks, lights up under the mouse
+	# and does nothing — and looks correct in a screenshot. Two connections is
+	# the floor: the click noise UIKit wires itself, and what the button is FOR.
+	var inert: Array[String] = []
+	for b in buttons:
+		if b.pressed.get_connections().size() < 2:
+			inert.append(b.text)
+	_ok(inert.is_empty(), "and pressing any of them does something%s"
+		% ("" if inert.is_empty() else " — inert: " + ", ".join(inert)))
+	# AND SOMETHING ON IT IS SELECTED.
+	#
+	# Not decoration: navigation with a pad or the arrow keys starts from
+	# whatever holds focus, and for the life of this project nothing ever took
+	# it — so the D-pad moved a selection that did not exist and every screen in
+	# the game was mouse-only. `UIKit.focus_first` is called on the way in; this
+	# is the check that it stays called.
+	var vp := tree.root.get_viewport()
+	var holder: Control = vp.gui_get_focus_owner() if vp else null
+	_ok(holder != null, "and the %s screen has a selection on it for a pad%s"
+		% [name, "" if holder != null else " — nothing has focus"])
 	# HOW MUCH OF THE CARD IS BELOW THE FOLD.
 	#
 	# A control can have a perfectly good size and still be somewhere nobody
@@ -1919,6 +2019,34 @@ func _collect_buttons(n: Node, out: Array) -> void:
 	for c in n.get_children():
 		_collect_buttons(c, out)
 
+## A CARD REBUILDS ITSELF AFTER EVERY ACTION TAKEN ON IT.
+##
+## Which is the moment the selection is easiest to lose: `rebuild()` frees every
+## control on the screen and builds new ones, and the first version of the focus
+## code grabbed focus on a button that was already queued for deletion — so a
+## pad player could open a card, press one thing, and find the selection gone
+## with no way to get it back except a mouse. Worse, `gui_get_focus_owner()`
+## then returns a FREED control, and reading that into a typed local aborts the
+## function that was about to fix it (CLAUDE.md 11).
+func _check_a_rebuilt_card_still_has_a_selection() -> void:
+	var ui = game.get("ui")
+	if ui == null:
+		return
+	EventBus.request_ui.emit("patient", {"patient_id": _anyone()})
+	_defer(4, func():
+		var vp := tree.root.get_viewport()
+		var before = vp.gui_get_focus_owner() if vp else null
+		_ok(is_instance_valid(before), "a card opens with a selection on it")
+		if ui.current != null and ui.current.has_method("rebuild"):
+			ui.current.rebuild()
+		_defer(6, func():
+			var vp2 := tree.root.get_viewport()
+			var after = vp2.gui_get_focus_owner() if vp2 else null
+			_ok(is_instance_valid(after),
+				"and still has one after it rebuilds itself")
+			if ui.has_method("close"):
+				ui.call("close")))
+
 func _fail(msg: String) -> void:
 	errors.append(msg)
 
@@ -1929,6 +2057,8 @@ func _ok(cond: bool, msg: String) -> void:
 		errors.append(msg)
 
 func _report() -> void:
+	if not _later.is_empty():
+		_fail("%d deferred check(s) never ran" % _later.size())
 	for n in notes:
 		print(n)
 	print("\n--------------------------------------")

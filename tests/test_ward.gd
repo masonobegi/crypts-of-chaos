@@ -29,6 +29,20 @@ func setup() -> void:
 			t.root.remove_child(n)
 			n.free()
 
+## FREE A WARD THAT MAY ALREADY BE GONE.
+##
+## `_day()` calls `setup()`, and setup FREES every WardDay in the tree — so a
+## test that takes a SECOND day has had its first one freed underneath it, and
+## the tidy-up line at the bottom then calls `queue_free()` on a freed instance.
+## That throws, and a throw ABORTS THE FUNCTION (CLAUDE.md 11), so the line
+## after it never runs: two tests ended by leaking the ward they had just built
+## and printing an error on every single unit run, which nothing was reading
+## because the quiet check only ever looked at the smoke run.
+func _drop(wards: Array) -> void:
+	for n in wards:
+		if is_instance_valid(n):
+			n.queue_free()
+
 ## THERE IS ONE WARD. A test that wants a second day wants the ward it already
 ## had, reset — not another one alive beside it holding a second set of five
 ## patients and a second connection to the world clock.
@@ -1058,8 +1072,7 @@ func test_the_nurse_cannot_defend_a_discharge_she_argued_against() -> void:
 				offered = true
 	t.ok(offered,
 		"a nurse who backed you is still worth citing on a bed you held")
-	w.queue_free()
-	q.queue_free()
+	_drop([w, q])
 
 ## PUTTING IT RIGHT IS WORTH SOMETHING. `readmitted_after_your_discharge` was in
 ## the CONTRADICTED list, and that branch only runs for a bed you are KEEPING —
@@ -1184,8 +1197,7 @@ func test_patching_a_note_twice_is_a_record_arguing_with_itself() -> void:
 	q.write_entry("oduya", ChartEntry.Claim.SOCIAL, "Nobody at home.", q.minute)
 	t.ok(not _kinds(q.review_findings()).has("addendum_cascade"),
 		"three notes about three different things are three observations")
-	w.queue_free()
-	q.queue_free()
+	_drop([w, q])
 
 ## A NEW CAREER IS ACTUALLY NEW. `flags.clear()` used to run after the three
 ## calls that write the flags a career starts with, so the right state was being

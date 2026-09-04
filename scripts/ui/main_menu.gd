@@ -83,6 +83,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	if is_inside_tree():
+		# THE SELECTION FIRST, THEN THE MUSIC. The title screen is the first
+		# thing a pad reaches and it had no focus at all, so the D-pad had
+		# nowhere to start from and the only way to begin a career was a mouse.
+		# Before `play_music()`, which is the better part of a second of
+		# straight-line synthesis: after it, the selection appears late enough
+		# to look like it was waiting for something.
+		UIKit.focus_first(self)
 		AudioMgr.play_music()
 
 ## The title screen looks through a window into the building.

@@ -155,8 +155,9 @@ func _check_the_chart_works() -> void:
 	_check_the_room_is_watching(w)
 	_check_no_sign_is_mirrored()
 	_check_every_room_named_in_source_exists()
-	_check_the_tutorial_finishes()
+
 	_check_the_promised_visitors_arrive()
+
 	_check_the_crosshair_keeps_the_secret(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
@@ -172,6 +173,14 @@ func _check_the_chart_works() -> void:
 		"and it records both when it happened and when it was typed")
 	_ok(e.backdated_by() == 20, "and knows the gap between them exactly")
 
+## THE CHECKS THAT SPEND TIME GO LAST.
+##
+## These write notes and decide beds, and `write_entry` charges eight minutes
+## for each one — so seventeen of them walked the ward clock past half three and
+## the backdating assertion in `_check_the_chart_works`, which writes at 15:30
+## stating 15:10 and expects a gap of exactly 20, started measuring a gap of
+## whatever the clock had drifted to. Anything that moves the clock belongs
+## after everything that reads it.
 func _check_the_verbs_work() -> void:
 	var w = tree.get_first_node_in_group("ward_day")
 	if w == null:
@@ -209,6 +218,9 @@ func _check_the_verbs_work() -> void:
 ## whether they are genuinely unwell or not, apart from their own name and
 ## condition. Compared as a SET across the ward — if the well and the unwell
 ## ever have different vocabularies, something has started leaking again.
+	_check_the_tutorial_finishes()
+	_check_writing_is_observed(w)
+
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
 	if ps == null:
@@ -259,6 +271,56 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## WRITING IN FRONT OF SOMEBODY IS SOMETHING THEY NOTICE.
+##
+## The two halves of this game were not connected. The paperwork crime is
+## audited at eight o'clock through `seen_by`; the suspicion layer — nametag
+## colour, staff stopping to watch you, following you round the ward — is fed
+## only by WorldEvents, and the only emitters were a slammed door, a thrown prop
+## and a patient getting out of bed. A doctor who spent the shift writing
+## fabrications at the bedside was watched exactly as closely as one who wrote
+## nothing, so the observable crime produced no observation and the stealth
+## layer had nothing to do with the game.
+func _check_writing_is_observed(w) -> void:
+	var sus = tree.get_first_node_in_group("suspicion_system")
+	var p = tree.get_first_node_in_group("player")
+	var h = tree.get_first_node_in_group("hospital")
+	if sus == null or p == null or h == null:
+		_fail("no ward to be observed in")
+		return
+	var pid := String(Cases.roster()[0]["id"])
+	# In the bay, where the patients are.
+	p.global_position = h.point_in("ward")
+	var before := _total_evidence(sus)
+	# A PATTERN, not one note. The event is weighted low on purpose — a doctor
+	# writing at a bedside is also just a doctor writing at a bedside — and
+	# perception is a roll against observance and distance rather than a
+	# threshold, so any single note may well go unnoticed. What must not happen
+	# is a whole shift of them going unnoticed.
+	for i in 8:
+		w.write_entry(pid, ChartEntry.Claim.UNWELL, "Unsettled.", w.minute,
+			WardDay.TERMINAL_WARD)
+	var after := _total_evidence(sus)
+	_ok(after > before,
+		"writing notes where people can see you gets noticed (%d -> %d)"
+			% [before, after])
+	# ...and in the office, with the door shut, it is not.
+	p.global_position = h.point_in("office")
+	var mid := _total_evidence(sus)
+	for i in 8:
+		w.write_entry(pid, ChartEntry.Claim.UNWELL, "Unsettled.", w.minute,
+			WardDay.TERMINAL_OFFICE)
+	_ok(_total_evidence(sus) == mid,
+		"and writing it in your own office is not, which is the whole point")
+
+func _total_evidence(sus) -> int:
+	var n := 0
+	for id in sus.minds:
+		var m = sus.minds[id]
+		if m != null:
+			n += Array(m.evidence).size()
+	return n
 
 ## THE PEOPLE THE CARD PROMISES ACTUALLY TURN UP.
 ##

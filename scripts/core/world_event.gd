@@ -66,6 +66,17 @@ func smelled() -> WorldEvent:
 	ambient = true
 	return self
 
+## Same flag, honest name. "Ambient" means being in the room is enough — no line
+## of sight and no facing check — which is right for a smell, and equally right
+## for the doctor standing at the bay terminal typing. `ChartEntry.seen_by` uses
+## exactly these semantics ("who was in this room, awake"), so an act that goes
+## on the chart as witnessed and an act the witnesses actually perceive are the
+## same act. Before this they could disagree: five people were listed on the
+## note as having seen it and not one of them registered anything.
+func in_the_room() -> WorldEvent:
+	ambient = true
+	return self
+
 func tag(t: String) -> WorldEvent:
 	tags.append(t)
 	return self

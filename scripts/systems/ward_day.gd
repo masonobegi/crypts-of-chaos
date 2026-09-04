@@ -14,6 +14,14 @@ signal disposition_set(pid, what)
 signal patient_changed(pid: String)
 signal day_ended(result: Dictionary)
 
+## Which room each machine stands in, so a WorldEvent raised by writing on one
+## is heard by the people in that room rather than at the world origin.
+const TERMINAL_ROOM := {
+	"the ward terminal": "ward",
+	"the nurses' station": "station",
+	"the office": "office",
+}
+
 const TERMINAL_WARD := "the ward terminal"
 const TERMINAL_STATION := "the nurses' station"
 const TERMINAL_OFFICE := "the office"
@@ -199,6 +207,26 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	e.terminal_id = terminal
 	e.explains = explains
 	e.seen_by = _who_can_see_me()
+	# ...AND THE PEOPLE WHO SAW IT KNOW THEY SAW IT.
+	#
+	# The two halves of this game were not connected. The paperwork crime is
+	# audited at eight o'clock through `seen_by` and `Contradictions`; the
+	# suspicion layer — nametag colour, staff stopping to watch you, following
+	# you round the ward at high tier — is fed entirely by WorldEvents, and the
+	# only things that emit those are slamming a door, throwing a prop and a
+	# patient getting out of bed. So a doctor who spent the whole shift writing
+	# fabrications at the bedside was watched exactly as closely as one who
+	# wrote nothing: the observable crime produced no observation.
+	#
+	# Typing a note that keeps somebody in, standing where they can watch you do
+	# it, is the observable half of the crime this game is about. Weighted low —
+	# a doctor writing at a bedside is also just a doctor writing at a bedside —
+	# so it takes a pattern rather than one note to make Adeyemi look up.
+	if e.supports_stay() and not e.seen_by.is_empty() and is_inside_tree():
+		WorldEvent.new("wrote_at_the_bedside", "player") \
+			.at(_player_pos(), TERMINAL_ROOM.get(terminal, "ward")) \
+			.seen(0.28).in_the_room().tag("paperwork") \
+			.says("wrote a note at the bedside").emit()
 	records.add(e)
 	_log("write", {"pid": pid, "stated": stated, "written": minute,
 		"backdated": e.backdated_by(), "terminal": terminal,
@@ -978,6 +1006,15 @@ func observe_player(room: String, witnesses: PackedStringArray) -> void:
 ## minutes. That is also what makes the two terminals mean what the game says
 ## they mean: the one in the bay is in full view of the ward, and the one in
 ## your office has a door on it.
+## Where the player is standing, for anything that needs to place an event in
+## the world. Falls back to the ward's own centre in the headless harnesses,
+## which have no player.
+func _player_pos() -> Vector3:
+	if not is_inside_tree():
+		return Vector3.ZERO
+	var p = get_tree().get_first_node_in_group("player")
+	return p.global_position if p != null else Vector3.ZERO
+
 func _who_can_see_me() -> PackedStringArray:
 	var out := PackedStringArray()
 	# CLAUDE.md 5: a node added during a SceneTree's _initialize() is not inside

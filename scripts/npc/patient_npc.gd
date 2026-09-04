@@ -369,16 +369,25 @@ func prompt(_player) -> Array:
 		return ["%s is waiting" % data.display_name,
 			"%s  ·  every room is full  ·  [hold E] for options" % data.condition_name()]
 	var sub := data.condition_name()
-	# The three facts that decide what you do next, on the thing you are already
-	# looking at. What a bed earns per night was previously only readable by
-	# opening the tablet and scrolling to the right row, which is a menu the
-	# player has to already suspect matters before they will ever open it.
-	if data.ready_for_discharge():
-		sub += "  ·  fit to go home"
-	elif data.recovery >= 0.6:
-		sub += "  ·  nearly there"
-	if data.is_overdue():
-		sub += "  ·  %d days over" % int(data.days_admitted - data.expected_stay_days)
+	# WHAT THE PAPERWORK SAYS, AND WHAT THE BED PAYS. Nothing else.
+	#
+	# This used to append "fit to go home" from `Patient.ready_for_discharge()`,
+	# which is `recovery >= 0.85`, and `recovery` is set to 0.95 for anybody
+	# whose case says `truly_well` and 0.55 for anybody it does not. So the
+	# crosshair label — free, instant, no minutes, no chart, no examination —
+	# tagged every well patient on the ward and left the one genuinely ill
+	# person untagged.
+	#
+	# That is the answer to the only question the shift asks. Reading a chart is
+	# twelve minutes, examining somebody is fifteen, bloods are five and
+	# seventy-five more to come back, and the whole design is that a twelve-hour
+	# day cannot afford all of it on all five beds. A player who walks down the
+	# row looking at faces skips the entire game and cannot be blamed for it.
+	# Both fields are vestiges of a recovery model that was deleted; nothing
+	# else read them.
+	#
+	# The insurance tier is fair game — it is on the morning briefing and the
+	# patient's own card — so what the night pays stays.
 	sub += "  ·  %s a night" % UIKit.money_str(data.daily_revenue())
 	return ["Talk to %s" % data.display_name, sub]
 

@@ -151,6 +151,7 @@ func _check_the_chart_works() -> void:
 	_check_the_new_verbs(w)
 	_check_the_room_is_watching(w)
 	_check_no_sign_is_mirrored()
+	_check_the_crosshair_keeps_the_secret(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
 	# from half past seven that is enough to walk the shift past eight o'clock,
@@ -187,6 +188,71 @@ func _check_the_verbs_work() -> void:
 	_ok(o.fulfilled_by == r.id, "and the order is answered by it")
 
 	_check_being_seen_somewhere_else(w)
+
+## THE CROSSHAIR MUST NOT ANSWER THE QUESTION THE SHIFT IS ABOUT.
+##
+## The bedside prompt appended "fit to go home" from `ready_for_discharge()`,
+## which reduces to `truly_well` — so looking at each of five faces, for free,
+## in zero minutes, told the player exactly who was ill. Reading a chart is
+## twelve minutes and examining somebody is fifteen; the entire design is that a
+## twelve-hour day cannot afford all of it. Every measurement this project has
+## ever taken was of a game whose central question could be answered by walking
+## down the row, and not one of 273 assertions noticed.
+##
+## So: for every patient on the ward, the world prompt must read the same
+## whether they are genuinely unwell or not, apart from their own name and
+## condition. Compared as a SET across the ward — if the well and the unwell
+## ever have different vocabularies, something has started leaking again.
+func _check_the_crosshair_keeps_the_secret(w) -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		_fail("no patient system")
+		return
+	var well_words := {}
+	var ill_words := {}
+	var seen := 0
+	for p in ps.active():
+		var body = ps.get_body(p.id)
+		if body == null or not body.has_method("prompt"):
+			continue
+		# `prompt(_player)` TAKES THE PLAYER. Called with no argument the whole
+		# check aborted mid-function without erroring — CLAUDE.md 11 — so it
+		# asserted nothing and the suite reported the same 72 checks as before
+		# it existed. The count is the only reason anybody noticed.
+		var pr = body.call("prompt", tree.get_first_node_in_group("player"))
+		if pr == null or Array(pr).size() < 2:
+			continue
+		seen += 1
+		var ill: bool = not bool(Cases.by_id(p.id).get("truly_well", true))
+		# Drop the words that are legitimately theirs: their name and the
+		# condition the chart already prints in the morning briefing.
+		var text := String(pr[1])
+		for own in String(Cases.by_id(p.id).get("condition", "")).split(" "):
+			text = text.replace(String(own), "")
+		for word in text.split("·"):
+			var k := String(word).strip_edges()
+			if k == "":
+				continue
+			if ill:
+				ill_words[k] = true
+			else:
+				well_words[k] = true
+	_ok(seen >= 3, "there are bedside prompts to read (%d)" % seen)
+	var leaked: Array = []
+	for k in ill_words:
+		if not well_words.has(k):
+			leaked.append(k)
+	for k in well_words:
+		if not ill_words.has(k):
+			leaked.append(k)
+	# Money differs by insurance tier, which is public and on the briefing.
+	var real: Array = []
+	for k in leaked:
+		if not String(k).begins_with("$"):
+			real.append(k)
+	_ok(real.is_empty(),
+		"and looking at somebody does not say whether they are ill%s"
+			% ("" if real.is_empty() else ": " + ", ".join(real)))
 
 ## NO SIGN IN THE BUILDING RENDERS ITS OWN MIRROR IMAGE.
 ##

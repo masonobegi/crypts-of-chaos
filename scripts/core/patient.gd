@@ -50,12 +50,17 @@ func dept() -> String:
 func is_overdue() -> bool:
 	return days_admitted > expected_stay_days
 
-func ready_for_discharge() -> bool:
-	return recovery >= 0.85
-
 ## What the hospital bills for one more night of them.
+##
+## NOT TIMES THREE. The bedside prompt is the first place most players meet the
+## only number the game is about, and it quoted "$2,550 a night" for a bed whose
+## own card, one keypress later, says "+$850 to you". The x3 is a leftover from
+## a billing model with day-rate multipliers in it that no longer exists —
+## `WardDay` pays `Cases.night_fee()` flat — so the world was advertising three
+## times what the ward actually earns and every estimate a player made walking
+## the row was wrong by a factor of three.
 func daily_revenue() -> int:
-	return Cases.night_fee(int(case().get("tier", Cases.Tier.STANDARD))) * 3
+	return Cases.night_fee(int(case().get("tier", Cases.Tier.STANDARD)))
 
 func to_dict() -> Dictionary:
 	return {"id": id, "case": case_id, "disch": discharged,

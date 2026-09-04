@@ -17,7 +17,6 @@ extends Node
 ## already a statistical outlier, and no amount of care or paperwork could get
 ## a career past it — the statistic stopped being something to manage and became
 ## a countdown.
-const BASELINE_INJURY_RATE := 0.06
 const GOSSIP_INTERVAL_MIN := 25       ## in-game minutes between gossip passes
 const GOSSIP_RANGE := 5.0
 
@@ -95,9 +94,6 @@ func _body(id):
 	if not b.on_duty:
 		return null
 	return b
-
-func mind_of(id: String) -> Mind:
-	return minds.get(id, null)
 
 func body_of(id: String) -> NPCBody:
 	return _body(id)
@@ -398,116 +394,20 @@ func file_complaint(from_id: String, severity: float) -> void:
 		ev.tags = PackedStringArray(["complaint"])
 		inst.add_evidence(ev)
 
-## Institutions learn from paperwork, not eyes. Called by the records/audit code.
-func report_to_institution(inst_id: String, kind: String, weight: float, summary: String,
-		patient_id := "", tags: Array = []) -> void:
-	var inst: Mind = minds.get(inst_id, null)
-	if inst == null:
-		return
-	var ev := Evidence.new()
-	ev.kind = kind
-	ev.about_actor = "player"
-	ev.patient_id = patient_id
-	ev.source = Evidence.Source.RECORD
-	ev.time = GameState.career_minutes
-	ev.base_weight = weight
-	ev.certainty = 0.95
-	ev.summary = summary
-	for t in tags:
-		ev.tags.append(String(t))
-	inst.add_evidence(ev)
-
-## Statistical inference — run at end of shift. Nobody saw anything, but your
-## numbers are wrong and someone who reads numbers for a living noticed.
-##
-## Two independent signals, because they catch different play:
-##  * length of stay catches stalling
-##  * complication RATE catches the immaculately-documented player, whose every
-##    complication is plausible and filed on time, but who produces three times
-##    as many of them as anyone else on the floor. Perfect paperwork is not a
-##    defence against being a statistical outlier — that is the whole point of
-##    an analytics team, and it is what stops clean filing being a free win.
-const BASELINE_COMPLICATION_RATE := 0.34   ## per discharged patient, ward average
-
-func run_statistical_review(avg_overstay: float, sample: int,
-		complication_rate: float = -1.0, injury_rate: float = -1.0) -> void:
-	if sample < 3:
-		return
-	if avg_overstay >= 0.6:
-		var weight := clampf((avg_overstay - 0.5) * 0.35, 0.05, 0.75)
-		_file_statistic("length_of_stay_outlier", weight,
-			"average length of stay running %.1f days over projection" % avg_overstay)
-		EventBus.toast.emit("Your average length of stay is drifting.", "suspicion")
-
-	if complication_rate >= 0.0 and complication_rate > BASELINE_COMPLICATION_RATE * 1.6:
-		var excess := complication_rate / BASELINE_COMPLICATION_RATE
-		var weight := clampf((excess - 1.5) * 0.22, 0.04, 0.7)
-		_file_statistic("complication_rate_outlier", weight,
-			"complication rate running %.1fx the ward average" % excess)
-		EventBus.toast.emit(
-			"Your complication rate is well above the ward average.", "suspicion")
-
-	# Injuries per patient-shift. Deliberately measured against how many people
-	# are ON the ward rather than how many left it: the complication rate goes
-	# blind on a ward that never discharges anybody, and "fill every bed with
-	# people you hurt and discharge none of them" would otherwise be the way to
-	# switch the statistics off entirely.
-	if injury_rate >= 0.0 and injury_rate > BASELINE_INJURY_RATE * 2.0:
-		var over := injury_rate / maxf(BASELINE_INJURY_RATE, 0.0001)
-		var w := clampf((over - 1.9) * 0.11, 0.04, 0.85)
-		_file_statistic("injury_rate_outlier", w,
-			"ward-acquired injuries running %.1fx the expected rate" % over)
-		EventBus.toast.emit(
-			"Somebody has run the numbers on ward-acquired injuries.", "suspicion")
-
-func _file_statistic(kind: String, weight: float, summary: String) -> void:
-	for inst_id in ["admin", "insurer"]:
-		var inst: Mind = minds.get(inst_id, null)
-		if inst == null:
-			continue
-		var ev := Evidence.new()
-		ev.kind = kind
-		ev.about_actor = "player"
-		ev.source = Evidence.Source.INFERRED
-		ev.time = GameState.career_minutes
-		ev.base_weight = weight
-		ev.certainty = 0.8
-		ev.summary = summary
-		ev.tags = PackedStringArray(["statistics"])
-		inst.add_evidence(ev)
-
 # ------------------------------------------------------------------ queries
+## What one mind currently believes about you, derived on the spot.
+##
+## The only survivor of a block of five. `suspicion_pct`, `ranked_suspicions`,
+## `highest_suspicion` and `is_observed` fed a tablet UI that showed the player
+## a percentage, and the design rule that replaced it is that nothing is ever
+## labelled: suspicion is a read over evidence, and the player finds out by
+## watching people rather than by opening a panel. Four accessors nothing had
+## called since that screen was deleted.
 func suspicion_of(id: String) -> float:
 	var m: Mind = minds.get(id, null)
 	if m == null:
 		return 0.0
 	return m.suspicion(GameState.career_minutes, GameState.active_covers)
-
-func suspicion_pct(id: String) -> int:
-	return int(round(suspicion_of(id) * 100.0))
-
-## Sorted list for the tablet UI. Only includes people you have actually met,
-## because your character's estimate of a stranger is worthless.
-func ranked_suspicions() -> Array[Dictionary]:
-	var out: Array[Dictionary] = []
-	for id in minds:
-		var m: Mind = minds[id]
-		var s := m.suspicion(GameState.career_minutes, GameState.active_covers)
-		if s <= 0.005 and m.role != "institution":
-			continue
-		out.append({
-			"id": id, "name": m.display_name, "role": m.role,
-			"value": s, "pct": int(round(s * 100.0)),
-			"tier": m.tier(GameState.career_minutes, GameState.active_covers),
-		})
-	out.sort_custom(func(a, b): return float(a["value"]) > float(b["value"]))
-	return out
-
-func highest_suspicion() -> float:
-	var top := 0.0
-	for id in minds:
-		top = maxf(top, suspicion_of(id))
-	return top
 
 ## Anyone currently able to see the player. Drives the HUD "eyes on you" tell.
 ## Who can see the player right now.
@@ -544,9 +444,6 @@ func watchers() -> Array[NPCBody]:
 	_watchers_cache = out
 	_watchers_at = now
 	return out
-
-func is_observed() -> bool:
-	return not watchers().is_empty()
 
 func refresh_tells(player_pos: Vector3) -> void:
 	for id in _bodies.keys():

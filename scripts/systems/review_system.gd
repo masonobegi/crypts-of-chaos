@@ -75,6 +75,29 @@ func current():
 func finished() -> bool:
 	return asked >= findings.size()
 
+## THE NURSE NOTE IS NOT ALWAYS ON YOUR SIDE.
+##
+## `_has_nurse_support` looks for a NURSE entry that supports the patient
+## STAYING, and offering "Adeyemi reviewed them and agreed with me" on the back
+## of one made perfect sense for a bed you HELD: somebody else saw what you saw.
+##
+## For a bed you EMPTIED it is the accusation, word for word. `_sent_home_unwell`
+## is built out of exactly that entry — a nurse wrote that this person should
+## stay and you sent them home anyway — so the strongest wrongful-discharge
+## question in the game was cleared by citing the note that proves it. It was
+## the top option on the menu, it needed no verbs, no chart and no examination,
+## and it moved the bed from CONTRADICTED to SOLO: FLAGGED became NOTED. Empty
+## the ward at five past eight, press the first button, go home. Every night,
+## forever, for nothing.
+##
+## Three findings are about the discharge rather than the stay, and for all
+## three a nurse note supporting the stay is what you are being asked about.
+const NURSE_IS_THE_ACCUSATION := ["sent_home_unwell", "never_laid_eyes_on_them",
+	"readmitted_after_your_discharge"]
+
+static func _nurse_is_a_defence(f) -> bool:
+	return not (String(f.kind) in NURSE_IS_THE_ACCUSATION)
+
 ## What she will accept for this particular finding. Options are offered only
 ## when the world actually supports them — "I asked the nurse to review" is not
 ## on the menu unless a nurse review exists in the chart.
@@ -90,9 +113,11 @@ func options(f, records: Records) -> Array:
 	if (f.kind == "backdated" or f.kind == "addendum_cascade") \
 			and int(used_answers.get(Answer.WROTE_IT_LATE, 0)) == 0:
 		out.append({"a": Answer.WROTE_IT_LATE, "text": "I wrote it up late. It was a busy shift."})
-	if _has_nurse_support(f, records) \
+	if _nurse_is_a_defence(f) and _has_nurse_support(f, records) \
 			and not (record != null and record.weight_for(f.kind) >= 1.8):
-		out.append({"a": Answer.POINT_AT_NURSE, "text": "Adeyemi reviewed him and agreed with me."})
+		out.append({"a": Answer.POINT_AT_NURSE,
+			"text": Cases.about(f.patient_id,
+				"Adeyemi reviewed {them} and agreed with me.")})
 	# THE SKILLED ANSWER, and it is only on the menu when the day you actually
 	# had supports it. Without this the review had no skill in it at all: the two
 	# heavy findings could not be talked down by any means, so a player who had

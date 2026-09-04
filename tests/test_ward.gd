@@ -997,6 +997,110 @@ func test_a_bounce_costs_you_the_admission_not_the_bed() -> void:
 	GameState.day = 1
 
 
+## THE FREE WIN. She offered "Adeyemi reviewed them and agreed with me" against
+## `sent_home_unwell` — a finding built entirely out of a nurse note saying the
+## patient should STAY. The strongest wrongful-discharge question in the game
+## was cleared by citing the document that proves it, it was the top option on
+## the menu, it needed no chart, no examination and no verbs, and it moved the
+## bed from CONTRADICTED to SOLO. Empty the ward at five past eight, press the
+## first button, go home: FLAGGED became NOTED, every night, forever.
+func test_the_nurse_cannot_defend_a_discharge_she_argued_against() -> void:
+	var w := _day()
+	# A nurse note that says he should stay, and you send him home anyway.
+	# That IS `_sent_home_unwell`; there is no version of it without one.
+	_rest_home(w)
+	var findings: Array = w.review_findings()
+	var accused = null
+	for f in findings:
+		if String(f.kind) == "sent_home_unwell":
+			accused = f
+	t.ok(accused != null, "sending everybody home is questioned")
+	if accused == null:
+		w.queue_free()
+		return
+	var rv := ReviewSystem.new()
+	rv.begin(findings, w.records.entries, w.review_truth())
+	# INTS, not String(int) — `String()` has no int constructor and calling it
+	# throws, which ABORTS the test function without failing it. CLAUDE.md 11.
+	var offered_answers: Array = []
+	for o in rv.options(accused, w.records):
+		offered_answers.append(int(o["a"]))
+	t.ok(not offered_answers.has(ReviewSystem.Answer.POINT_AT_NURSE),
+		"and pointing at the nurse is not on the menu for it")
+	t.ok(offered_answers.has(ReviewSystem.Answer.STAND_BY),
+		"but she is still asking, and there are still answers (%d)"
+			% offered_answers.size())
+
+	# ...but it IS still on the menu where it means something: a bed you KEPT,
+	# with a nurse note behind you. Remove that and the fix is just a deletion.
+	# The support has to EXIST and there has to be something to defend. She only
+	# offers this where a nurse note backs the STAY and the bed is still being
+	# asked about — so: the genuinely unwell man, whom Adeyemi agrees should
+	# stay, with a note about him written up an hour after you say you saw it.
+	# The nurse is behind you; the clock is not.
+	var q := _day()
+	q.advance_to(11 * 60)
+	q.nurse_check("marchetti")
+	q.advance_to(16 * 60)
+	q.write_entry("marchetti", ChartEntry.Claim.UNWELL,
+		"Calf still warm.", 13 * 60)
+	for c in Cases.roster():
+		q.set_disposition(String(c["id"]), "hold")
+	var offered := false
+	var qf: Array = q.review_findings()
+	var rq := ReviewSystem.new()
+	rq.begin(qf, q.records.entries, q.review_truth())
+	for f in qf:
+		if String(f.kind) in ReviewSystem.NURSE_IS_THE_ACCUSATION:
+			continue
+		for o in rq.options(f, q.records):
+			if int(o["a"]) == ReviewSystem.Answer.POINT_AT_NURSE:
+				offered = true
+	t.ok(offered,
+		"a nurse who backed you is still worth citing on a bed you held")
+	w.queue_free()
+	q.queue_free()
+
+## PUTTING IT RIGHT IS WORTH SOMETHING. `readmitted_after_your_discharge` was in
+## the CONTRADICTED list, and that branch only runs for a bed you are KEEPING —
+## so holding the man who bounced back at one in the morning was automatically
+## "the record disagrees with the reason given", whatever you then did about it.
+## Examine him, send the nurse, document it: same verdict as re-dumping him. The
+## file had already found and excluded this exact bug for `already_being_looked_at`,
+## on the same bed, three hundred lines earlier.
+func test_holding_the_man_you_got_wrong_is_defensible() -> void:
+	GameState.day = 2
+	var w := _day_two()
+	GameState.set_flag(Cases.READMIT_FLAG, ["marchetti"])
+	w.start()
+	t.ok(bool(Cases.by_id("marchetti").get("readmitted", false)),
+		"he is back, because you sent him home")
+	# Do the work: look at him, get somebody else to look, write it up.
+	w.examine("marchetti")
+	w.nurse_check("marchetti")
+	w.write_entry("marchetti", ChartEntry.Claim.UNWELL,
+		"Worse than yesterday. Staying.", w.minute)
+	w.set_disposition("marchetti", "hold")
+	_rest_home(w)
+	var beds: Array = Contradictions.audit_beds(w.records.entries,
+		w.review_truth(), w.review_findings())
+	var his = null
+	for b in beds:
+		if b.patient_id == "marchetti":
+			his = b
+	t.ok(his != null, "his bed is audited")
+	if his != null:
+		t.ok(his.state != Contradictions.Defence.CONTRADICTED,
+			"and documenting a bounce properly is not indefensible (%s)" % his.why)
+	# She still asks about it. The bounce is not swept away, it is asked about
+	# as yesterday's decision rather than counted against today's bed.
+	t.ok(_kinds(w.review_findings()).has("readmitted_after_your_discharge"),
+		"she still asks why he was back before the night staff went home")
+	w.queue_free()
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.set_flag(Cases.READMIT_PENDING, [])
+	GameState.day = 1
+
 ## A NEW CAREER IS ACTUALLY NEW. `flags.clear()` used to run after the three
 ## calls that write the flags a career starts with, so the right state was being
 ## reached by accident through the defaults of the getters that read them — and

@@ -261,10 +261,22 @@ static func _they_came_back(truth: Dictionary) -> Array:
 		f.patient_id = pid
 		f.axis = "what happened to them"
 		f.severity = 0.80
-		f.question = ("%s was back in that bed before the night staff went "
-			+ "home. You signed the discharge yourself.") % _who(t)
-		f.because = ("You discharged them and they were readmitted within the "
-			+ "day. Nobody had to find that in the notes.")
+		# TWO DIFFERENT CONVERSATIONS. Keeping the person you got wrong and
+		# sending them home a second time are not the same act, and she read
+		# them out identically.
+		if bool(t.get("held", false)):
+			f.question = Cases.about(pid,
+				"%s was back in that bed before the night staff went home. You "
+				+ "signed the discharge yourself. What is different today?") % _who(t)
+			f.because = ("You discharged them, they were readmitted within the "
+				+ "day, and you kept them the second time.")
+		else:
+			f.severity = 0.92
+			f.question = Cases.about(pid,
+				"%s came back in the night and you have sent {them} home "
+				+ "again. Talk me through the second one.") % _who(t)
+			f.because = ("You discharged them, they were readmitted within the "
+				+ "day, and you discharged them again.")
 		out.append(f)
 	return out
 
@@ -1119,6 +1131,26 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 						backed = true
 					else:
 						mine = true
+		# AND `readmitted_after_your_discharge` IS NOT IN THAT LIST.
+		#
+		# It was, and this branch only ever runs for a bed you are KEEPING — so
+		# holding the man who bounced back at one in the morning because you got
+		# it wrong was automatically "the record disagrees with the reason
+		# given", which is CONTRADICTED, which is at minimum FLAGGED and a
+		# strike. Examine him, send the nurse, document it properly: same
+		# verdict. Send him home AGAIN: same verdict. Putting right the one
+		# mistake the whole readmission mechanic exists to make you feel was
+		# worth precisely nothing, and the design comments on that mechanic say
+		# the opposite in as many words.
+		#
+		# This is the identical bug the file already found and excluded three
+		# hundred lines up, for `already_being_looked_at`, on the same bed, for
+		# the same reason: a kind checked before `backed` makes BACKED
+		# unreachable however well you document it.
+		#
+		# She still asks. The bounce is still on the record and it still costs —
+		# what it cost was yesterday, as `sent_home_unwell`, on the night you
+		# signed the discharge. Today's bed is judged on today's documents.
 		for f in a.findings:
 			# A symptom the patient says you put in his head is not corroboration,
 			# and neither is a grateful man describing how many times you asked.
@@ -1142,7 +1174,7 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at",
 					"written_in_front_of_them", "reads_own_chart",
-					"readmitted_after_your_discharge", "they_asked_you_to"]:
+					"they_asked_you_to"]:
 				contradicted = true
 
 		# A DISCHARGE IS AUDITED THE OTHER WAY UP. There is no "reason for the

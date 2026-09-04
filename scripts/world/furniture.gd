@@ -345,15 +345,30 @@ static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35,
 	root.position = pos
 	root.rotation.y = rot_y
 	root.add_child(Build.blob_shadow(Vector2(0.72, 0.72), 0.02))
-	var seat := Build.wall(Vector3(0.44, 0.06, 0.44), color, Vector3(0, 0.45, 0))
+	# A CHAIR, not three boxes at a right angle. Nobody has ever sat in a chair
+	# whose back is vertical and whose seat is level, and the eye knows it: a
+	# few degrees of rake on each, an upholstered pad rather than a painted
+	# board, and a stretcher between the legs so the frame is a frame. It is
+	# eight lines and it is the object standing beside every bed in the ward.
+	var seat := Build.surfaced_wall(Vector3(0.44, 0.06, 0.44),
+		Build.cloth_mat(color, 0.012), Vector3(0, 0.45, 0))
+	seat.rotation.x = 0.05
 	root.add_child(seat)
 	_occupy(pos.x, pos.z, 0.5, 0.5)
-	var back := Build.wall(Vector3(0.44, 0.5, 0.06), color, Vector3(0, 0.7, -0.19))
+	var back := Build.surfaced_wall(Vector3(0.44, 0.5, 0.06),
+		Build.cloth_mat(color, 0.012), Vector3(0, 0.71, -0.21))
+	back.rotation.x = 0.17
 	root.add_child(back)
+	# The rail the back is bolted to, which is what stops the pad floating.
+	root.add_child(Build.box_mi(Vector3(0.46, 0.05, 0.05), color.darkened(0.4),
+		Vector3(0, 0.48, -0.185), 0.6, 0.008))
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
 			root.add_child(Build.wall(Vector3(0.04, 0.45, 0.04), color.darkened(0.4),
 				Vector3(sx * 0.18, 0.22, sz * 0.18)))
+		# Side stretchers, low down, where a real one carries the load.
+		root.add_child(Build.box_mi(Vector3(0.03, 0.03, 0.34), color.darkened(0.4),
+			Vector3(sx * 0.18, 0.14, 0), 0.6, 0.006))
 
 ## A rolling cart. Crashing one is the cheapest, loudest, most reliable
 ## distraction in the building.

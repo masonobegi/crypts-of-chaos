@@ -82,18 +82,32 @@ func _build_floor_and_ceiling(r: Room) -> void:
 	# No outline on floors, ceilings or wall runs: they are the biggest surfaces
 	# on screen, a room already has an edge where its own walls meet, and the
 	# outline pass draws every one of them a second time at full screen size.
-	var f := Build.wall(size, tint, Vector3(0, -0.1, 0), 0.0, 0.0)
+	# THE FLOOR HAS A SURFACE ON IT NOW. Twenty metres of one flat pale green
+	# was the single biggest reason a room read as a diagram: `Surfaces.floor_mat`
+	# is speckled vinyl in two-metre welded sheets with a polish that catches the
+	# ceiling fittings, computed from world position so it runs continuously
+	# from room to room and needs no UVs (which matters — `rbox_mesh` is a
+	# Minkowski-summed sphere and its UVs tile like nothing on earth).
+	# The rect is passed so the shader can darken the floor as it approaches
+	# each wall — the other half of the contact shading the wall already has on
+	# its own side, and the thing that stops a room reading as a coloured plane
+	# with walls standing on it.
+	var f := Build.surfaced_wall(size,
+		Surfaces.floor_mat(tint, 2.0, r.rect.position, r.rect.end), Vector3(0, -0.1, 0))
 	f.name = "Floor"
 	r.add_child(f)
 	# Ceiling is visual only — no collision, so thrown objects leave the room and
 	# the player can never get stuck against it.
-	var c := Build.box_mi(Vector3(r.rect.size.x, 0.1, r.rect.size.y), Build.CEILING,
-		Vector3(0, WALL_H, 0), 0.85, 0.0)
+	var c := Build.mi(Build.rbox_mesh(Vector3(r.rect.size.x, 0.1, r.rect.size.y), 0.02),
+		Surfaces.ceiling_mat(Build.CEILING), Vector3(0, WALL_H, 0))
 	# Tagged, because "the only bare MeshInstance3D parented to a Room" stopped
 	# being a safe way to find a ceiling the moment floor borders were added.
 	c.set_meta("is_ceiling", true)
 	r.add_child(c)
-	_ceiling_grid(r)
+	# `_ceiling_grid` used to lay thin boxes across this plane to suggest tiles.
+	# The shader draws the runners now — antialiased against the screen-space
+	# derivative, so they fade with distance instead of turning into the white
+	# wireframe the geometry version became at a grazing angle.
 
 	# An inlaid border a foot in from the walls, in a darker shade of the room's
 	# own floor. Four thin strips per room, and it is the difference between a
@@ -112,70 +126,8 @@ func _build_floor_and_ceiling(r: Room) -> void:
 		for edge2 in [Vector3(-w * 0.5, 0, 0), Vector3(w * 0.5, 0, 0)]:
 			r.add_child(Build.box_mi(Vector3(0.09, 0.014, d), band,
 				edge2 + Vector3(0, 0.008, 0), 0.6, 0.0))
-	_floor_seams(r, tint, inset)
-
-## WELDED SEAMS, every two metres.
-##
-## The floor is the biggest thing in almost every frame of this game — a
-## twenty-metre ward seen from the door is more floor than anything else — and
-## it was one flat colour from wall to wall with a border round it. Nothing at
-## all between the border and the far side, so the middle of every room read as
-## a coloured plane rather than as a surface, and there was no way to judge how
-## far away anything was standing on it.
-##
-## Hospital vinyl comes in two-metre sheets welded together, so this is what is
-## actually there: a line every two metres, barely darker than the floor, in
-## the long direction only. It is the cheapest possible depth cue and it costs
-## about ten thin boxes a room.
-static func _floor_seams(r: Room, tint: Color, inset: float) -> void:
-	var seam := tint.darkened(0.13)
-	var w: float = r.rect.size.x - inset * 2.0
-	var d: float = r.rect.size.y - inset * 2.0
-	if w <= 1.0 or d <= 1.0:
-		return
-	# Across the SHORT axis, so the lines run the length of the room the way a
-	# sheet is laid — down a corridor rather than across it.
-	if r.rect.size.x >= r.rect.size.y:
-		var n := int(w / 2.0)
-		for i in range(1, n):
-			var x: float = -w * 0.5 + float(i) * (w / float(n))
-			r.add_child(Build.box_mi(Vector3(0.022, 0.012, d), seam,
-				Vector3(x, 0.007, 0), 0.7, 0.0))
-	else:
-		var n2 := int(d / 2.0)
-		for i in range(1, n2):
-			var z: float = -d * 0.5 + float(i) * (d / float(n2))
-			r.add_child(Build.box_mi(Vector3(w, 0.012, 0.022), seam,
-				Vector3(0, 0.007, z), 0.7, 0.0))
-
-## SUSPENDED TILE, on a grid.
-##
-## Same problem as the floor and worth fixing for the same reason: the player
-## stands at 1.7m in a 3m room, so the ceiling is the top third of most frames
-## and it was one unbroken white plane with two light fittings in it. A room
-## with a flat ceiling reads as a box with a lid; a room with a tile grid reads
-## as a building, and it is the same trick — the eye gets something to measure
-## the span against.
-##
-## 1.2m rather than the 600mm a real ceiling uses: at twenty metres that is
-## sixteen lines instead of thirty-three, and at the angle anybody actually
-## sees it the finer grid is noise.
-static func _ceiling_grid(r: Room) -> void:
-	var line := Build.CEILING.darkened(0.10)
-	var w: float = r.rect.size.x
-	var d: float = r.rect.size.y
-	var y: float = WALL_H - 0.052
-	var step := 1.2
-	var nx := int(w / step)
-	for i in range(1, nx):
-		var x: float = -w * 0.5 + float(i) * (w / float(nx))
-		r.add_child(Build.box_mi(Vector3(0.022, 0.012, d), line,
-			Vector3(x, y, 0), 0.9, 0.0))
-	var nz := int(d / step)
-	for i in range(1, nz):
-		var z: float = -d * 0.5 + float(i) * (d / float(nz))
-		r.add_child(Build.box_mi(Vector3(w, 0.012, 0.022), line,
-			Vector3(0, y, z), 0.9, 0.0))
+	# `_floor_seams` laid a thin box every two metres for the same reason, and
+	# the shader draws those too, continuously across room boundaries.
 
 ## A different, bright floor per room kind. These are how you know which room
 ## you are in from the doorway, so they are proper colours rather than eleven
@@ -197,15 +149,33 @@ func _floor_colour(kind: String) -> Color:
 		"office": return Color(0.56, 0.41, 0.31)
 	return Build.FLOOR_A
 
+## ONE FITTING EVERY THREE AND A HALF METRES, not every five.
+##
+## A twenty-by-nine ward got four fittings, all of them on its centre line, and
+## that was survivable only while every surface in the building was shaded with
+## sphere normals — geometry whose normal wanders catches light from everywhere
+## and hides how little of it there is. With the normals corrected the ward went
+## honest and showed what it had: two bright pools and a lot of dark floor.
+## Five by two is what a real bay of this size carries.
 func _build_room_lights(r: Room) -> void:
-	var cols := maxi(1, int(r.rect.size.x / 5.0))
-	var rows := maxi(1, int(r.rect.size.y / 5.0))
+	var cols := maxi(1, int(round(r.rect.size.x / 3.6)))
+	var rows := maxi(1, int(round(r.rect.size.y / 3.6)))
 	for i in cols:
 		for j in rows:
 			var x := r.rect.position.x + r.rect.size.x * (float(i) + 0.5) / float(cols)
 			var z := r.rect.position.y + r.rect.size.y * (float(j) + 0.5) / float(rows)
+			# Tighter range as well as more of them: a short throw keeps each
+			# shadow frustum small, which is both cheaper and sharper than one
+			# big one, and overlapping pools are what an even ceiling looks like.
+			# FLUSH WITH THE CEILING. The fitting hung 14cm below the plane it
+			# is supposed to be recessed into — a slab floating under the
+			# ceiling with a gap of daylight over it, which is visible in every
+			# wide shot of the ward and is not how a troffer is fitted. The
+			# housing is 10cm deep and sits 5mm above its root, so the root
+			# goes 10.5cm under the ceiling and the top of the housing lands on
+			# the plasterboard.
 			var lamp := Build.ceiling_light(
-				Vector3(x, WALL_H - 0.25, z) - r.center(), 0.82, Color(1.0, 0.97, 0.90), 8.5)
+				Vector3(x, WALL_H - 0.105, z) - r.center(), 0.62, Color(1.0, 0.97, 0.90), 6.6)
 			lamp.set_meta("is_light", true)
 			r.add_child(lamp)
 
@@ -218,14 +188,30 @@ func set_lamp_look(colour: Color, energy: float) -> void:
 			if not (c is Node3D) or not c.has_meta("is_light"):
 				continue
 			for l in (c as Node3D).get_children():
-				if l is OmniLight3D:
-					(l as OmniLight3D).light_color = colour
-					(l as OmniLight3D).light_energy = energy
+				# BOTH HALVES OF THE FITTING. A ceiling light is a shadowed
+				# spot plus an unshadowed omni fill now, and re-tinting only the
+				# omni left every cone in the building on the morning's colour
+				# for the whole of the evening.
+				if l is Light3D:
+					(l as Light3D).light_color = colour
+					# ...AND THE SAME SPLIT THE FITTING WAS BUILT WITH. This
+					# line was `(l as OmniLight3D).light_energy = energy`, which
+					# on the spot half casts to null and then assigns to it —
+					# a runtime error that ABORTS THE FUNCTION (CLAUDE.md 11),
+					# so the first fitting in the first room would have taken
+					# the whole evening re-light down with it.
+					(l as Light3D).light_energy = energy * (Build.SPOT_GAIN
+						if l is SpotLight3D else Build.FILL_GAIN)
 				elif l is MeshInstance3D:
-					# The visible fitting matches the light coming out of it.
-					var m := (l as MeshInstance3D).material_override as StandardMaterial3D
-					if m != null:
-						(l as MeshInstance3D).material_override = Build.unshaded(colour)
+					# The visible fitting matches the light coming out of it —
+					# and stays a LIT PANEL while it does. This line handed it
+					# `Build.unshaded`, which is not emissive, so re-tinting the
+					# lamps at any point in the day quietly took the one object
+					# in an interior that is supposed to bloom out of the glow
+					# pass. Only the panel is re-tinted; the housing is a
+					# ShaderMaterial and fails the cast, which is what we want.
+					if (l as MeshInstance3D).material_override is StandardMaterial3D:
+						(l as MeshInstance3D).material_override = Build.lit_panel(colour)
 
 # ------------------------------------------------------------------ shell
 func _build_shell() -> void:
@@ -291,8 +277,15 @@ func _wall_segment(a: Vector3, b: Vector3) -> void:
 	var lower_h := 1.1
 	var lower := Vector3(size.x, lower_h, size.z)
 	var upper := Vector3(size.x, WALL_H - lower_h, size.z)
-	add_child(Build.opaque_wall(lower, Build.WALL_LOWER, mid + Vector3(0, lower_h * 0.5, 0), 0.0, 0.0))
-	add_child(Build.opaque_wall(upper, Build.WALL_UPPER, mid + Vector3(0, lower_h + upper.y * 0.5, 0), 0.0, 0.0))
+	# PAINT, NOT A COLOUR. `Surfaces.wall_mat` carries a fine tooth, the long
+	# soft drift emulsion actually dries in, and — the half that matters — a
+	# darkening in the last half metre before the floor. That gradient is doing
+	# the job SSAO would if this renderer had it, and it is what stops a room
+	# reading as a set of disconnected planes.
+	add_child(Build.surfaced_opaque_wall(lower, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, lower_h * 0.5, 0)))
+	add_child(Build.surfaced_opaque_wall(upper, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, lower_h + upper.y * 0.5, 0)))
 
 	# A skirting board and a dado rail, both proud of the wall by three
 	# centimetres and both outlined.
@@ -341,7 +334,8 @@ func _lintel(a: Vector3, b: Vector3) -> void:
 	var horizontal := absf(b.x - a.x) > absf(b.z - a.z)
 	var h := WALL_H - 2.1
 	var size := Vector3(length, h, WALL_T) if horizontal else Vector3(WALL_T, h, length)
-	add_child(Build.opaque_wall(size, Build.WALL_UPPER, mid + Vector3(0, 2.1 + h * 0.5, 0), 0.0, 0.0))
+	add_child(Build.surfaced_opaque_wall(size, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, 2.1 + h * 0.5, 0)))
 
 # ------------------------------------------------------------------ doors
 func _build_doors() -> void:
@@ -364,6 +358,27 @@ func _build_doors() -> void:
 		d.build(Vector3(centre - w * 0.5, 0, z), Vector3(centre + w * 0.5, 0, z), not north)
 		add_child(d)
 		doors.append(d)
+		_door_lining(centre, w, z)
+
+## A LINED OPENING, not a hole where two wall boxes stop.
+##
+## The doorways in this building were negative space: two wall runs that ended
+## short of each other with 16cm of raw wall section showing in the gap, and a
+## lintel over the top doing the same. Every real opening has a lining — two
+## jambs and a head, proud of the plaster on both sides — and it is what makes a
+## doorway read as something that was BUILT rather than as a missing piece of
+## wall. It is also the only thing in the corridor at eye level between the
+## skirting and the sign, so it does a lot of the work of telling you how far
+## away the far end is.
+func _door_lining(centre: float, w: float, z: float) -> void:
+	var head_y := 2.1
+	var lining := Color(0.93, 0.92, 0.88)
+	var t := WALL_T + 0.06          ## proud by 3cm each side
+	for sx in [-1.0, 1.0]:
+		add_child(Build.box_mi(Vector3(0.06, head_y + 0.06, t), lining,
+			Vector3(centre + sx * (w * 0.5 + 0.03), (head_y + 0.06) * 0.5, z), 0.6, 0.008))
+	add_child(Build.box_mi(Vector3(w + 0.12, 0.06, t), lining,
+		Vector3(centre, head_y + 0.03, z), 0.6, 0.008))
 
 # ------------------------------------------------------------------ signage
 func _build_signage() -> void:

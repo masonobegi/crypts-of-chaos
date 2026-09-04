@@ -174,9 +174,9 @@ static func curtain(h: Node3D, pos: Vector3, span: float, rot_y := 0.0,
 	# bunched curtain is when you look at one.
 	for i in 7:
 		var t := float(i) / 6.0
-		var slat := Build.box_mi(Vector3(0.11, 1.86, 0.055 + 0.03 * sin(t * PI * 3.0)),
+		var slat := Build.cloth_mi(Vector3(0.11, 1.86, 0.055 + 0.03 * sin(t * PI * 3.0)),
 			tint.lightened(0.06 * sin(t * PI * 2.0)),
-			Vector3(-span * 0.5 + 0.10 + t * 0.62, 1.30, 0.02 * sin(t * 9.0)), 0.92, 0.010)
+			Vector3(-span * 0.5 + 0.10 + t * 0.62, 1.30, 0.02 * sin(t * 9.0)), 0.010)
 		root.add_child(slat)
 	return _add(h, root, pos, rot_y)
 
@@ -483,9 +483,17 @@ static func cabinet(h: Node3D, pos: Vector3, rot_y := 0.0,
 	var root := Node3D.new()
 	root.name = "Cabinet"
 	root.add_child(Build.box_mi(Vector3(0.52, 0.66, 0.46), tint, Vector3(0, 0.33, 0), 0.7, 0.012))
+	# TWO DRAWERS, not two bars glued to a box. The cabinet had a pair of
+	# handles floating on a blank front and nothing for them to be attached to,
+	# so the eye read it as a cupboard with go-faster stripes. A drawer front
+	# proud of the carcass by six millimetres, with a shadow gap between the
+	# two, is what makes it a chest of drawers — and it is the object that
+	# stands beside every bed in the building.
 	for i in 2:
-		root.add_child(Build.box_mi(Vector3(0.44, 0.03, 0.02), Color(0.55, 0.60, 0.64),
-			Vector3(0, 0.22 + float(i) * 0.24, 0.235), 0.5, 0.006))
+		root.add_child(Build.box_mi(Vector3(0.47, 0.26, 0.03), tint.lightened(0.04),
+			Vector3(0, 0.17 + float(i) * 0.29, 0.235), 0.7, 0.008))
+		root.add_child(Build.box_mi(Vector3(0.20, 0.022, 0.035), Color(0.55, 0.60, 0.64),
+			Vector3(0, 0.24 + float(i) * 0.29, 0.248), 0.5, 0.005))
 	root.add_child(Build.box_mi(Vector3(0.54, 0.04, 0.48), tint.darkened(0.10),
 		Vector3(0, 0.68, 0), 0.6, 0.010))
 	# A lamp and a beaker of water, because a flat top is a shelf nobody uses.
@@ -623,19 +631,25 @@ static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 
 	root.name = "Whiteboard"
 	root.add_child(Build.box_mi(Vector3(w + 0.06, tall + 0.06, 0.05), Color(0.62, 0.66, 0.70),
 		Vector3.ZERO, 0.5, 0.010))
+	# RECESSED INTO THE FRAME, not standing on top of it. The frame is 5cm deep
+	# and the writing surface sat at z=0.032 with a half-thickness of 0.01, so
+	# it stuck 17mm PROUD of the thing that is supposed to hold it — a board
+	# floating in front of its own bezel, which is the sort of detail that reads
+	# as "assembled" without anybody being able to say why. It sits 7mm behind
+	# the frame face now and everything drawn on it moved with it.
 	root.add_child(Build.box_mi(Vector3(w, tall, 0.02), Color(0.96, 0.97, 0.97),
-		Vector3(0, 0, 0.032), 0.35, 0.0))
+		Vector3(0, 0, 0.008), 0.35, 0.0))
 	for i in 4:
 		root.add_child(Build.box_mi(Vector3(w - 0.14, 0.012, 0.006), Color(0.45, 0.50, 0.55),
-			Vector3(0, tall * 0.32 - float(i) * tall * 0.20, 0.042), 0.9, 0.0))
+			Vector3(0, tall * 0.32 - float(i) * tall * 0.20, 0.019), 0.9, 0.0))
 	for i in 3:
 		root.add_child(Build.box_mi(Vector3(0.012, tall - 0.16, 0.006), Color(0.45, 0.50, 0.55),
-			Vector3(-w * 0.28 + float(i) * w * 0.28, 0, 0.042), 0.9, 0.0))
+			Vector3(-w * 0.28 + float(i) * w * 0.28, 0, 0.019), 0.9, 0.0))
 	for i in 5:
 		root.add_child(Build.box_mi(Vector3(w * 0.18, 0.02, 0.006),
 			[Color(0.24, 0.44, 0.82), Color(0.80, 0.26, 0.26)][i % 2],
 			Vector3(-w * 0.24 + float(i % 3) * w * 0.26,
-				tall * 0.22 - float(i) * tall * 0.19, 0.046), 0.9, 0.0))
+				tall * 0.22 - float(i) * tall * 0.19, 0.023), 0.9, 0.0))
 	root.add_child(Build.box_mi(Vector3(w * 0.5, 0.04, 0.09), Color(0.55, 0.60, 0.64),
 		Vector3(0, -tall * 0.5 - 0.04, 0.06), 0.5, 0.008))
 	for i in 2:
@@ -665,8 +679,12 @@ static func screen_partition(h: Node3D, pos: Vector3, rot_y := 0.0,
 	root.name = "ScreenPartition"
 	for i in 3:
 		var a: float = -0.5 + float(i) * 0.42
-		var leaf := Build.box_mi(Vector3(0.62, 1.62, 0.05), tint.lightened(0.05 * float(i % 2)),
-			Vector3(a, 0.90, 0.10 * sin(float(i) * 2.1)), 0.9, 0.010)
+		# Stretched fabric on a frame, and it is built as fabric: the screen is
+		# a metre and a half of one flat colour standing in the middle of the
+		# ward, which is the largest unbroken surface in the room after the
+		# floor and the wall.
+		var leaf := Build.cloth_mi(Vector3(0.62, 1.62, 0.05), tint.lightened(0.05 * float(i % 2)),
+			Vector3(a, 0.90, 0.10 * sin(float(i) * 2.1)), 0.010)
 		leaf.rotation.y = 0.42 * (1.0 if i % 2 == 0 else -1.0)
 		root.add_child(leaf)
 		root.add_child(Build.box_mi(Vector3(0.10, 0.06, 0.10), Color(0.42, 0.46, 0.50),

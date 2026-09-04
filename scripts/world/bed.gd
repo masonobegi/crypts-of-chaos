@@ -44,26 +44,43 @@ func build() -> void:
 	var blanket := Color(0.42, 0.60, 0.66)
 
 	# Head is local -Z, foot is local +Z.
+	#
+	# ON CASTORS, because a hospital bed is on castors and this one stood on
+	# four bare sticks pushed into the floor. It is eight centimetres of
+	# geometry per corner and it is the difference between a bed and a table
+	# with bedding on it: a wheel reads as "this is wheeled in and out", which
+	# is the entire premise of the ward.
+	var rubber := Color(0.20, 0.21, 0.24)
 	for z in [-LENGTH * 0.5 + 0.08, LENGTH * 0.5 - 0.08]:
 		for x in [-WIDTH * 0.5 + 0.07, WIDTH * 0.5 - 0.07]:
-			add_child(Build.mi(Build.cyl_mesh(0.028, 0.48, 8), Build.mat(steel),
-				Vector3(x, 0.24, z)))
+			add_child(Build.mi(Build.cyl_mesh(0.028, 0.40, 8), Build.mat(steel),
+				Vector3(x, 0.28, z)))
+			# The fork the wheel swivels in...
+			add_child(Build.box_mi(Vector3(0.055, 0.05, 0.05), steel,
+				Vector3(x, 0.075, z), 0.5, 0.006))
+			# ...and the wheel, lying on its side across the bed's width.
+			add_child(Build.mi(Build.cyl_mesh(0.048, 0.030, 12), Build.mat(rubber, 0.95),
+				Vector3(x, 0.048, z), Vector3(0, 0, PI * 0.5)))
 	# The deck.
 	add_child(Build.box_mi(Vector3(WIDTH, 0.09, LENGTH), frame,
 		Vector3(0, 0.50, 0), 0.6))
 	# The mattress, raised at the head end so it reads as a backrest.
-	add_child(Build.box_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.55), linen,
-		Vector3(0, MATTRESS_TOP - 0.02, LENGTH * 0.20), 0.9))
-	var back := Build.box_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.46), linen,
-		Vector3(0, MATTRESS_TOP + 0.12, -LENGTH * 0.26), 0.9)
+	add_child(Build.cloth_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.55), linen,
+		Vector3(0, MATTRESS_TOP - 0.02, LENGTH * 0.20)))
+	var back := Build.cloth_mi(Vector3(WIDTH - 0.06, 0.13, LENGTH * 0.46), linen,
+		Vector3(0, MATTRESS_TOP + 0.12, -LENGTH * 0.26))
 	back.rotation.x = -0.42
 	add_child(back)
 	# A blanket over the legs. Two thirds of the way up, like every hospital.
-	add_child(Build.box_mi(Vector3(WIDTH - 0.02, 0.05, LENGTH * 0.44), blanket,
-		Vector3(0, MATTRESS_TOP + 0.06, LENGTH * 0.25), 0.85))
+	# WOVEN, NOT PAINTED. `Surfaces.fabric_mat` had been written and called by
+	# nothing at all — the curtains, the bedding, the gowns and the upholstery
+	# were every one of them a flat colour on a ward that had just been given a
+	# speckled floor.
+	add_child(Build.cloth_mi(Vector3(WIDTH - 0.02, 0.05, LENGTH * 0.44), blanket,
+		Vector3(0, MATTRESS_TOP + 0.06, LENGTH * 0.25)))
 	# Pillow.
-	add_child(Build.box_mi(Vector3(WIDTH - 0.26, 0.10, 0.34), Color(0.97, 0.98, 0.99),
-		Vector3(0, MATTRESS_TOP + 0.26, -LENGTH * 0.38), 0.95))
+	add_child(Build.cloth_mi(Vector3(WIDTH - 0.26, 0.10, 0.34), Color(0.97, 0.98, 0.99),
+		Vector3(0, MATTRESS_TOP + 0.26, -LENGTH * 0.38)))
 	# Head and foot boards, and the rails that make it a hospital bed rather
 	# than a divan.
 	for z in [-LENGTH * 0.5 + 0.03, LENGTH * 0.5 - 0.03]:

@@ -1800,3 +1800,171 @@ career-level criteria ................................... 6/6, on three seeds
 wards that sign off on the honest day ................... 4/4
 the game says nothing it should not, while being played . asserted
 ```
+
+## Session 16 — 2026-09-04 — "it just looks like low quality"
+
+One note, and it is about the picture rather than about the game: *make the
+graphics higher quality*. Everything below was found by rendering the real ward
+at 1600x900 under Xvfb on the renderer this project ships, looking at the
+result, and measuring it when looking was not enough. Nothing here is a guess
+about what a renderer does; six of these were the opposite of what the code's
+own comments claimed.
+
+### Every flat surface in the building was shaded with sphere normals
+
+`rbox_mesh` and `taper_mesh` build a Minkowski sum — take a sphere, push its
+vertices out to the corners of a box — and handed the result to the renderer
+WITH THE SPHERE'S NORMALS STILL ON IT. So every flat face of every object in
+the game, from a twenty-metre ceiling to a bedside cabinet, was shaded as
+though it were curved: the normal across one flat wall wandered by up to 22
+degrees and the wall rendered as a soft radial blob, brightest somewhere near
+its middle, with no light source that explained it.
+
+That is the single largest reason the picture read as a smudge. Nothing in the
+frame was a plane, so nothing in the frame could be crisply lit, and every
+attempt at lighting landed on geometry whose shading was already wandering.
+`Build._reface` recomputes them: area-weighted, accumulated onto SHARED
+vertices — sharing matters twice, because the cel outline is an inverted hull
+grown along these same normals and only stays closed if the vertices it grows
+from are shared.
+
+### The ambient was an order of magnitude out, and the wall paid for it
+
+With the normals honest the ward went honest too, and showed what it had: a
+wall gets what actually lands on it, and in a room lit by downward-facing
+ceiling fittings that is almost nothing but ambient. There is no global
+illumination on the Compatibility renderer. Measured, not guessed: a cream wall
+in the ward reads (113, 124, 129) at ambient 0.62 and (195, 197, 194) at 3.0.
+0.62 was tuned against the sphere-normal build, where every surface picked up
+light from directions it did not face and hid how little of the room the lights
+were reaching. It is 1.15 now, which is where the grade sweep below left it.
+
+Two rounds were wasted first on `ambient_light_color`, which is not the knob:
+warming it changed nothing visible, because the blue cast on the ward's
+left-hand wall is a cool DirectionalLight3D fill and not the ambient at all.
+`ambient_light_sky_contribution` is set to 0.0 as a statement of intent and was
+measured to be a no-op with AMBIENT_SOURCE_COLOR on this backend.
+
+### `ShaderMaterial.duplicate()` silently loses every parameter
+
+The lighter-lined variant of a material was made by duplicating it and
+replacing the outline pass. The copy renders with the shader's DEFAULTS: every
+steel bed leg and the orange visitor chair came out cream-white, in a build
+that otherwise looked like an improvement. Nothing errored. `_fit_line`
+REBUILDS from a recipe recorded on the original instead, and `Surfaces` grew a
+`shared` flag so `Build.mat` gets a material it is allowed to write to — two
+call sites asking for the same grey with different line weights used to be
+handed the SAME material and the second one's next_pass silently replaced the
+first's, so a 4cm rail and a 40cm cabinet could never have had different lines.
+
+### The cel line: measured, not argued about
+
+A sweep that re-tinted every outline material in the live ward and photographed
+the same bed under each showed that pure black and a per-object ink are
+indistinguishable — the line was not too PALE, it was too THIN. `LINE_GAIN` is
+0.66 rather than 0.22 and the ink is a deep version of the object's own hue,
+pulled a third of the way to one shared cool near-black so the drawing still
+looks inked by one hand.
+
+The gain and the per-object cap have to be chosen together, and were not the
+first time: trimming the cap from a fifth of the thinnest dimension to 0.14
+"so the two move together" cancelled the gain EXACTLY on every panel under
+about eleven centimetres, which is most of what a bed, a cabinet and a chair
+are made of. The frame came back looking like the one before it and it took a
+render at ten metres to see that nothing had changed. The cap is back at a
+fifth and the gain went to 0.66, which is three times where it started.
+
+The line is also fitted to the object now. It grows outward in every direction,
+so on a thin object it eats the object: a 5cm handrail with the standard weight
+is about a third ink at three metres, which is why the corridors were full of
+black bars and the drip stands were black sticks. `_fit_line` trims it using
+the mesh's own recorded thinness — recorded at build time, because
+`Mesh.get_aabb()` queries the RenderingServer and returns nothing useful under
+the headless driver every test in this project runs on.
+
+### `Hospital.set_lamp_look` worked, and had no caller anywhere
+
+Nor did the daylight move: `apply_shift_look` reads `GameState.minute_of_day`
+and was called only when a shift STARTED, which is always eight in the morning
+— so `warmth` was always zero, the sun never moved, the sky never changed, and
+a function that lerps five things across twelve hours was a constant. In a game
+whose entire pressure is the evening arriving, the ward sister's eight o'clock
+and the last hour of a shift were lit by identical bulbs.
+
+It runs off `minute_passed` now and drives the fittings too: they go warmer and
+a little stronger as the daylight goes, which is what actually happens in a
+building — the interior lighting does not change, the balance does. The fitting
+re-tint also handed the lit panel `Build.unshaded`, which is not emissive, so
+re-lighting the ward at any point would have quietly taken the one object in an
+interior that is supposed to bloom out of the glow pass.
+
+### Six things that were not what the file said they were
+
+- **The ceiling fittings were not lights.** One OmniLight with shadows off per
+  five metres, and a slab of geometry that was not attached to it. They are a
+  shadowed SpotLight (frustum points away from the ceiling, so the ceiling
+  cannot acne, and one shadow map instead of a cube) plus an unshadowed omni
+  fill, because a cone has an edge and a room does not.
+- **The fitting hung 14cm below the ceiling** it is recessed into.
+- **The whiteboard's writing surface stood 17mm proud of its own frame.**
+- **The bedside cabinet had two handles and no drawers** for them to be on.
+- **The bed stood on four bare sticks.** Hospital beds have castors.
+- **The doorways were holes where two wall boxes stopped.** They have linings.
+
+### Surfaces, and the things that had none
+
+`Surfaces` is procedural fragment shaders keyed off world position: no
+textures, no UVs (which matters — `rbox_mesh` is a Minkowski-summed sphere and
+its UVs tile like nothing on earth), continuous across separate meshes that
+meet. Floor, wall, ceiling, fabric and prop. The fabric one had been written
+and called by nothing at all, so the curtains, the bedding, the gowns and the
+upholstery were every one of them a flat colour on a ward that had just been
+given a speckled floor.
+
+The floor now takes the room's own rect and darkens as it approaches each wall,
+which is the other half of the contact shading the wall already did on its own
+side. Without it the wall darkened toward the floor and the floor stopped dead
+at the skirting, so the two planes still met in one hard ambiguous line.
+
+### The wall shader had never compiled
+
+`Redefinition of 'drift'`. The shared preamble declares `varying float drift;`
+for every surface in the file, and the wall's fragment stage declared a local
+of the same name — which is a shader compile error, which Godot reports by
+dumping the whole shader to stdout ONCE and then rendering every surface that
+uses it with a fallback material.
+
+So every wall in the building was that fallback: a flat mid-grey plane with no
+tooth, no emulsion drift, no contact darkening at the floor and no dado, in a
+file whose comments described all four in detail. It is the reason two separate
+rounds went into raising and warming the ambient to fix a wall that was not
+being drawn by the shader anybody was editing, and it is the reason the ward
+kept reading as "bare" however much else was fixed.
+
+The suite would have caught it — the quiet check greps everything the game
+prints for `ERROR` and both `SHADER ERROR: Redefinition of 'drift'.` and
+`ERROR: Shader compilation failed.` are in that output. It was found by reading
+the log rather than by the check reaching the end of a run, which is the same
+thing arriving a few minutes earlier.
+
+### And the diagonal streaks in every screenshot this project has ever taken
+
+Two causes, both fixed. `grid_line` WIDENED rather than faded when the
+screen-space derivative exceeded the line width, so a ceiling seen at a grazing
+angle turned into a white wireframe; and the sun's shadow map was landing on
+the underside of a ceiling nothing can be above, in broad soft bands in the
+sun's direction. The ceiling shader is `shadows_disabled` and the sun casts
+nothing — it was four full-scene depth passes producing nothing but leak.
+
+### Counts
+
+```
+unit + integration assertions ........................... 297
+smoke checks ............................................ 161, on three seeds
+input-layer checks ...................................... 12 on a pad, 13 on a whole day
+day-level criteria ...................................... 7/7
+career-level criteria ................................... 6/6, on three seeds
+wards that sign off on the honest day ................... 4/4
+the game says nothing it should not, while being played . asserted
+shaders that compile .................................... all of them, and it is checked
+```

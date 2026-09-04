@@ -56,13 +56,37 @@ func _build_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.72, 0.82, 0.92)
+	# WARM-NEUTRAL, NOT SKY-BLUE. Ambient is the only bounce light this renderer
+	# has, so it is what every vertical surface in the building is actually lit
+	# by — and a blue ambient on cream walls is why the ward went slate the
+	# moment the normals were corrected and the walls stopped catching the
+	# directional lights from every direction at once.
+	env.ambient_light_color = Color(0.88, 0.87, 0.84)
 	# High enough that the building is BRIGHT and nothing sits in a black
 	# corner, low enough that switching a ward's lights off is still an obvious,
 	# visible act — which it has to be, because it is a mechanic. The room lamps
 	# were raised to match, so the on/off delta is bigger than it was even at
 	# this much higher floor.
-	env.ambient_light_energy = 0.30
+	# AND MUCH MORE OF IT. 0.30 was tuned against geometry that was shaded with
+	# sphere normals: every flat surface picked up light from directions it does
+	# not face, which hid how little of the room the lights were reaching. With
+	# the normals honest, a wall gets what actually lands on it — and in a room
+	# lit by downward-facing ceiling fittings, that is almost nothing but this.
+	# There is no global illumination on the Compatibility renderer; this is the
+	# bounce, and it has to do the whole job. Measured rather than guessed: a
+	# cream wall in the ward reads (113, 124, 129) at 0.62 and (195, 197, 194)
+	# at 3.0, so the knob works and the old value was simply an order out. 3.0
+	# flattens the building into a white-out with no shading left in it; the
+	# figure below came out of the grade sweep described further down, which
+	# scored six settings of this and the tonemap together.
+	env.ambient_light_energy = 1.15
+	# Says out loud what the ambient source already implies: the interior takes
+	# its fill from the colour above and not from the sky. Measured to be a
+	# no-op on this backend with AMBIENT_SOURCE_COLOR — the default of 1.0
+	# renders identically, pixel for pixel — so it is here as a statement of
+	# intent rather than a fix, and the blue cast on the ward's left-hand wall
+	# is the cool DirectionalLight3D fill, not the sky.
+	env.ambient_light_sky_contribution = 0.0
 
 	# No fog. Distance haze is what makes a corridor look grim, and this one is
 	# sixty-two metres long — it was the single biggest reason the far end of
@@ -75,27 +99,48 @@ func _build_environment() -> void:
 	# render of this restyle was a photograph of a lightbulb. Filmic rolls the
 	# top off, which is what lets everything below it be bright.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	# Pulled down from 0.92/3.2. With rounded geometry and an outline pass the
-	# scene stopped needing to be quite so bright to read, and the far end of a
-	# sixty-two metre corridor was clipping to flat white — every sign, door and
-	# person past about thirty metres dissolved into it.
-	env.tonemap_exposure = 0.78
-	env.tonemap_white = 2.6
+	# Both chosen by the sweep described under the adjustments below. A lower
+	# exposure against a HIGHER white point is what buys colour back: the white
+	# point is where the curve finally saturates, so pushing it out keeps the
+	# midtones off the shoulder, and the exposure then sets where the room
+	# sits on the straight part. The far end of a sixty-two metre corridor was
+	# clipping to flat white at 0.92 and every sign, door and person past about
+	# thirty metres dissolved into it.
+	env.tonemap_exposure = 0.70
+	env.tonemap_white = 3.2
 
 	# One global knob for "more cartoon". Everything else in the restyle is a
 	# colour choice somewhere; this is the finish over the top of all of them.
+	#
+	# THE WHOLE GRADE WAS CHOSEN BY MEASUREMENT. Six settings of ambient,
+	# exposure, white point, saturation and contrast were applied to the live
+	# ward in one boot and photographed from the same two vantages, then scored
+	# on mean saturation, luminance spread and how much of the frame was
+	# clipped. This one carries the most colour (0.161 against 0.132) and the
+	# most contrast (sd 44.7 against 41.9) for no extra clipping. ACES was
+	# brighter and clipped 12% of the frame; a near-linear white point at 6.0
+	# was flatter than what it replaced.
 	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.24
-	env.adjustment_contrast = 1.08
+	env.adjustment_saturation = 1.35
+	env.adjustment_contrast = 1.16
 	env.adjustment_brightness = 1.0
 
 	# Soft bloom on the lamps and the signage, which is most of what makes a
 	# stylised interior feel lit rather than merely visible.
+	# GLOW THAT CAN ACTUALLY FIRE. The threshold was 1.35 against a tonemap
+	# exposure of 0.78, so nothing in the building ever got near it: the pass
+	# was enabled, cost its bandwidth every frame, and had never once bloomed
+	# anything. The lit panel in a ceiling fitting is the one thing in an
+	# interior that should bloom, and now does.
 	env.glow_enabled = true
-	env.glow_intensity = 0.22
-	env.glow_bloom = 0.03
+	env.glow_intensity = 0.30
+	env.glow_bloom = 0.04
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
-	env.glow_hdr_threshold = 1.35
+	# ABOVE ONE, so only the lit panels and the signage get in. At 0.92 half the
+	# frame entered the glow buffer and SOFTLIGHT cooled and darkened every wall
+	# in the building — the fix for "glow never fires" is a brighter light, not
+	# a lower bar. `Build.lit_panel` emits at 2.4.
+	env.glow_hdr_threshold = 1.05
 
 	# Contact shading. Rounded geometry with an outline round it still floats
 	# without something darkening where two things meet — this is what puts the
@@ -127,11 +172,17 @@ func _build_environment() -> void:
 	sun.rotation_degrees = Vector3(-52, -38, 0)
 	sun.light_energy = 0.85
 	sun.light_color = Color(1.0, 0.98, 0.93)
-	sun.shadow_enabled = true
-	# Soft, pale shadows. A hard black shadow under every chair is the other
-	# half of "grim"; this style wants shape, not drama.
-	sun.shadow_blur = 2.4
-	sun.directional_shadow_blend_splits = true
+	# NO SHADOW ON THE SUN, and it is a saving of four full-scene depth passes.
+	#
+	# This is an interior game. Every room in the building has a ceiling slab
+	# over it, so the sun reaches nothing the player can see — and a directional
+	# shadow map is rendered in four cascades over all 236,000 shadow-casting
+	# triangles in the hospital whether it lands on anything or not. What it
+	# actually produced was the broad soft diagonal banding across every ceiling
+	# in every screenshot this project has taken: the underside of a slab, at a
+	# grazing angle, shadow-tested against a blurred cascade. The ceiling
+	# fittings carry the shaping now, which is where it belongs.
+	sun.shadow_enabled = false
 	sun.light_specular = 0.35
 	add_child(sun)
 
@@ -157,6 +208,13 @@ func _build_environment() -> void:
 	# the mechanism by which the music changes, and there isn't one.
 	AudioMgr.play_music()
 	apply_shift_look()
+	# EVERY MINUTE, not once a shift. `apply_shift_look` reads
+	# `GameState.minute_of_day` and was called only when a shift STARTED, which
+	# is always eight in the morning — so `warmth` was always zero, the sun
+	# never moved, the sky never changed and the whole function was a constant.
+	# It is cheap (a handful of property writes and eleven fittings) and it is
+	# the difference between a ward that gets late and a ward that does not.
+	GameState.minute_passed.connect(func(_m): apply_shift_look())
 
 ## What time of day it is, in light.
 ##
@@ -189,6 +247,16 @@ func apply_shift_look() -> void:
 		_fill.light_energy = lerpf(0.35, 0.16, warmth)
 	if _sky_mat:
 		_sky_mat.sky_horizon_color = Color(0.72, 0.80, 0.86).lerp(Color(0.30, 0.28, 0.40), warmth)
+	# AND THE FITTINGS INSIDE. `Hospital.set_lamp_look` existed, worked, and had
+	# no caller anywhere in the project — the ward sister's eight o'clock and
+	# the last hour of a shift were lit by identical bulbs, in a game whose
+	# entire pressure is the evening arriving. The lamps go warmer and a little
+	# stronger as the daylight goes, which is what actually happens in a
+	# building: the interior lighting does not change, the balance does.
+	if hospital:
+		hospital.set_lamp_look(
+			Color(1.0, 0.97, 0.90).lerp(Color(1.0, 0.88, 0.70), warmth),
+			lerpf(0.62, 0.78, warmth))
 
 func _build_world() -> void:
 	hospital = Hospital.new()

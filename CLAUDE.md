@@ -9,12 +9,13 @@ primitives at runtime and every sound is synthesised on first play.
 GODOT=/path/to/godot ./run_tests.sh      # all of it, ~4 min
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
+GODOT=/path/to/godot ./look.sh try1      # three vantages, ninety seconds, for tuning the look
 GODOT=/path/to/godot ./export.sh all     # windows, linux, macos — and RUNS the linux one
 GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 294 assertions, a 161-check smoke run through the real tree
+`run_tests.sh` is 297 assertions, a 161-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -266,6 +267,69 @@ with it because a lost afternoon does not care which.
     made her vanish. Anything meant to persist needs its own countdown
     (`auditor_shifts`), not a re-derivation.
 
+36. **`ShaderMaterial.duplicate()` copies the shader and LOSES every parameter
+    set on it.** The copy renders with the shader's defaults, silently: making
+    a lighter-lined variant of a material by duplicating it turned every steel
+    bed leg and the orange visitor chair cream-white, in a build that otherwise
+    looked like an improvement, and nothing errored. Rebuild from a recipe
+    (`Build._fit_line` records one on the original), or ask `Surfaces` for an
+    unshared material and set your own `next_pass`. `get_shader_parameter()` is
+    no help either — it returns null for a parameter that was set and is being
+    rendered correctly.
+37. **A Minkowski-summed mesh keeps the SPHERE's normals unless you recompute
+    them.** `rbox_mesh` and `taper_mesh` push a sphere's vertices out to the
+    corners of a box; the normals do not move. So every flat face in the
+    building — a twenty-metre ceiling, a cabinet, a wall — was shaded as though
+    it were curved, the normal across one flat wall wandering by up to 22
+    degrees, and nothing in the frame could be crisply lit. `Build._reface`
+    fixes it, area-weighted onto SHARED vertices: sharing matters twice,
+    because the outline hull grows along the same normals and only stays closed
+    if they are shared.
+38. **A screen-space grid line must FADE when it gets denser than a pixel, not
+    widen.** `grid_line`'s first version widened, so a ceiling seen at a
+    grazing angle turned into a white wireframe — the bright diagonal streaks
+    in every screenshot this project had ever taken. Half of the rest of those
+    streaks were the sun's shadow map landing on the underside of a ceiling
+    that nothing can be above.
+39. **`hint_screen_texture` samples FLAT on gl_compatibility.** There are no
+    screen-space effects available at all — no SSAO, SSR, SSIL, SDFGI or DoF
+    either, all of which are Forward+ only. Contact darkening is painted into
+    the surface shaders (the wall's floor gradient, the floor's wall gradient)
+    and under objects as a blob texture. Verified rather than assumed: omni and
+    spot SHADOWS, custom spatial shaders, vertex displacement,
+    `MODELVIEW_MATRIX`, `fwidth`, triplanar, detail maps, vertex colours,
+    emission and glow all DO work here.
+40. **`ambient_light_color` is not the brightness knob and warming it proves
+    nothing.** Two rounds went into the colour before anybody measured the
+    ENERGY: a cream wall reads (113, 124, 129) at 0.62 and (195, 197, 194) at
+    3.0. Take a reading off a render before turning anything; the ward's blue
+    cast was a cool DirectionalLight3D fill, not the ambient and not the sky
+    (`ambient_light_sky_contribution` is a measured no-op with
+    AMBIENT_SOURCE_COLOR on this backend).
+41. **A cel outline is a WEIGHT problem before it is a colour problem.** A
+    sweep that re-tinted every outline material in the live ward and
+    photographed the same bed under each showed pure black and a per-object ink
+    to be indistinguishable, while THREE TIMES the weight was transformative. It also
+    has to be trimmed to the object: the hull grows outward in every direction,
+    so the standard weight on a 5cm rail is a third ink and a ward full of
+    those reads as a cage.
+
+42. **A shader that fails to compile is a surface rendered with a FALLBACK
+    material, announced once and then never again.** The wall shader declared a
+    local `drift` over the preamble's `varying float drift` — "Redefinition of
+    'drift'" — so every wall in the building rendered as flat mid-grey with
+    none of the tooth, emulsion drift, contact darkening or dado the file
+    describes, and two rounds went into raising the ambient to fix a wall the
+    shader was not drawing. `run_tests.sh`'s quiet check greps everything the
+    game prints for `ERROR` and catches it; read that output rather than
+    assuming a shader edit took, because the picture will not tell you — a
+    fallback material looks like a design decision.
+43. **`get_meta(key, null)` ERRORS on a miss instead of returning the default.**
+    A NIL default is indistinguishable from no default inside the engine, so
+    the guard has to be `has_meta()`. `Build._fit_line` runs for every mesh in
+    the building and the first version filled two thousand lines of the test
+    log with "The object does not have any 'meta' values with the key".
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -354,13 +418,14 @@ with it because a lost afternoon does not care which.
 
 ## Testing philosophy
 
-`tests/` has eleven layers, and each has caught things the others could not:
+`tests/` has twelve layers, and each has caught things the others could not:
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 294 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 297 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
 | `smoke_run.gd` | "everything compiles and nothing works" — 161 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
+| `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |
 | the fixture audit (in `smoke_run.gd`) | anything standing on nothing. Every `Fixture`'s footprint is tested against everything underneath it and reported as "chair floats by 4cm" or "bin is sunk by 11cm" — the failure two pieces of code that do not know about each other produce when they furnish the same square metre. |
 | `tests/probe/data_run.gd` | the authored content itself — forty people across four wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |

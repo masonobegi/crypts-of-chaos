@@ -7,6 +7,13 @@ extends CharacterBody3D
 ## she is doing and watches you — you should always be able to see trouble
 ## coming without opening a menu.
 
+## SKIN IS NOT EMULSION. Every part of every person was built at roughness
+## 0.85 — the same finish as a painted wall — so the closest and most
+## looked-at object in the game had no highlight on it anywhere. Skin is a
+## soft dielectric: a broad, low specular that reads as a sheen across a
+## cheekbone rather than as a hotspot on a plastic doll.
+const SKIN_ROUGH := 0.52
+
 signal arrived()
 signal spoke(text: String)
 
@@ -176,6 +183,10 @@ func _build_body() -> void:
 	_torso.position = Vector3(0, 0.95, 0)
 	root.add_child(_torso)
 	# One solid, hip to shoulder, broad at the top.
+	# WOVEN. A gown is the largest single area of colour on the closest object
+	# in the game, and it was the same flat paint finish as the cabinet behind
+	# it. `Surfaces.fabric_mat` puts a warp and a weft in it, faded out by
+	# `fwidth` before they can moire.
 	# GIRTH ON THE TRUNK, and only on the trunk and the limbs. Scaling the whole
 	# body would just be a taller or shorter copy of the same person; widening
 	# the trunk against a fixed head is the difference between five sizes of one
@@ -183,19 +194,19 @@ func _build_body() -> void:
 	_torso.add_child(Build.mi(
 		Build.taper_mesh(Vector2(0.44 * girth, 0.30 * girth),
 			Vector2(0.70 * girth, 0.36 * girth), 0.74, 0.13),
-		Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, 0.06, 0)))
+		Build.cloth_mat(outfit, LINE), Vector3(0, 0.06, 0)))
 	# A collar, deliberately proud of the shoulders so it DOES take a line of
 	# its own — one band of contrast at the top of the body, which is what the
 	# eye lands on first.
 	_torso.add_child(Build.mi(
 		Build.taper_mesh(Vector2(0.42 * girth, 0.34 * girth),
 			Vector2(0.34 * girth, 0.28 * girth), 0.09, 0.035),
-		Build.mat(outfit.lightened(0.30), 0.85, 0.0, Color(0, 0, 0), LINE),
+		Build.cloth_mat(outfit.lightened(0.30), LINE),
 		Vector3(0, 0.385, 0.005)))
 	# ...and a neck inside it, so the head is attached to something instead of
 	# hovering over a collar. No line: it is never the silhouette.
 	_torso.add_child(Build.mi(Build.capsule_mesh(0.082, 0.22),
-		Build.mat(skin.darkened(0.10), 0.85, 0.0, Color(0, 0, 0), 0.0),
+		Build.mat(skin.darkened(0.10), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
 		Vector3(0, 0.46, 0)))
 
 	_head = Node3D.new()
@@ -206,17 +217,17 @@ func _build_body() -> void:
 	# carried high, and the jaw taken out of the same solid by squashing rather
 	# than bolted on as a second box.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.215),
-		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.01, 0), Vector3.ZERO, Vector3(0.98, 1.14, 0.92)))
 	# Ears and a nose. Four centimetres of geometry each, and between them the
 	# difference between a face and a balloon with eyes drawn on it. Lined,
 	# because both of them break the head's silhouette.
 	for ex in [-1.0, 1.0]:
 		_head.add_child(Build.mi(Build.sphere_mesh(0.052),
-			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 			Vector3(ex * 0.198, -0.015, -0.02), Vector3.ZERO, Vector3(0.45, 1.05, 0.75)))
 	_head.add_child(Build.mi(Build.sphere_mesh(0.040),
-		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.022, 0.188), Vector3.ZERO, Vector3(0.78, 0.70, 1.15)))
 	# The mouth is built further down, in three pieces that move. There WAS a
 	# static bar here as well — the original single-piece mouth — and adding the
@@ -226,7 +237,7 @@ func _build_body() -> void:
 	# of the head ellipsoid at their own heights, so neither hid the other.
 	# A chin, so the jaw has a bottom to it. Lined, because it is the profile.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
-		Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE),
+		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.150, 0.075), Vector3.ZERO, Vector3(1.05, 0.72, 0.95)))
 	# FACIAL HAIR, where the record says so. Built as two solids that follow the
 	# jaw the chin already established — a jawline piece and a moustache — both
@@ -356,11 +367,22 @@ func _build_body() -> void:
 		var limb: float = lerpf(1.0, girth, 0.5)
 		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15 * limb, 0.15 * limb),
 			Vector2(0.20 * limb, 0.20 * limb), 0.56, 0.075),
-			Build.mat(outfit, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.26, 0)))
+			Build.cloth_mat(outfit, LINE), Vector3(0, -0.26, 0)))
 		arm.add_child(Build.mi(Build.capsule_mesh(0.082, 0.13),
-			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
 		arm.add_child(Build.mi(Build.rbox_mesh(Vector3(0.15, 0.17, 0.10), 0.048),
-			Build.mat(skin, 0.85, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))
+		# A THUMB. The hand was one rounded box, which is a mitten, and a mitten
+		# is the thing on the end of the arm of every person in the building —
+		# including the one holding a chart eighteen inches from the camera. It
+		# is four centimetres of geometry and it is the difference between a
+		# hand and a paddle: the eye reads the notch between thumb and fingers
+		# long before it counts anything.
+		var thumb := Build.mi(Build.rbox_mesh(Vector3(0.055, 0.095, 0.06), 0.026),
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
+			Vector3(-sx * 0.072, -0.585, 0.045))
+		thumb.rotation = Vector3(0.30, 0.0, sx * 0.42)
+		arm.add_child(thumb)
 		_arms.append(arm)
 
 		# Thigh, then a KNEE, then shin and shoe.

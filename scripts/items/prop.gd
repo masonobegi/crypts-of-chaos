@@ -99,10 +99,36 @@ func _break() -> void:
 		for c in _mesh_root.get_children():
 			if c is MeshInstance3D:
 				var m := (c as MeshInstance3D).get_active_material(0)
+				# BOTH KINDS OF MATERIAL. Every solid object in the game is a
+				# ShaderMaterial now (see `Build.mat`), and this was guarded on
+				# `is StandardMaterial3D` — so a broken prop would have gone on
+				# looking exactly like an unbroken one, silently, which is the
+				# failure mode this project keeps finding.
+				#
+				# The shader path REBUILDS rather than duplicating, because
+				# `ShaderMaterial.duplicate()` loses every parameter set on the
+				# original and the copy renders with the shader's defaults —
+				# which for a broken prop means going PALE rather than dark.
+				# `Build.mat` records what it was made of for exactly this.
 				if m is StandardMaterial3D:
 					var dup := (m as StandardMaterial3D).duplicate() as StandardMaterial3D
 					dup.albedo_color = dup.albedo_color.darkened(0.45)
 					(c as MeshInstance3D).material_override = dup
+					continue
+				if not (m is ShaderMaterial):
+					continue
+				# `has_meta` first — `get_meta(key, null)` ERRORS on a miss
+				# rather than returning the default it was handed.
+				if m.has_meta("cloth_recipe"):
+					var cloth: Array = m.get_meta("cloth_recipe")
+					(c as MeshInstance3D).material_override = Build.cloth_mat(
+						(cloth[0] as Color).darkened(0.45), float(cloth[1]))
+					continue
+				if m.has_meta("recipe"):
+					var recipe: Array = m.get_meta("recipe")
+					(c as MeshInstance3D).material_override = Build.mat(
+						(recipe[0] as Color).darkened(0.45), float(recipe[1]),
+						float(recipe[2]), recipe[3], float(recipe[4]))
 		_mesh_root.scale = Vector3(1.0, 0.35, 1.0)
 	freeze = false
 

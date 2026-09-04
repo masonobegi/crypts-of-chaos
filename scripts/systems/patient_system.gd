@@ -14,6 +14,16 @@ var bodies: Dictionary = {}       ## case id -> PatientNPC
 @onready var hospital = get_tree().get_first_node_in_group("hospital")
 
 func _ready() -> void:
+	# SOMEBODY YOU SEND HOME GOES HOME.
+	#
+	# `PatientNPC.discharge_and_leave()` existed, was written carefully — it
+	# wakes them, frees the bed, walks them out, gives them a line on the way —
+	# and had no callers anywhere in the project. So you discharged somebody at
+	# nine in the morning and they lay in the bed until eight at night, and the
+	# ward at the end of a shift where you sent four people home looked exactly
+	# like the ward at the start of it. The one decision the game is made of had
+	# no visible consequence in the world at all.
+	call_deferred("_hook_the_day")
 	add_to_group("patient_system")
 
 func populate() -> void:
@@ -135,3 +145,21 @@ func active() -> Array:
 
 func active_count() -> int:
 	return active().size()
+
+func _hook_the_day() -> void:
+	var w = get_tree().get_first_node_in_group("ward_day")
+	if w == null or not w.has_signal("disposition_set"):
+		return
+	if not w.disposition_set.is_connected(_on_disposition):
+		w.disposition_set.connect(_on_disposition)
+
+func _on_disposition(pid: String, what: String) -> void:
+	var body = get_body(pid)
+	if body == null or not is_instance_valid(body):
+		return
+	if what == "discharge" and body.has_method("discharge_and_leave"):
+		body.call("discharge_and_leave")
+	elif what == "hold" and body.has_method("_return_to_bed"):
+		# Changed your mind. They were halfway to the door.
+		if int(body.get("state")) == 4:      # State.LEAVING
+			body.call("_return_to_bed")

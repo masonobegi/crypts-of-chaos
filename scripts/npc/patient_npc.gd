@@ -353,19 +353,15 @@ func discharge_and_leave() -> void:
 func prompt(_player) -> Array:
 	if data == null:
 		return ["", ""]
-	# Somebody sitting in the waiting row is one keypress from a bed. The
-	# playtest note was "there should be no friction getting a customer into a
-	# bed unless all my beds are full", and it was right: admitting is the
-	# commonest thing you do all day and it was four clicks down a menu.
-	if not data.admitted and not data.discharged:
-		var ps = get_tree().get_first_node_in_group("patient_system")
-		var free: int = ps.free_wards().size() if ps != null else 0
-		if free > 0:
-			return ["Admit %s" % data.display_name,
-				"%s  ·  %d of five rooms free  ·  [hold E] to look first" % [
-					data.condition_name(), free]]
-		return ["%s is waiting" % data.display_name,
-			"%s  ·  every room is full  ·  [hold E] for options" % data.condition_name()]
+	# THE WAITING ROW IS GONE. There was a branch here for somebody sitting
+	# outside waiting to be admitted, offering "Admit %s · 3 of five rooms free"
+	# and calling `PatientSystem.free_wards()` and `PatientSystem.admit()` —
+	# neither of which exists on PatientSystem, and neither of which has existed
+	# since the redesign. Every patient is spawned into a bed by
+	# `PatientSystem._spawn`, so the branch was unreachable, which is the only
+	# reason two calls to methods that are not there never crashed anything.
+	# Admissions are abstract now: `WardDay.admissions_taken()` fills whatever
+	# beds you emptied, off-screen, overnight.
 	var sub := data.condition_name()
 	# WHAT THE PAPERWORK SAYS, AND WHAT THE BED PAYS. Nothing else.
 	#
@@ -426,14 +422,8 @@ func interact(player, _held) -> void:
 	# Walking up and speaking to somebody wakes them.
 	wake_up("touched")
 	_turn_to_talk(player)
-	# A tap admits a waiting patient outright. Everybody already in a bed gets
-	# the card, because there is nothing you would do to them in one keypress.
-	if not data.admitted and not data.discharged:
-		var ps = get_tree().get_first_node_in_group("patient_system")
-		if ps != null and not ps.free_wards().is_empty():
-			if ps.admit(data):
-				AudioMgr.play_at_var("trolley", global_position, -11.0)
-				return
+	# Everybody is in a bed, so everybody gets the card. See prompt(): the
+	# one-keypress admit path called two PatientSystem methods that do not exist.
 	_open_card()
 
 ## The hold. Always the card, whoever they are — it is the way to see the

@@ -220,6 +220,7 @@ func _check_the_verbs_work() -> void:
 ## ever have different vocabularies, something has started leaking again.
 	_check_the_tutorial_finishes()
 	_check_writing_is_observed(w)
+	_check_discharged_patients_leave(w)
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")
@@ -271,6 +272,39 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 	_ok(real.is_empty(),
 		"and looking at somebody does not say whether they are ill%s"
 			% ("" if real.is_empty() else ": " + ", ".join(real)))
+
+## SOMEBODY YOU SEND HOME GOES HOME.
+##
+## `PatientNPC.discharge_and_leave()` was written carefully — it wakes them,
+## frees the bed, walks them to the corridor and gives them a line on the way —
+## and had no callers anywhere in the project. So a patient discharged at nine in
+## the morning lay in the bed until eight at night, and a ward where you had sent
+## four people home looked identical to one where you had sent nobody. The single
+## decision this entire game is made of had no visible consequence in the world.
+func _check_discharged_patients_leave(w) -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		_fail("no patient system")
+		return
+	var pid := ""
+	for c in Cases.roster():
+		if bool(c.get("truly_well", true)):
+			pid = String(c["id"])
+			break
+	if pid == "":
+		_fail("no well patient to send home")
+		return
+	var body = ps.get_body(pid)
+	_ok(body != null, "%s has a body before you send them home" % pid)
+	if body == null:
+		return
+	var bed_before = body.get("bed")
+	w.set_disposition(pid, "discharge")
+	_ok(int(body.get("state")) == 4,
+		"and deciding to send them home puts them on their feet (state %d)"
+			% int(body.get("state")))
+	_ok(bed_before != null and bed_before.occupant == null,
+		"and frees the bed they were in")
 
 ## WRITING IN FRONT OF SOMEBODY IS SOMETHING THEY NOTICE.
 ##

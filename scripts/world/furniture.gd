@@ -306,6 +306,24 @@ static func _block(h: Hospital, size: Vector3, color: Color, pos: Vector3, rot_y
 			_occupy(pos.x, pos.z, size.z, size.x)   # rotated 90 degrees
 		else:
 			_occupy(pos.x, pos.z, size.x, size.z)
+	# AND ANYTHING STANDING ON THE FLOOR GETS A PATCH UNDER IT, automatically.
+	#
+	# The first pass at contact shadows named the things that needed one — beds,
+	# chairs, tables, the station counter — which left every bedside cabinet,
+	# every trolley and every cupboard in the building floating exactly the way
+	# they had been. The floor is the biggest surface in shot and it is the one
+	# thing every object in the room touches, so the rule belongs here rather
+	# than at each call site.
+	#
+	# Only things ON the floor and big enough to see: a worktop mounted at 1.12
+	# is not standing on anything, and a 5cm shadow gap is not an object.
+	var foot: float = pos.y - size.y * 0.5
+	if foot < 0.06 and minf(size.x, size.z) > 0.30:
+		var w: float = size.x if absf(rot_y) < 0.01 else size.z
+		var d: float = size.z if absf(rot_y) < 0.01 else size.x
+		var sh := Build.blob_shadow(Vector2(w + 0.26, d + 0.26), 0.02)
+		h.add_child(sh)
+		sh.position = Vector3(pos.x, 0.02, pos.z)
 	return b
 
 static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72,
@@ -587,9 +605,8 @@ static func _station(h: Hospital, r: Room) -> void:
 		_block(h, Vector3(2.06, 0.05, 0.62), Color(0.34, 0.39, 0.42),
 			Vector3(sx, 1.02, corridor_z))
 		_block(h, Vector3(2.3, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
-		var csh := Build.blob_shadow(Vector2(2.6, 1.15), 0.02)
-		h.add_child(csh)
-		csh.position = Vector3(sx, 0.02, corridor_z)
+		# The counter's own patch comes from `_block` now — its kick plinth
+		# stands on the floor, so the rule below catches it.
 		# The lean rail, a hand's width proud of the front face.
 		_block(h, Vector3(2.16, 0.05, 0.05), Color(0.62, 0.66, 0.68),
 			Vector3(sx, 0.80, corridor_z + 0.33))

@@ -48,9 +48,52 @@ static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0)
 	# the arc of a door. The smoke run checks that instead, and it needs to be
 	# able to tell a poster from a wall.
 	n.add_to_group("dressing")
+	# AND ANYTHING STANDING ON THE FLOOR GETS A PATCH UNDER IT.
+	#
+	# `Furniture._block` carries the same rule for structural boxes, but almost
+	# everything in a ward is scenery: the bins, the plants, the stools, the
+	# water coolers, the hampers, the folding screens, the bedside cabinets.
+	# Naming them one at a time is how the first pass at contact shadows left
+	# every one of them floating while the beds and tables sat properly.
+	#
+	# `pos.y < 0.05` is the test for "on the floor" — every wall piece is
+	# mounted at a height, and a poster does not cast onto lino. The size comes
+	# off the piece's own geometry, so a plant and a cupboard get the right
+	# patch without either of them being asked.
+	if pos.y < 0.05:
+		var box := _local_box(n)
+		if box.size.x > 0.16 and box.size.z > 0.16:
+			var sh := Build.blob_shadow(
+				Vector2(box.size.x + 0.22, box.size.z + 0.22), 0.02)
+			sh.position = Vector3(box.get_center().x, 0.02 - pos.y,
+				box.get_center().z)
+			n.add_child(sh)
 	n.position = pos + Vector3(sin(rot_y), 0.0, cos(rot_y)) * depth * 0.5
 	n.rotation.y = rot_y
 	return n
+
+## Every mesh under a node, merged, in the node's own space. Called before the
+## piece is in the tree, so global transforms are not available and must not be.
+static func _local_box(n: Node) -> AABB:
+	var out := AABB()
+	var first := true
+	var stack: Array = [n]
+	while not stack.is_empty():
+		var cur: Node = stack.pop_back()
+		for c in cur.get_children():
+			stack.append(c)
+		if not (cur is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = cur
+		if mi.mesh == null:
+			continue
+		var b: AABB = mi.transform * mi.mesh.get_aabb()
+		if first:
+			out = b
+			first = false
+		else:
+			out = out.merge(b)
+	return out
 
 # ------------------------------------------------------------------ paper
 ## A framed notice. Faces +Z before rotation, so `rot_y` is which wall it is on:

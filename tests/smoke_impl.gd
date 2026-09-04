@@ -658,7 +658,12 @@ func _nearest_in_plan(box: AABB, p: Vector3) -> float:
 	var nz: float = clampf(p.z, box.position.z, box.position.z + box.size.z)
 	return Vector2(p.x - nx, p.z - nz).length()
 
-## Every mesh under a node, merged, in world space.
+## Every mesh under a node, merged, in world space — EXCEPT its shadow.
+##
+## A contact shadow is a flat quad a hand's width larger than the piece it sits
+## under, and it is a child of the piece. Merging it in grows every measurement
+## by eleven centimetres on each side, so this check would start reporting
+## objects as standing in a door's arc when only their shadows do.
 func _world_box(n: Node) -> AABB:
 	var out := AABB()
 	var first := true
@@ -666,7 +671,7 @@ func _world_box(n: Node) -> AABB:
 		if not (m is MeshInstance3D):
 			continue
 		var mi: MeshInstance3D = m
-		if mi.mesh == null:
+		if mi.mesh == null or mi.name == "ContactShadow":
 			continue
 		var b: AABB = mi.global_transform * mi.mesh.get_aabb()
 		if first:

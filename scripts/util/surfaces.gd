@@ -297,7 +297,7 @@ void fragment() {
 ##
 ## Curtains, bedding, upholstery. A woven cross-hatch and a soft sheen along the
 ## grain, which is most of what separates cloth from painted plastic.
-static func fabric_mat(base: Color, weave := 180.0, shared := true) -> ShaderMaterial:
+static func fabric_mat(base: Color, weave := 300.0, shared := true) -> ShaderMaterial:
 	var key := "fab|%s|%.0f" % [base.to_html(), weave]
 	if shared and _cache.has(key):
 		return _cache[key]
@@ -308,19 +308,34 @@ uniform float weave = 180.0;
 void fragment() {
 	vec3 p = world_pos;
 	vec2 uv = vec2(p.x + p.z, p.y) * weave;
-	// FADE THE WEAVE OUT BEFORE IT ALIASES. A 180-per-metre sine is finer than
-	// a pixel at three metres, and an un-faded one crawls and moirés across a
-	// curtain every time the player moves. `fwidth` says how much of the
-	// pattern falls inside this pixel; past about half a cycle there is no
-	// honest answer, so it dissolves to the flat colour it averages to.
-	float density = max(fwidth(uv.x), fwidth(uv.y));
-	float visible = 1.0 - smoothstep(1.4, 3.6, density);
-	float warp = sin(uv.x) * 0.5 + 0.5;
-	float weft = sin(uv.y) * 0.5 + 0.5;
-	float cloth = mix(warp, weft, 0.5) * visible + 0.5 * (1.0 - visible);
+	// NOT A CHECK. Two sines of the SAME pitch averaged together is a square
+	// lattice, and a square lattice on a hospital gown is gingham — which is
+	// what the first version of this put on the closest object in the game.
+	// Three changes, and they only work together: the pitch is finer, the two
+	// threads run at pitches that do not divide into each other, and the phase
+	// is dragged about by the same noise that carries the slub. What is left
+	// is irregular at every scale, which is what cloth is.
 	float slub = fbm2(p.xy * 9.0);
-	ALBEDO = base_col * (0.93 + cloth * 0.09 + slub * 0.05);
-	ROUGHNESS = 0.94 - cloth * 0.10;
+	uv += (slub - 0.5) * 1.7;
+	// FADE IT OUT BEFORE IT ALIASES. A 300-per-metre sine is finer than a
+	// pixel at a metre and a half, and an un-faded one crawls and moirés
+	// across a curtain every time the player moves. `fwidth` says how much of
+	// the pattern falls inside this pixel; past about half a cycle there is no
+	// honest answer, so it dissolves to the flat colour it averages to — which
+	// is also true of real cloth, which has no visible weave across a room.
+	float density = max(fwidth(uv.x), fwidth(uv.y));
+	float visible = 1.0 - smoothstep(1.0, 2.6, density);
+	float warp = sin(uv.x) * 0.5 + 0.5;
+	float weft = sin(uv.y * 1.27 + 2.1) * 0.5 + 0.5;
+	// MULTIPLIED, because threads cross: you see the crossing point where both
+	// are at the top of their cycle, and the gap everywhere else.
+	float cloth = mix(0.5, warp * weft, visible);
+	// And much less of it. The weave was nine per cent of the albedo, which is
+	// a pattern you can name from two metres; cloth is a texture you notice
+	// the absence of, so the irregular half now carries as much as the regular
+	// half does.
+	ALBEDO = base_col * (0.955 + cloth * 0.055 + (slub - 0.5) * 0.055);
+	ROUGHNESS = 0.94 - cloth * 0.08;
 	SPECULAR = 0.16;
 	// Cloth catches the light along its silhouette harder than paint does, and
 	// on a gown that edge is most of what gives a body its form in a room lit

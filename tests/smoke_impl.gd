@@ -228,6 +228,7 @@ func _check_the_verbs_work() -> void:
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
 	_check_the_doors_have_room_to_swing()
+	_check_the_money_on_the_hud_is_the_money_you_get()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
 ##
@@ -653,6 +654,65 @@ func _world_box(n: Node) -> AABB:
 		else:
 			out = out.merge(b)
 	return out
+
+## THE BIG GREEN NUMBER IS A PROMISE.
+##
+## `projected()` claims to be "what tonight pays if the day ended right now",
+## and "right now" has to mean the same thing on both sides of the sum. It did
+## not: `free_beds()` is `BEDS - held`, so an undecided bed counted as free and
+## paid its $500 admission — while `discharged_ids()` counts only beds
+## explicitly marked, so the same undecided bed paid no discharge fee.
+##
+## At 08:00 with nothing decided the HUD therefore read $1,900: nine hundred in
+## hand plus two admissions for five beds nobody had touched, and none of the
+## five discharge fees those admissions imply. Sign off on that exact state and
+## the shift pays $2,650, because both the eight o'clock close and the office
+## terminal discharge every undecided bed first. The corner of the screen was
+## quoting a ward that cannot exist — thirty seconds after a briefing card
+## reading "In your account $900", in a game whose entire score is one number.
+func _check_the_money_on_the_hud_is_the_money_you_get() -> void:
+	var was := GameState.minute_of_day
+	# Nothing decided at all: the state the player is looking at on the first
+	# frame of the game, and the one the two figures disagreed most about.
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	# THROUGH `sign_off()`, not `end_day()`. `end_day` computes its takings FROM
+	# `projected()`, so comparing the two is comparing a number with itself and
+	# passes just as happily on the broken arithmetic. What signing off actually
+	# does first is send every undecided bed home — and whether the projection
+	# already counted those beds that way is the entire question.
+	var promised: int = int(w.projected()["total"])
+	var paid: int = int(w.sign_off().get("paid", 0))
+	_ok(promised == paid,
+		"the untouched ward is worth what signing off on it pays (%d, %d)"
+			% [promised, paid])
+	tree.root.remove_child(w)
+	w.free()
+
+	# And with real decisions on it, so this is not passing on a special case.
+	var q := WardDay.new()
+	tree.root.add_child(q)
+	q.start()
+	var i := 0
+	for c in Cases.roster():
+		# Hold two, discharge one, leave the rest undecided — the mixture that
+		# has an admission fee, a discharge fee and a night value all in it.
+		if i < 2:
+			q.set_disposition(String(c["id"]), "hold")
+		elif i == 2:
+			q.set_disposition(String(c["id"]), "discharge")
+		i += 1
+	var promised2: int = int(q.projected()["total"])
+	var paid2: int = int(q.sign_off().get("paid", 0))
+	_ok(promised2 == paid2,
+		"and so is a half-decided one (%d, %d)" % [promised2, paid2])
+	# The two wards must not be the same number, or this proves nothing.
+	_ok(promised != promised2,
+		"and the two are different wards (%d against %d)" % [promised, promised2])
+	tree.root.remove_child(q)
+	q.free()
+	GameState.minute_of_day = was
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

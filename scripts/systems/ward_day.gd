@@ -92,12 +92,23 @@ func _on_minute(now: int) -> void:
 	# at no cost, which is the pressure the design is built on simply absent.
 	if now >= Cases.DEBT_DUE_MINUTE:
 		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
-		for c in Cases.roster():
-			var pid := String(c["id"])
-			if String(state[pid]["disposition"]) == "":
-				set_disposition(pid, "discharge")
-		end_day()
+		sign_off()
 		EventBus.request_ui.emit("review", {})
+
+## ENDING THE SHIFT, once. A bed nobody decided about is a bed sent home — you
+## were the doctor and you did not say otherwise — and that is what makes the
+## HUD's projection honest, because it counts undecided beds the same way.
+##
+## Both callers used to spell this loop out for themselves: the eight o'clock
+## close here and the office terminal's "Sign off for the night". Two copies of
+## the rule that decides how a shift ends, in a game whose whole subject is what
+## you did and did not write down.
+func sign_off() -> Dictionary:
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if String(state[pid]["disposition"]) == "":
+			set_disposition(pid, "discharge")
+	return end_day()
 
 func start() -> void:
 	cash = GameState.cash
@@ -661,11 +672,30 @@ func admissions_taken() -> int:
 	return maxi(0, mini(Cases.ADMISSIONS_WAITING - back, free_beds()))
 
 ## What tonight pays, if the day ended right now.
+##
+## "RIGHT NOW" HAS TO MEAN THE SAME THING ON BOTH SIDES OF THE SUM.
+##
+## It did not. `free_beds()` is `BEDS - held`, so an undecided bed counted as
+## free and paid its $500 admission — while `discharged_ids()` counts only the
+## beds explicitly marked, so the same undecided bed paid no discharge fee. At
+## 08:00 with nothing decided at all, the corner of the screen therefore read
+## $1,900: nine hundred in hand plus two admissions for five beds nobody had
+## touched, and none of the five discharge fees those admissions imply.
+##
+## The figure was not merely early, it was arithmetic nothing could produce.
+## Sign off on that exact state and the shift pays $2,650, because `sign_off()`
+## sends every undecided bed home first. The HUD was quoting a ward that does
+## not exist, in a game whose entire score is one number, on the first screen —
+## thirty seconds after a briefing card reading "In your account $900".
+##
+## So an undecided bed is counted the way signing off counts it: as a
+## discharge. The projection now answers the question it claims to answer.
 func projected() -> Dictionary:
 	var nights := 0
 	for pid in held_ids():
 		nights += night_value(pid)
-	var d: int = discharged_ids().size() * Cases.DISCHARGE_FEE
+	var going: int = Cases.BEDS - held_ids().size()
+	var d: int = going * Cases.DISCHARGE_FEE
 	var adm: int = admissions_taken() * Cases.ADMISSION_FEE
 	return {"nights": nights, "discharges": d, "admissions": adm,
 		"earned": nights + d + adm, "total": cash + nights + d + adm,

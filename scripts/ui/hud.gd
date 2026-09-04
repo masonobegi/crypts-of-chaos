@@ -14,6 +14,7 @@ extends Control
 var _clock: Label
 var _day: Label
 var _cash: Label
+var _cash_label: Label
 var _owed: Label
 var _tl_bg: PanelContainer
 var _objective: Label
@@ -92,12 +93,25 @@ func _build() -> void:
 	# A PanelContainer sizes itself to its child, so the plate is always exactly
 	# as big as what is written on it.
 	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.74), 8)
-	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -320, 10, 308, 80)
+	# 96, not 80: the caption above the figure is a third row.
+	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -320, 10, 308, 96)
 	var tr := UIKit.vbox(0)
 	tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# What you have, and what tonight looks like from here. The second line is
 	# the only reason the first one is interesting: `cash` does not move until
 	# eight o'clock, so on its own it is a number that sits still all day.
+	# A NOUN ON THE BIGGEST NUMBER IN THE GAME.
+	#
+	# It had none. The morning card says "In your account $900", the player
+	# presses Start the round, and the corner of the screen says $1,900 in big
+	# green type with nothing attached to it — two different money figures
+	# thirty seconds apart, in a game whose entire score is one number. And the
+	# figure goes DOWN when you hold a patient, which without a caption reads as
+	# a penalty rather than as a bed not being sold.
+	_cash_label = UIKit.label("IF YOU SIGNED OFF NOW", 11, UIKit.HUD_INK,
+		HORIZONTAL_ALIGNMENT_RIGHT)
+	_cash_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tr.add_child(_cash_label)
 	_cash = UIKit.label("$0", 26, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_cash.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr.add_child(_cash)
@@ -351,10 +365,14 @@ func _refresh_money() -> void:
 		return
 	var left: int = GameState.debt_remaining()
 	if w.ended:
+		# The caption has to follow the number. Once the shift is over this is
+		# not a projection any more, it is what he took.
+		_cash_label.text = "VINNIE TOOK"
 		_owed.text = "handed over  ·  %s still owed" % UIKit.money_str(left)
 		_owed.add_theme_color_override("font_color",
 			UIKit.HUD_MONEY if left <= 0 else UIKit.HUD_INK)
 		return
+	_cash_label.text = "IF YOU SIGNED OFF NOW"
 	# Tonight's number and the whole thing, because the whole thing is the game.
 	_owed.text = "he wants %s  ·  %s to go" % [
 		UIKit.money_str(w.debt_tonight), UIKit.money_str(left)]

@@ -77,11 +77,7 @@ func _build() -> void:
 						"them" if undecided > 1 else "them"],
 				13, UIKit.BAD, HORIZONTAL_ALIGNMENT_LEFT, true))
 		foot.add_child(UIKit.button("Sign off for the night", func():
-			for c in Cases.roster():
-				var pid := String(c["id"])
-				if String(w.state[pid]["disposition"]) == "":
-					w.set_disposition(pid, "discharge")
-			w.end_day()
+			w.sign_off()
 			EventBus.request_ui.emit("review", {}),
 			Color(0.30, 0.16, 0.16)))
 	foot.add_child(UIKit.button("Close", func(): close()))

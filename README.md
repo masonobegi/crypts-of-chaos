@@ -2,208 +2,142 @@
 
 **A broke doctor. A struggling hospital. Patients who really should have gone home by now.**
 
-A first-person, physics-driven dark-comedy hospital sim. You are $435,000 in debt and
-you make $240 a shift. The hospital bills for every day a patient stays, and your bonus
-is a share of that. Nobody will ever ask you to do anything unethical — they don't have to.
+A first-person dark-comedy hospital sim about paperwork. You owe $15,500. Vinnie
+wants $2,200 of it at eight o'clock tonight, and everything still owed at the end
+of a night grows by ten per cent before the next one. You have five beds and a
+day, and every night somebody spends in one of them is money.
 
-Everything medical here is **fictional and absurd**. Inflamed Funny Bone, Chronic Beige,
-Excessive Spleen Torque. The comedy is bureaucracy and slapstick; nothing in this game
-describes a real way to harm a person.
+Everything medical here is fictional and the comedy is bureaucracy. Nothing in
+this game describes a real way to harm a person.
 
 ---
 
 ## The idea
 
-Most "be a bad guy" games give you a `DO CRIME` button. This one doesn't. There is no
-setting labelled *questionable*, no tooltip that says *+3 days, +8% suspicion*. There is a
-dial, a prescribed value, and a patient. You work out the rest by watching what happens.
+Most "be a bad guy" games give you a `DO CRIME` button. This one doesn't. There
+is no setting labelled *questionable*, no tooltip that says *+3 days, +8%
+suspicion*. There is a person in a bed, a chart, and twelve hours.
 
-Three layers of state, which are allowed to disagree with each other:
+You are not poisoning anybody. You are **noticing a symptom slightly harder than
+it deserves, at a convenient hour, in front of the right person** — and then
+living inside that claim for the rest of the shift.
+
+Three layers of state, allowed to disagree:
 
 | Layer | What it is | Where it lives |
 |---|---|---|
-| **Truth** | What actually happened to the patient | `Patient.recovery`, `Complication.true_cause` |
-| **Record** | What the hospital officially believes | `PatientChart`, machine logs, billing |
-| **Belief** | What each individual person thinks | `Mind` + `Evidence`, per character |
+| **Truth** | Whether they are actually well | `truly_well`, which the game never shows you |
+| **Record** | What the hospital believes | `Records`, and the two timestamps on every entry |
+| **Belief** | What each person thinks | `Mind` + `Evidence`, per character |
 
-All of the comedy — and all of the tension — lives in the gaps between them.
+All of the comedy, and all of the tension, is in the gaps.
 
 ## The loop
 
-Clock in → patients arrive with ridiculous conditions → diagnose → treat them properly,
-or don't → manage the people who noticed → get your paperwork in before anyone asks →
-survive the chart review → clock out → pay your debts → buy something that makes it
-worse → next day.
+Eight in the morning. Five beds, five people, all five to decide. **Read a
+chart. Look at somebody. Ask the nurse. Ask the registrar. Order bloods. Write a
+note.** Every one of those costs minutes off a twelve-hour day, and the day is
+the only resource that never comes back.
+
+At eight o'clock Sister Nkemelu has the folder, and she asks about what you
+wrote. Then Vinnie is at the door.
+
+### Every note carries two times
+
+When you say it happened, and when you typed it. A note stated for 18:35 and
+written at 19:05 says so, on the chart, in red, forever. She rounds at ten, one,
+four and seven, and anything inside forty-five minutes of a round she wrote is
+two people disagreeing about the same half hour.
+
+Writing in the gap between her rounds is the central skill of the game. After a
+flag she writes up twice as often, which halves the gaps — but never closes
+them.
 
 ### Suspicion is not a meter
 
-Nobody has a suspicion stat you can edit. Characters hold **evidence**: discrete,
-timestamped records of things they personally saw, heard, were told, or worked out.
-Suspicion is *derived* from that evidence, weighted by their personality and how much
-they trust you.
+Nobody has a suspicion stat you can edit. Characters hold **evidence**:
+timestamped records of things they personally saw. Suspicion is *derived* from
+that evidence, weighted by their personality and how much they trust you — so
+typing a fabrication at the bedside with the patient watching is a different act
+from typing it in your office with the door shut, and the building is what says
+so.
 
-Because evidence is an object rather than a number, you can fight it:
+### Nobody is trying to catch you
 
-- **it fades** — but records and inferences barely do
-- **it can be contradicted** — a cover story filed first discounts it heavily
-- **it spreads** — gossip degrades with each retelling, but reaches more people
-- **it corroborates** — two witnesses to the same act is far worse than twice one witness,
-  which makes *isolating witnesses* a real tactic
-- **it can be destroyed** — the shredder is right there, and a missing chart is its own
-  kind of evidence
+Adeyemi writes what she finds, in her own name, because that is her job. The
+registrar has an opinion and two hours a day in which to give it. A daughter who
+used to be a ward sister arrives at seven and reads her mother's notes. None of
+them is investigating you. They are just there, and they write things down.
 
-### Complications are the product
+### What it costs
 
-Patients leave when they're better. Stays are extended by **complications** — Ambient
-Dread, Ferrous Aura, Rebound Hiccups — and every complication carries both what actually
-caused it and what you wrote down.
+A night in a bed pays $850, $450 or $180, depending on who is paying. A
+discharge pays $150 once and frees the bed for an admission worth $500. That
+single inequality — an admission worth *less* than a premium night and *more*
+than a discharge — is what stops "hold everybody" being the answer.
 
-A complication with a plausible cause, filed *before anyone noticed*, is just medicine.
-The same complication with nothing on the chart is an incident report. The actual verb of
-this game is not "sabotage" — it's ***manufacture a complication and get in front of it
-with a story.***
-
-### Things that will catch you
-
-Nurses who stop what they're doing and watch you. Families who count the days. Machines
-that log every setting you ever dialled. A colleague who reads charts for fun. An insurer's
-analytics team that notices your length-of-stay average drifting. An undercover patient
-you will never be told about.
-
-Getting caught is a nine-rung ladder — complaint, warning, review, probation, malpractice,
-board, police, struck off, arrested — and two clean shifts walks you back down it.
+Getting it wrong is not a game over. `CLEAR −1 · QUESTIONS 0 · FLAGGED +1 ·
+REFERRED +3`, and five ends the career. A clean night pays a strike back, which
+is why one bad night is survivable and four are not. Somebody you sent home who
+should not have gone is in a bed the next morning, worse, taking an admission's
+place.
 
 ## Running it
 
 Requires **Godot 4.3+**.
 
 ```bash
-godot --path .              # or open project.godot and hit F5
-GODOT=/path/to/godot ./run_tests.sh
+godot --path .                                   # or open project.godot and hit F5
+GODOT=/path/to/godot ./run_tests.sh              # the whole suite
+GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
+GODOT=/path/to/godot ./screenshots.sh            # render offscreen, photograph every screen
+GODOT=/path/to/godot ./export.sh all             # Windows, Linux, macOS
 ```
 
-**Controls** — `WASD` move · `E` use (hold for procedures) · `LMB` grab · `RMB` throw ·
-`Shift` sprint · `Ctrl` crouch (also rotates held objects) · `Q` tablet · `Esc` pause.
-
-## The loop
-
-Pick a shift. Work the list. See how much you can take out of the place before
-somebody stops you.
-
-Every day starts with three shifts on offer — night, day, evening — and the
-choice is not safe against risky. It is **witnesses against attribution**. A
-night shift has one other member of staff in the building and almost nobody to
-see what you do; it also has exactly one person anybody can ask about it in the
-morning. A day shift is crowded, and a crowd is an alibi.
-
-Each shift comes with a booked list: routine physicals on people who have walked
-in off the street, reviews of patients already on the ward, scheduled procedures,
-and discharges. A walk-in costs the hospital nothing and earns it a consultation
-fee — unless you find something, at which point they become an admission with a
-daily rate. *Did I find anything?* is the most profitable question in the
-building, and you are the one who answers it.
-
-There is an examination screen with a site and a dial marked APPLIED PRESSURE.
-There is a theatre with an indicated operative site and three stages, each done
-properly, quickly, or badly. There is a pharmacy where the drug that treats what
-they had is one entry among eight, and the ones that do not will bring them back
-in a week at a fresh daily rate.
-
-Your read on a patient — whether they are watching you, whether they are the
-sort who asks for things in writing — is your character's guess until you have
-actually examined them, which is the quiet argument for doing the honest version
-of that first.
-
-None of it is labelled. The game never tells you which choice is the bad one,
-and the record never asks what you meant — only what happened, and when. Somebody
-who arrives with a fractured ankle and goes home with an ankle, a wrist and a
-concussion is a paragraph any nurse can write without having seen a thing.
+**Controls** — `WASD` move · `E` use · `LMB` grab · `RMB` throw · `Shift` sprint ·
+`Ctrl` crouch · `Esc` pause. All rebindable; the HUD reads the bindings rather
+than printing them.
 
 ## What's in the box
 
-One complete hospital floor, generated procedurally from a single layout table: corridor,
-five patient rooms, lobby, nurses' station, treatment bay, supply room, staff WC, and your
-office — plus a west annexe of three departments (Emergency Intake, Radiology, the Psych
-Day Room) that are built, lit and furnished from day one and sealed behind roller shutters
-until you can afford them. Hinged physics doors that block line of sight. Wheelable beds
-with patients still in them. Twenty-five physics props, all of which make noise, and noise
-moves people.
+One hospital floor built from a single layout table: a corridor, a five-bed
+ward, a nurses' station and your office. Hinged doors that block line of sight.
+Forty authored patients across four wards, of whom five are dealt each morning —
+the same board is never guaranteed twice, and every one of them is written
+rather than generated.
 
-There are no art or audio assets. Every mesh is built from primitives at runtime and every
-sound is synthesised into a waveform on first play.
+There are no art or audio assets. Every mesh is built from primitives at
+runtime, every character's face and build is derived from who they are, and
+every sound — including the ninety-four-second score — is synthesised into a
+waveform on first play.
 
 | System | File |
 |---|---|
-| Truth/record/belief model | `scripts/core/`, `scripts/systems/mind.gd`, `evidence.gd` |
-| Perception (FOV, LOS, hearing, attention) | `scripts/npc/perception.gd` |
-| Witnesses, corroboration, gossip, heat | `scripts/systems/suspicion_system.gd` |
-| Dialogue with real odds | `scripts/systems/dialogue.gd` |
-| Patients, treatment, recovery | `scripts/systems/patient_system.gd`, `treatment_system.gd` |
-| Paperwork crime | `scripts/systems/records_system.gd` |
-| Investigations & the sanction ladder | `scripts/systems/investigation_system.gd` |
-| Economy, debts, upgrades | `scripts/systems/economy_system.gd`, `upgrades.gd` |
+| The day, the six verbs, the clock | `scripts/systems/ward_day.gd` |
+| What the ward sister notices | `scripts/systems/contradictions.gd` |
+| The handover, and what she accepts | `scripts/systems/review_system.gd` |
+| What she remembers about you | `scripts/systems/doctor_record.gd` |
+| Every authored patient and the economy | `scripts/systems/cases.gd` |
+| Truth/record/belief | `scripts/systems/mind.gd`, `evidence.gd` |
+| Perception (FOV, LOS, hearing) | `scripts/npc/perception.gd` |
+| Bodies, faces, builds | `scripts/npc/npc_body.gd`, `scripts/util/appearance.gd` |
 | Procedural world | `scripts/world/` |
 
-Design rationale, including a critique of the original brief and the five things that
-changed because of it, is in [`docs/DESIGN.md`](docs/DESIGN.md).
+Design is in [`docs/REDESIGN.md`](docs/REDESIGN.md). What actually does what,
+for developers only, is in [`docs/SPOILERS.md`](docs/SPOILERS.md). The build log
+is [`PROGRESS_LOG.md`](PROGRESS_LOG.md).
 
 ## Tests
 
 ```
-1526 assertions   — units, integration, save round-trips, floor connectivity
-  80 smoke checks — boots the real scene and plays a whole shift headless
-  13 live checks   — 7000 fixed-timestep frames of real NPC AI, pathing and doors
-  15 balance checks — three full careers, asserting the design intent holds
+292 assertions   — units, integration, save round-trips, floor connectivity
+131 smoke checks — boots the real scene and plays a whole shift, on three seeds
+  7 criteria     — day-level: does the risk actually cost anything
+  6 criteria     — career-level: does honest play pay it off, and does greed not
+  4 wards        — every one signs off on the day a careful person plays
+ 52 deals        — every ward a career can deal, played honestly
+ 22 screenshots  — rendered offscreen, because five real bugs were only visible
 ```
 
-The balance harness (`tests/balance_sim.gd`) plays sixteen-day careers with three
-strategies and asserts things like *"careful cheating out-earns honest practice"*. It has
-already caught one design inversion that no unit test could: with only five beds, curing
-people quickly and refilling the bed originally out-earned prolonging a stay, which
-inverted the entire premise. That's why admission is expensive and marginal days are cheap.
-
-## Departments
-
-Three departments unlock by purchase. Each one is a real room in the west annexe — built,
-lit and furnished from the first shift, and sealed behind a roller shutter you walk past
-every day until you can afford to open it — and each adds a mechanic as well:
-
-- **Emergency Intake** — short stays with enormous day rates, and patients who arrive
-  *mid-shift* with no warning. A bed you were using fills up and everyone on the floor
-  turns to look at whatever you were in the middle of.
-- **Radiology** — imaging is the only thing in the game that tells you the truth, and the
-  only entry in the record you did not write. It cannot be edited, forged or shredded, and
-  it names the cause the *simulation* knows about rather than the one on the chart. A
-  perfectly documented complication passes every audit in the game until somebody points a
-  scanner at it — and you are not the only person who can: colleagues order imaging on
-  patients whose stay has run long. The aperture is the counterplay.
-- **Psychiatric Liaison** — long, lucrative admissions that recover on comfort and
-  satisfaction rather than on equipment, which makes a cold dark ward a far more
-  effective way to hold one than any machine. They leave their beds for the day room and
-  stay a while, and recovery is scored against the room a patient is actually IN — so one
-  thermostat slows every psychiatric admission on the floor at once. They are also the most
-  observant people in the building, for reasons that are entirely their own business.
-
-## Careers
-
-One career runs to an ending — Saint, Tycoon, Medical Mafia, Fraud King, Whistleblower,
-Legendary, Struck Off, Custodial, Repossessed — evaluated against the whole run rather
-than picked from a menu. Each ending unlocks a starting perk for the next career, shaped
-by how that one went: going bankrupt gets your loans consolidated, going to prison means
-somebody outside owes you a favour, being struck off leaves you with thicker skin.
-
-## Screenshots
-
-```
-GODOT=/path/to/godot ./screenshots.sh
-```
-
-Renders the game offscreen through Xvfb and photographs every room and every UI screen.
-Worth running after any visual change — it has caught five layout and economy bugs that
-no amount of simulation testing could see.
-
-## Status
-
-Milestone 1 (playable vertical slice) is complete and verified end to end, and so are the
-three departments beyond it. Next up: a human playtest for feel — movement speed, shift
-length, and whether the prompts read clearly to somebody who has not been staring at this.
+Run them before committing. Run the screenshots after any UI or world change —
+the count of bugs found only by looking is now in double figures.

@@ -20,6 +20,8 @@ not committed — see docs/BUILDING.md).
 - [x] Project skeleton: `project.godot`, input map, physics layers, `.gitignore`.
 
 - [x] `docs/DESIGN.md` — critique of the brief + the five design changes made.
+      (Deleted in session 15: it described the pre-redesign game. `docs/REDESIGN.md`
+      is the live design; git has the original.)
 - [x] Autoloads: Log, RNG (seeded, per-stream), EventBus, DB (content), GameState,
       AudioMgr (fully procedural synthesis — zero audio assets), SaveSystem.
 - [x] Core data model: WorldEvent (truth) / PatientChart (record) / Mind+Evidence

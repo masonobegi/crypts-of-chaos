@@ -10,15 +10,16 @@ GODOT=/path/to/godot ./run_tests.sh      # all of it, ~4 min
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
 GODOT=/path/to/godot ./export.sh all     # windows, linux, macos — and RUNS the linux one
-GODOT=/path/to/godot ./playfast.sh pad   # play it with a controller, headless
+GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
 `run_tests.sh` is 294 assertions, a 161-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
-2,601-strategy adversarial search per ward, a playthrough driven entirely by
-the input actions a controller sends, a check that the game prints nothing it
+2,601-strategy adversarial search per ward, two playthroughs driven entirely by
+the input actions a controller sends — the first two minutes, and a whole shift
+from the briefing to the next morning — a check that the game prints nothing it
 should not while being played, and a boot through the real main menu. Every
 phase exits non-zero on its own and the runner reports which.
 

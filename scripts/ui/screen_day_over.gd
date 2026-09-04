@@ -115,7 +115,7 @@ func _consequences(verdict: String, short: bool) -> Array:
 			% Cases.name_of(String(pid)))
 	# THE ONE THAT IS NOT ABOUT PAPERWORK. Somebody is coming back, and it is
 	# nothing to do with what the reviewer thought of your notes.
-	for pid in PackedStringArray(GameState.flag(Cases.READMIT_FLAG, [])):
+	for pid in PackedStringArray(GameState.flag(Cases.READMIT_PENDING, [])):
 		out.append("%s is back on the ward in the morning — they did not make it through the night at home."
 			% Cases.name_of(String(pid)))
 	if short:
@@ -147,6 +147,12 @@ func _carry(verdict: String, short: bool) -> void:
 	# not be back before it was overwritten; and a short night now compounds the
 	# total rather than inflating tomorrow. What carries is the doctor's record,
 	# which `ReviewSystem.commit` writes at the handover.
+	# THE DAY TURNS OVER, AND ONLY NOW DO THEY COME BACK. `end_day()` parks the
+	# list in READMIT_PENDING because `Cases.roster()` reads the live flag on
+	# every call, and until this line the live ward is still tonight's.
+	GameState.set_flag(Cases.READMIT_FLAG,
+		GameState.flag(Cases.READMIT_PENDING, []))
+	GameState.set_flag(Cases.READMIT_PENDING, [])
 	GameState.day += 1
 	var w = ward()
 	if w != null:

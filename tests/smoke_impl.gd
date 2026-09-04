@@ -224,6 +224,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_nurse_does_rounds()
 	_check_tests_in_flight_come_back(w)
 	_check_a_watched_day_can_still_be_written_in()
+	_check_a_readmission_waits_for_the_morning()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
 ##
@@ -314,6 +315,77 @@ func _clear_of(minute: int, rounds: Array) -> bool:
 		if absi(minute - int(r)) <= ChartEntry.SAME_MOMENT:
 			return false
 	return true
+
+## THEY COME BACK TOMORROW, NOT TONIGHT.
+##
+## `Cases.roster()` reads `READMIT_FLAG` live on every call and substitutes
+## `readmission_of(c)`, and `GameState.day` is not incremented until the End of
+## Shift card. `end_day()` set that flag directly, so from the moment the shift
+## ended the man you discharged at six was, on the live ward, a readmission —
+## and the handover comes AFTER `end_day()`. Sister Nkemelu asked why he was
+## back in that bed before the night staff went home; his file went `flagged`,
+## which multiplies every other finding about him by 1.6 as "already under
+## review"; and then the very next screen promised he would be back in the
+## morning. The two climax screens disagreed by a night about the same bed, and
+## the fabricated finding fed the verdict, the strikes and the money.
+func _check_a_readmission_waits_for_the_morning() -> void:
+	var was := GameState.minute_of_day
+	var was_flag = GameState.flag(Cases.READMIT_FLAG, [])
+	var was_pending = GameState.flag(Cases.READMIT_PENDING, [])
+	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.set_flag(Cases.READMIT_PENDING, [])
+
+	# Somebody who genuinely should not go home, sent home.
+	var victim := ""
+	for c in Cases.roster():
+		if not bool(c.get("truly_well", true)) and not bool(c.get("readmitted", false)):
+			victim = String(c["id"])
+			break
+	if victim == "":
+		_fail("no unwell patient on the canonical ward to send home")
+		GameState.minute_of_day = was
+		return
+
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	for c in Cases.roster():
+		w.set_disposition(String(c["id"]),
+			"discharge" if String(c["id"]) == victim else "hold")
+	w.end_day()
+
+	# The handover reads the ward FRESH — it does not use the findings cached in
+	# end_day()'s return — so this has to be asked the way the screen asks it.
+	_ok(not bool(Cases.by_id(victim).get("readmitted", false)),
+		"the man you sent home tonight is not already back tonight")
+	var came_back := 0
+	for f in w.review_findings():
+		if String(f.kind) == "readmitted_after_your_discharge":
+			came_back += 1
+	_ok(came_back == 0,
+		"so the handover does not ask about a readmission that has not happened "
+			+ "(%d findings)" % came_back)
+	_ok(not bool(w.review_truth().get(victim, {}).get("flagged", false)),
+		"and his file is not 'already under review' for it, which would have "
+			+ "multiplied every other finding about him by 1.6")
+
+	# But it IS queued, and the card that promises it reads the same list.
+	var pending := PackedStringArray(GameState.flag(Cases.READMIT_PENDING, []))
+	_ok(Array(pending).has(victim),
+		"he is on tomorrow's list, which is what the End of Shift card reads")
+
+	# And the morning delivers him. This is what `_carry()` does at the moment
+	# it increments the day; doing it by hand keeps the check off the UI.
+	GameState.set_flag(Cases.READMIT_FLAG, pending)
+	GameState.set_flag(Cases.READMIT_PENDING, [])
+	_ok(bool(Cases.by_id(victim).get("readmitted", false)),
+		"and once the day turns over, there he is")
+
+	GameState.set_flag(Cases.READMIT_FLAG, was_flag)
+	GameState.set_flag(Cases.READMIT_PENDING, was_pending)
+	tree.root.remove_child(w)
+	w.free()
+	GameState.minute_of_day = was
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

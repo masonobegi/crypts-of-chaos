@@ -1288,6 +1288,21 @@ const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR]
 ## conversation, and the ward you walk onto is one you made.
 const READMIT_FLAG := "readmissions"
 
+## AND WHERE TONIGHT'S GO UNTIL MORNING.
+##
+## `roster()` reads READMIT_FLAG live and swaps the readmission in, and
+## `GameState.day` is not incremented until the End of Shift card's "Work
+## tomorrow" — so writing the flag inside `end_day()` rewrote TONIGHT'S ward,
+## an hour before the handover the player is walking into. Sister Nkemelu
+## opened the folder and asked why a man you discharged at six was back in that
+## bed before the night staff went home, `is_flagged()` went true on him so
+## every other finding about him was multiplied by 1.6 as "file already under
+## review", and then the very next screen said he would be back in the morning.
+## Two screens, one bed, contradicting each other by a night, at the climax.
+##
+## So the list waits here until the day actually turns over.
+const READMIT_PENDING := "readmissions_tomorrow"
+
 ## The word she uses for what happened. Written on the chart, at the top, where
 ## the first thing anybody reads about this person is what you did last time.
 static func readmission_of(c: Dictionary) -> Dictionary:

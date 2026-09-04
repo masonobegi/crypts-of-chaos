@@ -86,6 +86,7 @@ func start_new_career(with_seed: int = 0) -> void:
 	reset_debt()
 	DoctorRecord.wipe()
 	set_flag(Cases.READMIT_FLAG, [])
+	set_flag(Cases.READMIT_PENDING, [])
 	set_flag("auditor_shifts", 0)
 	set_flag("auditor_present", false)
 	set_flag("watched", false)

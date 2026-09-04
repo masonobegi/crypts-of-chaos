@@ -40,6 +40,7 @@ func _day() -> WardDay:
 	GameState.reset_debt()
 	DoctorRecord.wipe()
 	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.set_flag(Cases.READMIT_PENDING, [])
 	var w := WardDay.new()
 	t.root.add_child(w)
 	w.start()
@@ -830,8 +831,18 @@ func test_the_man_you_sent_home_is_in_a_bed_in_the_morning() -> void:
 	var res := w.end_day()
 	t.ok(PackedStringArray(res["readmitted"]).has("marchetti"),
 		"discharging somebody who was not fit to go brings them back")
+	# BUT NOT YET. `Cases.roster()` reads the live flag on every call, so setting
+	# it inside `end_day()` put him back in the bed he is still lying in — in
+	# time for the handover, which runs after the shift ends, to ask why. He
+	# waits in READMIT_PENDING until the day actually turns over.
+	t.ok(not bool(Cases.by_id("marchetti").get("readmitted", false)),
+		"and he is not back before the handover he was discharged at")
 	w.queue_free()
 
+	# What `screen_day_over._carry()` does at the moment it increments the day.
+	GameState.set_flag(Cases.READMIT_FLAG,
+		GameState.flag(Cases.READMIT_PENDING, []))
+	GameState.set_flag(Cases.READMIT_PENDING, [])
 	GameState.day = 2
 	var ids := []
 	var readmitted := {}
@@ -842,6 +853,16 @@ func test_the_man_you_sent_home_is_in_a_bed_in_the_morning() -> void:
 	t.ok(ids.has("marchetti"), "he is on tomorrow's ward, which is not his ward")
 	t.eq(ids.size(), Cases.BEDS, "and there are still only five beds")
 	t.eq(readmitted.size(), 1, "one of them is a readmission")
+	# GUARDED. Indexing a key that is not there ABORTS the function without
+	# erroring, so when the assertion above first failed this test stopped dead
+	# on the next line — leaving `GameState.day` on 2 for the test below it,
+	# which then built a day-two ward, sent home two genuinely unwell people and
+	# reported a second, entirely fictional failure. One bug, two red lines, and
+	# the second one pointing at innocent code. CLAUDE.md 11, in a test file.
+	if not readmitted.has("marchetti"):
+		GameState.set_flag(Cases.READMIT_FLAG, [])
+		GameState.day = 1
+		return
 	var m: Dictionary = readmitted["marchetti"]
 	t.ok(not bool(m.get("truly_well", true)), "he is worse than he was")
 	t.ok(m.has("audit_flag"), "and his file opens with the coding review on it")
@@ -862,6 +883,7 @@ func test_the_man_you_sent_home_is_in_a_bed_in_the_morning() -> void:
 			missing += 1
 	t.eq(missing, 1, "and one scheduled admission does not happen")
 	GameState.set_flag(Cases.READMIT_FLAG, [])
+	GameState.set_flag(Cases.READMIT_PENDING, [])
 	GameState.day = 1
 
 ## Somebody who walked out against advice is not on your conscience, and neither

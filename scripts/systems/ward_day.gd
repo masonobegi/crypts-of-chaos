@@ -980,7 +980,11 @@ func end_day() -> Dictionary:
 		if bool(Cases.by_id(pid).get("readmitted", false)):
 			continue          ## already a readmission. Once round is enough.
 		bouncing.append(pid)
-	GameState.set_flag(Cases.READMIT_FLAG, bouncing)
+	# PENDING, NOT LIVE. `Cases.roster()` reads the live flag on every call and
+	# the day does not turn over until "Work tomorrow" is pressed — so setting it
+	# here readmitted them onto the ward they are still lying on, in time for the
+	# handover to ask about it. `screen_day_over._carry()` promotes this.
+	GameState.set_flag(Cases.READMIT_PENDING, bouncing)
 	res["readmitted"] = bouncing
 
 	_result = res

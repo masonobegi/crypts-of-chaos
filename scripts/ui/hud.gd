@@ -56,7 +56,14 @@ func _ready() -> void:
 	var wd = get_tree().get_first_node_in_group("ward_day")
 	if wd != null:
 		wd.money_changed.connect(func(_c): _refresh_money())
-	GameState.day_started.connect(func(_d): _refresh_static())
+	# THE CLOCK TOO, not just the day number. The time label only repaints on
+	# `minute_passed`, and the clock is stopped between days — so at the moment a
+	# new shift starts the corner of the screen still reads whatever last night
+	# ended at, until the first minute ticks. A screenshot of the third ward
+	# caught the HUD saying 7:13 PM over a patient card correctly saying 08:00.
+	GameState.day_started.connect(func(_d):
+		_refresh_static()
+		_on_clock(GameState.minute_of_day))
 	_refresh_static()
 	_refresh_money()
 

@@ -1036,3 +1036,208 @@ regression out of. What it checks is a naming rule now.
 - Nothing is randomised, deliberately. If run-to-run variation is ever wanted,
   the honest place for it is which five of a larger written cast are in the
   beds — never generated conditions.
+
+
+## Session 15 — 2026-09-04 — two adversarial audits, and looking at the game
+
+Two things ran this session that had not been tried before: sixty-four and then
+forty-seven agents reading the project adversarially against a brief of "find
+what a player would hit", and — belatedly — a camera pointed at a person's face.
+
+The audits produced ninety-odd claims, of which twenty-one survived
+verification. What follows is the ones that changed the game rather than the
+code.
+
+### The two that were fatal
+
+**A flagged night was a sentence.** Being watched doubles Adeyemi's rounds, and
+the extra ones were placed at the MIDPOINT between two existing ones — which put
+every round exactly ninety minutes from its neighbour. `ChartEntry.SAME_MOMENT`
+is forty-five and the comparison is `<=`, so each round owns a ninety-one minute
+window and those windows tiled the shift end to end. There was no minute in the
+day at which a note could be written without reading as two people disagreeing
+about the same half hour. Writing in the gap between rounds is the central
+timing skill of this game; doubling the rounds was meant to make it harder and
+instead deleted it, and since the findings that produces are what get you
+flagged again, one bad night was a spiral with no floor. The career probe had it
+in front of it the whole time — `skilled` and `one_lie` both went four rounds to
+eight the night they were watched and were struck off on the next.
+
+She writes up twice now, forty-five minutes after the first round rather than
+splitting the gap. Three real windows survive and finding them is the point.
+
+**Removing it inverted the premise**, which is what the probe is for: with the
+spiral gone, lying one bed every single night became the FASTEST route out of
+the debt — six nights against honest's nine. The spiral had been doing the work
+of punishing persistent dishonesty by a mechanism that punished everyone
+equally. So the escalation went where `DoctorRecord.opening_line` had always
+narrated it: above three-quarters of nights carrying an uncorroborated bed, one
+bed is a referral rather than a flag. The gap between that and the half-rate
+`habitual` rule is the whole game — a bed on your word alone every other night
+stays survivable forever, and that is the policy the design is trying to make
+findable.
+
+```
+honest      9 nights      skilled   struck off, night 6
+restrained  8 nights      one_lie   struck off, night 6
+adaptive    7 nights      greedy    struck off, night 5
+```
+
+### The free win, and the punishment for putting it right
+
+"Adeyemi reviewed them and agreed with me" was offered against
+`sent_home_unwell` — a finding built entirely out of a nurse note saying the
+patient should STAY. The strongest wrongful-discharge question in the game was
+cleared by citing the document that proves it. Top option on the menu, no verbs,
+no chart, no examination; FLAGGED became NOTED. Empty the ward at five past
+eight, press the first button, go home, every night, forever.
+
+The other way up: `readmitted_after_your_discharge` was in the CONTRADICTED
+list, and that branch only ever runs for a bed you are KEEPING. So holding the
+man who bounced back at one in the morning because you got it wrong was
+automatically indefensible — examining him, sending the nurse and documenting it
+scored exactly the same as re-dumping him. The file had already found and
+excluded this identical bug three hundred lines earlier for
+`already_being_looked_at`, on the same bed.
+
+### They came back before they had gone home
+
+`Cases.roster()` reads `READMIT_FLAG` live and `GameState.day` is not
+incremented until "Work tomorrow", so writing that flag inside `end_day()`
+readmitted people onto the ward they were still lying on — in time for the
+handover, which runs after. She asked why a man discharged at six was back
+before the night staff went home, his file went "already under review" so every
+other finding about him was multiplied by 1.6, and the very next screen promised
+he would be back in the morning. Two climax screens disagreeing by a night about
+the same bed. The list waits in `READMIT_PENDING` now and `_carry()` promotes it.
+
+### The biggest number in the game had no noun and did not add up
+
+The morning card says "In your account $900" and thirty seconds later the corner
+of the screen said $1,900 in green with nothing attached to it. It was also
+arithmetic no ward could produce: `free_beds()` counted an undecided bed as free
+and charged its $500 admission, while `discharged_ids()` counted only explicitly
+marked beds, so the same bed paid no discharge fee. Sign off on that exact state
+and it pays $2,650. An undecided bed is now counted the way signing off counts
+it, and the figure is captioned IF YOU SIGNED OFF NOW — VINNIE TOOK, after eight.
+
+`WardDay.sign_off()` gives "ending the shift" one definition; the eight o'clock
+close and the office terminal each spelled the loop out for themselves.
+
+### Everybody in the ward was the same person
+
+`PatientSystem._spawn` passed `p.skin_tone` and `p.shirt_color`, and nothing in
+the game ever assigned either field. Forty authored people, one body: same skin,
+same gown, same brown hair, same height, five at a time in a row. `PatientNPC._ready`
+then overwrote the gown with a fourth hardcoded colour anyway.
+
+`Appearance` derives a look from the id and the age — twelve skin tones, nine
+hair colours greyed toward white by age, height and girth varying independently
+so nobody is a scaled copy, hair that thins rather than vanishing. Forty distinct
+people out of it. `age` had been in every record since the beginning and nothing
+read it. Facial hair is authored rather than rolled: skin and build are
+interchangeable at this fidelity and a hash is the right tool for them; a beard
+is a fact about somebody.
+
+The named staff were worse than uniform — `_random_skin()` drew from the
+world-seeded RNG, so Adeyemi had a different face every playthrough and Ms
+Ferrand turned up for her second booked shift looking like somebody else.
+
+### And the reason nobody had noticed
+
+The two screenshots meant to photograph a person asked for "oduya", and the shot
+harness starts a career on a seed oduya is not on. `get_body` returned null, the
+function returned, and the camera stayed where the previous shot left it. The
+only two frames meant to show a PERSON had been silently photographing the wide
+ward view for as long as they existed.
+
+With a face on screen for the first time, two things were obvious immediately.
+The eye whites were 0.056 scaled 0.92 by 1.18 — an egg on its end, pure unshaded
+white, spanning the whole face with a small dot in the middle: everybody in the
+building was wearing swimming goggles. And the floating nametag was a metre and
+a half of text at the distance you stand from a bed.
+
+The title screen had never been photographed at all, because the harness
+instantiates Game.tscn directly. It had a man sitting INSIDE the bed (posed with
+the waiting-room `set_seated` on a body standing at floor level on top of a
+PatientBed) and the only unstyled control in the game.
+
+### Everything else
+
+- **Half the ward was misgendered.** Six strings had a pronoun welded in — the
+  self-discharge toast said "signed herself out" about whoever walked, and five
+  of the reviewer's questions said "him" or "her" regardless. A ward is five
+  people drawn from forty. Every patient carries their own pronoun now, read off
+  their OWN authored prose, and three whose prose commits to nothing keep
+  they/them. `Cases.about()` fills the sentence and agrees the verbs.
+- **The game taught you the first verb for six seconds, behind a card.** Toasts
+  aged whether or not a modal was up, so the one line telling a new player what
+  to do first expired before they pressed "Start the round". A lab result landing
+  behind a chart died the same way.
+- **Two hundred and fifty passes of the same eight bars.** The score is an A A B A
+  form now, ninety-four seconds, with the lead tacet through the second pass and
+  the brushes pulled back — length alone would have bought nothing.
+- **An authored question no play could reach.** `ChartEntry.explains` had no
+  writer anywhere, so `_addendum_cascade` could never fire. Writing the same
+  claim about the same patient again is what an addendum is, so the chain builds
+  itself.
+- **Rooms were boxes with lids.** Two-metre vinyl seams on the floors, a 1.2m
+  tile grid on the ceilings, and real joinery on the station counter.
+
+### What the harnesses could not do
+
+- `check.sh` could not fail. The last command in its pipeline was `head`, so it
+  exited 0 on every parse error it has ever printed — including one of mine,
+  which is how a duplicate function name reached a screenshot run.
+- Three tests aborted mid-function without failing, all the same trap: reading a
+  missing dictionary key, `String(null)`, `String(int)`. CLAUDE.md 11 is not
+  only about freed objects — anything that throws inside a test silently ends it
+  and the count barely moves.
+- A test that compares `projected()` with `end_day()` compares a number with
+  itself, because `end_day` computes its takings from `projected()`. It passed
+  just as happily on the broken arithmetic.
+
+### New guards
+
+Everything above that could recur has one, and each was verified in both
+directions:
+
+```
+a watched day still has a writable window .... contains one unbroken gap after
+                                               her first round long enough to
+                                               read a chart and write the note
+nothing floats or sinks ..................... lowest point of every fixture that
+                                               must rest on something is within
+                                               2cm of the surface under it
+nothing stands in a door's arc .............. against each door's real hinge and
+                                               width; found four on first run
+a readmission waits for the morning ......... no bounce finding on the night of
+                                               the discharge; there in the morning
+the HUD's money is the money you get ........ through sign_off(), not end_day()
+nothing is said into a closed card .......... a toast raised behind a card is
+                                               still there when it closes
+nobody is misgendered ....................... data AND a grep over the strings
+the score has a form ........................ four passes do not render alike
+```
+
+### Counts
+
+```
+unit + integration assertions ........................... 292
+smoke checks ............................................ 125
+seven day-level criteria ................................ 7/7
+six career criteria ..................................... 6/6
+authored people ......................................... 40 across four wards
+screenshots ............................................. 22, including the
+                                                          title screen and a
+                                                          five-head lineup
+```
+
+### NEXT UP
+
+- The registrar still has no memory of being asked three times about people who
+  turned out fine.
+- `VisitorNPC` exists and is never instantiated; the visitors are narrative-only
+  toasts. Either give them bodies or delete the class.
+- The overlap audit named in CLAUDE.md does not appear to exist under that name
+  any more. The floating and door-swing audits cover part of what it did.

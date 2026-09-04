@@ -171,15 +171,25 @@ func _note(title: String, sub: String) -> Control:
 			HORIZONTAL_ALIGNMENT_LEFT, true))
 	return col
 
+## ...AND THE BORDER IS NOT DRAWN TWICE.
+##
+## Each verb was a PanelContainer wrapping a VBox wrapping a Button — and
+## `UIKit.button` already carries its own bordered slip, so every row had two
+## frames round it and the outer one's padding on top. Six of those is most of
+## the reason a third of this card was still below the fold after the last go
+## at it: the fix then was to collapse the verbs you CANNOT use, which does
+## nothing at eight in the morning when all six are live.
+##
+## One frame, and the cost sits on the button's own line rather than under it —
+## "12 min" is what you are deciding about, so it belongs where the decision is.
 func _act(title: String, sub: String, cb: Callable) -> Control:
-	var p := UIKit.panel(UIKit.PANEL_LIGHT, 2)
-	var col := UIKit.vbox(1)
+	var col := UIKit.vbox(0)
 	var b := UIKit.button(title, cb, UIKit.PANEL_LIGHT)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	col.add_child(b)
-	col.add_child(UIKit.label("    " + sub, 12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
-	p.add_child(col)
-	return p
+	var l := UIKit.label("    " + sub, 12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true)
+	col.add_child(l)
+	return col
 
 func _go(what: String) -> void:
 	EventBus.request_ui.emit(what, {"patient_id": _pid})

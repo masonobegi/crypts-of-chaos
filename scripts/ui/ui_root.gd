@@ -12,6 +12,10 @@ const SCREEN_SCRIPTS := {
 	"review": "res://scripts/ui/screen_review.gd",
 	"day_over": "res://scripts/ui/screen_day_over.gd",
 	"board": "res://scripts/ui/screen_board.gd",
+	# Both public terminals emitted this and the router had no entry for it, so
+	# they beeped and opened nothing — and with no route to a chart except a
+	# patient's own card, writing anywhere private was impossible.
+	"records": "res://scripts/ui/screen_records.gd",
 }
 
 var hud: HUD

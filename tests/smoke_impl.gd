@@ -515,7 +515,10 @@ func _check_screens_actually_draw() -> bool:
 ## of a day is a chain — handover, then the verdict, then tomorrow — and each
 ## link is a different script asking the UI router for the next one by name. A
 ## typo in any one of those names is a game that stops at eight o'clock.
-var _chain: Array = ["review", "day_over", "morning", "board"]
+## `records` is in here because it was NOT, and a screen the router had never
+## heard of failed silently: `open()` logged a warning and returned, so both
+## public terminals beeped and did nothing for as long as they have existed.
+var _chain: Array = ["review", "day_over", "morning", "board", "records"]
 var _chain_at := -1
 
 func _check_the_screens_chain() -> bool:

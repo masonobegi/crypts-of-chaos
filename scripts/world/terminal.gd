@@ -50,17 +50,16 @@ func interact(_player, _held) -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")
 	if w == null:
 		return
-	if _is_the_office() and not w.ended:
-		# Anybody you never made a decision about goes home. Nursing is not
-		# going to keep a bed occupied because you did not get round to it.
-		for c in Cases.roster():
-			var pid := String(c["id"])
-			if String(w.state[pid]["disposition"]) == "":
-				w.set_disposition(pid, "discharge")
-		w.end_day()
-		EventBus.request_ui.emit("review", {})
-		return
-	# Any other terminal is somewhere to read from, and somewhere to be seen
-	# reading from.
+	# EVERY TERMINAL OPENS THE RECORDS, INCLUDING THIS ONE.
+	#
+	# The office terminal used to end the shift on the keypress. A new player
+	# exploring the room signed "DR. YOU" sees a computer, presses E, and every
+	# patient they had not got round to is silently sent home — a scored
+	# decision the ward sister audits — the day ends at whatever time it is, and
+	# the handover opens. No confirmation, no warning, no way back.
+	#
+	# It also meant the one private machine in the building could not be used
+	# for the thing the room exists for. Signing off is now a labelled button on
+	# the records screen that says how many beds it is about to decide for you.
 	EventBus.request_ui.emit("records", {})
 

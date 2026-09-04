@@ -358,6 +358,16 @@ with it because a lost afternoon does not care which.
     running teal up to a sill at 1.15 swallows the lower two thirds of every
     wall. Do the view before the glass.
 
+46. **A default is only a default until somebody passes the old value.**
+    `Surfaces.fabric_mat` took the weave pitch as a default and
+    `Build.cloth_mat` passed the old number explicitly, so raising the default
+    reached nothing at all: every piece of cloth in the game kept the old pitch
+    while the shader's own comments described the new one, and the commit
+    message described a change that had not happened. Same class of fault as a
+    constant nothing reads, and quieter — the code and the comment disagree,
+    and the picture sides with the code. Numbers a shader is tuned on live in
+    ONE place (`Surfaces.WEAVE`), never as a default plus a literal.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -2021,3 +2021,38 @@ a twenty-metre alpha-blended surface defeats early-Z and takes a three-vantage
 render past twenty minutes on this box. Unshaded is both cheaper and the right
 choice for this project's style — every other bright thing in the game is
 unshaded already.
+
+### The gown was gingham
+
+Two sines of the same pitch averaged together is a square lattice, and a square
+lattice on a hospital gown is a printed check. It was on the closest object in
+the game and it only became visible once the weave was on anything at all,
+which was this session.
+
+What fixed it: the warp and weft run at pitches that do not divide into each
+other, the phase is dragged about by the same noise that carries the slub, and
+the threads are multiplied rather than averaged — threads cross, so you see the
+crossing point where both are at the top of their cycle and the gap everywhere
+else. The weave was also nine per cent of the albedo, which is a pattern you
+can name from two metres; it is five and a half now, with the irregular half
+carrying as much as the regular half.
+
+At half a metre the gown reads as fine cloth; at five metres the weave
+dissolves and the curtain is smooth with its folds doing the work, which is
+what real fabric does across a room.
+
+**A correction.** The commit that landed this says the pitch went from 180
+threads a metre to 300. It did not. `fabric_mat` took the pitch as a default
+and `Build.cloth_mat` passed 180 explicitly, so raising the default reached
+nothing: every piece of cloth kept the old pitch while the shader's own
+comments described the new one. The three changes above are what did the work.
+
+Rendered 300 properly afterwards to see what had been missed, and it is worse —
+the weave dissolves almost completely by half a metre, so a gown at the
+distance you actually read one is flat pink. 180 stays, as one constant
+(`Surfaces.WEAVE`) rather than a default at one end and a literal at the other.
+The pixels never changed; only the account of them did.
+
+A default is only a default until somebody passes the old value explicitly, and
+when they do, the code and the comment disagree and the picture sides with the
+code.

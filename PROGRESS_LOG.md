@@ -1369,3 +1369,60 @@ career-level criteria ................................... 6/6
 wards that sign off on the honest day ................... 4/4
 screenshots ............................................. 23
 ```
+
+
+## Session 15, last stretch — telling the player things
+
+Three of these are the same finding wearing different clothes: the game knew
+something the player needed and did not say it.
+
+**The day ended without a word of warning.** At eight o'clock every undecided
+bed is sent home, the shift closes and the handover opens — and the first thing
+the game had ever said about it was "Eight o'clock. He is in the corridor.",
+after it had happened. The clock is in the corner so it was never hidden, but a
+game whose whole pressure is a deadline should count down to it. An hour out,
+twenty minutes, five, and the useful half is not the time: it is how many beds
+are still undecided, which is the one thing the player cannot see without
+opening something.
+
+**The rounds were silent.** Writing in the gap between them is the central
+timing skill of this game and they made no sound and put nothing on screen. The
+board lists the times; this is the beat. It is also the only way a watched day
+reads as what it is — the card says "she is writing her rounds up twice" in
+words, and words on a card at the end of a night are not the same as noticing,
+twice as often, that she has just been round again.
+
+**Missing the registrar's window was silent.** He is the strongest corroboration
+a bed can have and he is here for four hours of twelve. The patient screen says
+when he is next about, which only helps if you happen to be looking at a
+patient, and the window you want him in is usually the one you are busy in.
+
+That last one had a bug the check caught, and it was the wrong one to have: the
+"first evaluation of the day says nothing" guard sat AFTER the no-change test,
+so the early return fired on every quiet minute and the guard was reached by
+the first real TRANSITION instead. Eleven o'clock — when he actually arrives —
+was the one arrival that went unannounced.
+
+And a consequence: the day now has ten or more things to say, the queue holds
+while a card is up, and half a second between toasts is wrong the moment there
+is a backlog. Close a card on ten of them and the last arrives five seconds
+later, by which point the first three have been pushed off the bottom of a
+column that holds three. A backlog drains at 0.18; a trickle still at 0.5.
+
+### The career probe had only ever played one career
+
+Nine wards drawn from four pools of ten, and it had only ever played the nine
+that seed 31337 deals. Twelve seeds pass by hand — all six criteria on every
+one — and two run with the suite. Same gap the smoke run had, and that one hid
+three untested seeds in five.
+
+### Counts
+
+```
+unit + integration assertions ........................... 292
+smoke checks ............................................ 136, on three seeds
+day-level criteria ...................................... 7/7
+career-level criteria ................................... 6/6, on three seeds
+wards that sign off on the honest day ................... 4/4
+the game says nothing it should not, while being played . asserted
+```

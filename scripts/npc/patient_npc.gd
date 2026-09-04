@@ -348,6 +348,23 @@ func discharge_and_leave() -> void:
 	set_asleep(false)
 	if bed:
 		bed.occupant = null
+		# AND THEY GET OUT OF THE BED RATHER THAN OFF IT.
+		#
+		# A patient is spawned at the bed's origin plus half a metre and pinned
+		# there. Standing up unpinned them and left them exactly where they
+		# were, half a metre in the air and inside the bed's own footprint, to
+		# be brought down by gravity over the next few frames — so signing off
+		# dropped the whole ward out of their beds at once. Normally that is
+		# half a second nobody is looking at; at eight o'clock the handover card
+		# opens on the same tick and PAUSES THE WORLD, which freezes five people
+		# mid-fall in the background of the most important screen in the game.
+		#
+		# One step toward the foot of the bed, on the floor. The bed's own yaw
+		# faces the door, which is where they are going anyway.
+		var out_of_bed: Vector3 = bed.mount_point()
+		out_of_bed.y = bed.global_position.y
+		global_position = out_of_bed + bed.global_transform.basis.z * 0.85
+		velocity = Vector3.ZERO
 	var h = get_tree().get_first_node_in_group("hospital")
 	if h:
 		# "lobby" was demolished in the redesign, so a discharged patient walked

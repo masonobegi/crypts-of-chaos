@@ -392,7 +392,25 @@ func _pause_screen() -> Control:
 	v.add_child(UIKit.button("Settings", func(): open("settings", {})))
 	v.add_child(UIKit.button("Controls", func(): open("controls", {})))
 	v.add_child(UIKit.spacer(8))
-	v.add_child(UIKit.button("Quit to Menu", func():
+	# A SHIFT IS ONE SITTING, AND THIS THROWS IT AWAY.
+	#
+	# The autosave is written once, by the End of Shift card, at the end of a
+	# night. Quitting to the menu at four in the afternoon discards everything
+	# since eight in the morning — every chart read, every note, every decision —
+	# and the button said nothing about it. It sits two rows under "Resume" in a
+	# menu people open to change the volume.
+	v.add_child(UIKit.label(
+		"The shift is only saved when it ends. Leaving now loses today.",
+		12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	var confirm := {"armed": false}
+	var quit_btn := UIKit.button("Quit to Menu", Callable(), Color(0.3, 0.16, 0.16))
+	quit_btn.pressed.connect(func():
+		if not confirm["armed"]:
+			confirm["armed"] = true
+			quit_btn.text = "Lose today's shift — press again"
+			return
 		get_tree().paused = false
-		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"), Color(0.3, 0.16, 0.16)))
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
+	v.add_child(quit_btn)
 	return parts[0]

@@ -748,6 +748,14 @@ func _self_discharges(from: int) -> void:
 		st["disposition"] = "discharge"
 		st["discharged_at"] = at
 		st["self_discharged"] = true
+		# ...AND SHE ACTUALLY WALKS OUT. This writes the disposition straight
+		# into the state dictionary rather than going through
+		# `set_disposition`, so the signal that tells her body to get up and
+		# leave never fired. Tallulah Ferreira is the only pressure in the game
+		# that runs the other way from the debt — she has a shift at four and
+		# she does not wait — and she signed herself out in the paperwork while
+		# lying in the bed for the rest of the night.
+		disposition_set.emit(pid, "discharge")
 		var e := ChartEntry.new()
 		e.patient_id = pid
 		e.claim = ChartEntry.Claim.MOBILISING

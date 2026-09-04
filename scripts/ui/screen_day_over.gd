@@ -171,6 +171,14 @@ func _carry(verdict: String, short: bool) -> void:
 ## asked for every night forever. A game whose worst outcome is "denser nurse
 ## rounds, indefinitely" has nothing at the top of its own risk curve.
 func _ending_card(ending: String) -> void:
+	# A FINISHED CAREER IS FINISHED.
+	#
+	# Both endings offer "Start again" and "Main menu" and neither touched the
+	# save — so the autosave written at the end of the last night survived, and
+	# "Continue — Day 9" on the title screen loaded a career that had already
+	# ended. You could be struck off and then carry on being struck off, night
+	# after night, from the same save.
+	SaveSystem.delete_save(SaveSystem.AUTOSAVE)
 	var won: bool = ending == GameState.ENDING_PAID
 	# Paying it off is the only good news in the game and it deserves the one
 	# rising tone in the bank. Being struck off gets the low one.

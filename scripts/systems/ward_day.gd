@@ -799,14 +799,47 @@ func _routine_round(at: int) -> void:
 		e.stated_minute = at
 		e.written_minute = at + 4
 		e.terminal_id = TERMINAL_STATION
+		# NOT EVERYBODY HAS A LEG PROBLEM.
+		#
+		# Every unwell patient on every ward got "Round: still not right. Leg
+		# remains warm." — a woman with a pulmonary embolism, a man with
+		# pancreatitis, a woman with diverticulitis, all described as having a
+		# warm leg, four times a night, on the chart screen that is the entire
+		# game. It was written for Ivo Marchetti's cellulitis on the first ward
+		# and then said about all forty people.
+		#
+		# Picked per patient rather than per note, so somebody's chart reads as
+		# one nurse describing one person all day instead of a shuffle.
+		var pick: int = absi(hash(pid)) % ROUND_LINES_UNWELL.size()
 		if reads_as_well(pid):
 			e.claim = ChartEntry.Claim.SETTLED
-			e.text = "Round: comfortable, no concerns."
+			e.text = String(ROUND_LINES_WELL[absi(hash(pid)) % ROUND_LINES_WELL.size()])
 		else:
 			e.claim = ChartEntry.Claim.UNWELL
-			e.text = "Round: still not right. Leg remains warm."
+			e.text = String(ROUND_LINES_UNWELL[pick])
 		records.add(e)
 	_log("round", {"at": at})
+
+## What a nurse writes at a bedside four times a night. Deliberately unspecific:
+## she is recording that she looked and what she found, not making a diagnosis,
+## and a line that names a body part is a line that is wrong about most of the
+## ward.
+const ROUND_LINES_UNWELL := [
+	"Round: no better than this morning. Obs unchanged.",
+	"Round: still uncomfortable. Asked for something for it.",
+	"Round: not settling. Has not eaten today.",
+	"Round: poor colour. Slept badly.",
+	"Round: still not right. Reviewed with the co-ordinator.",
+	"Round: no improvement since handover.",
+]
+
+const ROUND_LINES_WELL := [
+	"Round: comfortable, no concerns.",
+	"Round: settled. Up to the toilet unaided.",
+	"Round: eating and drinking. No complaints.",
+	"Round: comfortable. Asking when they can go.",
+	"Round: no concerns. Obs stable.",
+]
 
 # ------------------------------------------------------------ close of play
 ## Cached, because more than one thing legitimately asks how the day went — the

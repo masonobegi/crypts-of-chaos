@@ -55,7 +55,11 @@ func _build() -> void:
 	# The line that stops this reading as theft.
 	var interest := int(res.get("interest", 0))
 	if interest > 0:
-		mv.add_child(UIKit.row("Interest, 10%% a night on the balance",
+		# NOT "10%%". `%%` only collapses to `%` when the string is actually run
+		# through the format operator, and this one is a plain literal — so the
+		# card printed "Interest, 10%% a night" on every short night.
+		mv.add_child(UIKit.row("Interest, %d%% a night on the balance"
+				% int(round(Cases.DEBT_INTEREST * 100.0)),
 			"+" + UIKit.money_str(interest), UIKit.BAD))
 	mv.add_child(UIKit.rule())
 	mv.add_child(UIKit.row("Still owed",

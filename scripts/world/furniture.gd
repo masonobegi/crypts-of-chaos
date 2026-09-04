@@ -424,7 +424,13 @@ static func _ward(h: Hospital, r: Room) -> void:
 		_occupy(slot.x, slot.z, 1.0, 2.1)
 
 		# Gas outlets and the bed number, on the wall behind the head.
-		Dressing.oxygen_panel(h, Vector3(slot.x, 1.42, far_z + into * 0.10), _far_rot(r))
+		# ON the wall plane. `Dressing._add` already pushes every piece out by
+		# half its own depth — that is what the depth argument is for, and
+		# CLAUDE.md 13 is about exactly this — so a caller that adds its own
+		# standoff on top is double-offsetting. The gas panel hung 13cm proud of
+		# the plaster and the sharps bin a full 30cm, floating in mid-air beside
+		# every bed on the ward.
+		Dressing.oxygen_panel(h, Vector3(slot.x, 1.42, far_z), _far_rot(r))
 		# OFF TO THE SIDE, because the patient's floating name tag is centred
 		# over the same bed. Directly above the head the two sat on top of each
 		# other and every bedside shot read "Sam Oduya" with a "4" printed
@@ -436,7 +442,7 @@ static func _ward(h: Hospital, r: Room) -> void:
 		# still landed on top of each other. Beds are 4m apart, so there is room.
 		_wall_sign(h, str(n), Vector3(slot.x - 1.35, 2.30, far_z + into * 0.14),
 			_far_rot(r), 0.16)
-		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, far_z + into * 0.30), _far_rot(r))
+		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, far_z), _far_rot(r))
 
 		# The cabinet by the head and the tray table across the foot: the two
 		# things that are actually beside a hospital bed. Both take a footprint,

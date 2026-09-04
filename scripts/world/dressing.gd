@@ -227,10 +227,18 @@ static func sprinkler(h: Node3D, pos: Vector3) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Sprinkler"
 	root.add_to_group(CEILING_GROUP)
-	root.add_child(Build.mi(Build.cyl_mesh(0.045, 0.05, 10), Build.mat(STEEL, 0.35, 0.7),
-		Vector3(0, -0.025, 0)))
-	root.add_child(Build.mi(Build.cyl_mesh(0.018, 0.07, 8),
-		Build.mat(Color(0.85, 0.45, 0.25), 0.4, 0.3), Vector3(0, -0.085, 0)))
+	# AN ESCUTCHEON YOU CAN SEE. The plate was 4.5cm of pale steel against a
+	# white ceiling — invisible — so all that read was the orange nozzle hanging
+	# 12cm below it, and every wide shot of the ward had a small brown speck
+	# floating in the middle of the ceiling with nothing holding it up. Wider,
+	# a shade darker than the plaster, and the drop shortened so the whole
+	# fitting reads as one object attached to something.
+	root.add_child(Build.mi(Build.cyl_mesh(0.085, 0.022, 16),
+		Build.mat(Color(0.72, 0.74, 0.76), 0.45, 0.35), Vector3(0, -0.011, 0)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.030, 0.038, 12),
+		Build.mat(STEEL, 0.35, 0.7), Vector3(0, -0.040, 0)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.016, 0.030, 10),
+		Build.mat(Color(0.85, 0.45, 0.25), 0.4, 0.3), Vector3(0, -0.072, 0)))
 	return _add(h, root, pos)
 
 ## A rail along a corridor wall, with brackets. Runs from x0 to x1 at a fixed z.

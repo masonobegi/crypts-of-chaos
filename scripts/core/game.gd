@@ -256,8 +256,19 @@ func _spawn_player() -> void:
 	cam.fov = float(Settings.get_value("fov"))
 	# You start in the corridor, outside the ward, because the first thing this
 	# game asks you to do is walk in and look at somebody.
-	player.global_position = hospital.point_in("corridor") + Vector3(0, 0.2, 0)
-	player.face(Vector3(5.5, 0, 4.0))
+	# THE AUTHORED POINT, NOT A DICE ROLL.
+	#
+	# `Hospital.spawn_point()` exists and its docstring says "authored so the
+	# first frame of a run is composed rather than rolled". Nothing called it.
+	# This used `point_in("corridor")`, which is a random nav point anywhere
+	# along a sixty-two metre corridor — so the first thing a new player saw was
+	# wherever the dice landed, sometimes facing a wall, sometimes nose-first
+	# into the ward door with "Open door · or just walk into it" filling the
+	# screen. That is the first frame of the game and it was different every
+	# launch. It also made every screenshot non-deterministic, which is how a
+	# bedside shot ended up being a photograph of a door.
+	player.global_position = hospital.spawn_point() + Vector3(0, 0.2, 0)
+	player.face(hospital.point_in("ward"))
 
 ## Seed who talks to whom. Gossip weights by affinity, so which two nurses
 ## happen to get on decides how fast something you did travels.

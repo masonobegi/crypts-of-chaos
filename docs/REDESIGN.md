@@ -8,7 +8,7 @@
 
 ## 1. PITCH
 
-> **You are a doctor who needs $1,500 by eight o'clock. Every patient you keep in
+> **You are a doctor who needs $2,200 by eight o'clock. Every patient you keep in
 > a bed tonight is money — and every reason you invent for keeping them is a
 > document somebody can read tomorrow.**
 
@@ -138,7 +138,7 @@ Every profitable act leaves at least one:
 
 **Contradiction types the reviewer can find:**
 1. Two entries about the same window that disagree.
-2. An entry stated at 20:30 and written at 23:10.
+2. An entry stated at 17:30 and written at 19:50.
 3. You authored an entry while a witness places you elsewhere.
 4. A patient-reported symptom the patient does not remember reporting.
 5. An order with no matching dispensation.
@@ -163,29 +163,48 @@ somebody checks a time.
 
 ## 10. MONEY — WITH THE PROOF
 
+> **These are the shipped numbers**, taken from `Cases`. They drifted here once
+> and the doc was quoting $2,400 owed against a $2,200 debt, an $850 admission
+> against a $500 one, and a worked example running to 23:10 on a day that ends
+> at 20:00 — which makes a reference worse than no reference.
+
 ```
 Cash on hand                       $900
-Owed tonight, 20:00              $2,400
-Shortfall                        $1,500
+Owed tonight, 20:00              $2,200
+Owed in total                   $15,500   and +10% a night on whatever is left
 
 Your cut, per extra night:  premium $850 · standard $450 · state $180
 Completion fee, honest discharge:            $150
-A&E admission (needs a free bed):            $850  (one-off)
+A&E admission (needs a free bed):            $500  (one-off, two waiting)
 ```
 
-**Honest ceiling:** 5 discharges ($750) + the A&E admission ($850) + $900
-= **$2,500 against $2,400.** 
+The admission is deliberately worth **less than a premium night and more than a
+discharge**. That single inequality is the whole economy: it is what makes
+holding a state-funded patient cost you money, and what stops five held beds
+paying more than three.
 
-**Honesty pays — by $100.** The honest path is not blocked; it is *tight*, and it
-requires you to send home an 81-year-old who has nobody and a frightened man with
-a cold flat. **The cost of the honest path is moral, not financial.** That is a
-far better first day than "you must commit fraud."
+**Empty the ward:** 5 discharges ($750) + 2 admissions ($1,000) + $900
+= **$2,650 against $2,200.** Clears tonight and nothing else.
 
-**Minimum-crime path:** discharge Dot (frees the bed → $850 admission), hold Hal
-($450), discharge the rest ($450) = **$1,750.** One manufactured hold.
+**The honest day** — look at everybody, keep the ones who are genuinely unwell,
+document it, corroborate it — pays **$2,950 to $3,650** depending on the ward.
+That is measured rather than argued: `tests/probe/frontier_impl.gd` plays it on
+all four wards as a named strategy and asserts it signs off clean.
 
-**Greed path:** hold all five = $2,780. Comfortable, and five separate stories to
-keep straight in front of one reviewer.
+**Honesty pays, comfortably.** The honest path is not blocked and it is not even
+tight. What it costs is that you send home an 81-year-old who has nobody and a
+frightened man with a cold flat, because they are well and you have nothing to
+write. **The cost of the honest path is moral, not financial**, which is a far
+better first day than "you must commit fraud."
+
+**The frontier:** on every ward the biggest night of all is reachable, and on
+every ward it is *not* clean — the top figure is 3,950 to 4,350 and it always
+arrives flagged or referred. The gap between the honest day and the greedy one
+is four to seven hundred, which is one night off a nine-night career.
+
+**And the debt is what makes that a decision.** Ten per cent a night on
+$15,500 means the difference is not $700 tonight, it is how many nights there
+are. That is the whole tension and it does not need a single unfair number.
 
 **Missing the payment is not game over.** Vinnie adds $600 and **visits the ward
 tomorrow** — a new pair of eyes in your workplace, permanently.
@@ -207,27 +226,29 @@ always knows *which line did it*.
 
 ## 12. WORKED EXAMPLE — HOW A SMALL LIE COMPOUNDS
 
-**19:40.** You need $1,500. Sam Oduya is premium and grateful. You write
+**16:40.** You are $1,300 short. Sam Oduya is premium and grateful. You write
 *"reports transient dizziness on standing, 19:30 — observe overnight."*
 You write it at the ward terminal. Nurse Adeyemi is at the station, eight metres
 away, and sees you there.
 
-**19:55.** Adeyemi does her round and writes *"Comfortable. Mobilising
+**16:00.** Adeyemi's round, forty minutes before you wrote, says *"Comfortable. Mobilising
 independently to the toilet without difficulty."* **Contradiction 1.**
 
-**20:10.** You ask her to re-check him. She goes — and now she remembers *that
+**17:10.** You ask her to re-check him. She goes — and now she remembers *that
 you asked her to go*, which is a memory about **you**, not about Sam.
 
-**20:30.** Ruth Kerrigan, in the next bed, mentions to Adeyemi that "the doctor
+**17:30.** Dot Kerrigan, in the next bed, mentions to Adeyemi that "the doctor
 was asking Mr Oduya a lot of questions about feeling faint." **Contradiction 2:**
 patient-reported, or doctor-suggested?
 
-**21:00.** You decide to shore it up with a lying-and-standing blood pressure.
-The machine records **normal**. **Contradiction 3, and it is permanent.**
+**17:45.** You decide to shore it up with a lying-and-standing blood pressure.
+Seventy-five minutes later the lab comes back **normal**. **Contradiction 3, and
+it is permanent** — you asked for it, so it is in your name.
 
-**23:10.** You go back and write an addendum: *"BP unremarkable — symptoms likely
-positional and transient."* Entry time 23:10, stated 21:00. **Backdated by two
-hours,** and the terminal you used is outside the ward.
+**19:50.** You go back and write an addendum: *"BP unremarkable — symptoms likely
+positional and transient."* Entry time 19:50, stated 17:45. **Backdated by two
+hours,** the terminal you used is outside the ward, and it is the second note
+you have written making the same claim about the same man.
 
 **08:10.** The sister opens with the softest one and works inward. You have to
 choose which of three stories to defend, and abandoning one means explaining why

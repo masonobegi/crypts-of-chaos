@@ -36,6 +36,10 @@ var current_id := ""
 ## could be clicked again. Settings is one of the first things anybody presses.
 var menu_mode := false
 
+## Which screen to return to when this one closes. One level is enough: the only
+## nesting in the game is pause -> settings/controls/credits.
+var _came_from := ""
+
 ## Rate-limited, because HSlider emits value_changed on every STEP of a drag and
 ## not on release. Range 0..1 at step 0.05 is twenty steps, so one sweep of the
 ## Effects slider fired twenty 880 Hz beeps inside a fraction of a second.
@@ -76,9 +80,22 @@ func _unhandled_input(event: InputEvent) -> void:
 			# there is nothing behind those at all.
 			if current_id in UNDISMISSABLE:
 				return
-			close()
-		else:
+			# Back to where you came from, not out to the world. Settings and
+			# Controls are opened FROM the pause menu, and closing them dropped
+			# the player straight into the ward with the game unpaused — so the
+			# way out of a submenu was to quit the menu entirely.
+			if _came_from != "":
+				var back := _came_from
+				_came_from = ""
+				close()
+				open(back, {})
+			else:
+				close()
+		elif not menu_mode:
 			open("pause", {})
+		# ...and on the TITLE screen there is nothing to pause. Escape opened the
+		# in-game pause menu over the main menu and set `get_tree().paused`, which
+		# freezes a title screen that has no way to unpause itself.
 		get_viewport().set_input_as_handled()
 
 # ------------------------------------------------------------------ routing
@@ -104,6 +121,19 @@ func open(id: String, ctx: Dictionary = {}) -> void:
 	_set_modal(true, bool(screen.get("pauses_world") if screen.get("pauses_world") != null else true))
 	# After it is genuinely up, and regardless of who asked. See EventBus.
 	EventBus.ui_opened.emit(id)
+
+## Out of a submenu, back to the menu that opened it — or out to the world if
+## nothing did. "Back" from Settings used to call `close()`, which dropped the
+## player into the unpaused ward rather than back to the pause menu they came
+## from, so the only way out of a submenu was to leave the menu entirely.
+func _back() -> void:
+	if _came_from == "":
+		close()
+		return
+	var to := _came_from
+	_came_from = ""
+	close()
+	open(to, {})
 
 func close() -> void:
 	if current == null:
@@ -251,7 +281,7 @@ func _settings_screen() -> Control:
 		open("settings", {}), Color(0.28, 0.20, 0.20))
 	reset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(reset)
-	var back := UIKit.button("Back", close)
+	var back := UIKit.button("Back", _back)
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(back)
 	outer.add_child(row)
@@ -371,7 +401,7 @@ func _credits_screen() -> Control:
 		box.add_child(bv)
 		v.add_child(box)
 	v.add_child(UIKit.spacer(6))
-	v.add_child(UIKit.button("Back", close))
+	v.add_child(UIKit.button("Back", _back))
 	return parts[0]
 
 # ---- pause
@@ -389,8 +419,12 @@ func _pause_screen() -> Control:
 	# a day is genuinely over and the only thing that carries is the carry.
 	v.add_child(UIKit.label("A shift is one sitting. It saves at the handover.",
 		12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER, true))
-	v.add_child(UIKit.button("Settings", func(): open("settings", {})))
-	v.add_child(UIKit.button("Controls", func(): open("controls", {})))
+	v.add_child(UIKit.button("Settings", func():
+		_came_from = "pause"
+		open("settings", {})))
+	v.add_child(UIKit.button("Controls", func():
+		_came_from = "pause"
+		open("controls", {})))
 	v.add_child(UIKit.spacer(8))
 	# A SHIFT IS ONE SITTING, AND THIS THROWS IT AWAY.
 	#

@@ -20,7 +20,7 @@ var A = ReviewSystem.Answer
 ## cannot find an honest day, and on the fourth ward it did not.
 const JUSTIFY := ["nothing", "gap_note", "round_note", "backdate", "lead",
 	"nurse", "test_late", "social", "examine", "colleague", "colleague_note",
-	"own_note"]
+	"own_note", "only_if_needed"]
 
 func _day() -> WardDay:
 	# Including the debt. A search whose later rows owe more than its earlier
@@ -77,9 +77,38 @@ func _justify(w: WardDay, pid: String, how: String) -> void:
 		## registrar and then write over him if you do not like the answer.
 		"examine":
 			w.examine(pid)
-		"own_note":
+		## WHAT A COMPETENT PLAYER ACTUALLY DOES: look at everybody, and then
+		## write ONLY on the bed that has nothing standing behind it.
+		##
+		## Every other strategy in this list applies one verb uniformly to every
+		## held bed, which is a coarse model of play — it writes a second,
+		## redundant note on a patient the ward sister's own nurse has already
+		## backed, and that note is a new thing to explain rather than a defence.
+		## On the fourth ward that was the whole difference between the search
+		## and a day played by hand: the probe insisted no clean day existed
+		## there, and one does.
+		"only_if_needed":
 			w.examine(pid)
-			w.advance_to(maxi(w.minute, 10 * 60))
+			var backed := false
+			for e in w.records.for_patient(pid):
+				if e.supports_stay() and e.author != ChartEntry.Author.YOU:
+					backed = true
+			if not backed:
+				w.advance_to(maxi(w.minute, 11 * 60))
+				w.write_entry(pid, C.UNWELL,
+					"Reviewed at the bedside. Not fit for discharge today.", w.minute)
+		"own_note":
+			# ELEVEN, NOT TEN. Adeyemi rounds at 10, 13, 16 and 19, and
+			# `concerns_same_moment_as` is a forty-five minute window — so a note
+			# written at exactly ten o'clock lands on top of a round that says
+			# the opposite and reads as two people disagreeing about the same
+			# half hour. Writing in the GAP between rounds is a real skill the
+			# game teaches, and this strategy did not have it: it wrote on the
+			# hour every time, so the one honest shape on the fourth ward always
+			# collided with a round and the search concluded no clean day
+			# existed there. A day played by hand at eleven is signed off.
+			w.examine(pid)
+			w.advance_to(maxi(w.minute, 11 * 60))
 			w.write_entry(pid, C.UNWELL,
 				"Reviewed at the bedside. Not fit for discharge today.", w.minute)
 		"colleague":

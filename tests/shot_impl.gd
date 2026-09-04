@@ -170,6 +170,8 @@ func _stage_ui(which: String, w) -> void:
 				won.record_night([], ReviewSystem.OUTCOME_CLEAR)
 			won.record_night([], ReviewSystem.OUTCOME_QUESTIONS)
 			GameState.set_flag("debt_remaining", 0)
+			GameState.day = maxi(DoctorRecord.load_from_state().nights, 1)
+			GameState.start_day()
 			EventBus.request_ui.emit("day_over",
 				{"verdict": ReviewSystem.OUTCOME_CLEAR})
 		"struck_off":
@@ -182,6 +184,14 @@ func _stage_ui(which: String, w) -> void:
 			rec.record_night([_mk("uncorroborated_stay"), _mk("sent_home_unwell")],
 				ReviewSystem.OUTCOME_ESCALATED)
 			rec.record_night([_mk("backdated")], ReviewSystem.OUTCOME_FLAGGED)
+			# THE CARD SAYS "DAY %d" AND THE STATS SAY "%d SHIFTS", and this
+			# staged four nights onto a day-one career — so the shipped
+			# screenshot of the game's own ending read "Day 1" over "4 SHIFTS".
+			# In real play the two always agree; a marketing shot that
+			# contradicts itself is still a marketing shot that contradicts
+			# itself, and this is the frame somebody would put on a store page.
+			GameState.day = rec.nights
+			GameState.start_day()
 			GameState.set_flag("debt_remaining", 9240)
 			EventBus.request_ui.emit("day_over",
 				{"verdict": ReviewSystem.OUTCOME_ESCALATED})

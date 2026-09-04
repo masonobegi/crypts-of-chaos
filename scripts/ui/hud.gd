@@ -321,12 +321,32 @@ func _on_prompt_cleared() -> void:
 ## the rest of its timer. Found by looking at the screenshot — the HUD is paused
 ## with the world, so its own timer cannot clear it either, and it would have
 ## stayed clipped until the player closed the card.
+var _modal_open := false
+
 func drop_subtitle() -> void:
-	_subtitle_timer = 0.0
-	if _subtitle_panel != null:
-		_subtitle_panel.visible = false
+	set_modal(true)
+
+## A CARD IS UP FOR AS LONG AS IT IS UP, not just for the instant it opens.
+##
+## The first version of this cleared the subtitle when a screen opened, which
+## fixed the line that was ALREADY on screen and nothing else. Most screens do
+## not pause the world — the ward clock keeps running behind the chart, which is
+## the whole point of the chart costing you twelve minutes — so the tannoy went
+## on firing into a panel that covers the right half of the subtitle box, and
+## the next line landed clipped exactly as before. A screenshot of the chart
+## screen caught it: `Would the doctor who left ... please co`.
+func set_modal(on: bool) -> void:
+	_modal_open = on
+	if on:
+		_subtitle_timer = 0.0
+		if _subtitle_panel != null:
+			_subtitle_panel.visible = false
 
 func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
+	# Nothing goes behind a card. The world is still talking — it just is not
+	# worth showing half a sentence for.
+	if _modal_open:
+		return
 	# Off means off. Somebody who turned subtitles off did not mean "except
 	# for the barks", which are most of what this panel ever shows.
 	if not bool(Settings.get_value("subtitles")):

@@ -1741,6 +1741,37 @@ ward has closed.
 
 Fourteen smoke seeds and seven career seeds pass now, repeatedly.
 
+### Two ways to press [E] on somebody and have nothing happen
+
+Both found by sweeping the day plan across twenty wards it had never played.
+`PLAY_SEED` now points it at any of them.
+
+**A person standing in a doorway could not be spoken to.** Patients get up and
+wander, and one of the places they stop is the ward doorway — where the
+crosshair finds the door instead. `_prefer_person` already overrules a loose
+prop for exactly this reason (an IV stand beside every bed was stealing the
+most important interaction in the game), and it deliberately did NOT overrule a
+door, on the grounds that a door is a thing you aim at on purpose. That
+reasoning is right for an empty doorway and wrong for one with somebody in it,
+and the tie-break is in the door's own prompt: "or just walk into it". A door
+can always be opened by walking into it, so nothing is lost by letting a person
+in front of it win.
+
+**A tap on somebody who takes a step did nothing.** A patient has
+`interact_held`, so the tap only fires on the way UP — and `_handle_use` reads
+what is under the crosshair on the release frame. Somebody who moves during the
+0.42s of the tap takes the crosshair with them, `_cancel_use()` runs, and the
+release goes nowhere: no sound, no card, no message. Exactly the "I pressed it
+and nothing happened" that makes a game feel broken, and it is most likely with
+the people who are most interesting to talk to. It acts on the thing you
+PRESSED on now, while the press is in flight and while they are still within
+arm's reach — walking away yourself still cancels, which is what walking away
+means.
+
+The harness learned two things too: keep aiming at somebody while you close the
+last few frames on them, and take another step and try again rather than
+reporting a bed as unreachable because a chair was in the way.
+
 ### CLAUDE.md
 
 Corrected against the code: the counts, forty people across four wards rather

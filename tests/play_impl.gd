@@ -57,6 +57,7 @@ var _reach := REACH
 var _office_tries := 0
 var _day_was := 0
 var _wrote := false
+var _bed_tries := 0
 
 const REACH := 2.4
 ## How long a single approach gets. The office is at the far end of the
@@ -78,9 +79,15 @@ const SEEK_DIRS := ["down", "up", "right", "left"]
 const _DECIDE := ["Send them home", "Keep them in overnight"]
 
 func start() -> void:
-	# A FIXED WARD. `start_new_career(0)` means "seed off the clock", so this
-	# played a different building every run and a failure could not be repeated.
-	GameState.start_new_career(20260821)
+	# A FIXED WARD, AND AN OVERRIDABLE ONE. `start_new_career(0)` means "seed off
+	# the clock", so this played a different building every run and a failure
+	# could not be repeated — but one fixed board is one board, and every gap
+	# this project has found in the last two sessions was a harness that only
+	# worked on the ward it was written against. `PLAY_SEED=n` points it at
+	# another; the sweep is in the commit log rather than the suite, because a
+	# whole shift is three seconds and fourteen of them is a minute.
+	var env := OS.get_environment("PLAY_SEED")
+	GameState.start_new_career(int(env) if env.is_valid_int() else 20260821)
 	# THE DAY PLAN PLAYS IT AS A STRANGER WOULD. Every other harness in this
 	# repo sets `tutorial_done` and therefore has never once been through the
 	# three lines a new player is actually shown, or found out whether they get
@@ -269,17 +276,44 @@ func tick() -> bool:
 			if _walk_toward(p):
 				_to("bed_use")
 		"bed_use":
+			# KEEP AIMING. Patients get up and walk about, and the twenty frames
+			# between arriving and tapping are enough for one to stroll out of
+			# the crosshair — so the tap went into the air beside somebody the
+			# doctor had been looking straight at a third of a second earlier. A
+			# person tracks them with their eyes; so does this.
+			if _target != null and is_instance_valid(_target):
+				_aim_at(p, _target.head_position() if _target.has_method("head_position")
+					else _target.global_position)
 			if _since() == 2:
 				_tap("use", true)
 			elif _since() == 8:
 				_tap("use", false)
 			elif _since() > 20:
-				if String(game.ui.current_id) != "patient":
-					_fail("the card would not open at bed %d — %s, %.1fm away, crosshair said '%s'"
+				if String(game.ui.current_id) != "patient" and _bed_tries < 3:
+					# CLOSER, AND TRY AGAIN. Standing at arm's length is not the
+					# same as having a clear line to somebody: a bed, a chair or
+					# a doorframe between the camera and a wandering patient
+					# eats the ray, and a person in that situation takes another
+					# step rather than giving up. Two more steps, then it is a
+					# real finding.
+					_bed_tries += 1
+					_reach = maxf(1.3, _reach - 0.5)
+					_to("bed_walk")
+				elif String(game.ui.current_id) != "patient":
+					_fail("the card would not open at bed %d — %s, %.1fm away, crosshair said '%s'; doctor at %s in '%s', them at %s"
 						% [_bed + 1, _target.name if _target else "nobody",
 							p.global_position.distance_to(_target.global_position)
 								if _target else -1.0,
-							String(_prompts[-1]) if not _prompts.is_empty() else ""])
+							String(_prompts[-1]) if not _prompts.is_empty() else "",
+							_round(p.global_position),
+							p.current_room() if p.has_method("current_room") else "?",
+							_round(_target.global_position) if _target else "?"])
+					_fail("  the ward reads: %s" % _dispositions())
+					_fail("  screen '%s', locked=%s, data=%s, state=%s, asleep=%s"
+						% [String(game.ui.current_id), str(p.input_locked),
+							"null" if (_target == null or _target.get("data") == null) else "ok",
+							str(_target.get("state")) if _target else "?",
+							str(_target.get("_asleep")) if _target else "?"])
 					# ON TO THE NEXT ONE. Falling through to the office from
 					# here walked nowhere, because the route was still the one
 					# to this bed — and then opened this patient's card and
@@ -736,6 +770,7 @@ func _next_bed(p) -> void:
 		return
 	_replans = 0
 	_reach = REACH
+	_bed_tries = 0
 	_route_to(p, _target.global_position)
 	_to("bed_walk")
 
@@ -781,6 +816,16 @@ func _route_to(p, to: Vector3) -> void:
 	_unstick_until = mini(_unstick_until, frames + 34)
 	_path = h.nav.find_path(_from, to) if h and h.nav else PackedVector3Array()
 	_wp = 0
+
+func _dispositions() -> String:
+	var w = tree.get_first_node_in_group("ward_day")
+	if w == null:
+		return "no ward"
+	var out: Array = []
+	for id in _roster_ids():
+		var st: Dictionary = w.state.get(id, {})
+		out.append("%s=%s" % [id, String(st.get("disposition", "?"))])
+	return ", ".join(PackedStringArray(out))
 
 func _roster_ids() -> Array:
 	var out: Array = []

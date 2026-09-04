@@ -142,8 +142,21 @@ func _show_carry_prompt() -> void:
 ## to be aiming at and keeps the prompt, because reaching past a patient for the
 ## dial is the entire game. And only the USE target changes: _hover still points
 ## at the prop, so [LMB] picks the stand up exactly as before.
+## ...AND NEITHER DOES A DOORWAY.
+##
+## A patient who gets up and wanders stops in the ward doorway on the way, and
+## a door's interaction area is not a RigidBody3D — so the crosshair offered
+## "Open door" and the person standing in it could not be spoken to at all. The
+## reasoning is the same as the IV stand's, and it is stronger here: a door can
+## always be opened by WALKING INTO IT, which its own prompt says out loud, so
+## nothing is taken away by letting a person in front of it win. Found by
+## playing a whole shift with a controller on a seed nobody had played.
+func _is_a_door(n: Node) -> bool:
+	return n != null and n is Area3D and n.get("door") != null
+
 func _prefer_person(target: Node) -> Node:
-	if target != null and (target is NPCBody or not (target is RigidBody3D)):
+	if target != null and not _is_a_door(target) \
+			and (target is NPCBody or not (target is RigidBody3D)):
 		return target
 	var space := get_world_3d().direct_space_state
 	var from := global_position
@@ -200,8 +213,33 @@ func _handle_input(delta: float) -> void:
 const LONG_PRESS := 0.42
 var _long_fired := false
 
+## How far a target you have already pressed on is allowed to drift before the
+## press is dropped. The ray is 2.9m; this is "they took a step".
+const KEEP_DISTANCE := 3.6
+
 func _handle_use(delta: float) -> void:
 	var target := _use_hover
+	# THE THING YOU PRESSED ON, NOT THE THING UNDER THE CROSSHAIR WHEN YOU LET
+	# GO.
+	#
+	# A tap on somebody with `interact_held` only fires on the way UP, and
+	# patients get up and walk about — so pressing use on a patient who takes
+	# one step during the 0.42s of the tap lost the crosshair, hit
+	# `_cancel_use()` on the next frame, and the release did nothing at all. No
+	# sound, no card, no message: exactly the "I pressed it and nothing
+	# happened" that makes a game feel broken. Found by playing a whole shift
+	# with a controller on a seed nobody had played, where a wandering patient
+	# could not be talked to at all.
+	#
+	# Only while the press is in flight, only for a target that is still there,
+	# and only while they are still within arm's reach — walking away from
+	# somebody mid-press still cancels, which is what walking away means.
+	if (target == null or not target.has_method("interact")) \
+			and is_instance_valid(_use_target) \
+			and (Input.is_action_pressed("interact")
+				or Input.is_action_just_released("interact")) \
+			and _still_near(_use_target):
+		target = _use_target
 	if target == null or not target.has_method("interact"):
 		_cancel_use()
 		return
@@ -253,6 +291,13 @@ func _prompt_title(target: Node) -> String:
 		if p.size() > 0:
 			return String(p[0])
 	return "Use"
+
+## Is a target we already pressed on still close enough to count.
+func _still_near(n: Node) -> bool:
+	var n3 := n as Node3D
+	if n3 == null or not n3.is_inside_tree() or player == null:
+		return false
+	return player.global_position.distance_to(n3.global_position) <= KEEP_DISTANCE
 
 func _cancel_use() -> void:
 	_use_progress = 0.0

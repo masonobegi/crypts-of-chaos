@@ -29,7 +29,13 @@ only works on the board it happens to have been written against:
 ```bash
 SMOKE_SEED=99  godot --headless --path . --script res://tests/smoke_run.gd
 CAREER_SEED=99 godot --headless --path . --script res://tests/probe/career_run.gd
+PLAY_SEED=99   godot --headless --fixed-fps 60 --path . --script res://tests/play_run.gd -- day
 ```
+
+Sweeping those found four things in one session that three fixed seeds had not:
+two flaky checks, a patient standing in a doorway who could not be spoken to,
+and a tap on a walking patient that did nothing at all. Twenty seeds is a
+minute.
 
 Run the tests before committing. Run the screenshots after any UI or world
 change — five real bugs have been caught only by looking at the game.

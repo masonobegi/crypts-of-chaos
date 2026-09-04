@@ -150,6 +150,7 @@ const DAY_ONE := [
 		"on_your_note": "Ruth read it out to me. She said, Mum, did you tell him that. I said I don't know, love.",
 		"note": "Nobody at home. Her daughter Ruth is a retired ward sister and reads charts.",
 		"family": "Mrs Kerrigan's daughter",
+		"family_at": 1140,
 		"family_note": "She used to do my job.",
 		## The one patient for whom "no care at home" is simply true. Writing it
 		## is honest, defensible, and pays almost nothing — which is the shape
@@ -447,6 +448,7 @@ const DAY_TWO := [
 		"on_your_note": "She's read it. She says what does 'unsettled' mean, exactly.",
 		"note": "His daughter Yemi has already requested a copy of the notes.",
 		"family": "Mr Achebe-Fry's daughter",
+		"family_at": 1080,
 		"family_note": "She is a solicitor, and she asked for the notes before you got here.",
 		## THE SAME TEMPTATION AS SAM ODUYA, WIRED TO A DIFFERENT WITNESS. He is
 		## frightened, premium-funded and easy to lead — and everything written
@@ -581,6 +583,7 @@ const DAY_TWO := [
 		"note": "Well. Her son reads every line and asks who wrote it.",
 		"family_reads_charts": true,
 		"family": "Her son",
+		"family_at": 660,
 		"family_note": "He is a pharmacist, and he has already asked for the drug chart.",
 		"readmit_summary": "Represented 23:30 with a further episode, resolved on arrival.",
 		"readmit_opening": "He said we should have stopped in. He did say.",

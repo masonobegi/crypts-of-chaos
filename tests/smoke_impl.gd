@@ -232,6 +232,7 @@ func _check_the_verbs_work() -> void:
 	_check_nothing_floats_or_sinks()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
+	_check_the_daughter_actually_turns_up()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
@@ -823,6 +824,77 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 	GameState.set_flag("watched", was)
 	tree.root.remove_child(w)
 	w.free()
+
+## "RUTH KERRIGAN IS HERE TO SEE HER MOTHER."
+##
+## That line has been printed at seven o'clock since the day it was written and
+## nothing ever spawned anybody — the same unkept promise as "Ms Ferrand from
+## Coding is on the ward today", which was fixed earlier by making her turn up.
+## `VisitorNPC` existed the whole time, 115 lines of it, never instantiated
+## anywhere in the project, and broken with it: `_visit_bark` read
+## `p.overdue_days`, which is not a property of Patient, so the half of it that
+## produces evidence could not have run even if something had built one.
+##
+## Two halves, because the first version of this check asserted against Dot
+## Kerrigan by name and the smoke run's ward does not have her on it — so it
+## passed by doing nothing, which is how a check that cannot fail gets written.
+func _check_the_daughter_actually_turns_up() -> void:
+	# THE TRIGGER, on whichever ward actually has somebody expecting family.
+	var fired := {}
+	for day in range(1, Cases.DAYS.size() + 1):
+		var was_day := GameState.day
+		GameState.day = day
+		var expected := ""
+		var at := 0
+		for c in Cases.roster():
+			if int(c.get("family_at", 0)) > 0:
+				expected = String(c["id"])
+				at = int(c["family_at"])
+		if expected == "":
+			GameState.day = was_day
+			continue
+		var q := WardDay.new()
+		tree.root.add_child(q)
+		q.start()
+		q.visitor_arrived.connect(func(pid, _who): fired[String(pid)] = day)
+		q.advance_to(at + 1)
+		tree.root.remove_child(q)
+		q.free()
+		GameState.day = was_day
+	_ok(not fired.is_empty(),
+		"the families the game promises are announced on the day they are due (%s)"
+			% ", ".join(PackedStringArray(fired.keys())))
+
+	# THE BODY, on the ward that is actually running, for somebody who is on it.
+	var w = tree.get_first_node_in_group("ward_day")
+	var game_node = tree.get_first_node_in_group("hospital")
+	if w == null or game_node == null:
+		_fail("no ward to put anybody on")
+		return
+	var who := String(Cases.roster()[0]["id"])
+	var before := tree.get_nodes_in_group("visitor").size()
+	w.visitor_arrived.emit(who, "Somebody's family")
+	var visitors: Array = tree.get_nodes_in_group("visitor")
+	_ok(visitors.size() > before,
+		"and somebody is standing in the room when they are (%d)" % visitors.size())
+	if visitors.size() <= before:
+		return
+	var them = visitors[visitors.size() - 1]
+	var ps = tree.get_first_node_in_group("patient_system")
+	var bed_body = ps.get_body(who) if ps != null else null
+	if bed_body != null and is_instance_valid(bed_body):
+		var d: float = them.global_position.distance_to(bed_body.global_position)
+		_ok(d < 3.0, "at that patient's bed rather than somewhere in the ward (%.1fm)" % d)
+	# And the suspicion layer knows about them, which is the whole reason a
+	# visitor is interesting: `_who_can_see_me` walks every registered mind, so
+	# a note typed in front of them is a note they saw.
+	var sus = tree.get_first_node_in_group("suspicion_system")
+	var known := false
+	if sus != null:
+		for m in sus.all_minds():
+			if String(m.id).begins_with("visitor_"):
+				known = true
+	_ok(known, "and they are somebody the ward can be seen by")
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

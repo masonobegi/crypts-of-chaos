@@ -303,6 +303,57 @@ func _spawn_staff() -> void:
 	# card at the end of every bad night, and then nobody arrived — for the whole
 	# life of the feature.
 	GameState.day_started.connect(func(_d): _refresh_days_visitors())
+	_hook_the_ward_for_visitors()
+
+## Family arrives DURING a shift rather than at the start of one, so it cannot
+## come through `_refresh_days_visitors` with the auditor and Vinnie. WardDay
+## says when; this says who and where.
+func _hook_the_ward_for_visitors() -> void:
+	var w = get_tree().get_first_node_in_group("ward_day")
+	if w == null or not w.has_signal("visitor_arrived"):
+		return
+	if not w.visitor_arrived.is_connected(_on_visitor):
+		w.visitor_arrived.connect(_on_visitor)
+
+## SOMEBODY IS ACTUALLY IN THE ROOM.
+##
+## "Ruth Kerrigan is here to see her mother. She has brought a flask." has been
+## printed at seven o'clock since the line was written, and nothing has ever
+## spawned anybody — the same unkept promise as "Ms Ferrand from Coding is on
+## the ward today", which was fixed by making her turn up.
+##
+## She matters because of what she is: a retired ward sister who reads charts.
+## `family_reads_charts` is authored on her mother, `_family_read_it` is a
+## finding built on it, and `_who_can_see_me` walks every registered mind — so
+## putting her at the bedside means a note typed in front of her is a note she
+## saw, without a line of new machinery.
+func _on_visitor(pid, who) -> void:
+	if hospital == null or suspicion == null:
+		return
+	var v := VisitorNPC.new()
+	v.npc_id = "visitor_%s" % String(pid)
+	v.display = String(who)
+	v.patient_id = String(pid)
+	v.set_look(_look(v.npc_id, 61, Color(0.45, 0.38, 0.42)))
+	add_child(v)
+	# At the foot of her mother's bed, not "somewhere in the ward". She came to
+	# see one person.
+	var spot := hospital.point_in("ward")
+	var ps = get_tree().get_first_node_in_group("patient_system")
+	if ps != null and ps.has_method("get_body"):
+		var body = ps.get_body(String(pid))
+		if body != null and is_instance_valid(body) and body.is_inside_tree():
+			spot = body.global_position + Vector3(0.95, 0, 0.9)
+			spot.y = 0.0
+	v.global_position = spot
+	# VISITING, not ARRIVING: she is put where she is going. Walking her in
+	# from the door needs a nav path from outside the building, and the state
+	# she would arrive in has its own documented trap.
+	v.stand_and_argue(spot, 60.0)
+	var mind = suspicion.minds.get(v.npc_id, null)
+	if mind == null:
+		mind = DB.make_mind(v.npc_id, v.display, "family", "observant")
+	suspicion.register(mind, v)
 
 ## Who is on the ward today because of what happened last night. Rebuilt each
 ## morning: whoever should not be here any more goes, whoever should is spawned.

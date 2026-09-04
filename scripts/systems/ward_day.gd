@@ -11,6 +11,9 @@ signal entry_written(entry)
 ## A bed decided. Emitted only on an actual change, so re-confirming the same
 ## disposition does not count as a new decision.
 signal disposition_set(pid, what)
+## Somebody's family is at the bedside. (patient_id, display name.) Untyped on
+## purpose — see CLAUDE.md 1.
+signal visitor_arrived(pid, who)
 signal patient_changed(pid: String)
 signal day_ended(result: Dictionary)
 
@@ -42,8 +45,12 @@ var telemetry: Array = []
 ## ward sister, she reads her mother's chart the way she read charts for thirty
 ## years, and she is the only person in the building who will look at the notes
 ## without being asked to.
+## Kept as the hour Dot Kerrigan's daughter is due, which is what the smoke run
+## and `_reads_own_chart` both mean by "Ruth has been". The other two families
+## carry their own `family_at`.
 const RUTH_ARRIVES := 19 * 60
-var ruth_has_been := false
+## patient id -> their family has been today.
+var _family_been: Dictionary = {}
 
 ## Tonight's number. Usually Cases.DEBT_DUE; more if last night came up short.
 var debt_tonight := Cases.DEBT_DUE
@@ -151,7 +158,7 @@ func start() -> void:
 			"tests": 0,
 			"discharged_at": -1,
 		}
-	ruth_has_been = false
+	_family_been.clear()
 	for pe in Cases.prior_entries():
 		var e := ChartEntry.new()
 		e.patient_id = String(pe["patient"])
@@ -778,15 +785,34 @@ func _advance_locally(m: int) -> void:
 		if r > from and r <= minute:
 			_routine_round(r, i)
 	_self_discharges(from)
-	# ...and only if her mother is in one of the beds. Ruth is Dot Kerrigan's
-	# daughter, and she was announcing herself at seven o'clock on the second
-	# ward, where there is no Dot Kerrigan and never has been.
-	if not ruth_has_been and state.has("kerrigan") \
-			and RUTH_ARRIVES > from and RUTH_ARRIVES <= minute:
-		ruth_has_been = true
-		EventBus.toast.emit(
-			"Ruth Kerrigan is here to see her mother. She has brought a flask.", "info")
-		_log("ruth_arrived", {})
+	_family_arrives(from)
+
+## WHOEVER'S FAMILY IS DUE, at the hour that patient's own prose promises.
+##
+## This was one hardcoded block for Ruth Kerrigan at seven o'clock. Three
+## patients have a `family` authored and every one of them names a time out
+## loud — "My son's coming at eleven", "Yemi's coming at six", and Dot Kerrigan's
+## daughter in the evening — so the hour is a field now rather than a constant
+## that only one of the three could ever match.
+##
+## And somebody actually arrives. The Ruth line has been printed since the day
+## it was written and nothing ever spawned anybody: the same unkept promise as
+## "Ms Ferrand from Coding is on the ward today", which was fixed earlier by
+## making her turn up. `Game._on_visitor` builds the body; this decides who and
+## when, because the ward is what knows the time.
+func _family_arrives(from: int) -> void:
+	for c in Cases.roster():
+		var at: int = int(c.get("family_at", 0))
+		if at <= 0 or at <= from or at > minute:
+			continue
+		var pid := String(c["id"])
+		if _family_been.has(pid):
+			continue
+		_family_been[pid] = true
+		EventBus.toast.emit("%s is here. %s" % [String(c.get("family", "The family")),
+			String(c.get("family_note", "They read every line."))], "info")
+		visitor_arrived.emit(pid, String(c.get("family", "The family")))
+		_log("family_arrived", {"pid": pid, "at": at})
 
 ## A BED WITH A CLOCK ON IT.
 ##
@@ -1131,7 +1157,7 @@ func review_truth() -> Dictionary:
 			## that is Ruth Kerrigan, who arrives at seven; on the second it is
 			## Gordon's daughter, who asked for a copy before you got here.
 			"family_reads_charts": bool(c.get("family_reads_charts", false))
-				or (pid == "kerrigan" and ruth_has_been),
+				or (pid == "kerrigan" and _family_been.has("kerrigan")),
 			## ...and one patient reads it herself.
 			"reads_own_chart": bool(c.get("reads_own_chart", false)),
 			"family": String(c.get("family", "The family")),

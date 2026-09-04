@@ -80,6 +80,12 @@ func _visit_bark() -> void:
 	var p = ps.get_patient(patient_id) if ps else null
 	if p == null or not p.is_overdue() or not RNG.chance("visitor_overdue", 0.65):
 		return
+	# HOW LONG, IN DAYS. `p.overdue_days` does not exist and never did — reading
+	# a missing property into anything ABORTS the function without erroring
+	# (CLAUDE.md 11), so this bark's whole second half, including the evidence
+	# it exists to produce, could not run even if the class had ever been
+	# instantiated. Patient carries the two numbers it is the difference of.
+	var over: float = maxf(p.days_admitted - p.expected_stay_days, 0.0)
 	say(String(RNG.pick("visitor_overdue_bark", [
 		"They were supposed to be home by now.",
 		"That's not what you told me on Tuesday.",
@@ -95,10 +101,10 @@ func _visit_bark() -> void:
 		ev.patient_id = patient_id
 		ev.source = Evidence.Source.INFERRED
 		ev.time = GameState.career_minutes
-		ev.base_weight = clampf(p.overdue_days * 0.16, 0.05, 0.6)
+		ev.base_weight = clampf(over * 0.16, 0.05, 0.6)
 		ev.certainty = 0.7
 		ev.cover_tag = "clinical_caution"
-		ev.summary = "noticed the stay running %d days long" % int(p.overdue_days)
+		ev.summary = "noticed the stay running %d days long" % int(ceilf(over))
 		mind.add_evidence(ev)
 
 func _leave() -> void:

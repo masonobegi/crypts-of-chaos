@@ -34,6 +34,10 @@ func _ready() -> void:
 	collision_mask = 0
 
 func build() -> void:
+	# The bed's own patch on the floor. See `Build.blob_shadow` — the shipping
+	# renderer has no ambient occlusion, so without this a ward is five beds
+	# floating a centimetre over a flat plane.
+	add_child(Build.blob_shadow(Vector2(WIDTH + 0.34, LENGTH + 0.26), 0.02))
 	var frame := Color(0.86, 0.88, 0.90)
 	var steel := Color(0.62, 0.65, 0.69)
 	var linen := Color(0.93, 0.95, 0.96)

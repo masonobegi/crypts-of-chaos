@@ -42,6 +42,7 @@ var beard := false
 ## came out the same hardcoded pale blue no matter what `Appearance` decided,
 ## and the variation was invisible on the largest surface on the model.
 var _look_given := false
+var _shadow: MeshInstance3D = null
 
 var _path: PackedVector3Array = PackedVector3Array()
 var _path_i := 0
@@ -139,6 +140,16 @@ func _build_body() -> void:
 	root.name = "Body"
 	root.scale = Vector3.ONE * height_scale
 	add_child(root)
+
+	# A PATCH ON THE FLOOR. The project ships on the Compatibility renderer,
+	# which has no SSAO, so a character walking down a corridor had nothing at
+	# all underneath them and read as pasted onto the floor rather than standing
+	# on it. Parented to the BODY so it inherits the height scale, but pinned to
+	# the character's own origin height, which is the floor when they are stood
+	# on it. Hidden when seated — somebody in a bed is not casting this, the bed
+	# is, and a patch hovering half a metre up is worse than none.
+	_shadow = Build.blob_shadow(Vector2(0.86, 0.66), 0.02)
+	add_child(_shadow)
 
 	# Chunky on purpose, and TAPERED, and as few separate solids as possible.
 	#
@@ -1042,6 +1053,8 @@ func set_seated(on: bool) -> void:
 	if body == null:
 		return
 	_seated = on
+	if _shadow != null:
+		_shadow.visible = not on
 	var b: Node3D = body
 	b.position = Vector3(0, -0.30, 0) if on else Vector3.ZERO
 	# Sitting up straight is a thing nobody does. A few degrees of forward lean
@@ -1077,6 +1090,8 @@ func set_in_bed(on: bool) -> void:
 	if body == null:
 		return
 	_seated = on
+	if _shadow != null:
+		_shadow.visible = not on
 	var b: Node3D = body
 	# Hips down at the mattress and back toward the pillow; trunk tipped BACKWARD
 	# against the raised head of the bed.

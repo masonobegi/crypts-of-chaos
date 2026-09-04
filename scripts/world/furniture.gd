@@ -310,6 +310,9 @@ static func _block(h: Hospital, size: Vector3, color: Color, pos: Vector3, rot_y
 
 static func _table(h: Hospital, pos: Vector3, w := 0.6, d := 0.5, height := 0.72,
 		color := Color(0.72, 0.66, 0.55)) -> void:
+	var sh := Build.blob_shadow(Vector2(w + 0.30, d + 0.30), 0.02)
+	h.add_child(sh)
+	sh.position = Vector3(pos.x, 0.02, pos.z)
 	_block(h, Vector3(w, 0.06, d), color, pos + Vector3(0, height, 0))
 	_occupy(pos.x, pos.z, w, d)
 	for sx in [-1.0, 1.0]:
@@ -323,6 +326,7 @@ static func _chair(h: Hospital, pos: Vector3, rot_y := 0.0, color := Color(0.35,
 	h.add_child(root)
 	root.position = pos
 	root.rotation.y = rot_y
+	root.add_child(Build.blob_shadow(Vector2(0.72, 0.72), 0.02))
 	var seat := Build.wall(Vector3(0.44, 0.06, 0.44), color, Vector3(0, 0.45, 0))
 	root.add_child(seat)
 	_occupy(pos.x, pos.z, 0.5, 0.5)
@@ -583,6 +587,9 @@ static func _station(h: Hospital, r: Room) -> void:
 		_block(h, Vector3(2.06, 0.05, 0.62), Color(0.34, 0.39, 0.42),
 			Vector3(sx, 1.02, corridor_z))
 		_block(h, Vector3(2.3, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
+		var csh := Build.blob_shadow(Vector2(2.6, 1.15), 0.02)
+		h.add_child(csh)
+		csh.position = Vector3(sx, 0.02, corridor_z)
 		# The lean rail, a hand's width proud of the front face.
 		_block(h, Vector3(2.16, 0.05, 0.05), Color(0.62, 0.66, 0.68),
 			Vector3(sx, 0.80, corridor_z + 0.33))

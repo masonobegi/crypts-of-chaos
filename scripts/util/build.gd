@@ -226,6 +226,83 @@ static func capsule_mesh(radius: float, height: float) -> CapsuleMesh:
 	return c
 
 # ------------------------------------------------------------------ visual bits
+# ------------------------------------------------------------ contact shadow
+## A SOFT DARK PATCH UNDER A THING, so it stands on the floor instead of over it.
+##
+## The project ships on the Compatibility renderer, which is the only one this
+## machine can run and therefore the only one anything has ever been verified
+## against — and Compatibility has no SSAO. So every bed, chair, table and
+## person in the building was lit from two directions with nothing underneath
+## them: a room of objects hovering a centimetre over a flat plane, which is
+## most of what "it looks like placeholder" actually means.
+##
+## Still no assets. The falloff is an Image built at runtime, once, the same way
+## every sound in this game is a buffer built at runtime — and it is cached, so
+## the two hundred of these in a building share one texture and one material.
+static var _shadow_mat: StandardMaterial3D = null
+
+## BLACK, WITH THE FALLOFF IN ALPHA — and NOT multiplied.
+##
+## Two goes at this. Multiply is the correct blend for a shadow: it darkens
+## whatever floor it lands on, and this building has four floor colours, so a
+## grey disc is wrong on at least three of them. But the Compatibility renderer
+## — which is the one this game ships on, because it is the only one that can be
+## verified here — does not sample the albedo texture under BLEND_MODE_MUL. The
+## texture was correct (centre 0.45, corners 1.0, mipmapped, attached to the
+## material; all four confirmed by dumping it) and every shadow in the ward
+## still rendered as a flat dark rectangle with four sharp corners. Worse than
+## no shadow at all, and it looked like a bug in the geometry rather than in a
+## sampler.
+##
+## So: ordinary alpha blending, black, with the falloff in the alpha channel.
+## Slightly less correct over a dark floor than a multiply would be, and it
+## works everywhere.
+static func shadow_texture() -> ImageTexture:
+	const N := 64
+	const STRENGTH := 0.52         ## alpha at the centre of the patch
+	var img := Image.create(N, N, true, Image.FORMAT_RGBA8)
+	var c := float(N - 1) * 0.5
+	for y in N:
+		for x in N:
+			var d: float = Vector2(float(x) - c, float(y) - c).length() / c
+			# Smoothstep, so the edge dissolves instead of ending. A linear
+			# falloff reads as a disc with a soft rim rather than as a shadow.
+			var t: float = clampf(1.0 - d, 0.0, 1.0)
+			t = t * t * (3.0 - 2.0 * t)
+			img.set_pixel(x, y, Color(0, 0, 0, t * STRENGTH))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+static func shadow_material() -> StandardMaterial3D:
+	if _shadow_mat != null:
+		return _shadow_mat
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.albedo_texture = shadow_texture()
+	m.albedo_color = Color(1, 1, 1, 1)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.no_depth_test = false
+	# Never casts, never receives, never writes depth: it is a smudge on the
+	# floor and it must not fight with anything standing in it.
+	m.disable_receive_shadows = true
+	_shadow_mat = m
+	return m
+
+## One patch. `size` is its width and depth in metres.
+static func blob_shadow(size: Vector2, y := 0.02) -> MeshInstance3D:
+	var q := PlaneMesh.new()
+	q.size = size
+	var mi := MeshInstance3D.new()
+	mi.name = "ContactShadow"
+	mi.mesh = q
+	mi.material_override = shadow_material()
+	mi.position = Vector3(0, y, 0)
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
 static func mi(mesh: Mesh, material: Material, pos := Vector3.ZERO, rot := Vector3.ZERO, scl := Vector3.ONE) -> MeshInstance3D:
 	var m := MeshInstance3D.new()
 	m.mesh = mesh

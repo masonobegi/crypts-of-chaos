@@ -342,6 +342,22 @@ with it because a lost afternoon does not care which.
     decal eyes, not the lighting, so that is where the next attempt should go.
     The term compiles and costs nothing — it is simply not the lever.
 
+45. **The building has no windows, and putting glass in it is not enough.**
+    Two things read as broken because of it and both are still open: the
+    project builds a full procedural sky — sun angle, horizon and ground
+    colours, re-tinted every minute as the shift runs — whose own comment says
+    it is "only ever seen through the windows"; and `Room.window_open` is a
+    saved, loaded state that a complaint line reads out loud ("the window is
+    wide open") about a window that does not exist.
+    Glazing the four exterior runs was tried and reverted, and the reason is
+    the useful part: with no terrain outside, a window at eye level fills with
+    the sky's GROUND hemisphere, which is a flat murky green. It reads as
+    glazing painted over with sage, which is worse than a blank wall. Windows
+    need something to look at first — a horizon band, a massed building, a
+    distant treeline — and the dado wants rebalancing at the same time, because
+    running teal up to a sill at 1.15 swallows the lower two thirds of every
+    wall. Do the view before the glass.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -1991,3 +1991,33 @@ is an egg with decal eyes, which is a geometry problem.
 
 `look.sh` is what made this cheap: two renders and a pixel diff, and the answer
 was a measurement rather than an opinion.
+
+### A second negative result: glass is not the hard part of a window
+
+The hospital has no windows. That is two dead things at once — the procedural
+sky, whose own comment says it is "only ever seen through the windows", and
+`Room.window_open`, a saved state a complaint line reads out loud about a
+window that does not exist — so glazing the four exterior wall runs looked like
+one change that would pay three ways.
+
+It is safe to do there and nowhere else: nobody is ever OUTSIDE the building,
+so a pane that collides on layer 1 but not on 32 stops a thrown bedpan leaving
+the ward while NPC sight passes straight through it, and not one sight line in
+the stealth model can change. That part worked.
+
+What did not work is the view. With no terrain outside, a window at eye level
+fills with the sky's GROUND hemisphere — a flat murky green — so the ward ended
+up with what look like windows painted over in sage. Worse than a blank wall,
+because a blank wall is not promising anything. The dado made it worse again:
+running teal up to a sill at 1.15 swallows the lower two thirds of every wall
+and the cream/teal balance goes with it.
+
+Reverted. The order is: build something to look at, rebalance the dado, then
+glaze. Recorded here because the geometry, the safety argument and the material
+are all worked out and only the view is missing.
+
+One thing measured along the way, which is worth having: a LIT PBR material on
+a twenty-metre alpha-blended surface defeats early-Z and takes a three-vantage
+render past twenty minutes on this box. Unshaded is both cheaper and the right
+choice for this project's style — every other bright thing in the game is
+unshaded already.

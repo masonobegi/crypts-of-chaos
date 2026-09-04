@@ -249,6 +249,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
+	_check_the_day_gives_you_warning()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
@@ -961,6 +962,41 @@ func _all_ids() -> Array:
 	for c in Cases.roster():
 		out.append(String(c["id"]))
 	return out
+
+## THE DAY DOES NOT END WITHOUT SAYING SO.
+##
+## At eight o'clock every undecided bed is sent home, the shift closes and the
+## handover opens — and the first thing the game ever said about it was "Eight
+## o'clock. He is in the corridor.", by which point it had already happened.
+## The clock is in the corner so it was never hidden, but a game whose entire
+## pressure is a deadline should count down to it, and the useful half of the
+## warning is not the time. It is how many beds you have not decided about,
+## which is the one thing the player cannot see without opening something.
+func _check_the_day_gives_you_warning() -> void:
+	var said: Array = []
+	var grab := func(text: String, _kind: String): said.append(text)
+	EventBus.toast.connect(grab)
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	# Straight through the last hour with nothing decided.
+	w.advance_to(Cases.DEBT_DUE_MINUTE - 1)
+	EventBus.toast.disconnect(grab)
+	tree.root.remove_child(w)
+	w.free()
+
+	var warnings := 0
+	var counted := false
+	for t in said:
+		for phrase in WardDay.LAST_CALL.values():
+			if String(t).begins_with(String(phrase)):
+				warnings += 1
+				if String(t).contains("undecided"):
+					counted = true
+	_ok(warnings == WardDay.LAST_CALL.size(),
+		"the last hour is called %d times, once each (%d)"
+			% [WardDay.LAST_CALL.size(), warnings])
+	_ok(counted, "and it says how many beds are still undecided")
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

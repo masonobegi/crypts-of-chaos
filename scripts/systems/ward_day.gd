@@ -51,6 +51,8 @@ var telemetry: Array = []
 const RUTH_ARRIVES := 19 * 60
 ## patient id -> their family has been today.
 var _family_been: Dictionary = {}
+## minutes-before-eight -> already called today.
+var _called: Dictionary = {}
 
 ## Tonight's number. Usually Cases.DEBT_DUE; more if last night came up short.
 var debt_tonight := Cases.DEBT_DUE
@@ -97,10 +99,45 @@ func _on_minute(now: int) -> void:
 	# number owed at eight o'clock, and until this existed nothing anywhere
 	# read DEBT_DUE_MINUTE — a player could wander until three in the morning
 	# at no cost, which is the pressure the design is built on simply absent.
+	_last_call(now)
 	if now >= Cases.DEBT_DUE_MINUTE:
 		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
 		sign_off()
 		EventBus.request_ui.emit("review", {})
+
+## THE RUN-UP TO EIGHT.
+##
+## The day ended without a word of warning. At 20:00 every bed still undecided
+## was sent home, the shift closed and the handover opened — and the first thing
+## the game had ever said about it was "Eight o'clock. He is in the corridor.",
+## by which point it had already happened.
+##
+## The clock is in the corner, so this was never hidden. But a game whose entire
+## pressure is a deadline should COUNT DOWN to it, and the useful part of the
+## warning is not the time — it is how many beds you have not decided about,
+## which is the one thing the player cannot see without opening something.
+##
+## An hour out, twenty minutes out, and five. Each once: `_advance_locally` runs
+## on every verb that jumps the clock, so an ungated toast here fires several
+## times a minute.
+const LAST_CALL := {60: "An hour left.", 20: "Twenty minutes.", 5: "Five minutes."}
+
+func _last_call(now: int) -> void:
+	for mins in LAST_CALL:
+		var at: int = Cases.DEBT_DUE_MINUTE - int(mins)
+		if now < at or _called.has(mins):
+			continue
+		_called[mins] = true
+		var undecided := 0
+		for pid in state:
+			if String(state[pid]["disposition"]) == "":
+				undecided += 1
+		if undecided == 0:
+			EventBus.toast.emit("%s All five decided." % String(LAST_CALL[mins]), "info")
+		else:
+			EventBus.toast.emit("%s %d bed%s still undecided — they go home at eight."
+				% [String(LAST_CALL[mins]), undecided, "" if undecided == 1 else "s"],
+				"bad" if int(mins) <= 20 else "info")
 
 ## ENDING THE SHIFT, once. A bed nobody decided about is a bed sent home — you
 ## were the doctor and you did not say otherwise — and that is what makes the
@@ -159,6 +196,7 @@ func start() -> void:
 			"discharged_at": -1,
 		}
 	_family_been.clear()
+	_called.clear()
 	for pe in Cases.prior_entries():
 		var e := ChartEntry.new()
 		e.patient_id = String(pe["patient"])

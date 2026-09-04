@@ -93,6 +93,7 @@ func _build_floor_and_ceiling(r: Room) -> void:
 	# being a safe way to find a ceiling the moment floor borders were added.
 	c.set_meta("is_ceiling", true)
 	r.add_child(c)
+	_ceiling_grid(r)
 
 	# An inlaid border a foot in from the walls, in a darker shade of the room's
 	# own floor. Four thin strips per room, and it is the difference between a
@@ -111,6 +112,70 @@ func _build_floor_and_ceiling(r: Room) -> void:
 		for edge2 in [Vector3(-w * 0.5, 0, 0), Vector3(w * 0.5, 0, 0)]:
 			r.add_child(Build.box_mi(Vector3(0.09, 0.014, d), band,
 				edge2 + Vector3(0, 0.008, 0), 0.6, 0.0))
+	_floor_seams(r, tint, inset)
+
+## WELDED SEAMS, every two metres.
+##
+## The floor is the biggest thing in almost every frame of this game — a
+## twenty-metre ward seen from the door is more floor than anything else — and
+## it was one flat colour from wall to wall with a border round it. Nothing at
+## all between the border and the far side, so the middle of every room read as
+## a coloured plane rather than as a surface, and there was no way to judge how
+## far away anything was standing on it.
+##
+## Hospital vinyl comes in two-metre sheets welded together, so this is what is
+## actually there: a line every two metres, barely darker than the floor, in
+## the long direction only. It is the cheapest possible depth cue and it costs
+## about ten thin boxes a room.
+static func _floor_seams(r: Room, tint: Color, inset: float) -> void:
+	var seam := tint.darkened(0.13)
+	var w: float = r.rect.size.x - inset * 2.0
+	var d: float = r.rect.size.y - inset * 2.0
+	if w <= 1.0 or d <= 1.0:
+		return
+	# Across the SHORT axis, so the lines run the length of the room the way a
+	# sheet is laid — down a corridor rather than across it.
+	if r.rect.size.x >= r.rect.size.y:
+		var n := int(w / 2.0)
+		for i in range(1, n):
+			var x: float = -w * 0.5 + float(i) * (w / float(n))
+			r.add_child(Build.box_mi(Vector3(0.022, 0.012, d), seam,
+				Vector3(x, 0.007, 0), 0.7, 0.0))
+	else:
+		var n2 := int(d / 2.0)
+		for i in range(1, n2):
+			var z: float = -d * 0.5 + float(i) * (d / float(n2))
+			r.add_child(Build.box_mi(Vector3(w, 0.012, 0.022), seam,
+				Vector3(0, 0.007, z), 0.7, 0.0))
+
+## SUSPENDED TILE, on a grid.
+##
+## Same problem as the floor and worth fixing for the same reason: the player
+## stands at 1.7m in a 3m room, so the ceiling is the top third of most frames
+## and it was one unbroken white plane with two light fittings in it. A room
+## with a flat ceiling reads as a box with a lid; a room with a tile grid reads
+## as a building, and it is the same trick — the eye gets something to measure
+## the span against.
+##
+## 1.2m rather than the 600mm a real ceiling uses: at twenty metres that is
+## sixteen lines instead of thirty-three, and at the angle anybody actually
+## sees it the finer grid is noise.
+static func _ceiling_grid(r: Room) -> void:
+	var line := Build.CEILING.darkened(0.10)
+	var w: float = r.rect.size.x
+	var d: float = r.rect.size.y
+	var y: float = WALL_H - 0.052
+	var step := 1.2
+	var nx := int(w / step)
+	for i in range(1, nx):
+		var x: float = -w * 0.5 + float(i) * (w / float(nx))
+		r.add_child(Build.box_mi(Vector3(0.022, 0.012, d), line,
+			Vector3(x, y, 0), 0.9, 0.0))
+	var nz := int(d / step)
+	for i in range(1, nz):
+		var z: float = -d * 0.5 + float(i) * (d / float(nz))
+		r.add_child(Build.box_mi(Vector3(w, 0.012, 0.022), line,
+			Vector3(0, y, z), 0.9, 0.0))
 
 ## A different, bright floor per room kind. These are how you know which room
 ## you are in from the doorway, so they are proper colours rather than eleven

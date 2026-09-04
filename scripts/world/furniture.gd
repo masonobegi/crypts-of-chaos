@@ -567,8 +567,25 @@ static func _station(h: Hospital, r: Room) -> void:
 	# wall — one of the "things phasing through each other" from the playtest,
 	# and the reason the overlap audit exists at all.
 	for sx in [c.x - 3.0, c.x + 3.0]:
-		_block(h, Vector3(2.1, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(sx, 0.55, corridor_z))
+		# NOT ONE SLAB. This was a 2.1 x 1.1 x 0.6 box with a worktop on it —
+		# the largest single object in the room and a featureless rectangle from
+		# every angle, which is most of why the station read as placeholder.
+		#
+		# Three things fix it and none of them is geometry anybody will count:
+		# a recessed kick at the floor so it stands on something instead of
+		# growing out of the vinyl, a shadow gap under the worktop so the top
+		# reads as a separate slab laid on, and a rail along the front at the
+		# height a person leans on. Real joinery is made of these; a box is not.
+		_block(h, Vector3(1.95, 0.14, 0.44), Color(0.30, 0.35, 0.38),
+			Vector3(sx, 0.07, corridor_z))
+		_block(h, Vector3(2.1, 0.86, 0.6), Color(0.48, 0.55, 0.58),
+			Vector3(sx, 0.57, corridor_z))
+		_block(h, Vector3(2.06, 0.05, 0.62), Color(0.34, 0.39, 0.42),
+			Vector3(sx, 1.02, corridor_z))
 		_block(h, Vector3(2.3, 0.08, 0.9), Color(0.66, 0.70, 0.72), Vector3(sx, 1.12, corridor_z))
+		# The lean rail, a hand's width proud of the front face.
+		_block(h, Vector3(2.16, 0.05, 0.05), Color(0.62, 0.66, 0.68),
+			Vector3(sx, 0.80, corridor_z + 0.33))
 		_occupy(sx, corridor_z, 2.3, 0.9)
 	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 3.0, 1.55, corridor_z + 0.32), 0.0, 0.13)
 

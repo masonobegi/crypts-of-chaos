@@ -122,13 +122,13 @@ func _break() -> void:
 				if m.has_meta("cloth_recipe"):
 					var cloth: Array = m.get_meta("cloth_recipe")
 					(c as MeshInstance3D).material_override = Build.cloth_mat(
-						(cloth[0] as Color).darkened(0.45), float(cloth[1]))
+						(cloth[0] as Color).darkened(0.45), float(cloth[1]), float(cloth[2]))
 					continue
 				if m.has_meta("recipe"):
 					var recipe: Array = m.get_meta("recipe")
 					(c as MeshInstance3D).material_override = Build.mat(
 						(recipe[0] as Color).darkened(0.45), float(recipe[1]),
-						float(recipe[2]), recipe[3], float(recipe[4]))
+						float(recipe[2]), recipe[3], float(recipe[4]), float(recipe[5]))
 		_mesh_root.scale = Vector3(1.0, 0.35, 1.0)
 	freeze = false
 

@@ -14,9 +14,12 @@ static var _mesh_cache: Dictionary = {}
 static var _mesh_thin: Dictionary = {}
 
 # ------------------------------------------------------------------ materials
+## `max_grow` caps the ink in METRES — 100.0 means uncapped. Anything built
+## from a known size passes `thin * INK_CAP`; see the `max_grow` uniform.
 static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 0, 0),
-		line := 0.016) -> Material:
-	var key := "%s|%.2f|%.2f|%s|%.4f" % [color.to_html(), rough, metal, emission.to_html(), line]
+		line := 0.016, max_grow := 100.0) -> Material:
+	var key := "%s|%.2f|%.2f|%s|%.4f|%.4f" % [color.to_html(), rough, metal,
+		emission.to_html(), line, max_grow]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	# A PROCEDURAL SURFACE, NOT A FLAT COLOUR — on everything, not just on the
@@ -36,11 +39,11 @@ static func mat(color: Color, rough := 0.85, metal := 0.0, emission := Color(0, 
 	# weight, so nothing is built twice.
 	var m: Material = Surfaces.prop_mat(color, rough, metal, emission, 0.05, false)
 	if line > 0.0:
-		m.next_pass = outline(line, ink_for(color))
+		m.next_pass = outline(line, ink_for(color), max_grow)
 	# What it was made of, so `_fit_line` can ask for a thinner-lined one
 	# without duplicating this material — see `_fit_line` for why duplicating a
 	# ShaderMaterial is not an option.
-	m.set_meta("recipe", [color, rough, metal, emission, line])
+	m.set_meta("recipe", [color, rough, metal, emission, line, max_grow])
 	_mat_cache[key] = m
 	return m
 
@@ -132,8 +135,15 @@ static func line_for(size: Vector3, base := 0.016) -> float:
 ## you can see at six metres and none of them has turned into a black bar.
 const LINE_GAIN := 0.66
 
-static func outline(width := 0.016, shade := Color(0.09, 0.10, 0.14)) -> ShaderMaterial:
-	var key := "outline|%.4f|%s" % [width, shade.to_html()]
+## The most of its own thickness a thin object will let the ink take, per side.
+## Applied as a metres ceiling in the shader rather than as a width, because
+## the ink is constant in PIXELS while the object shrinks with distance — a cap
+## on the width bounds the ink at one distance and nowhere else.
+const INK_CAP := 0.30
+
+static func outline(width := 0.016, shade := Color(0.09, 0.10, 0.14),
+		max_grow := 100.0) -> ShaderMaterial:
+	var key := "outline|%.4f|%s|%.4f" % [width, shade.to_html(), max_grow]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	var sh: Shader = _outline_shader()
@@ -141,6 +151,7 @@ static func outline(width := 0.016, shade := Color(0.09, 0.10, 0.14)) -> ShaderM
 	m.shader = sh
 	m.set_shader_parameter("weight", width * LINE_GAIN)
 	m.set_shader_parameter("shade", shade)
+	m.set_shader_parameter("max_grow", max_grow)
 	_mat_cache[key] = m
 	return m
 
@@ -156,6 +167,15 @@ render_mode cull_front, unshaded, shadows_disabled, depth_draw_opaque;
 
 uniform float weight = 0.0035;
 uniform vec4 shade : source_color = vec4(0.09, 0.10, 0.14, 1.0);
+// A CEILING ON THE INK, IN METRES, and it is what stops a thin trim becoming
+// a black bar. The hull grows by a constant number of PIXELS at every
+// distance, which is the whole point of the depth term — but the object it is
+// drawn round SHRINKS, so the ink's share of a thin object grows without
+// limit. A 5cm dado rail at five metres is eleven pixels wide and was taking
+// eight pixels of ink on each side: the corridor read as two black diagonals
+// with a wall behind them. Past the distance where the line would eat the
+// object it stops growing, and correctly becomes a hairline.
+uniform float max_grow = 100.0;
 
 void vertex() {
 	// How far this vertex is from the eye, in metres.
@@ -165,7 +185,7 @@ void vertex() {
 	// so pressing the camera into a wall does not inflate a hull over the whole
 	// screen, and at the far end so a corridor's worth of distant geometry
 	// stops paying for a line nobody can see.
-	VERTEX += NORMAL * (weight * clamp(dist, 1.2, 26.0));
+	VERTEX += NORMAL * min(weight * clamp(dist, 1.2, 26.0), max_grow);
 }
 
 void fragment() {
@@ -618,33 +638,41 @@ static func _fit_line(mesh: Mesh, material: Material) -> Material:
 	# the first run of this filled two thousand lines of the test log — and the
 	# quiet check, which reads what the game prints while it is being played,
 	# is the only thing that caught it.
+	var cap := thin * INK_CAP
 	if material.has_meta("cloth_recipe"):
 		var cloth: Array = material.get_meta("cloth_recipe")
 		var want_c: float = snappedf(line_for(Vector3(thin, thin, thin), cloth[1]), 0.002)
-		if want_c >= float(cloth[1]) - 0.0005:
+		if want_c >= float(cloth[1]) - 0.0005 and float(cloth[2]) <= cap + 0.0005:
 			return material
-		return cloth_mat(cloth[0], want_c)
+		return cloth_mat(cloth[0], want_c, cap)
 	if not material.has_meta("recipe"):
 		return material
 	var r: Array = material.get_meta("recipe")
 	var want: float = snappedf(line_for(Vector3(thin, thin, thin), r[4]), 0.002)
-	if want >= float(r[4]) - 0.0005:
+	# The CAP has to be applied even when the width needs no trimming: a piece
+	# built by a caller that did not know its own size still has an uncapped
+	# outline, and it is the cap and not the width that stops a dado rail at
+	# five metres being mostly ink.
+	if want >= float(r[4]) - 0.0005 and float(r[5]) <= cap + 0.0005:
 		return material
-	return mat(r[0], r[1], r[2], r[3], want)
+	return mat(r[0], r[1], r[2], r[3], want, cap)
 
 ## Every "box" in the game is a rounded box now. The corner radius scales with
 ## the object so a syringe is not rounded off as hard as a wall, and is capped so
 ## a big flat panel keeps a crisp face.
 static func box_mi(size: Vector3, color: Color, pos := Vector3.ZERO, rough := 0.85,
 		line := 0.016) -> MeshInstance3D:
+	var thin: float = minf(size.x, minf(size.y, size.z))
 	return mi(rbox_mesh(size, corner_for(size)),
-		mat(color, rough, 0.0, Color(0, 0, 0), line_for(size, line)), pos)
+		mat(color, rough, 0.0, Color(0, 0, 0), line_for(size, line), thin * INK_CAP), pos)
 
 ## The same box, made of cloth. Bedding, curtains, upholstery — anything whose
 ## surface should have a weave in it rather than a paint finish.
 static func cloth_mi(size: Vector3, color: Color, pos := Vector3.ZERO,
 		line := 0.016) -> MeshInstance3D:
-	return mi(rbox_mesh(size, corner_for(size)), cloth_mat(color, line_for(size, line)), pos)
+	var thin: float = minf(size.x, minf(size.y, size.z))
+	return mi(rbox_mesh(size, corner_for(size)),
+		cloth_mat(color, line_for(size, line), thin * INK_CAP), pos)
 
 ## The same, as a material, for the call sites that build their own mesh — a
 ## tapered torso, a coat, a chair seat. `Surfaces.fabric_mat` had been written
@@ -652,8 +680,8 @@ static func cloth_mi(size: Vector3, color: Color, pos := Vector3.ZERO,
 ## upholstery were every one of them a flat colour on a ward that had just been
 ## given a speckled floor and a fissured ceiling, and the mismatch read worse
 ## than the flat floor had.
-static func cloth_mat(color: Color, line := 0.016) -> Material:
-	var key := "cloth|%s|%.4f" % [color.to_html(), line]
+static func cloth_mat(color: Color, line := 0.016, max_grow := 100.0) -> Material:
+	var key := "cloth|%s|%.4f|%.4f" % [color.to_html(), line, max_grow]
 	if _mat_cache.has(key):
 		return _mat_cache[key]
 	# NO PITCH ARGUMENT, so the one documented in `fabric_mat` is the one that
@@ -665,8 +693,8 @@ static func cloth_mat(color: Color, line := 0.016) -> Material:
 	# was the one part of it that never took.
 	var m: Material = Surfaces.fabric_mat(color, Surfaces.WEAVE, false)
 	if line > 0.0:
-		m.next_pass = outline(line, ink_for(color))
-	m.set_meta("cloth_recipe", [color, line])
+		m.next_pass = outline(line, ink_for(color), max_grow)
+	m.set_meta("cloth_recipe", [color, line, max_grow])
 	_mat_cache[key] = m
 	return m
 
@@ -692,8 +720,10 @@ static func corner_for(size: Vector3) -> float:
 	return clampf(smallest * 0.28, 0.006, 0.16)
 
 static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 24) -> MeshInstance3D:
+	var thin: float = minf(radius * 2.0, height)
 	return mi(cyl_mesh(radius, height, sides),
-		mat(color, 0.85, 0.0, Color(0, 0, 0), line_for(Vector3(radius * 2.0, height, radius * 2.0))), pos)
+		mat(color, 0.85, 0.0, Color(0, 0, 0),
+			line_for(Vector3(thin, thin, thin)), thin * INK_CAP), pos)
 
 # ------------------------------------------------------------------ static geo
 ## A solid, collidable box — walls, floors, counters, anything you bump into.

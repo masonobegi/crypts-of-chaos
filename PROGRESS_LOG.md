@@ -2141,3 +2141,59 @@ naming one file, which is the failure its own comment warns about.
 And: on a four-core box two rogue renders halve everything. If a render seems
 impossibly slow, `ps aux | grep Godot` before concluding anything about the
 change under test.
+
+## Session 16, continued — the view, and the windows to see it through
+
+The first item on the handover, done, and in the order the handover said it
+had to be done in.
+
+### The view first
+
+`Hospital._build_outside` puts three rings at three depths outside the
+footprint: a boundary you look over at twelve metres, a treeline at forty-odd,
+and pale massing at ninety to a hundred and fifteen. All of it is scenery in
+the strictest sense — no collision, no navigation footprint, no outline — and
+aerial perspective is baked into the colours because fog is deliberately off in
+this project.
+
+Two things had to be measured rather than guessed, and both came off renders.
+A window shows a narrow slice of the world: from an eye at 1.7m the aperture
+spans about three degrees below the horizontal to nine above. The first
+treeline was nine metres tall at forty-five, which fills that band completely
+— a column sampled through the glass gave a hundred and fifty pixels of flat
+(116,166,139) where the sky and the town should have been. And at the grass's
+own lightness a treeline is not a treeline, it is more grass. Trees are three
+to four metres now and each ring is darker and bluer than the one in front.
+
+### Then the glass
+
+`_glaze` replaces the wall build on the four exterior runs. Safe there and
+nowhere else: the pane collides on layer 1 but not on 32, so a thrown bedpan
+bounces off it while NPC sight passes straight through — which would matter
+enormously on an interior wall and matters not at all when there is nobody
+outside to see. `Build.glass_mat` is unshaded and back-face culled, and both
+are performance decisions: a lit PBR material on a twenty-metre alpha surface
+defeats early-Z and took the first attempt past twenty minutes to render. This
+one renders in six.
+
+### And a regression the windows exposed
+
+The corridor came back with two hard black diagonals down the right-hand wall.
+They were the cornice and the dado rail — cream trim on a cream wall, so the
+only visible part of them was their own outline, and the outline was as thick
+as the trim. That is fallout from tripling `LINE_GAIN` earlier in the session.
+
+The fix is not another width cap, and understanding why is the useful part.
+The hull grows by a constant number of PIXELS at every distance, which is the
+whole point of the depth term — but the object shrinks, so the ink's share of a
+thin object grows without limit. A cap on the WIDTH bounds that at one distance
+and nowhere else, which is exactly why trimming the width earlier cancelled the
+gain and fixed nothing. The ceiling is in METRES now and lives in the shader:
+`min(weight * dist, max_grow)`, with `max_grow` a share of the object's own
+thinnest dimension. Near objects keep the full pixel-constant line; a thin one
+stops growing at the distance where the line would start to eat it. Ink on that
+stretch of wall fell forty per cent and the lines read as edges again.
+
+Verified: 297 assertions, 161 smoke checks on three seeds, seven day criteria,
+every deal playable, the frontier probe, both play runs, the quiet check and
+the boot check. All green.

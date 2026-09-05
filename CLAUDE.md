@@ -342,23 +342,45 @@ with it because a lost afternoon does not care which.
     decal eyes, not the lighting, so that is where the next attempt should go.
     The term compiles and costs nothing — it is simply not the lever.
 
-45. **The building has no windows, and putting glass in it is not enough.**
-    Two things read as broken because of it and both are still open: the
+45. **A window shows a NARROW SLICE of the world, and everything outside has
+    to be sized for it.** From an eye at 1.7m through a sill-1.05/head-2.30
+    aperture four metres away, you see about three degrees below the horizontal
+    to nine above. Anything close is cut off at the knees, anything short is
+    under the sill, and — the one that cost a render — anything tall and near
+    fills the whole band and occludes everything behind it: a nine-metre
+    treeline at forty-five metres gave a hundred and fifty pixels of flat green
+    where the sky and the town should have been. Trees are three to four
+    metres now. Three rings at three depths, each darker and bluer than the one
+    in front, because at the grass's own lightness a treeline is just more
+    grass. RINGS, not scattered blocks: a window on any of four walls has to
+    find something to look at.
+
+46. **Ink is constant in PIXELS; the object is not.** So the ink's share of a
+    thin object grows without limit with distance, and a cap on the outline's
+    WIDTH bounds it at exactly one distance — which is why trimming the width
+    cancelled the gain and fixed nothing. The ceiling has to be in METRES, in
+    the shader: `min(weight * dist, max_grow)` with `max_grow` a share of the
+    object's own thinnest dimension (`Build.INK_CAP`). Without it a 5cm dado
+    rail at five metres is eleven pixels wide with eight pixels of ink each
+    side, and a corridor reads as two black diagonals with a wall behind them.
+
+47. **DONE, and the note is kept because the ORDER was the whole lesson.**
+    The building had no windows, and putting glass in it was not enough:
+    two things read as broken because of it: the
     project builds a full procedural sky — sun angle, horizon and ground
     colours, re-tinted every minute as the shift runs — whose own comment says
     it is "only ever seen through the windows"; and `Room.window_open` is a
     saved, loaded state that a complaint line reads out loud ("the window is
     wide open") about a window that does not exist.
-    Glazing the four exterior runs was tried and reverted, and the reason is
-    the useful part: with no terrain outside, a window at eye level fills with
-    the sky's GROUND hemisphere, which is a flat murky green. It reads as
-    glazing painted over with sage, which is worse than a blank wall. Windows
-    need something to look at first — a horizon band, a massed building, a
-    distant treeline — and the dado wants rebalancing at the same time, because
-    running teal up to a sill at 1.15 swallows the lower two thirds of every
-    wall. Do the view before the glass.
+    Glazing the four exterior runs was tried and reverted ONCE before it
+    worked, and the reason is the useful part: with no terrain outside, a
+    window at eye level fills with the sky's GROUND hemisphere, a flat murky
+    green that reads as glazing painted over with sage — worse than a blank
+    wall. `Hospital._build_outside` now exists and runs first, and the dado
+    stops at the sill on exterior runs because teal to a sill swallows the
+    lower two thirds of a wall. Do the view before the glass.
 
-46. **A default is only a default until somebody passes the old value.**
+48. **A default is only a default until somebody passes the old value.**
     `Surfaces.fabric_mat` took the weave pitch as a default and
     `Build.cloth_mat` passed the old number explicitly, so raising the default
     reached nothing at all: every piece of cloth in the game kept the old pitch

@@ -8,6 +8,18 @@ const WALL_H := 3.2
 const WALL_T := 0.16
 const DOOR_W := 1.4
 
+## The glazing band on an exterior wall. The sill is high enough that a bed
+## goes under it rather than in front of it, and the head is below the picture
+## rail so the window sits in the part of the wall that carried nothing.
+const WIN_SILL := 1.05
+const WIN_HEAD := 2.30
+## Runs shorter than this get no window: a stub of exterior wall with a pane in
+## it reads as a mistake rather than as a building.
+const WIN_MIN_RUN := 2.2
+## Mullion spacing. Real hospital glazing is a repeating bay; one unbroken pane
+## twenty metres long reads as a missing wall.
+const WIN_BAY := 1.9
+
 ## How many beds stand in the ward. Cases numbers its five people 1..5 and this
 ## is the other half of that agreement.
 const BEDS := 5
@@ -51,6 +63,7 @@ func build() -> void:
 	nav = NavGrid.new(0.0)
 	_build_rooms()
 	_build_shell()
+	_build_outside()
 	_build_doors()
 	_build_signage()
 	# Furniture must exist before navigation is baked: NPCs were previously
@@ -59,6 +72,95 @@ func build() -> void:
 	var blocked := Furniture.furnish(self)
 	_bake_nav(blocked)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
+
+# ------------------------------------------------------------------ outside
+## SOMETHING TO LOOK AT, BEFORE THERE IS ANYTHING TO LOOK THROUGH.
+##
+## The project builds a full procedural sky — sun angle, horizon and ground
+## colours, re-tinted every minute as the shift runs — and nothing in the game
+## can see it, because the building has no windows. Glazing was tried first and
+## reverted, and the reason is the useful part: with nothing outside, a window
+## at eye level fills with the sky's GROUND hemisphere, which is a flat murky
+## green, and reads as glazing painted over with sage. The view has to exist
+## before the glass does.
+##
+## Everything here is scenery in the strictest sense — no collision, no
+## navigation footprint, no outline — and all of it sits outside the building
+## footprint (x 0..20, z -8..13) except the ground, which passes underneath at a
+## level below the floor slabs so it can never be seen from inside except
+## through an opening.
+##
+## Aerial perspective is BAKED INTO THE COLOURS rather than done with fog. Fog
+## is deliberately off in this project — a sixty-two metre corridor with haze in
+## it was the single biggest reason the far end read as a bad place to be — so
+## distance is carried by desaturating toward the sky instead.
+const OUTSIDE_GROUP := "outside"
+
+func _build_outside() -> void:
+	var ground := Color(0.47, 0.58, 0.42)
+	var apron := Color(0.60, 0.61, 0.58)
+	var boundary := Color(0.38, 0.47, 0.36)
+	var trees := Color(0.35, 0.47, 0.40)
+	var far_block := Color(0.66, 0.70, 0.75)
+
+	# The ground, well below the floor slabs (which span -0.2..0.0) so the two
+	# never fight for the same pixel. Big enough that its own edge is past the
+	# horizon from any window.
+	_outside(Build.box_mi(Vector3(400, 0.6, 400), ground,
+		Vector3(10.0, -0.75, 2.5), 0.95, 0.0))
+	_outside(Build.box_mi(Vector3(50, 0.5, 50), apron,
+		Vector3(10.0, -0.62, 2.5), 0.9, 0.0))
+
+	# A WINDOW SHOWS A NARROW SLICE OF THE WORLD, and everything below is
+	# placed to land inside it. From an eye at 1.7m the aperture spans roughly
+	# three degrees below the horizontal to nine above, so anything close is
+	# cut off at the knees and anything short is under the sill. Three rings at
+	# three depths, each sized so its VISIBLE part falls in that band:
+	# a boundary you look over, a treeline that breaks the horizon, and massing
+	# behind it far enough away to fit inside nine degrees.
+	#
+	# Rings rather than the six scattered blocks this started as. A window on
+	# any of four walls has to find something to look at, and scattered massing
+	# means three of them see an empty field.
+	for i in 44:
+		var t := float(i) / 44.0
+		var a := t * TAU
+		var w := sin(float(i) * 2.3) * 0.5 + 0.5
+		var w2 := sin(float(i) * 1.7 + 1.1) * 0.5 + 0.5
+
+		# The boundary of the grounds, low and close: it sits along the bottom
+		# of the glass and is what gives the view a near edge to measure from.
+		var rb: float = 12.5 + w * 1.5
+		_outside(Build.box_mi(Vector3(3.4, 1.0 + w * 0.5, 1.0), boundary,
+			Vector3(10.0 + cos(a) * rb, 0.1, 2.5 + sin(a) * rb), 0.95, 0.0))
+
+		# The treeline. Far enough back that the tops stay under the window
+		# head, dense enough to read as a line rather than as shrubs.
+		var rt: float = 42.0 + w2 * 9.0
+		var ht: float = 6.5 + w * 3.0
+		_outside(Build.box_mi(Vector3(9.0 + w * 5.0, ht, 7.0 + w2 * 4.0), trees,
+			Vector3(10.0 + cos(a + 0.07) * rt, ht * 0.5 - 0.6,
+				2.5 + sin(a + 0.07) * rt), 0.95, 0.0))
+
+	# And the town behind it: a ring of pale slabs at a distance where a
+	# fifteen-metre building fits inside the nine degrees a window gives you.
+	for i in 20:
+		var a := (float(i) / 20.0) * TAU + 0.16
+		var w := sin(float(i) * 3.1) * 0.5 + 0.5
+		var rr: float = 88.0 + w * 26.0
+		var hh: float = 11.0 + w * 9.0
+		var at := Vector3(10.0 + cos(a) * rr, hh * 0.5 - 0.5, 2.5 + sin(a) * rr)
+		_outside(Build.box_mi(Vector3(20.0 + w * 18.0, hh, 18.0), far_block, at, 0.9, 0.0))
+		# A darker band at the base, which is all it takes for a slab to read
+		# as standing on the ground rather than floating in front of it.
+		_outside(Build.box_mi(Vector3(21.0 + w * 18.0, 1.8, 19.0),
+			far_block.darkened(0.20), at - Vector3(0, hh * 0.5 - 0.9, 0), 0.9, 0.0))
+
+## Scenery, and answering to one name so a test can find all of it.
+func _outside(n: Node3D) -> Node3D:
+	n.add_to_group(OUTSIDE_GROUP)
+	add_child(n)
+	return n
 
 # ------------------------------------------------------------------ rooms
 func _build_rooms() -> void:
@@ -219,14 +321,14 @@ func _build_shell() -> void:
 	var south_gaps := _gaps_for(["station", "office"])
 
 	# Walls running along X.
-	_wall_along_x(13.0, 0.0, 20.0, [])             # north exterior
+	_wall_along_x(13.0, 0.0, 20.0, [], true)       # north exterior
 	_wall_along_x(4.0, 0.0, 20.0, north_gaps)      # corridor <-> ward
 	_wall_along_x(0.0, 0.0, 20.0, south_gaps)      # corridor <-> station, office
-	_wall_along_x(-8.0, 0.0, 20.0, [])             # south exterior
+	_wall_along_x(-8.0, 0.0, 20.0, [], true)       # south exterior
 
 	# Walls running along Z.
-	_wall_along_z(0.0, -8.0, 13.0, [])             # west exterior
-	_wall_along_z(20.0, -8.0, 13.0, [])            # east exterior
+	_wall_along_z(0.0, -8.0, 13.0, [], true)       # west exterior
+	_wall_along_z(20.0, -8.0, 13.0, [], true)      # east exterior
 	# The one interior divider left. It must NOT cross the corridor band
 	# (z 0..4), or the corridor is severed and half the building is unreachable.
 	_wall_along_z(12.0, -8.0, 0.0, [])             # station <-> office
@@ -243,36 +345,42 @@ func _gaps_for(keys: Array) -> Array:
 	return out
 
 ## Build a wall run with doorway gaps punched out of it.
-func _wall_along_x(z: float, x0: float, x1: float, gaps: Array) -> void:
+func _wall_along_x(z: float, x0: float, x1: float, gaps: Array, exterior := false) -> void:
 	var cursor := x0
 	for g in gaps:
 		var gap: Vector2 = g
 		if gap.x > cursor:
-			_wall_segment(Vector3(cursor, 0, z), Vector3(gap.x, 0, z))
+			_wall_segment(Vector3(cursor, 0, z), Vector3(gap.x, 0, z), exterior)
 		# Lintel above the doorway so you can't see over it and it reads as a door.
 		_lintel(Vector3(gap.x, 0, z), Vector3(gap.y, 0, z))
 		cursor = maxf(cursor, gap.y)
 	if cursor < x1:
-		_wall_segment(Vector3(cursor, 0, z), Vector3(x1, 0, z))
+		_wall_segment(Vector3(cursor, 0, z), Vector3(x1, 0, z), exterior)
 
-func _wall_along_z(x: float, z0: float, z1: float, gaps: Array) -> void:
+func _wall_along_z(x: float, z0: float, z1: float, gaps: Array, exterior := false) -> void:
 	var cursor := z0
 	for g in gaps:
 		var gap: Vector2 = g
 		if gap.x > cursor:
-			_wall_segment(Vector3(x, 0, cursor), Vector3(x, 0, gap.x))
+			_wall_segment(Vector3(x, 0, cursor), Vector3(x, 0, gap.x), exterior)
 		_lintel(Vector3(x, 0, gap.x), Vector3(x, 0, gap.y))
 		cursor = maxf(cursor, gap.y)
 	if cursor < z1:
-		_wall_segment(Vector3(x, 0, cursor), Vector3(x, 0, z1))
+		_wall_segment(Vector3(x, 0, cursor), Vector3(x, 0, z1), exterior)
 
-func _wall_segment(a: Vector3, b: Vector3) -> void:
+## `exterior` glazes it — see `_glaze`. Only the four runs of the outer shell
+## get windows, and that is what makes them free: nobody is ever OUTSIDE the
+## building, so a pane that does not block sight cannot change a sight line.
+func _wall_segment(a: Vector3, b: Vector3, exterior := false) -> void:
 	var length := a.distance_to(b)
 	if length < 0.02:
 		return
 	var mid := (a + b) * 0.5
 	var horizontal := absf(b.x - a.x) > absf(b.z - a.z)
 	var size := Vector3(length, WALL_H, WALL_T) if horizontal else Vector3(WALL_T, WALL_H, length)
+	if exterior and length > WIN_MIN_RUN:
+		_glaze(mid, size, horizontal, length)
+		return
 	# Two-tone walls: a scuffed dado below, institutional off-white above.
 	var lower_h := 1.1
 	var lower := Vector3(size.x, lower_h, size.z)
@@ -325,6 +433,55 @@ func _wall_segment(a: Vector3, b: Vector3) -> void:
 			mid + out * side + Vector3(0, WALL_H - 0.62, 0), 0.6))
 		add_child(Build.box_mi(cornice_len, Color(0.97, 0.96, 0.93),
 			mid + out * side + Vector3(0, WALL_H - 0.07, 0), 0.5))
+
+## AN EXTERIOR WALL WITH WINDOWS IN IT.
+##
+## Safe here and nowhere else. The pane is built with `surfaced_wall`, which
+## collides on layer 1 but NOT on 32 — so a thrown bedpan bounces off it and
+## stays in the building, while NPC sight, which tests layer 32, passes
+## straight through. That would matter enormously on an interior wall and
+## matters not at all on this one: there is nobody outside to see.
+##
+## The dado stops at the sill rather than running to 1.1 as it does inside.
+## Teal up to a sill swallows the lower two thirds of an exterior wall, which
+## is the note that came back from the first attempt at this.
+func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> void:
+	var t := WALL_T
+	var below := Vector3(size.x, WIN_SILL, size.z)
+	var above := Vector3(size.x, WALL_H - WIN_HEAD, size.z)
+	add_child(Build.surfaced_opaque_wall(below, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, WIN_SILL * 0.5, 0)))
+	add_child(Build.surfaced_opaque_wall(above, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, WIN_HEAD + above.y * 0.5, 0)))
+
+	# The pane: thin, collidable, and it does not cast — a transparent shadow
+	# caster on this renderer is an opaque black rectangle on the floor.
+	var pane_h := WIN_HEAD - WIN_SILL
+	var pane := Vector3(size.x, pane_h, t * 0.16) if horizontal \
+		else Vector3(t * 0.16, pane_h, size.z)
+	var glass := Build.surfaced_wall(pane, Build.glass_mat(),
+		mid + Vector3(0, WIN_SILL + pane_h * 0.5, 0))
+	for c in glass.get_children():
+		if c is MeshInstance3D:
+			(c as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(glass)
+
+	# A sill, a head and the mullions between them, proud of the plaster on
+	# both faces. The frame is what makes it read as a window rather than as a
+	# hole somebody forgot to fill in.
+	var frame := Color(0.95, 0.94, 0.90)
+	var band := Vector3(size.x, 0.09, t + 0.05) if horizontal \
+		else Vector3(t + 0.05, 0.09, size.z)
+	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_SILL - 0.02, 0), 0.6, 0.010))
+	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_HEAD + 0.02, 0), 0.6, 0.010))
+	var bays := maxi(1, int(round(length / WIN_BAY)))
+	for i in range(1, bays):
+		var off: float = -length * 0.5 + length * float(i) / float(bays)
+		var mull := Vector3(0.07, pane_h, t + 0.04) if horizontal \
+			else Vector3(t + 0.04, pane_h, 0.07)
+		var at := Vector3(off, 0, 0) if horizontal else Vector3(0, 0, off)
+		add_child(Build.box_mi(mull, frame,
+			mid + at + Vector3(0, WIN_SILL + pane_h * 0.5, 0), 0.6, 0.008))
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)

@@ -175,6 +175,33 @@ void fragment() {
 	_outline_sh = s
 	return s
 
+## GLASS, AND THE ONLY TRANSPARENT THING IN THE BUILDING.
+##
+## UNSHADED, and that is a performance decision as much as a style one. A lit
+## PBR material on a twenty-metre alpha surface defeats early-Z and is shaded
+## per pixel through the whole lighting loop; on the software rasteriser this
+## project verifies against, that alone took a three-vantage render past twenty
+## minutes. Back faces are culled for the same reason and because a pane is
+## only ever seen from inside. A window is a tint over what is behind it, which
+## is all this needs to be.
+static func glass_mat() -> StandardMaterial3D:
+	if _glass_mat != null:
+		return _glass_mat
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.82, 0.90, 0.96, 0.13)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# Never receives: a pane that takes a shadow reads as a dirty pane. Whether
+	# it CASTS is a property of the MeshInstance3D, and `_glaze` turns that off
+	# there — a transparent shadow caster on this backend is an opaque black
+	# rectangle on the floor.
+	m.disable_receive_shadows = true
+	_glass_mat = m
+	return m
+
+static var _glass_mat: StandardMaterial3D = null
+
 ## An emissive panel that reads as a source of light rather than as a white
 ## rectangle: unshaded so it never takes shading, and emitting above 1.0 so the
 ## glow pass has something to find.

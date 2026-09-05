@@ -100,8 +100,14 @@ func _build_outside() -> void:
 	var ground := Color(0.47, 0.58, 0.42)
 	var apron := Color(0.60, 0.61, 0.58)
 	var boundary := Color(0.38, 0.47, 0.36)
-	var trees := Color(0.35, 0.47, 0.40)
-	var far_block := Color(0.66, 0.70, 0.75)
+	# THREE PLANES HAVE TO SEPARATE IN VALUE, or the view is one green field
+	# whatever is actually out there. Measured off a render: with the treeline
+	# at the grass's own lightness the whole upper window sampled (116,166,139)
+	# against grass at (156,196,139) — a hundred and fifty pixels of flat
+	# green. Each ring is now darker and bluer than the one in front of it,
+	# which is what distance does.
+	var trees := Color(0.30, 0.42, 0.38)
+	var far_block := Color(0.71, 0.75, 0.80)
 
 	# The ground, well below the floor slabs (which span -0.2..0.0) so the two
 	# never fight for the same pixel. Big enough that its own edge is past the
@@ -134,10 +140,13 @@ func _build_outside() -> void:
 		_outside(Build.box_mi(Vector3(3.4, 1.0 + w * 0.5, 1.0), boundary,
 			Vector3(10.0 + cos(a) * rb, 0.1, 2.5 + sin(a) * rb), 0.95, 0.0))
 
-		# The treeline. Far enough back that the tops stay under the window
-		# head, dense enough to read as a line rather than as shrubs.
-		var rt: float = 42.0 + w2 * 9.0
-		var ht: float = 6.5 + w * 3.0
+		# The treeline. LOW for its distance, and that is the whole trick: at
+		# 45m the window's upper edge is eight metres off the ground, so a
+		# nine-metre tree fills the aperture and hides both the sky and the
+		# town behind it. Four metres of tree at forty-five leaves two thirds
+		# of the upper band for everything further away.
+		var rt: float = 41.0 + w2 * 9.0
+		var ht: float = 3.0 + w * 1.6
 		_outside(Build.box_mi(Vector3(9.0 + w * 5.0, ht, 7.0 + w2 * 4.0), trees,
 			Vector3(10.0 + cos(a + 0.07) * rt, ht * 0.5 - 0.6,
 				2.5 + sin(a + 0.07) * rt), 0.95, 0.0))
@@ -148,7 +157,7 @@ func _build_outside() -> void:
 		var a := (float(i) / 20.0) * TAU + 0.16
 		var w := sin(float(i) * 3.1) * 0.5 + 0.5
 		var rr: float = 88.0 + w * 26.0
-		var hh: float = 11.0 + w * 9.0
+		var hh: float = 7.0 + w * 5.0
 		var at := Vector3(10.0 + cos(a) * rr, hh * 0.5 - 0.5, 2.5 + sin(a) * rr)
 		_outside(Build.box_mi(Vector3(20.0 + w * 18.0, hh, 18.0), far_block, at, 0.9, 0.0))
 		# A darker band at the base, which is all it takes for a slab to read

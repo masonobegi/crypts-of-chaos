@@ -29,6 +29,17 @@ const SHOTS := [
 	["wide", Vector3(2.0, 1.7, 6.0), Vector3(14.0, 1.3, 11.5)],
 	["bedside", Vector3(9.0, 1.7, 9.2), Vector3(11.0, 1.15, 11.8)],
 	["corridor", Vector3(1.5, 1.7, 2.0), Vector3(18.0, 1.5, 2.0)],
+	# THE LINEUP. Five people side on, which is the only frame that answers "do
+	# these read as five people". Character work was being judged from a
+	# twenty-minute `screenshots.sh` run, which is the wrong loop for it: the
+	# first pass at head variation shipped with three of the five patients
+	# drawing a hairstyle that is invisible from the front, and one render at
+	# the right vantage would have said so.
+	#
+	# Placed like `shot_impl`'s: the mean of the heads, back five and a half
+	# metres, at their own height. Resolved at shoot time, so it follows
+	# whichever ward the seed dealt.
+	["lineup", Vector3.ZERO, Vector3.ZERO],
 ]
 
 func start() -> void:
@@ -54,8 +65,14 @@ func tick() -> bool:
 		game.ui.close()
 	var cam: Camera3D = game.player.camera
 	var shot: Array = SHOTS[si]
-	cam.global_position = shot[1]
-	cam.look_at(shot[2], Vector3.UP)
+	if String(shot[0]) == "lineup":
+		if not _aim_lineup(cam):
+			print("  look: lineup — nobody on the ward")
+			si += 1
+			return false
+	else:
+		cam.global_position = shot[1]
+		cam.look_at(shot[2], Vector3.UP)
 	settle += 1
 	if settle < 4:
 		return false
@@ -65,3 +82,25 @@ func tick() -> bool:
 	print("  look: ", String(shot[0]))
 	si += 1
 	return false
+
+## Point the camera at the ward's five, from the foot of the beds. Returns false
+## if the ward has not populated yet, which is a caller's problem and not a
+## reason to abort the whole set.
+func _aim_lineup(cam: Camera3D) -> bool:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		return false
+	var heads: Array = []
+	for c in Cases.roster():
+		var body = ps.get_body(String(c["id"]))
+		if body != null and body.is_inside_tree():
+			heads.append(body.head_position())
+	if heads.is_empty():
+		return false
+	var mid := Vector3.ZERO
+	for hp in heads:
+		mid += hp
+	mid /= float(heads.size())
+	cam.global_position = Vector3(mid.x, mid.y + 0.25, mid.z - 5.4)
+	cam.look_at(Vector3(mid.x, mid.y - 0.10, mid.z), Vector3.UP)
+	return true

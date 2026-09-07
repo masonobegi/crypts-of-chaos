@@ -1283,12 +1283,21 @@ func _hair_style(hair_mat: Material) -> void:
 					Vector3.ZERO,
 					Vector3(0.52, 1.28, 0.94 * skull.z)))
 		3:
-			# TIED BACK. A small bun off the back of the skull, which is the
-			# only style here that changes the head's PROFILE rather than its
-			# front — so it is the one that tells you who is walking away.
-			_head.add_child(Build.mi(Build.sphere_mesh(0.088), hair_mat,
-				Vector3(0, 0.010 * skull.y, -0.215 * skull.z), Vector3.ZERO,
-				Vector3(0.94, 0.94, 0.80)))
+			# TIED UP, and it is a TOPKNOT rather than the low bun this started
+			# as. Measured on the authored cast: 6 of 40 draw this style and 6
+			# draw the cropped cap, and a bun sitting behind the skull is
+			# invisible from the front — which is where you see a patient, in a
+			# bed, from the foot of it. Twelve of forty were reading as the
+			# same haircut for want of four centimetres of height.
+			#
+			# Two pieces: the knot clearing the crown, and the sweep that
+			# gathers into it, so it does not read as a ball balanced on a head.
+			_head.add_child(Build.mi(Build.sphere_mesh(0.082), hair_mat,
+				Vector3(0, 0.225 * skull.y, -0.045 * skull.z), Vector3.ZERO,
+				Vector3(0.92, 0.92, 0.88)))
+			_head.add_child(Build.mi(Build.sphere_mesh(0.140), hair_mat,
+				Vector3(0, 0.120 * skull.y, -0.070 * skull.z), Vector3.ZERO,
+				Vector3(0.86 * skull.x, 0.62, 0.90 * skull.z)))
 		4:
 			# FULL. More volume everywhere rather than a shape, which is a
 			# haircut in its own right and also the one that survives being

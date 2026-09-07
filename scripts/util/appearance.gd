@@ -130,9 +130,14 @@ static func of(c: Dictionary) -> Dictionary:
 		# skull. Applied to the silhouette pieces (skull, ears, jaw, hair) and
 		# not to the head node, because the brows rotate and a rotated child of
 		# a non-uniformly scaled parent shears.
-		"skull": Vector3(0.93 + _unit(id, 11) * 0.14,
-			0.94 + _unit(id, 12) * 0.16,
-			0.93 + _unit(id, 13) * 0.13),
+		# WIDER THAN IT FIRST WAS. The first range was 0.93-1.07 on x, which is
+		# plus or minus four per cent on a head sixty pixels across at the foot
+		# of a bed — arithmetically a variation and visually nothing. These are
+		# the numbers a stylised cast can carry: a long narrow head and a broad
+		# round one, and nobody in between looking like a mistake.
+		"skull": Vector3(0.90 + _unit(id, 11) * 0.21,
+			0.92 + _unit(id, 12) * 0.26,
+			0.90 + _unit(id, 13) * 0.19),
 		# A nose is the most identifying thing on a face and the cheapest to
 		# vary — 4cm of geometry that changes a profile completely.
 		"nose": 0.78 + _unit(id, 14) * 0.55,

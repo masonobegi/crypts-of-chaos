@@ -2383,3 +2383,47 @@ with two different patients also make the point the game is about: this is a
 ward, and there is more than one of them. The lens went from 62 to 52, because
 a wide lens in a three-metre room spends the top of the frame on ceiling tile.
 
+## Session 17, continued — heads that read, and one thing left open
+
+### The first pass at head variation did not work, and the measurement said why
+
+`Appearance` was handing out five hairstyles with an even spread — 626/591/619/
+556/608 over three thousand ids, so the hash is sound — and the ward lineup
+still came back as three identical dark caps. Two reasons, both found by
+printing what the cast actually drew rather than by looking harder:
+
+  * Style 3 was a low bun BEHIND the skull. You see a patient from the foot of
+    a bed, so from the front it is indistinguishable from the cropped cap.
+    Six of the forty authored patients draw style 3 and six draw style 0, so
+    twelve of forty were reading as the same haircut for want of four
+    centimetres of height. It is a topknot now — the knot clearing the crown,
+    plus the sweep that gathers into it so it is not a ball balanced on a head.
+  * The skull range was 0.93-1.07 on x. That is plus or minus four per cent on
+    a head sixty pixels across, which is arithmetically a variation and
+    visually nothing. 0.90-1.11 on x, 0.92-1.18 on y, 0.90-1.09 on z.
+
+`look.sh` has a fourth vantage now: the lineup. Character work was being judged
+off a twenty-minute `screenshots.sh` run, which is the wrong loop for it — one
+render at the right vantage would have caught the invisible hairstyle
+immediately. It resolves the camera from the ward's own heads at shoot time, so
+it follows whichever board the seed dealt.
+
+### Open: two figures that blow out to white
+
+`17_review.png` and `20_struck_off.png` both show a pair of standing characters
+rendered as flat white silhouettes — 36% of that region is pure 255 — with no
+shading left in them at all. Every other frame in the set shades characters
+correctly, including four with people much closer to the camera.
+
+Four controlled probes failed to reproduce it: a body standing directly under a
+ward fitting at eight in the morning and at eight at night, with the rim term
+on and off, with the fill light off, with every point light halved, and at
+three metres and at one. None of them clipped. The two shots that show it are
+both UI-card frames where the 3D is background, and in both the camera is very
+close to somebody.
+
+So it is real, it is rare, and I could not corner it. Written down rather than
+guessed at: the next attempt should reproduce the exact shot first (it is in
+`shot_impl.gd`) instead of building a synthetic scene, which is where four
+attempts went.
+

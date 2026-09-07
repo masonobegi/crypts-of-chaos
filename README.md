@@ -109,7 +109,9 @@ rather than generated.
 There are no art or audio assets. Every mesh is built from primitives at
 runtime, every character's face and build is derived from who they are, and
 every sound — including the ninety-four-second score — is synthesised into a
-waveform on first play.
+waveform on first play. The one exception is type: a letterform is not
+something you can reason your way to from boxes and spheres, so the game sets
+in four open-licensed families (see **Licence** below).
 
 | System | File |
 |---|---|
@@ -130,14 +132,32 @@ is [`PROGRESS_LOG.md`](PROGRESS_LOG.md).
 ## Tests
 
 ```
-292 assertions   — units, integration, save round-trips, floor connectivity
-131 smoke checks — boots the real scene and plays a whole shift, on three seeds
+298 assertions   — units, integration, save round-trips, floor connectivity
+168 smoke checks — boots the real scene and plays a whole shift, on three seeds
   7 criteria     — day-level: does the risk actually cost anything
   6 criteria     — career-level: does honest play pay it off, and does greed not
   4 wards        — every one signs off on the day a careful person plays
  52 deals        — every ward a career can deal, played honestly
- 22 screenshots  — rendered offscreen, because five real bugs were only visible
+  2 play runs    — the buttons actually pressed, pad and keyboard
+ 21 screenshots  — rendered offscreen, because five real bugs were only visible
 ```
 
 Run them before committing. Run the screenshots after any UI or world change —
 the count of bugs found only by looking is now in double figures.
+
+## Licence
+
+The code and the design are this project's own. The typefaces are not, and are
+the only thing in the build somebody else made:
+
+- **Instrument Sans** — © 2022 The Instrument Sans Project Authors
+- **IBM Plex Mono** and **IBM Plex Serif** — © 2017 IBM Corp., reserved font
+  name "Plex"
+- **Nothing You Could Do** — © 2010 Kimberly Geswein
+
+All four are under the [SIL Open Font License
+1.1](https://openfontlicense.org/), whose text ships beside them in
+`assets/fonts/` and inside every exported build — `export_presets.cfg` carries
+an `include_filter` for them, because a `.txt` is not an imported resource and
+`all_resources` does not carry one. They are named on the Credits screen too.
+

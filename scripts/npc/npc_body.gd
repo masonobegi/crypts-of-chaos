@@ -43,6 +43,18 @@ var girth := 1.0
 ## hairline rather than deleting the mesh, so it reads as thinning.
 var bald := 0.0
 var beard := false
+## THE HEAD IS WHAT YOU READ AT THREE METRES, and every one in the building was
+## the same ellipsoid at the same size with the same cap on it. `girth` and
+## `height_scale` vary the body, which is a coat; these vary the person.
+##
+## Applied to the SILHOUETTE pieces only — skull, ears, jaw, hair — and never to
+## the `_head` node itself, because the brows rotate for expressions and a
+## rotated child of a non-uniformly scaled parent shears.
+var skull := Vector3.ONE
+var nose_size := 1.0
+var jaw_size := 1.0
+## Which of `Appearance.HAIR_STYLES` this head is cut in.
+var hair_style := 0
 ## Whether anybody has actually chosen a look for this body. `PatientNPC._ready`
 ## used to force a gown colour unconditionally, which runs after the spawner has
 ## called `set_look` and before `_build_body` reads it — so every patient's gown
@@ -216,19 +228,31 @@ func _build_body() -> void:
 	# An egg, not a ball: taller than wide, flattened at the back, the volume
 	# carried high, and the jaw taken out of the same solid by squashing rather
 	# than bolted on as a second box.
+	# `skull` is per-person and non-uniform, so the cast has long faces, round
+	# faces and broad ones rather than five sizes of one head. Everything that
+	# makes the OUTLINE takes it; the eyes, brows and mouth do not, because
+	# interpupillary distance varies far less than a skull does and a face
+	# stretched with its own head reads as a smear.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.215),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, -0.01, 0), Vector3.ZERO, Vector3(0.98, 1.14, 0.92)))
+		Vector3(0, -0.01, 0), Vector3.ZERO,
+		Vector3(0.98 * skull.x, 1.14 * skull.y, 0.92 * skull.z)))
 	# Ears and a nose. Four centimetres of geometry each, and between them the
 	# difference between a face and a balloon with eyes drawn on it. Lined,
 	# because both of them break the head's silhouette.
 	for ex in [-1.0, 1.0]:
 		_head.add_child(Build.mi(Build.sphere_mesh(0.052),
 			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-			Vector3(ex * 0.198, -0.015, -0.02), Vector3.ZERO, Vector3(0.45, 1.05, 0.75)))
-	_head.add_child(Build.mi(Build.sphere_mesh(0.040),
+			# The ear has to move OUT with a wider skull or it sinks into it.
+			Vector3(ex * 0.198 * skull.x, -0.015, -0.02), Vector3.ZERO,
+			Vector3(0.45, 1.05, 0.75)))
+	# The nose is the most identifying thing on a face and the cheapest to vary.
+	# It also has to move FORWARD on a deeper skull, for the same reason as the
+	# ears — the head is an ellipsoid and its front moves when its depth does.
+	_head.add_child(Build.mi(Build.sphere_mesh(0.040 * nose_size),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, -0.022, 0.188), Vector3.ZERO, Vector3(0.78, 0.70, 1.15)))
+		Vector3(0, -0.022, 0.180 * skull.z + 0.010), Vector3.ZERO,
+		Vector3(0.78, 0.70, 1.15)))
 	# The mouth is built further down, in three pieces that move. There WAS a
 	# static bar here as well — the original single-piece mouth — and adding the
 	# animated one below it did not remove it, so every face in the building
@@ -236,9 +260,12 @@ func _build_body() -> void:
 	# 3.8cm under it sitting flat through the whole reaction. Both stand proud
 	# of the head ellipsoid at their own heights, so neither hid the other.
 	# A chin, so the jaw has a bottom to it. Lined, because it is the profile.
+	# `jaw` is a heavy chin or a small one. It reads from further away than the
+	# nose because it is the bottom edge of the silhouette.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, -0.150, 0.075), Vector3.ZERO, Vector3(1.05, 0.72, 0.95)))
+		Vector3(0, -0.150 * skull.y, 0.075 * skull.z), Vector3.ZERO,
+		Vector3(1.05 * skull.x * jaw_size, 0.72 * jaw_size, 0.95 * skull.z)))
 	# FACIAL HAIR, where the record says so. Built as two solids that follow the
 	# jaw the chin already established — a jawline piece and a moustache — both
 	# lined, because the whole reason it is here is that it changes the profile
@@ -264,10 +291,12 @@ func _build_body() -> void:
 	# on it reads as shaved — a decision somebody made — where thinning is just
 	# time passing, which is what the age it comes from means.
 	var crown: float = lerpf(1.0, 0.80, bald)
+	var hair_mat := Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), LINE)
+	var hair_flat := Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0)
 	_head.add_child(Build.mi(Build.sphere_mesh(0.224 * crown),
-		Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), LINE),
+		hair_mat,
 		Vector3(0, 0.078 + 0.012 * bald, -0.030 - 0.030 * bald), Vector3.ZERO,
-		Vector3(0.99, lerpf(0.70, 0.48, bald), 1.0)))
+		Vector3(0.99 * skull.x, lerpf(0.70, 0.48, bald) * skull.y, 1.0 * skull.z)))
 	# ...and a forelock, so there is a hairLINE. Hair with no edge on the
 	# forehead reads as a swimming cap — but a straight BAR across the forehead
 	# reads as a headband, which is what the first attempt at this was. A second
@@ -276,9 +305,11 @@ func _build_body() -> void:
 	# actually reads: a smaller cap alone looks like a smaller haircut.
 	if bald < 0.85:
 		_head.add_child(Build.mi(Build.sphere_mesh(0.185 * lerpf(1.0, 0.72, bald)),
-			Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(0, 0.082 + 0.020 * bald, 0.055 - 0.075 * bald), Vector3.ZERO,
-			Vector3(1.02, lerpf(0.52, 0.34, bald), 0.86)))
+			hair_flat,
+			Vector3(0, 0.082 + 0.020 * bald, (0.055 - 0.075 * bald) * skull.z),
+			Vector3.ZERO,
+			Vector3(1.02 * skull.x, lerpf(0.52, 0.34, bald) * skull.y, 0.86 * skull.z)))
+	_hair_style(hair_mat)
 	# Eyes: the cheapest possible way to make "is this person looking at me"
 	# legible across a corridor, which the whole suspicion system depends on.
 	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
@@ -450,6 +481,10 @@ func set_look(look: Dictionary) -> void:
 	girth = float(look.get("girth", girth))
 	bald = float(look.get("bald", bald))
 	beard = bool(look.get("beard", beard))
+	skull = look.get("skull", skull)
+	nose_size = float(look.get("nose", nose_size))
+	jaw_size = float(look.get("jaw", jaw_size))
+	hair_style = int(look.get("hair_style", hair_style))
 
 # ------------------------------------------------------------------ movement
 func goto(target: Vector3, run := false) -> void:
@@ -1213,3 +1248,51 @@ func current_room() -> String:
 	if h and h.has_method("room_at"):
 		return h.room_at(global_position)
 	return ""
+
+
+## ------------------------------------------------------------------ hair
+func _hair_style(hair_mat: Material) -> void:
+	# WHAT THE HAIRCUT IS, on top of what colour it is.
+	#
+	# Colour alone is close to invisible across a lit ward: three dark-haired
+	# patients in a row are three identical dark caps whatever the swatches say,
+	# and that is what the first ward lineup came back as. A SILHOUETTE is
+	# visible at any distance the head is, and it costs two spheres.
+	#
+	# Everything here is squashed spheres in the hair material, because that is
+	# what the crown and the forelock already are and a slab reads as hair from
+	# straight on only (see the note above them).
+	# Heavy thinning takes the cropped cap whatever the draw said: a receding
+	# bob is not a haircut anybody has.
+	if bald >= 0.5:
+		return
+	match hair_style:
+		1:
+			# SWEPT. One mass, off centre and higher on one side, so the head
+			# has a parting. The one style with a left/right asymmetry, which
+			# is what makes a crowd stop looking mirror-symmetrical.
+			_head.add_child(Build.mi(Build.sphere_mesh(0.150), hair_mat,
+				Vector3(-0.052 * skull.x, 0.128 * skull.y, 0.010), Vector3(0, 0, 0.24),
+				Vector3(0.92 * skull.x, 0.46, 0.88 * skull.z)))
+		2:
+			# BOBBED. Two masses down each side to the jaw. The biggest change
+			# to an outline in this list and the one that reads furthest.
+			for hx in [-1.0, 1.0]:
+				_head.add_child(Build.mi(Build.sphere_mesh(0.115), hair_mat,
+					Vector3(hx * 0.170 * skull.x, -0.055 * skull.y, -0.020),
+					Vector3.ZERO,
+					Vector3(0.52, 1.28, 0.94 * skull.z)))
+		3:
+			# TIED BACK. A small bun off the back of the skull, which is the
+			# only style here that changes the head's PROFILE rather than its
+			# front — so it is the one that tells you who is walking away.
+			_head.add_child(Build.mi(Build.sphere_mesh(0.088), hair_mat,
+				Vector3(0, 0.010 * skull.y, -0.215 * skull.z), Vector3.ZERO,
+				Vector3(0.94, 0.94, 0.80)))
+		4:
+			# FULL. More volume everywhere rather than a shape, which is a
+			# haircut in its own right and also the one that survives being
+			# seen from directly above — the angle you get standing over a bed.
+			_head.add_child(Build.mi(Build.sphere_mesh(0.238), hair_mat,
+				Vector3(0, 0.098 * skull.y, -0.020), Vector3.ZERO,
+				Vector3(1.06 * skull.x, 0.82, 1.04 * skull.z)))

@@ -135,9 +135,37 @@ PLAY_IN=${PIPESTATUS[0]}
 # office through a shut door, open the records, sign off, and answer the ward
 # sister until the End of Shift card is on the screen. Three seconds, and it is
 # the only thing in this repo that asserts the game can be COMPLETED.
-"$GODOT" --headless --fixed-fps 60 --path "$DIR" \
-  --script res://tests/play_run.gd -- day 2>&1 | grep -vE "$NOISE"
-PLAY_DAY=${PIPESTATUS[0]}
+DAY_OUT=$("$GODOT" --headless --fixed-fps 60 --path "$DIR" \
+  --script res://tests/play_run.gd -- day 2>&1)
+PLAY_DAY=$?
+echo "$DAY_OUT" | grep -vE "$NOISE"
+
+# ...AND IT DOES NOT LEAK A CONTROL WHILE DOING IT.
+#
+# `ObjectDB instances leaked at exit` is in $NOISE and has to be: a looping
+# AudioStreamWAV that is still playing when quit() yanks the audio server
+# leaks two objects on every run, which boot_check.sh documents at length and
+# no player can reach.
+#
+# `N RIDs of type "X" were leaked` is a different report and was NOT filtered
+# — it printed "5 RIDs of type CanvasItem" after every day run for as long as
+# this harness has existed, in the middle of a page of PASSes, and cost
+# nothing so nobody chased it. Chased: five VBoxContainers, built by the
+# review screen for a finding that cites nothing and then not parented on that
+# path, once per rebuild, and the review rebuilds on every answer. A Control
+# that is built and never parented renders nothing, errors nothing, and is
+# leaked — the quietest leak there is, and one a player accumulates for the
+# whole shift.
+#
+# So it fails now. This is the only harness in the repo that plays a whole
+# shift through the UI, which makes it the only one that can see this at all.
+if echo "$DAY_OUT" | grep -q 'RIDs of type'; then
+  echo ""
+  echo "=== THE DAY RUN LEAKED A RENDERING RESOURCE ==="
+  echo "$DAY_OUT" | grep 'RIDs of type' | sed 's/^/  /'
+  echo "  (a Control built and never parented; --verbose names the class)"
+  PLAY_DAY=1
+fi
 
 # ...AND THE GAME SAYS NOTHING IT SHOULD NOT WHILE BEING PLAYED.
 #

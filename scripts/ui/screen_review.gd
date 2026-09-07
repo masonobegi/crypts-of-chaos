@@ -83,6 +83,18 @@ func _build() -> void:
 	if shown > 0:
 		v.add_child(UIKit.spacer(2))
 		v.add_child(cited)
+	else:
+		# A CONTROL THAT IS BUILT AND NEVER PARENTED IS LEAKED, and it is the
+		# quietest leak there is: nothing renders wrong, nothing errors, and
+		# Godot only mentions it at process exit as "5 RIDs of type CanvasItem
+		# were leaked" with no hint as to which five. It was these — the
+		# citation box on a finding that cites nothing, once per rebuild of
+		# this screen, and the review rebuilds on every answer.
+		#
+		# `free()` and not `queue_free()`: this node is not in the tree, so
+		# there is no frame boundary to defer to and a deferred free on an
+		# orphan is exactly what leaks when the process ends first.
+		cited.free()
 	if _last != "":
 		v.add_child(UIKit.rule())
 		v.add_child(UIKit.label(_last, 14, UIKit.ACCENT, HORIZONTAL_ALIGNMENT_LEFT, true))

@@ -2307,3 +2307,53 @@ runs, the quiet check and the boot check.
 - Whether tripling the outline weight costs real fill on hardware. Unmeasurable
   on llvmpipe.
 
+## Session 17, continued — five people instead of one man in five gowns
+
+`Appearance` already varied skin, hair colour, gown, height and girth, and the
+ward lineup still came back as the same person five times. The reason is in the
+file's own comment one level up: height and girth scale a BODY, and a body is a
+coat. At three metres down a bay you read a person by their HEAD, and every
+head in the building was the same ellipsoid at the same size with the same cap
+on it.
+
+Four new fields, all from the same stable hash over the id, so adding somebody
+cannot change anybody who already exists:
+
+  `skull`     non-uniform and independent per axis, so the cast contains long
+              faces, round faces and broad ones rather than five sizes of one
+  `nose`      the most identifying thing on a face and the cheapest to vary
+  `jaw`       reads from further away than the nose, being the bottom edge
+  `hair_style` five cuts — cropped, swept, bobbed, tied back, full
+
+The last one is the one that carries it. Hair COLOUR is close to invisible
+across a lit ward — three dark-haired patients in a row are three identical
+dark caps whatever the swatches say — and a SILHOUETTE is visible at any
+distance the head is. Two spheres each.
+
+All of it goes on the silhouette pieces (skull, ears, jaw, hair) and none of it
+on the `_head` node, because the brows rotate for expressions and a rotated
+child of a non-uniformly scaled parent shears. Heavy thinning takes the cropped
+cap whatever the draw said: a receding bob is not a haircut anybody has.
+
+### And a real leak, found by reading a warning nobody had read
+
+`WARNING: 5 RIDs of type "CanvasItem" were leaked.` has printed after every
+day play run for as long as that harness has existed, in the middle of a page
+of PASSes. `--verbose` names them: five VBoxContainers with no parent.
+
+It is `screen_review.gd`'s citation box, built before it is known whether the
+finding cites anything and then not parented when it does not — once per
+rebuild, and the review rebuilds on every answer you give the ward sister. A
+Control that is built and never parented renders nothing, errors nothing, and
+is leaked; a player accumulates them for the whole shift.
+
+`free()` and not `queue_free()`, because an orphan has no frame boundary to
+defer to. `run_tests.sh` fails the day run on any `RIDs of type` line now,
+proven red by putting the leak back. `ObjectDB instances` stays filtered — that
+one is the audio server being yanked out from under a looping stream by
+`quit()`, which boot_check.sh documents and no player can reach.
+
+One thing tried and reverted: tearing the game down over a few frames before
+the harness quits. It did not remove the CanvasItem leak (that was never a
+pending free) and it added an ObjectDB one.
+

@@ -40,6 +40,15 @@ const HAIR := [
 	Color(0.76, 0.65, 0.42),   ## blond
 ]
 
+## How many silhouettes the head builder knows how to cut. Five is enough that a
+## ward of five is five people and small enough that each one is a shape rather
+## than a variation: cropped, swept, bobbed, tied back, and full.
+##
+## Only reached when there is enough hair left to shape (see `bald`) — heavy
+## thinning goes back to the cropped cap whatever the draw said, because a
+## receding bob is not a haircut anybody has.
+const HAIR_STYLES := 5
+
 const GREY := Color(0.62, 0.61, 0.60)
 const WHITE_HAIR := Color(0.86, 0.86, 0.85)
 
@@ -107,6 +116,32 @@ static func of(c: Dictionary) -> Dictionary:
 		# Hair thins with age and does it to about half of anybody. 0 is a full
 		# head, 1 is bald.
 		"bald": _balding(id, age),
+		# A HEAD OF THEIR OWN.
+		#
+		# Height and girth scale the BODY, and the body is a coat: at three
+		# metres down a bay you read a person by their head, and every head in
+		# this building was the same ellipsoid at the same size with the same
+		# cap on it. Five patients in a row came back as one man in five
+		# gowns — which is the exact failure this file was written to fix, one
+		# level up.
+		#
+		# Non-uniform and INDEPENDENT per axis, so the cast contains long
+		# faces, round faces and broad faces rather than five sizes of one
+		# skull. Applied to the silhouette pieces (skull, ears, jaw, hair) and
+		# not to the head node, because the brows rotate and a rotated child of
+		# a non-uniformly scaled parent shears.
+		"skull": Vector3(0.93 + _unit(id, 11) * 0.14,
+			0.94 + _unit(id, 12) * 0.16,
+			0.93 + _unit(id, 13) * 0.13),
+		# A nose is the most identifying thing on a face and the cheapest to
+		# vary — 4cm of geometry that changes a profile completely.
+		"nose": 0.78 + _unit(id, 14) * 0.55,
+		# A heavy jaw or a small chin. Reads from further away than the nose
+		# because it is the bottom of the silhouette.
+		"jaw": 0.84 + _unit(id, 15) * 0.34,
+		# WHICH HAIRCUT, not just what colour. Colour alone is invisible on a
+		# dark head across a lit ward; a silhouette is not. See `HAIR_STYLES`.
+		"hair_style": _mix(id, 16) % HAIR_STYLES,
 		# AUTHORED, NOT DERIVED. The first pass rolled facial hair from the same
 		# hash as everything else, which meant the game invented a beard for
 		# characters whose own written prose describes them — deciding something

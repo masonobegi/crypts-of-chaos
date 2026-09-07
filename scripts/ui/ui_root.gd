@@ -453,6 +453,16 @@ func _credits_screen() -> Control:
 			+ "boxes and cylinders at load time."],
 		["Audio", "There isn't any of that either. Every sound is a waveform "
 			+ "synthesised the first time you hear it."],
+		# THE ONE THING IN THE GAME SOMEBODY ELSE MADE, and the SIL Open Font
+		# License asks for the notice to travel with the software. The licence
+		# files themselves ship in `assets/fonts/` — `include_filter` in
+		# export_presets.cfg puts them in the build, because a .txt is not an
+		# imported resource and "all_resources" does not carry one.
+		["Type", "Instrument Sans by the Instrument Sans Project Authors; IBM "
+			+ "Plex Mono and IBM Plex Serif by IBM; Nothing You Could Do by "
+			+ "Kimberly Geswein. All four under the SIL Open Font License 1.1, "
+			+ "whose text ships beside them. They are the only thing here "
+			+ "nobody in this conversation made."],
 		["Engine", "Godot 4.3, and a great deal of patience with its loader."],
 		["Medicine", "Entirely invented. Chronic Beige is not a condition. "
 			+ "Please do not attempt any procedure in this game."],

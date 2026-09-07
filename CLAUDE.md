@@ -19,7 +19,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 297 assertions, a 168-check smoke run through the real tree
+`run_tests.sh` is 298 assertions, a 168-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -442,6 +442,31 @@ with it because a lost afternoon does not care which.
     The smoke run asserts the bus exists, carries a reverb, and has every
     positional voice on it — none of which any other check can see.
 
+53. **A Control that is built and never parented is LEAKED, and it is the
+    quietest fault in this repo.** Nothing renders wrong, nothing errors, and
+    Godot mentions it once at process exit as `5 RIDs of type "CanvasItem" were
+    leaked` — a line that printed after every day run for as long as that
+    harness has existed, in the middle of a page of PASSes, and cost nothing,
+    so nobody chased it. It was `screen_review.gd`'s citation box on a finding
+    that cites nothing: built, then not parented on that path, once per rebuild
+    — and the review rebuilds on every answer, so a player accumulates them for
+    the whole shift. `free()`, not `queue_free()`: an orphan has no frame
+    boundary to defer to. `run_tests.sh` fails the day run on any `RIDs of
+    type` line now (`ObjectDB instances` stays filtered — that one is the
+    audio server being yanked by `quit()`, and boot_check.sh explains it).
+    Proven red by putting the leak back.
+54. **The head is what you read at three metres, and every head in the building
+    was the same one.** `Appearance` varied skin, hair colour, gown, height and
+    girth — and a ward of five still came back as one man in five gowns,
+    because height and girth scale a BODY and a body is a coat. `skull` (non
+    uniform, independent per axis, so the cast has long faces and round ones
+    rather than five sizes of one), `nose`, `jaw` and `hair_style` are what
+    actually separate people. Applied to the SILHOUETTE pieces — skull, ears,
+    jaw, hair — and never to the `_head` node, because the brows rotate for
+    expressions and a rotated child of a non-uniformly scaled parent shears.
+    Hair COLOUR is close to invisible across a lit ward; a hair SHAPE is not,
+    which is why there are five cuts and they cost two spheres each.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -534,7 +559,7 @@ with it because a lost afternoon does not care which.
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 297 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 298 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
 | `smoke_run.gd` | "everything compiles and nothing works" — 168 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

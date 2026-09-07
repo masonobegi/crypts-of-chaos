@@ -72,15 +72,17 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
    all green as of the last commit.
 2. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
-3. **Faces are geometry, not lighting.** Measured twice: `BACKLIGHT` at 0.28
-   moved 6,100 pixels by at most 27 levels and the face read identically, and
-   at 0.70 — well past subtle — 6,300 pixels by at most 52. The heads have
-   varied skulls, noses, jaws and five hairstyles now, which is what made the
-   ward read as five people; the FACE itself is still an egg with decal eyes.
-   If it is worth another attempt it belongs in `npc_body.gd`.
-4. **The game has never been played by a person.** Every design number in it —
+3. **The game has never been played by a person.** Every design number in it —
    the verb costs, the round times, the forty-five-minute window — is validated
-   by probes rather than by anybody's hands.
+   by probes rather than by anybody's hands. This is the biggest open item by
+   some distance and no amount of further polish substitutes for it.
+4. **The MOUTH is the last flat thing on a face.** The nose has a bridge and
+   the eyes sit in sockets now, which is what took the head off being an egg;
+   the mouth is still one dark bar and two corner blocks. It is the cheapest
+   remaining piece and it belongs in `npc_body.gd` with the rest of them.
+   (Lighting is NOT the lever and has been measured twice: `BACKLIGHT` at 0.28
+   moved 6,100 pixels by at most 27 levels, and at 0.70 — well past subtle —
+   6,300 by at most 52, with the face reading identically both times.)
 
 ## Two noises that are not bugs
 

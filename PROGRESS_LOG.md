@@ -2357,3 +2357,29 @@ One thing tried and reverted: tearing the game down over a few frames before
 the harness quits. It did not remove the CanvasItem leak (that was never a
 pending free) and it added an ObjectDB one.
 
+## Session 17, continued — the title screen, which was lit like a different game
+
+`MenuScene` carried its own copy of the grade: a sky-blue ambient at 1.05,
+exposure 0.80, white 2.6, saturation 1.22. `Game` carried the swept one —
+warm-neutral at 1.15, 0.70, 3.2, 1.35, chosen by photographing six settings and
+scoring them. So the first screen of the game was cooler, flatter and half a
+stop brighter than every screen after it, and nothing anywhere said why.
+
+`Grade.apply(env)` is the one definition now, with the measurements and the
+reasons that went with them. Only the background differs between the two
+callers, and it has to: the ward has a procedural sky it sees through the
+windows, and the title vignette is one room with no outside.
+
+The room itself was built out of `Build.wall` and `box_mi`, which give every
+square metre one flat albedo — so the screen whose entire job is "the first
+frame of the game looks like the game" had a blank white ceiling, a plain green
+floor and flat cream walls, with none of the tile, speckle, paint tooth or
+contact shading of any room behind it. It goes through `Surfaces` now.
+
+And it has two beds in it. The panel covers the middle two fifths, leaving two
+thirds of the frame to compose in, and only the left one had anybody in it —
+the right third was a cabinet, a plant and four square metres of wall. Two beds
+with two different patients also make the point the game is about: this is a
+ward, and there is more than one of them. The lens went from 62 to 52, because
+a wide lens in a three-metre room spends the top of the frame on ceiling tile.
+

@@ -467,6 +467,20 @@ with it because a lost afternoon does not care which.
     Hair COLOUR is close to invisible across a lit ward; a hair SHAPE is not,
     which is why there are five cuts and they cost two spheres each.
 
+55. **The title screen is the first screenshot anybody sees of this game, and
+    it was lit like a different one.** `MenuScene` carried its own copy of the
+    grade — a sky-blue ambient at 1.05, exposure 0.80, white 2.6, saturation
+    1.22 — while `Game` carried the swept, measured one (warm-neutral 1.15,
+    0.70, 3.2, 1.35). Two copies of a tuned number is gotcha 48 again, and a
+    LOOK is the one thing where the divergence is guaranteed to be visible.
+    `Grade.apply(env)` is the single definition; only the background differs,
+    and it has to (the ward has a sky it sees through windows, the title
+    vignette is one room with no outside). The menu room was also built out of
+    `Build.wall` and `box_mi` — one flat albedo per square metre — so the
+    screen whose whole job is "the first frame looks like the game" had none of
+    the tile, speckle, paint tooth or contact shading of any room behind it. It
+    uses `Surfaces` now, like everything else.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

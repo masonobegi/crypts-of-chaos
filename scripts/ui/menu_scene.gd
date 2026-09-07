@@ -31,10 +31,21 @@ func _room() -> void:
 	# Build.wall, not box_mi: this needs a COLLIDER. The nurse is a
 	# CharacterBody3D and falls at 9.8 m/s² through a floor that is only a mesh,
 	# so the first version of this shot had nobody in it and no error to say why.
-	add_child(Build.wall(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0), Build.FLOOR_A,
-		Vector3(0, -0.1, 0), 0.0, 0.0))
-	add_child(Build.box_mi(Vector3(HALF_X * 2.0, 0.14, HALF_Z * 2.0), Build.CEILING,
-		Vector3(0, WALL_H + 0.07, 0), 0.9, 0.0))
+	# THE SAME SURFACES THE WARD HAS, not flat colours.
+	#
+	# This room is meant to be a corner of the building, and the file says so at
+	# the top — but it was built out of `Build.wall` and `box_mi`, which give
+	# every square metre one flat albedo. So the first screen of the game had a
+	# blank white ceiling, a plain green floor and two-tone cream walls with
+	# none of the tile, speckle, paint tooth or contact shading that every room
+	# behind it has. It did not look like the game; it looked like a mock-up of
+	# the game, which is a strange first impression to make.
+	add_child(Build.surfaced_wall(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0),
+		Surfaces.floor_mat(Build.FLOOR_A, 2.0,
+			Vector2(-HALF_X, -HALF_Z), Vector2(HALF_X, HALF_Z)),
+		Vector3(0, -0.1, 0)))
+	add_child(Build.mi(Build.rbox_mesh(Vector3(HALF_X * 2.0, 0.14, HALF_Z * 2.0), 0.02),
+		Surfaces.ceiling_mat(Build.CEILING), Vector3(0, WALL_H + 0.07, 0)))
 	_wall(Vector3(HALF_X * 2.0, WALL_H, 0.2), Vector3(0, 0, -HALF_Z), true)
 	_wall(Vector3(0.2, WALL_H, HALF_Z * 2.0), Vector3(-HALF_X, 0, 0), false)
 	_wall(Vector3(0.2, WALL_H, HALF_Z * 2.0), Vector3(HALF_X, 0, 0), false)
@@ -43,10 +54,12 @@ func _room() -> void:
 ## are most of why its rooms read as built rather than generated.
 func _wall(size: Vector3, at: Vector3, horizontal: bool) -> void:
 	var lower := 1.1
-	add_child(Build.box_mi(Vector3(size.x, lower, size.z), Build.WALL_LOWER,
-		at + Vector3(0, lower * 0.5, 0), 0.9, 0.0))
-	add_child(Build.box_mi(Vector3(size.x, WALL_H - lower, size.z), Build.WALL_UPPER,
-		at + Vector3(0, lower + (WALL_H - lower) * 0.5, 0), 0.9, 0.0))
+	add_child(Build.mi(Build.rbox_mesh(Vector3(size.x, lower, size.z), 0.02),
+		Surfaces.wall_mat(Build.WALL_LOWER, 0.0),
+		at + Vector3(0, lower * 0.5, 0)))
+	add_child(Build.mi(Build.rbox_mesh(Vector3(size.x, WALL_H - lower, size.z), 0.02),
+		Surfaces.wall_mat(Build.WALL_UPPER, lower),
+		at + Vector3(0, lower + (WALL_H - lower) * 0.5, 0)))
 	var out := Vector3(0, 0, 0.1) if horizontal else Vector3(0.1, 0, 0)
 	var rail := Vector3(size.x, 0.075, 0.11) if horizontal else Vector3(0.11, 0.075, size.z)
 	var skirt := Vector3(size.x, 0.16, 0.14) if horizontal else Vector3(0.14, 0.16, size.z)
@@ -72,12 +85,29 @@ func _furnish() -> void:
 	bed.position = Vector3(-3.05, 0, -1.5)
 	bed.rotation.y = 0.55
 
+	# A SECOND BED, ON THE OTHER SIDE. The panel covers the middle two fifths,
+	# which leaves two thirds of the frame to compose in — and only the left one
+	# had anybody in it. The right third was a cabinet, a plant and four square
+	# metres of wall, which is the emptiest part of the first picture anybody
+	# sees of this game. Two beds also make the point the game is about: this is
+	# a ward, and there is more than one of them.
+	#
+	# NOT named "Chair": `pose_for_capsule` finds the bed it re-poses by that
+	# name and falls back to the first PatientBed among the children, so a
+	# second one with the same name would be a coin toss.
+	var bed2 := PatientBed.new()
+	bed2.name = "ChairTwo"
+	add_child(bed2)
+	bed2.build()
+	bed2.position = Vector3(2.95, 0, -2.45)
+	bed2.rotation.y = -0.80
+
 	Dressing.overbed_table(self, Vector3(-1.75, 0, -1.2), 0.2)
 	Dressing.curtain(self, Vector3(-4.3, 0, -0.2), 2.4, PI * 0.5)
-	Dressing.cabinet(self, Vector3(3.3, 0, -2.9), 0.0)
-	Dressing.plant(self, Vector3(4.35, 0, -2.4), 1.15)
-	Dressing.stool(self, Vector3(2.75, 0, 0.1))
-	Dressing.water_cooler(self, Vector3(4.35, 0, 0.9), -PI * 0.5)
+	Dressing.cabinet(self, Vector3(4.3, 0, -2.9), 0.0)
+	Dressing.plant(self, Vector3(4.45, 0, 0.4), 1.15)
+	Dressing.stool(self, Vector3(1.85, 0, 0.35))
+	Dressing.water_cooler(self, Vector3(4.45, 0, 1.9), -PI * 0.5)
 	Dressing.bin(self, Vector3(-4.4, 0, 1.6))
 	Dressing.floor_mat(self, Vector3(0.4, 0, 2.4), Vector2(1.8, 1.1))
 
@@ -96,6 +126,7 @@ func _furnish() -> void:
 ## place with a job going on in it, which is what the game is about.
 var nurse: NPCBody = null
 var sitter: NPCBody = null
+var sitter_two: NPCBody = null
 
 func _people() -> void:
 	nurse = NPCBody.new()
@@ -129,29 +160,35 @@ func _people() -> void:
 	sitter.rotation.y = 0.55
 	sitter.set_in_bed(true)
 
+	# ...and somebody in the second bed. A different id, so `Appearance` gives
+	# them a different skull, a different haircut and a different gown without
+	# anybody choosing one: the first thing the title screen now says about this
+	# game is that the people in it are people.
+	sitter_two = NPCBody.new()
+	sitter_two.display = ""
+	sitter_two.set_look(Appearance.anyone("menu_patient_two", 71))
+	add_child(sitter_two)
+	sitter_two.position = Vector3(2.95, 0.5, -2.45)
+	sitter_two.rotation.y = -0.80
+	sitter_two.set_in_bed(true)
+
 func _light() -> void:
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.10, 0.13, 0.16)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	# The menu has no sky, so ambient has to come off the colour: with the
-	# default sky contribution a world with no sky in it lights nothing at all,
-	# and the room renders as a set of silhouettes. (The longer note about this
-	# lived in NightSystem, which went with the evening.)
-	env.ambient_light_sky_contribution = 0.0
-	env.ambient_light_color = Color(0.74, 0.84, 0.92)
-	env.ambient_light_energy = 1.05
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 0.80
-	env.tonemap_white = 2.6
-	env.adjustment_enabled = true
-	env.adjustment_saturation = 1.22
-	env.adjustment_contrast = 1.06
-	env.glow_enabled = true
-	env.glow_intensity = 0.22
-	env.glow_bloom = 0.03
-	env.glow_hdr_threshold = 1.3
+	# THE SAME GRADE AS THE WARD, which is the whole point of this scene.
+	#
+	# This used to carry its own: a sky-blue ambient at 1.05, exposure 0.80,
+	# white 2.6, saturation 1.22. The ward's was swept and measured and ended up
+	# warm-neutral at 1.15/0.70/3.2/1.35 — so the first screen of the game was
+	# cooler, flatter and half a stop brighter than every screen after it, and
+	# nobody could have told you why the title looked like a different build.
+	# One definition, in `Grade`.
+	#
+	# Only the BACKGROUND differs, and it has to: the ward has a procedural sky
+	# it sees through the windows, and this is one room with no outside.
+	Grade.apply(env)
 	we.environment = env
 	add_child(we)
 
@@ -175,7 +212,14 @@ func _light() -> void:
 
 func _camera() -> void:
 	cam = Camera3D.new()
-	cam.fov = 62.0
+	# 52, NOT 62. A wide lens in a three-metre room spends the top of the frame
+	# on ceiling and the bottom on floor, and both are the least interesting
+	# surfaces in the building — the first render of this shot gave a quarter of
+	# the picture to bare ceiling tile. Tighter is also simply how a composed
+	# shot is taken: it flattens the perspective, keeps the two beds the same
+	# size as each other, and puts the room's furnished band across the middle
+	# where the eye is.
+	cam.fov = 52.0
 	cam.current = true
 	add_child(cam)
 	_aim(0.0)
@@ -232,9 +276,9 @@ func _aim(t: float) -> void:
 	if cam == null:
 		return
 	cam.position = Vector3(
-		0.55 + sin(t * 0.11) * 0.70,
-		1.38 + sin(t * 0.077) * 0.08,
-		2.95 + cos(t * 0.13) * 0.30)
+		0.35 + sin(t * 0.11) * 0.62,
+		1.44 + sin(t * 0.077) * 0.08,
+		3.35 + cos(t * 0.13) * 0.28)
 	# Aimed slightly UP. A camera at eye height looking level at a room fills
 	# the bottom half of the frame with empty floor, and the bottom half of the
 	# frame is the half the panel does not cover.

@@ -77,18 +77,42 @@ static func panel(color := PANEL, radius := 3, border := 0, border_color := ACCE
 ## has no explicit width collapses to one character per line — which is exactly
 ## what the HUD clock did before this was a parameter. Only turn it on for text
 ## that has a width to wrap within.
+## `face` is the one place a caller says WHO IS SPEAKING. Left null it is the
+## interface's own voice (Instrument Sans, via the root theme); hand it
+## `Typeface.mono()` for anything a machine produced, `Typeface.hand()` for
+## something the player wrote themselves. A null face is not an error — it
+## falls through to the theme, which is what every caller that does not care
+## wants.
 static func label(text: String, size := 16, color := INK,
-		align := HORIZONTAL_ALIGNMENT_LEFT, wrap := false) -> Label:
+		align := HORIZONTAL_ALIGNMENT_LEFT, wrap := false, face = null) -> Label:
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", size)
 	l.add_theme_color_override("font_color", color)
+	if face != null:
+		l.add_theme_font_override("font", face)
 	l.horizontal_alignment = align
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 	return l
 
+## A figure, a time, a bed number, a result. Anything nobody chose the wording
+## of. Mono also makes a COLUMN of them line up, which is why the money in the
+## corner and the times down the chart stopped wandering.
+static func mono_label(text: String, size := 15, color := INK,
+		align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	return label(text, size, color, align, false, Typeface.mono())
+
+## Something the player wrote. See Typeface: this is the hand the whole record
+## layer is read against, so it is one call and not a font argument sprinkled
+## about.
+static func hand_label(text: String, size := 15, color := INK,
+		align := HORIZONTAL_ALIGNMENT_LEFT, wrap := false) -> Label:
+	return label(text, int(round(size * Typeface.HAND_SCALE)), color, align, wrap, Typeface.hand())
+
+## THE INSTITUTION'S VOICE. Serif, because a hospital's own paperwork is set in
+## one and a sans heading on a manila card reads as a settings screen.
 static func title(text: String, size := 30, color := INK) -> Label:
-	var l := label(text, size, color)
+	var l := label(text, size, color, HORIZONTAL_ALIGNMENT_LEFT, false, Typeface.serif())
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.6))
 	l.add_theme_constant_override("shadow_offset_y", 2)
 	return l
@@ -344,7 +368,7 @@ static func row(key: String, value: String, value_color := INK, size := 15,
 	var h := hbox(8)
 	var k := label(key, size, key_color)
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var v := label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT)
+	var v := mono_label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT)
 	h.add_child(k)
 	h.add_child(v)
 	return h
@@ -623,6 +647,8 @@ static func chart_header(text: String, tint := ACCENT) -> Control:
 	t.text = text.to_upper()
 	t.add_theme_font_size_override("font_size", 24)
 	t.add_theme_color_override("font_color", INK)
+	if Typeface.serif() != null:
+		t.add_theme_font_override("font", Typeface.serif())
 	v.add_child(t)
 	v.add_child(spacer(4))
 	var thick := ColorRect.new()
@@ -671,6 +697,12 @@ static func stamp(text: String, tint := BAD) -> Control:
 	l.text = text.to_upper()
 	l.add_theme_font_size_override("font_size", 20)
 	l.add_theme_color_override("font_color", tint)
+	# A rubber stamp is cut, not typeset — the letters are wide apart because
+	# the die has to hold ink. Serif and spaced is what separates FLAGGED FOR
+	# AUDIT from a button that says the same thing.
+	if Typeface.serif() != null:
+		l.add_theme_font_override("font", Typeface.serif())
+	l.add_theme_constant_override("extra_spacing_glyph", 2)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	p.add_child(l)
@@ -679,6 +711,44 @@ static func stamp(text: String, tint := BAD) -> Control:
 	p.rotation = -0.055
 	p.pivot_offset = Vector2(40, 17)
 	return p
+
+## ONE LINE OF CHART, SET IN THE HAND THAT WROTE IT.
+##
+## Both the chart and the ward sister's review quote entries, and they quoted
+## them differently — one built a row, the other called `as_line()` — so the
+## same note read as two different things depending on which screen you were
+## on. The reviewer reading your own words back at you only lands if they are
+## recognisably YOUR words.
+##
+## Three columns, and they are three columns rather than one string because a
+## proportional face will not keep a stack of times in line and a monospaced one
+## makes prose look like a receipt:
+##
+##   the TIME in mono, because it is a stamp and stamps line up
+##   the TEXT in the author's own face — your scrawl, a colleague's pen, a
+##       patient's reported speech in italic, a machine's printout in mono
+##   the AUTHOR in mono, small, like the login it is
+##
+## See `Typeface.for_author`. The mapping lives there and not here so the chart,
+## the records screen and the review cannot drift apart again.
+static func chart_line(e: ChartEntry, tint := INK, size := 14) -> Control:
+	var h := hbox(8)
+	var when := mono_label(_hhmm(e.stated_minute), size, Color(INK.r, INK.g, INK.b, 0.62))
+	# A FIXED WIDTH, or a five-entry chart has its text starting at five
+	# different places. Mono makes "08:05" and "14:40" the same width; it does
+	# not make the LABEL the same width, because a Label shrinks to its content.
+	when.custom_minimum_size.x = size * 3.4
+	h.add_child(when)
+
+	var body := label(e.text, Typeface.size_for_author(e.author, size), tint,
+		HORIZONTAL_ALIGNMENT_LEFT, true, Typeface.for_author(e.author))
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(body)
+
+	var who := mono_label(e.author_label(), maxi(11, size - 2), INK_DIM,
+		HORIZONTAL_ALIGNMENT_RIGHT)
+	h.add_child(who)
+	return h
 
 ## A form field: a label, a dotted leader, and a value. The leader is what makes
 ## a row of these read as a document rather than as a settings screen.
@@ -689,5 +759,11 @@ static func field(key: String, value: String, value_color := INK, size := 15) ->
 	leader.clip_text = true
 	leader.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	h.add_child(leader)
-	h.add_child(label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT))
+	# The printed half of a form is set; the filled-in half is typed into it, so
+	# it is mono. It also makes a column of values line up under each other,
+	# which a proportional face on a right-aligned number does not.
+	h.add_child(mono_label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT))
 	return h
+
+static func _hhmm(m: int) -> String:
+	return "%02d:%02d" % [(m / 60) % 24, m % 60]

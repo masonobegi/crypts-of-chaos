@@ -34,8 +34,12 @@ func build() -> void:
 	for r in Cases.ROUNDS:
 		if int(r) < Cases.DEBT_DUE_MINUTE:
 			times.append(ChartEntry._hhmm(int(r)))
-	var rota := Build.label3d("rounds  " + "   ".join(times), 0.055,
-		Color(0.24, 0.30, 0.36), false)
+	# IN MARKER, and now it looks like it. The comment above has claimed this
+	# since the board was built; the letters were a bold grotesque like every
+	# other sign in the building, which made a whiteboard somebody scribbles on
+	# every morning read as a printed timetable.
+	var rota := Build.label3d("rounds  " + "   ".join(times), 0.062,
+		Color(0.24, 0.30, 0.36), false, Typeface.hand())
 	rota.position = Vector3(0, 0.26, 0.05)
 	add_child(rota)
 

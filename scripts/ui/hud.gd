@@ -82,8 +82,14 @@ func _build() -> void:
 	add_child(_tl_bg)
 	var tl := UIKit.vbox(2)
 	UIKit.place(tl, Control.PRESET_TOP_LEFT, 26, 18, 190, 86)
-	_day = UIKit.label("Day 1", 20, UIKit.HUD_INK)
-	_clock = UIKit.label("8:00 AM", 30, UIKit.HUD_ACCENT)
+	# THE CLOCK, THE DAY AND THE MONEY ARE MONO, and the three of them are the
+	# only readouts in the game that change while you are looking at them. A
+	# proportional face re-measures itself every time a digit changes, so "$1,180"
+	# becoming "$1,240" nudged the whole plate sideways and the clock jittered
+	# once a minute all shift. Mono is not a style choice here; it is what stops
+	# the corner of the screen twitching.
+	_day = UIKit.mono_label("Day 1", 20, UIKit.HUD_INK)
+	_clock = UIKit.mono_label("8:00 AM", 30, UIKit.HUD_ACCENT)
 	tl.add_child(_day)
 	tl.add_child(_clock)
 	add_child(tl)
@@ -96,7 +102,16 @@ func _build() -> void:
 	# as big as what is written on it.
 	var tr_bg := UIKit.panel(Color(0.06, 0.08, 0.10, 0.74), 8)
 	# 96, not 80: the caption above the figure is a third row.
-	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -320, 10, 308, 96)
+	UIKit.place(tr_bg, Control.PRESET_TOP_RIGHT, -364, 10, 352, 96)
+	# GROW LEFT, NOT RIGHT. A PanelContainer sizes itself to its child and will
+	# happily exceed the width `place` gave it; the default grow direction is
+	# END, so on a plate anchored to the RIGHT edge that overflow goes straight
+	# off the screen. Measured on a 1600-wide render: the owed line ran to
+	# x=1589 with the plate's own right edge at 1603, so the most-read figure in
+	# the game sat eleven pixels from the bezel with no margin and the corner of
+	# its plate was outside the viewport. Growing towards BEGIN puts any
+	# overflow into the middle of the screen, where there is room for it.
+	tr_bg.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	var tr := UIKit.vbox(0)
 	tr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# What you have, and what tonight looks like from here. The second line is
@@ -114,10 +129,10 @@ func _build() -> void:
 		HORIZONTAL_ALIGNMENT_RIGHT)
 	_cash_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr.add_child(_cash_label)
-	_cash = UIKit.label("$0", 26, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
+	_cash = UIKit.mono_label("$0", 26, UIKit.HUD_MONEY, HORIZONTAL_ALIGNMENT_RIGHT)
 	_cash.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr.add_child(_cash)
-	_owed = UIKit.label("", 15, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	_owed = UIKit.mono_label("", 15, UIKit.HUD_INK, HORIZONTAL_ALIGNMENT_RIGHT)
 	_owed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tr.add_child(_owed)
 	tr_bg.add_child(tr)

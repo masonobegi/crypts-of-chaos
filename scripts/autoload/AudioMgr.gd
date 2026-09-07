@@ -148,6 +148,7 @@ func _exit_tree() -> void:
 func _ensure_voices() -> void:
 	if not _players.is_empty():
 		return
+	_ensure_buses()
 	for i in MAX_VOICES:
 		var p := AudioStreamPlayer.new()
 		add_child(p)
@@ -156,8 +157,49 @@ func _ensure_voices() -> void:
 		var p := AudioStreamPlayer3D.new()
 		p.max_distance = 30.0
 		p.unit_size = 4.0
+		p.bus = BUS_WORLD
 		add_child(p)
 		_players3d.append(p)
+
+## THE ROOM. Everything positional goes through it and nothing else does.
+##
+## Every sound in this game was DRY — a footstep on a vinyl floor, a door in a
+## corridor and a monitor forty feet away all arrived with no room around them,
+## which is the single loudest "this was made in a week" tell an interior game
+## can have. A hospital is hard floors, painted plaster and long straight runs;
+## it is one of the more reverberant places a person is ever in.
+##
+## Only the 3D pool is routed here. The music and the UI clicks stay dry on
+## Master on purpose: a button that echoes is a button in a cave, and putting a
+## room around a score that is meant to be coming from nowhere makes it sound
+## like it is coming from the next ward.
+##
+## Wet is deliberately low. The point is not that you notice a reverb; it is
+## that you stop noticing its absence. Above about 0.3 the ward turns into a
+## swimming pool and every line of dialogue smears.
+const BUS_WORLD := "World"
+
+func _ensure_buses() -> void:
+	if AudioServer.get_bus_index(BUS_WORLD) != -1:
+		return
+	var i := AudioServer.bus_count
+	AudioServer.add_bus(i)
+	AudioServer.set_bus_name(i, BUS_WORLD)
+	AudioServer.set_bus_send(i, "Master")
+	var rev := AudioEffectReverb.new()
+	# A corridor, not a cathedral: ~1.1s of tail, damped by the plaster, with a
+	# short pre-delay so the direct sound still arrives first and the source
+	# still has a direction. `hipass` keeps the low end out of the tail, which
+	# is what stops a footstep booming.
+	rev.room_size = 0.62
+	rev.damping = 0.46
+	rev.predelay_msec = 18.0
+	rev.predelay_feedback = 0.28
+	rev.spread = 0.85
+	rev.hipass = 0.18
+	rev.dry = 1.0
+	rev.wet = 0.20
+	AudioServer.add_bus_effect(i, rev)
 
 # ------------------------------------------------------------------ synthesis
 func _build(name: String) -> AudioStreamWAV:

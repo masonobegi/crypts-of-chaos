@@ -133,6 +133,31 @@ func _ready() -> void:
 	apply_all()
 	_add_pad_defaults()
 	apply_bindings()
+	_apply_typeface()
+
+## THE ROOT THEME, AND WHY IT LIVES IN AN AUTOLOAD RATHER THAN IN Boot.
+##
+## Every harness in this repo instantiates Game.tscn directly and never runs
+## Boot at all (that is the gap boot_check.sh exists to close). A theme applied
+## in Boot would therefore be applied in the shipped game and in NO screenshot,
+## no smoke run and no play run — so the pictures the look is judged from would
+## show a different game to the one that ships. An autoload runs on every path
+## into the tree, which is what this needs.
+##
+## `root.theme` is a fallback, not an override: any control that sets its own
+## font still wins, so UIKit's per-control faces are refinements on top of this
+## rather than a fight with it.
+func _apply_typeface() -> void:
+	var tree := get_tree()
+	if tree == null or tree.root == null:
+		return
+	if not Typeface.have():
+		# Not fatal and not silent. A missing import leaves the game looking
+		# exactly as it did before the fonts existed, which is the one failure
+		# a screenshot cannot tell you about.
+		Log.w("typeface not imported — falling back to the engine default", "Settings")
+		return
+	tree.root.theme = Typeface.theme()
 
 func _add_pad_defaults() -> void:
 	for action in PAD_DEFAULTS.keys() + PAD_UI.keys():

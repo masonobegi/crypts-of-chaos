@@ -2197,3 +2197,113 @@ stretch of wall fell forty per cent and the lines read as edges again.
 Verified: 297 assertions, 161 smoke checks on three seeds, seven day criteria,
 every deal playable, the frontier probe, both play runs, the quiet check and
 the boot check. All green.
+
+## Session 17 — sound, type, and one artefact that was never there
+
+Three things the handover asked for and one it could not have, because finding
+it needed a camera at the right height.
+
+### Sound: the ward has a room around it now
+
+Every sound in the game was DRY. Positional audio existed — 24 voices on
+`AudioStreamPlayer3D`, attenuated, placed — but there was no bus and no reverb
+anywhere, so a footstep on vinyl, a door down the corridor and a monitor forty
+feet away all arrived with nothing around them. A hospital is hard floors,
+painted plaster and long straight runs; it is one of the more reverberant
+places a person is ever in, and its absence is the loudest "made in a week"
+tell an interior game has.
+
+`AudioMgr` now builds a `World` bus with one `AudioEffectReverb` — a corridor,
+not a cathedral: room 0.62, damping 0.46, 18ms pre-delay so the direct sound
+still arrives first and the source still has a direction, hipass 0.18 so a
+footstep does not boom, wet 0.20. The whole 3D pool routes through it. The
+music and the UI clicks stay dry on Master, because a button that echoes is a
+button in a cave.
+
+Before that: bedside monitors that take it in turns across the occupied beds
+(so five patients is a rhythm and one is a lonely one), a two-beat pulse under
+the last forty minutes before Vinnie, three ambience sounds rescued out of the
+dead pile, and thirteen recipes deleted that nothing had called since the
+treatment system was cut. Every recipe in the file is now played by something
+and the smoke run keeps it that way.
+
+### Type: four hands, and the chart reads like a chart
+
+`assets/fonts/` — Instrument Sans, IBM Plex Mono, IBM Plex Serif and Nothing
+You Could Do, all OFL, licences beside them. This is the one place the
+no-assets rule bends, and the reason is that a letterform is not something you
+can derive from primitives.
+
+The mapping is the point, not the fonts. `ChartEntry.Author` picks the face:
+your own notes are HANDWRITTEN, a colleague's are the interface sans, a
+patient's reported speech is italic, and a machine's result is mono. The chart
+and the ward sister's review both go through one `UIKit.chart_line`, so the
+note she reads back at you at eight o'clock is visibly the note you wrote at
+half six. Form titles and the rubber stamp are serif — the institution's own
+voice. The HUD clock, the day and the money are mono because they change while
+you are looking at them and a proportional face made the corner of the screen
+twitch once a minute.
+
+Measured rather than assumed: a specimen rendered on the real manila at the
+real body size says the handwriting's x-height is IDENTICAL to the sans's at
+the same nominal size. What differs is ink — 573 dark pixels against 943 —
+because it is a single-stroke script. So it does not read small, it reads
+faint, and the first version of `HAND_SCALE` (1.34, sized for an x-height
+problem it does not have) would have overrun the chart card by a third. 1.19
+puts the two within 15% of each other on ink.
+
+### The ceiling bands, which were not a bug
+
+The handover did not mention these because nobody had named them; they are the
+broad soft diagonals across the top third of every interior shot this project
+has ever taken, and they have been blamed on the sun's shadow map, on the tile
+runner, and on noise aliasing across three separate passes.
+
+Isolated properly this time, one term at a time on the real ward: horizontal
+standard deviation across the ceiling was 9.33 with the tile runner on and 5.92
+with it off, and every diagonal went with it. Splitting the runner into its two
+axes finished it — they are `line.y`, lines of constant world z, drawn
+correctly, fanning out from the vanishing point on a plane 65cm above the
+camera.
+
+Sixty-five centimetres, because `look.sh`'s wide vantage sat at 2.6m under a
+3.25m ceiling. The player's eye is at 1.7m and every other vantage in both
+harnesses uses it. At 1.7m the bands do not exist. Three passes of graphics
+work were judged from a frame no player can stand in; the tuning vantages are
+eye height now and `screenshots.sh` keeps its establishing shot.
+
+### Two real faults found on the way
+
+`ceiling_mat` declared `uniform float self_lit = 0.22` under a paragraph
+explaining why 0.55 was too bright, and then handed the material **0.85**.
+CLAUDE.md quoted the 0.22. The measurement: ceiling at L=215 against an upper
+wall at 200 and a floor at 150 — the largest surface in the top third of every
+frame was the brightest thing in the room, and the light fittings did not read
+as fittings because the tile was as bright as they were. It is `CEIL_SELF_LIT`
+now, in one place, quoted by the shader's own default. Gotcha 48, alive.
+
+And `detail_fade`, which is `grid_line`'s argument applied to everything else:
+the floor, the wall, the ceiling and the prop shader all sampled noise at 24 to
+60 cycles per metre with no guard, while the fabric shader — the only one that
+had ever been looked at closely — did it properly.
+
+### The HUD money plate was off the screen
+
+Measured on a 1600-wide render: the owed line ran to x=1589 with the plate's
+own right edge at 1603. A PanelContainer sizes to its child and the default
+grow direction is END, so on a plate anchored to the right the overflow goes
+straight off the edge. It grows towards BEGIN now.
+
+Verified: 297 assertions, 168 smoke checks on three seeds, seven day criteria,
+the data and draw checks, careers on three seeds, the frontier probe, both play
+runs, the quiet check and the boot check.
+
+### Still open
+
+- **Character form is a geometry problem.** Measured last session and still
+  true: BACKLIGHT at 0.28 moved 6,100 pixels by at most 27 levels and the face
+  read identically. The heads are eggs with decal eyes and that is where the
+  next attempt goes — `npc_body.gd`, not the lighting.
+- Whether tripling the outline weight costs real fill on hardware. Unmeasurable
+  on llvmpipe.
+

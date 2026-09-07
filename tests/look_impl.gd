@@ -16,8 +16,17 @@ var settle := 0
 var out_dir := "user://look"
 var tag := "x"
 
+## AT EYE HEIGHT, ALL THREE. The wide vantage used to sit at 2.6m — 0.65m below
+## a 3.25m ceiling — which is a good establishing frame for a store page and a
+## terrible one to tune a shader from, because it is a view no player can ever
+## stand in. Judged from up there the ceiling fills the top half of the frame at
+## a near-grazing angle, its 0.6m grid fans out from the vanishing point into
+## broad diagonals, and those diagonals have now been blamed on the sun's shadow
+## map, on the tile runner being too strong, and on noise aliasing. They are
+## none of those: they are the grid, drawn correctly, seen from an impossible
+## place. `screenshots.sh` keeps the high wide shot; the tuning loop does not.
 const SHOTS := [
-	["wide", Vector3(2.0, 2.6, 6.0), Vector3(14.0, 1.0, 11.5)],
+	["wide", Vector3(2.0, 1.7, 6.0), Vector3(14.0, 1.3, 11.5)],
 	["bedside", Vector3(9.0, 1.7, 9.2), Vector3(11.0, 1.15, 11.8)],
 	["corridor", Vector3(1.5, 1.7, 2.0), Vector3(18.0, 1.5, 2.0)],
 ]

@@ -105,8 +105,7 @@ func _entry_row(e: ChartEntry) -> Control:
 		tint = UIKit.GOOD
 	var p := UIKit.panel(UIKit.NOTE, 3)
 	var col := UIKit.vbox(1)
-	col.add_child(UIKit.row("%s  %s" % [ChartEntry._hhmm(e.stated_minute), e.text],
-		e.author_label(), tint, 14))
+	col.add_child(UIKit.chart_line(e, tint, 14))
 	var meta := e.metadata_line()
 	if meta != "":
 		col.add_child(UIKit.label("      " + meta, 11,

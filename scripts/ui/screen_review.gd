@@ -71,8 +71,10 @@ func _build() -> void:
 		shown += 1
 		var slip := UIKit.panel(UIKit.NOTE, 3)
 		var sv := UIKit.vbox(0)
-		sv.add_child(UIKit.label(e.as_line(), 14, UIKit.INK,
-			HORIZONTAL_ALIGNMENT_LEFT, true))
+		# THE SAME LINE THE CHART SHOWED, in the same hand. This used to be
+		# `as_line()` — one flat string in the interface's own face — so the
+		# note she is reading back at you did not look like the note you wrote.
+		sv.add_child(UIKit.chart_line(e, UIKit.INK, 14))
 		sv.add_child(UIKit.label(e.metadata_line(), 11,
 			UIKit.BAD if e.is_backdated() else UIKit.INK_DIM,
 			HORIZONTAL_ALIGNMENT_LEFT, true))

@@ -55,6 +55,29 @@ float fbm2(vec2 p) {
 	return vnoise(p) * 0.62 + vnoise(p * 2.7 + 19.3) * 0.38;
 }
 
+// A DETAIL FINER THAN A PIXEL IS NOT DETAIL, IT IS NOISE.
+//
+// `q` is the pattern coordinate AFTER scaling, so one unit of q is one cycle
+// and `fwidth(q)` is literally cycles per pixel. Returns 1 while a cycle is
+// comfortably wider than a pixel and 0 once it is not.
+//
+// This is the same argument `grid_line` makes about lines, and until now it was
+// the only place in this file making it. Every other surface sampled noise at
+// 24 to 60 cycles per metre with no guard at all — and the broad soft diagonal
+// bands across the ceiling of every interior shot this project has taken were
+// not the sun and were not the tile grid, which are the two things they were
+// blamed on: they were 60-per-metre mineral-board pitting beating against the
+// pixel grid at a grazing angle. Measured: the ceiling of the wide shot varied
+// by up to 24 levels along those bands, on a term whose own amplitude is 7.
+//
+// A SYMMETRIC term fades to its mean (0.5 for vnoise and fbm2) so the surface
+// does not change brightness with distance. A MASK fades to zero, which costs
+// under two per cent of albedo at the far wall and reads as aerial perspective.
+float detail_fade(vec2 q) {
+	float cycles_per_pixel = max(fwidth(q.x), fwidth(q.y));
+	return 1.0 - smoothstep(0.30, 0.85, cycles_per_pixel);
+}
+
 // A line of `width` metres on a grid of `period` metres. Returns 1 on the
 // line, 0 off it.
 //
@@ -69,10 +92,35 @@ float fbm2(vec2 p) {
 float grid_line(vec2 p, float period, float width) {
 	vec2 g = abs(fract(p / period - 0.5) - 0.5) * period;
 	vec2 fw = fwidth(p) + 0.0001;
-	vec2 line = 1.0 - smoothstep(width - fw, width + fw, g);
+	// THE ANTIALIAS BAND NEVER EXCEEDS THE LINE'S OWN WIDTH. Feeding a raw
+	// `fw` into the smoothstep is correct only while the pixel is smaller than
+	// the line; past that the band is wider than the thing it is smoothing and
+	// the line grows into a stripe. Capping it means the mark can only ever
+	// soften, never spread.
+	vec2 aa = min(fw, vec2(width));
+	vec2 line = 1.0 - smoothstep(width - aa, width + aa, g);
 	float l = clamp(max(line.x, line.y), 0.0, 1.0);
 	float density = max(fw.x, fw.y);
-	return l * (1.0 - smoothstep(width * 1.2, width * 5.0, density));
+	// ...AND IT IS GONE BY THE TIME A PIXEL SPANS THE LINE, not five times it.
+	//
+	// This is the second go at the ceiling streaks and it is the one that
+	// worked. The first (fade instead of widen) took the worst of it out and
+	// left broad soft diagonals across the top third of every interior shot,
+	// which were then blamed on the sun's shadow map and on the tile grid
+	// being "too strong". They were neither: rendering the ward with each term
+	// of the ceiling shader switched off in turn put the horizontal standard
+	// deviation across the ceiling at 9.33 with the runner on and 5.92 with it
+	// off, and every diagonal vanished with it. They were MOIRÉ — a 14mm mark
+	// on a 600mm grid, sampled by a pixel covering 20 to 70mm, beating against
+	// its own period at whatever angle the two frequencies happened to make.
+	//
+	// A mark thinner than a pixel has no honest answer, so it fades to the
+	// average it would integrate to (`2*width/period` of the surface) rather
+	// than to nothing, and the far ceiling keeps the faint overall tone the
+	// grid gives it instead of getting brighter as it recedes.
+	float resolved = 1.0 - smoothstep(width * 0.8, width * 2.5, density);
+	float mean_cover = clamp(2.0 * width / period, 0.0, 1.0);
+	return mix(mean_cover, l, resolved);
 }
 
 // `drift` is a large-scale per-vertex variation every surface can use and only
@@ -131,8 +179,8 @@ void fragment() {
 	// bathroom — the pattern was the loudest thing in the room. Hospital vinyl
 	// is a fleck you notice from two metres and not from six.
 	float coarse = fbm2(p * 7.0);
-	float fine = vnoise(p * 48.0);
-	float chips = smoothstep(0.66, 0.84, vnoise(p * 30.0));
+	float fine = mix(0.5, vnoise(p * 48.0), detail_fade(p * 48.0));
+	float chips = smoothstep(0.66, 0.84, vnoise(p * 30.0)) * detail_fade(p * 30.0);
 	vec3 col = base_col * (0.962 + coarse * 0.072 + fine * 0.030);
 	col = mix(col, col * 1.14, chips * 0.5);
 	// The welded seam between sheets. Barely darker, and it is what tells you
@@ -187,7 +235,10 @@ void fragment() {
 	vec3 p = world_pos;
 	// Paint tooth. High frequency, very low amplitude: you should never be
 	// able to name it, only notice its absence.
-	float tooth = fbm2(p.xy * 24.0 + p.zz * 7.0);
+	// The x2.7 is fbm2's second octave: the fade has to be aimed at the
+	// FINEST thing in the term, not at the coordinate it was handed.
+	vec2 tooth_q = p.xy * 24.0 + p.zz * 7.0;
+	float tooth = mix(0.5, fbm2(tooth_q), detail_fade(tooth_q * 2.7));
 	// Long, soft vertical streaking — the way emulsion actually dries.
 	// NOT `drift` — that name is a varying declared in the shared preamble, and
 	// shadowing it is a SHADER COMPILE ERROR ("Redefinition of 'drift'"), which
@@ -230,6 +281,13 @@ void fragment() {
 ## runner. The ceiling is the top third of every interior shot in this game and
 ## it was one unbroken white plane with a few thin boxes laid across it, which
 ## from a grazing angle read as wireframe rather than as a ceiling.
+## How much light the ceiling carries of its own, because the fixtures point
+## down and gl_compatibility has no bounce. ONE place, read by the material and
+## quoted in the shader's own default, so the two cannot say different things
+## again. Chosen by rendering the ward at three values and reading the ceiling
+## off the frame — see the note in `ceiling_mat`.
+const CEIL_SELF_LIT := 0.30
+
 static func ceiling_mat(base: Color, tile := 0.6) -> ShaderMaterial:
 	var key := "ceil|%s|%.2f" % [base.to_html(), tile]
 	if _cache.has(key):
@@ -255,19 +313,24 @@ uniform float tile = 0.6;
 // for the whole building (which flattens everything else), the ceiling carries
 // a little of its own light. This is the one surface in the game where that is
 // physically the right answer.
-// Dropped from 0.55 once the ambient was measured and raised to where it
-// should always have been. Self-lighting a plane is a fudge, and the size of
-// the fudge should be exactly what the room's own fill cannot supply: at 0.55
-// against the new ambient the ceiling was the brightest thing in every shot
-// and read as a lightbox rather than as tile.
-uniform float self_lit = 0.22;
+// THE NUMBER IS `CEIL_SELF_LIT` AND IT IS SET FROM GDSCRIPT. This default is
+// only what the shader falls back to if nobody sets it; the paragraph above
+// used to describe 0.22 while the material handed it 0.85, which is CLAUDE.md
+// 48 exactly — a value in two places, the comment describing one of them, and
+// the picture siding with the other. Measured off a 1600x900 render of the
+// ward: the ceiling came back at L=215 against an upper wall at 200 and a
+// floor at 150, so the largest surface in the top third of every frame was
+// the brightest thing in the room. A ceiling under downlighters is the
+// DARKEST of the three.
+uniform float self_lit = 0.30;
 
 void fragment() {
 	vec2 p = world_pos.xz;
 	// The fissures in mineral board: stretched noise, so it reads as combed
 	// rather than as static.
-	float fissure = fbm2(vec2(p.x * 26.0, p.y * 7.0));
-	float pits = smoothstep(0.62, 0.96, vnoise(p * 60.0));
+	vec2 fissure_q = vec2(p.x * 26.0, p.y * 7.0);
+	float fissure = mix(0.5, fbm2(fissure_q), detail_fade(fissure_q * 2.7));
+	float pits = smoothstep(0.62, 0.96, vnoise(p * 60.0)) * detail_fade(p * 60.0);
 	vec3 col = base_col * (0.975 + fissure * 0.032) - vec3(pits * 0.028);
 	// The runner between tiles, and a slight dish across each tile so a flat
 	// plane stops being flat.
@@ -289,7 +352,7 @@ void fragment() {
 	m.shader = sh
 	m.set_shader_parameter("base_col", Vector3(base.r, base.g, base.b))
 	m.set_shader_parameter("tile", tile)
-	m.set_shader_parameter("self_lit", 0.85)
+	m.set_shader_parameter("self_lit", CEIL_SELF_LIT)
 	_cache[key] = m
 	return m
 
@@ -411,7 +474,8 @@ uniform float grain = 0.05;
 void fragment() {
 	// Drift comes off the vertex stage; only the grain is per-pixel, because
 	// this shader runs on every solid object in the building.
-	float fine = vnoise(world_pos.xy * 52.0 + world_pos.zz * 27.0);
+	vec2 fine_q = world_pos.xy * 52.0 + world_pos.zz * 27.0;
+	float fine = mix(0.5, vnoise(fine_q), detail_fade(fine_q));
 	vec3 col = base_col * (1.0 + (drift - 0.5) * grain * 1.6
 		+ (fine - 0.5) * grain * 0.7);
 	ALBEDO = col;

@@ -1188,6 +1188,55 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(snd_quiet.is_empty(), "and something plays every one of them%s"
 		% ("" if snd_quiet.is_empty() else " — never played: " + ", ".join(PackedStringArray(snd_quiet))))
 
+	# THE ROOM EXISTS, AND EVERYTHING POSITIONAL IS IN IT.
+	#
+	# A reverb bus is invisible to every other check in this repo: the sounds
+	# still play, the count is the same, nothing errors. If the bus is not
+	# created, or the 3D pool is rebuilt without `p.bus`, the whole game goes
+	# dry again and the only symptom is that a hospital stops sounding like one.
+	AudioMgr._ensure_voices()
+	var bus_i := AudioServer.get_bus_index(AudioMgr.BUS_WORLD)
+	_ok(bus_i > 0, "the world has a room around it (bus '%s')" % AudioMgr.BUS_WORLD)
+	var wet_ok := false
+	if bus_i > 0:
+		for fx_i in AudioServer.get_bus_effect_count(bus_i):
+			if AudioServer.get_bus_effect(bus_i, fx_i) is AudioEffectReverb:
+				wet_ok = true
+	_ok(wet_ok, "and something on that bus makes it one")
+	var dry_voices := 0
+	for p3 in AudioMgr._players3d:
+		if p3.bus != AudioMgr.BUS_WORLD:
+			dry_voices += 1
+	_ok(dry_voices == 0, "and every positional voice is routed through it%s"
+		% ("" if dry_voices == 0 else " — %d still dry" % dry_voices))
+
+	# EVERY TYPEFACE IS ON DISK AND IMPORTED.
+	#
+	# The failure this catches is invisible by construction: a font that fails
+	# to load leaves `add_theme_font_override` with null, Godot falls straight
+	# back to the engine default, and the game looks EXACTLY as it did before
+	# any of this existed. No error, no missing text, no black box — just the
+	# stock face on every screen and a folder of .ttf files nobody is using.
+	# Same class of fault as a shader that quietly renders a fallback material
+	# (CLAUDE.md 42), and the same reason a picture will not tell you.
+	var faces_missing: Array = []
+	for face_file in Typeface.ALL:
+		if not ResourceLoader.exists(Typeface.DIR + String(face_file)):
+			faces_missing.append(String(face_file) + " (not imported)")
+		elif Typeface.face(String(face_file)) == null:
+			faces_missing.append(String(face_file) + " (would not load)")
+	_ok(faces_missing.is_empty(), "all %d typefaces load%s" % [Typeface.ALL.size(),
+		"" if faces_missing.is_empty() else " — " + ", ".join(PackedStringArray(faces_missing))])
+	# ...and the licences ship beside them. An OFL font redistributed without
+	# its licence is the one asset problem that is a legal problem, and it is
+	# one `ls` away from being caught forever.
+	var lic := DirAccess.get_files_at(Typeface.DIR)
+	var lic_count := 0
+	for f in lic:
+		if String(f).begins_with("OFL-") and String(f).ends_with(".txt"):
+			lic_count += 1
+	_ok(lic_count >= 3, "and ship with %d OFL licence files beside them" % lic_count)
+
 	# AND EVERY SETTING IS READ BY SOMETHING.
 	#
 	# CLAUDE.md 15, made automatic. `show_damage_flash` and `pad_vibration` were

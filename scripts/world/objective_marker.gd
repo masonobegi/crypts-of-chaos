@@ -46,7 +46,9 @@ func _ready() -> void:
 	_label.render_priority = 9
 	add_child(_label)
 
-	_dist = Build.label3d("", 0.115, Color(0.55, 0.86, 0.82))
+	# A distance that changes every frame. Mono, so it does not shuffle sideways
+	# between "4m" and "11m" (see the HUD clock, same fault, same fix).
+	_dist = Build.label3d("", 0.115, Color(0.55, 0.86, 0.82), true, Typeface.mono_bold())
 	_dist.position = Vector3(0, 0.24, 0)
 	_dist.no_depth_test = true
 	_dist.render_priority = 9

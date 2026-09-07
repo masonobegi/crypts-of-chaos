@@ -1,7 +1,11 @@
 # Working on Chronic Care
 
-Godot 4.3 project, GDScript, no art or audio assets — every mesh is built from
-primitives at runtime and every sound is synthesised on first play.
+Godot 4.3 project, GDScript. No art and no audio assets — every mesh is built
+from primitives at runtime and every sound is synthesised on first play. The one
+exception is TYPE: `assets/fonts/` carries four OFL-licensed families with their
+licences beside them, because a letterform is not something you can reason your
+way to from primitives and the engine's stock face on every screen is the
+loudest single tell that a game was made in an afternoon. See gotcha 51.
 
 ## Always
 
@@ -15,7 +19,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 297 assertions, a 161-check smoke run through the real tree
+`run_tests.sh` is 297 assertions, a 168-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -390,6 +394,54 @@ with it because a lost afternoon does not care which.
     and the picture sides with the code. Numbers a shader is tuned on live in
     ONE place (`Surfaces.WEAVE`), never as a default plus a literal.
 
+49. **THE CAMERA YOU JUDGE FROM IS PART OF THE JUDGEMENT.** `look.sh`'s wide
+    vantage sat at 2.6m under a 3.25m ceiling — 65cm of headroom — and every
+    graphics decision about the ceiling for the last three passes was made from
+    it. From up there the ceiling fills the top half of the frame at a near
+    grazing angle and its 0.6m grid fans out from the vanishing point into
+    broad diagonal bands, and those bands were blamed in turn on the sun's
+    shadow map (gotcha 38), on the tile runner being too strong, and on noise
+    aliasing. Each fix was real and none of them touched it, because there was
+    nothing to fix: rendering the ceiling with each shader term switched off
+    put the horizontal standard deviation at 9.33 with the runner and 5.92
+    without it, then splitting the runner into its two axes showed the "bands"
+    were simply `line.y` — lines of constant world z, drawn correctly, seen
+    from a place no player can stand. At the player's own 1.7m they are not
+    there at all. The tuning vantages are all eye height now; `screenshots.sh`
+    keeps the high wide shot because a store page wants one.
+50. **`grid_line`'s argument applies to every procedural pattern, and only
+    `grid_line` was making it.** A line finer than a pixel has to fade rather
+    than widen — and so does a noise finer than a pixel, and every surface in
+    `Surfaces` sampled one at 24 to 60 cycles per metre with no guard at all.
+    `detail_fade(q)` takes the pattern coordinate AFTER scaling, so `fwidth(q)`
+    is literally cycles per pixel; a symmetric term fades to its mean (0.5) so
+    the surface does not change brightness with distance, and a mask fades to
+    zero. Aim it at the FINEST octave: `fbm2` runs its second at 2.7x the
+    coordinate it was handed.
+51. **The typefaces are load-bearing and their failure is invisible.** Four OFL
+    families in `assets/fonts/`, with their licences beside them, and the
+    mapping from `ChartEntry.Author` to a face lives in ONE place
+    (`Typeface.for_author`) because the chart, the records screen and the
+    review all quote the same line: your own notes are in handwriting, a
+    colleague's in the interface sans, reported speech in italic, a machine's
+    result in mono. A font that fails to load leaves `add_theme_font_override`
+    with null, Godot falls back to the stock face, and the game looks exactly
+    as it did before any of it existed — no error, no missing text. The smoke
+    run asserts every face loads and that the licences ship. The root theme is
+    applied from `Settings._ready()` and NOT from `Boot`, because every harness
+    in this repo instantiates Game.tscn directly and would otherwise photograph
+    a different game to the one that ships.
+52. **Everything positional goes through a reverb bus; nothing else does.**
+    Every sound in the game was dry, which is the loudest "made in a week" tell
+    an interior game has — a hospital is hard floors and long straight runs and
+    is one of the more reverberant places a person is ever in. `AudioMgr`
+    builds a `World` bus with one `AudioEffectReverb` and routes the 3D voice
+    pool to it; the music and the UI clicks stay dry on Master, because a
+    button that echoes is a button in a cave. Wet is 0.20 on purpose: the point
+    is not that you notice a reverb, it is that you stop noticing its absence.
+    The smoke run asserts the bus exists, carries a reverb, and has every
+    positional voice on it — none of which any other check can see.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -483,7 +535,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 297 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 161 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 168 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |

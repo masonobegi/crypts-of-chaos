@@ -32,7 +32,7 @@ func build(disp: String, private: bool) -> void:
 		{"mesh": Build.box_mesh(Vector3(0.4, 0.02, 0.16)), "mat": Build.mat(Color(0.4, 0.42, 0.45)), "pos": Vector3(0, 0.01, 0.25)},
 	], Vector3(0, 0.21, 0))
 
-	var glow := Build.label3d("EHR", 0.06, Color(0.4, 1.0, 0.8), false)
+	var glow := Build.label3d("EHR", 0.06, Color(0.4, 1.0, 0.8), false, Typeface.mono_bold())
 	glow.position = Vector3(0, 0.54, 0.04)
 	add_child(glow)
 

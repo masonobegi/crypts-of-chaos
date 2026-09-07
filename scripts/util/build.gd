@@ -810,9 +810,19 @@ static func simple_prop(id: String, disp: String, size: Vector3, color: Color, m
 
 # ------------------------------------------------------------------ text
 ## World-space label. Used for room signs, machine dials and floating name tags.
-static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard := true) -> Label3D:
+## `face` defaults to the SIGNAGE weight, not the body weight. A Label3D is
+## rasterised once at 64px and then scaled down to a few millimetres of screen,
+## and a regular weight at that reduction is a grey smudge behind a keyline —
+## every wayfinding system in every real hospital is set in a bold grotesque for
+## exactly this reason. Callers that are drawing a SCREEN rather than a SIGN
+## (the EHR terminal, the distance readout, the rota times) pass mono.
+static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard := true,
+		face = null) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
+	var use = face if face != null else Typeface.sans_bold()
+	if use != null:
+		l.font = use
 	l.font_size = 64
 	l.pixel_size = size / 64.0
 	l.modulate = color

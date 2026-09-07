@@ -249,10 +249,34 @@ func _build_body() -> void:
 	# The nose is the most identifying thing on a face and the cheapest to vary.
 	# It also has to move FORWARD on a deeper skull, for the same reason as the
 	# ears — the head is an ellipsoid and its front moves when its depth does.
+	var nose_z: float = 0.180 * skull.z + 0.010
 	_head.add_child(Build.mi(Build.sphere_mesh(0.040 * nose_size),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, -0.022, 0.180 * skull.z + 0.010), Vector3.ZERO,
+		Vector3(0, -0.022, nose_z), Vector3.ZERO,
 		Vector3(0.78, 0.70, 1.15)))
+	# A BRIDGE, so the nose is part of the face rather than stuck to it.
+	#
+	# A single ball between two eyes reads as a clown nose, and at the closest
+	# camera distance in the game — a doctor standing over a bed — that is the
+	# thing you look at. What makes a nose a nose is that it RISES out of the
+	# brow: one tapered ridge running up between the eyes, narrow at the top and
+	# meeting the ball at the bottom. Unlined, because it is never the
+	# silhouette from the front and an ink line up the middle of a face reads as
+	# a scar.
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.030, 0.078, 0.030), 0.014),
+		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, 0.018, nose_z - 0.016), Vector3.ZERO,
+		Vector3(0.78, 1.0, 0.82)))
+	# AND A SOCKET UNDER EACH EYE. The whites are unshaded ovals sitting proud
+	# of an ellipsoid, which is why they read as stickers: a real eye sits IN
+	# something. A slightly larger, slightly darker skin disc behind each one
+	# seats it, and costs one sphere. Darkened rather than tinted, so it works
+	# across the whole skin range without anybody going grey round the eyes.
+	for ex2 in [-1.0, 1.0]:
+		_head.add_child(Build.mi(Build.sphere_mesh(0.050),
+			Build.mat(skin.darkened(0.10), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(ex2 * 0.072, 0.012, 0.170 * skull.z), Vector3.ZERO,
+			Vector3(1.08, 0.90, 0.26)))
 	# The mouth is built further down, in three pieces that move. There WAS a
 	# static bar here as well — the original single-piece mouth — and adding the
 	# animated one below it did not remove it, so every face in the building

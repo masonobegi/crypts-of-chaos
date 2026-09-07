@@ -2487,3 +2487,33 @@ early outside the window, and without a `duck_music(0.0)` on that path the
 score stays nine decibels down for the rest of a nine-night career, with
 nothing on screen to say so. Both halves are in the smoke run.
 
+## Session 17, continued — the face was a nose problem
+
+The standing open item was "faces are geometry, not lighting", measured twice
+and never acted on. Two pieces of geometry, and both were visible in the first
+comparison:
+
+  A BRIDGE. The nose was one ball between two eyes, which reads as a clown
+  nose — and at the closest camera distance in the game, a doctor standing over
+  a bed, it is the thing you look at. What makes a nose a nose is that it rises
+  out of the brow. One tapered ridge running up between the eyes, unlined,
+  because an ink line up the middle of a face reads as a scar.
+
+  A SOCKET. The eye whites are unshaded ovals sitting proud of an ellipsoid,
+  which is why they read as stickers: a real eye sits IN something. A slightly
+  larger, slightly darker skin disc behind each one seats it. Darkened rather
+  than tinted, so it works across the whole skin range.
+
+Two spheres and a box per head. Side by side the face has structure it did not
+have, and at ward distance the five still read as five people.
+
+### And a defect that was not one
+
+Every face in the game carries a small white square with a dark border below
+the nose, and it turns up in the closest shot in the set. Three renders went
+into it: not a Label3D (hiding every one of them left the mark), not the mouth,
+not an eye. It is the CROSSHAIR, at 800,450 on a 1600x900 frame, which is the
+exact centre of the screen and the exact centre of a face the harness has
+deliberately framed. Written down because the next person to look at that
+screenshot will see it too.
+

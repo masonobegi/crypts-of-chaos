@@ -1188,6 +1188,26 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(snd_quiet.is_empty(), "and something plays every one of them%s"
 		% ("" if snd_quiet.is_empty() else " — never played: " + ", ".join(PackedStringArray(snd_quiet))))
 
+	# THE ROOM TONE LOOPS WITHOUT A CLICK.
+	#
+	# It is a bed of pure tones with no cross-fade, so it is seamless if and
+	# only if every partial fits a WHOLE number of cycles in the buffer. Get the
+	# length wrong by a hundredth of a second and it clicks — once per loop,
+	# under everything, for the whole shift — and it will not show up in any
+	# other check because nothing else in this repo listens.
+	var hum_bad: Array = []
+	for hz in AudioMgr.HUM_PARTIALS:
+		var cycles: float = float(hz) * AudioMgr.HUM_SECONDS
+		if absf(cycles - roundf(cycles)) > 0.0001:
+			hum_bad.append("%.1f Hz gives %.3f cycles" % [float(hz), cycles])
+	_ok(hum_bad.is_empty(), "the room tone loops seamlessly (%.0fs)%s"
+		% [AudioMgr.HUM_SECONDS,
+		"" if hum_bad.is_empty() else " — " + ", ".join(PackedStringArray(hum_bad))])
+	# ...and it is long enough not to be heard as a loop. Three seconds was, for
+	# a bed that plays under a twelve-hour shift; the score was taken from
+	# sixteen seconds to ninety-four for the same reason.
+	_ok(AudioMgr.HUM_SECONDS >= 8.0, "and is long enough not to be heard as one")
+
 	# THE SCORE STEPS BACK IN THE LAST STRETCH, AND COMES BACK AFTERWARDS.
 	#
 	# Both halves matter and only the first one is obvious. A duck that is

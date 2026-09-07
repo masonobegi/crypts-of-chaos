@@ -52,7 +52,7 @@ prints the exact command to fetch them.
 
 ## Last known good
 
-**298 assertions · 170 smoke checks on three seeds · 7 day criteria · 6 career
+**298 assertions · 172 smoke checks on three seeds · 7 day criteria · 6 career
 properties on three seeds · 2,601-strategy frontier probe per ward · both play
 runs · the quiet check · the boot check.** All three platforms export and the
 Linux build boots and exits cleanly.

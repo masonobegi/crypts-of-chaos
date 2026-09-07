@@ -2517,3 +2517,23 @@ exact centre of the screen and the exact centre of a face the harness has
 deliberately framed. Written down because the next person to look at that
 screenshot will see it too.
 
+## Session 17, continued — the room tone was a three-second loop
+
+The score was taken from a sixteen-second loop to ninety-four seconds earlier in
+this project's life, and the reason is written down beside it: the loop point
+has to be further apart than the longest thing anybody does in one place. The
+ROOM TONE, which plays underneath the score for the entire twelve hours, was
+left at three seconds — with a seeded noise floor, so it repeated identically
+about fourteen thousand times a shift.
+
+Eleven seconds now, plus one slow breath per loop, because a plant of that size
+does not hold a perfectly steady note and without the modulation the tone is
+audibly a synthesiser holding one.
+
+The constraint that keeps it seamless with no cross-fade is that every partial
+has to fit a whole number of cycles in the buffer: 50 Hz gives 550 cycles in
+eleven seconds and 74 Hz gives 814. Pick a length that leaves either of them
+mid-cycle and it clicks, once per loop, under everything, forever — and nothing
+else in this repo would ever hear it. `HUM_PARTIALS` exists so the smoke run can
+do the arithmetic, and the check was proven red with a length of 11.017.
+

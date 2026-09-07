@@ -133,7 +133,7 @@ is [`PROGRESS_LOG.md`](PROGRESS_LOG.md).
 
 ```
 298 assertions   — units, integration, save round-trips, floor connectivity
-170 smoke checks — boots the real scene and plays a whole shift, on three seeds
+172 smoke checks — boots the real scene and plays a whole shift, on three seeds
   7 criteria     — day-level: does the risk actually cost anything
   6 criteria     — career-level: does honest play pay it off, and does greed not
   4 wards        — every one signs off on the day a careful person plays

@@ -70,7 +70,23 @@ const RECIPES := {
 
 ## The continuous bed: a long, low, quietly unpleasant loop. Built separately
 ## from the one-shots because it needs seamless looping rather than a decay.
-const HUM_SECONDS := 3.0
+##
+## ELEVEN SECONDS, NOT THREE. The score was taken from a sixteen-second loop to
+## ninety-four for exactly one reason — "the loop point is now four times
+## further apart than the longest thing anybody does in one place" — and the
+## room tone, which plays for the whole twelve hours underneath it, was left at
+## three. Three seconds is short enough for the ear to lock onto and then
+## never let go of, and the noise floor in it is seeded, so it repeated
+## identically fourteen thousand times a shift.
+##
+## Both partials still fit a WHOLE NUMBER OF CYCLES in the buffer, which is
+## what makes the loop seamless with no cross-fade: 50 Hz gives 550 cycles in
+## eleven seconds and 74 Hz gives 814. That is not a free choice — pick a
+## length that leaves either of them mid-cycle and the loop clicks, once every
+## eleven seconds, forever. `HUM_PARTIALS` is what the smoke run checks it
+## against.
+const HUM_SECONDS := 11.0
+const HUM_PARTIALS := [50.0, 74.0]
 
 func _ready() -> void:
 	# UI screens pause the tree; sound must keep working while they are open.
@@ -277,10 +293,16 @@ func _build_hum() -> AudioStreamWAV:
 		var t := float(i) / float(SR)
 		# Frequencies chosen so a whole number of cycles fits the buffer, which
 		# is what makes the loop seamless without any cross-fade.
-		var a := sin(TAU * 50.0 * t) * 0.5
-		var b := sin(TAU * 74.0 * t) * 0.3
+		var a := sin(TAU * float(HUM_PARTIALS[0]) * t) * 0.5
+		var b := sin(TAU * float(HUM_PARTIALS[1]) * t) * 0.3
 		lp = lerpf(lp, rng.randf_range(-1.0, 1.0), 0.02)
-		var s := a + b + lp * 0.5
+		# ONE SLOW BREATH PER LOOP, and exactly one, so the modulation is
+		# seamless by construction rather than by luck. A plant of this size
+		# does not hold a perfectly steady note; without this the tone is
+		# audibly a synthesiser holding one, which is the other half of what
+		# makes a short loop noticeable.
+		var breath := 1.0 + sin(TAU * t / HUM_SECONDS) * 0.14
+		var s := (a + b) * breath + lp * 0.5
 		var v := int(clampf(s * 2600.0, -32768.0, 32767.0))
 		var uv := v & 0xFFFF
 		data[i * 2] = uv & 0xFF

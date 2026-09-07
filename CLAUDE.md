@@ -19,7 +19,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 298 assertions, a 170-check smoke run through the real tree
+`run_tests.sh` is 298 assertions, a 172-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -517,6 +517,20 @@ with it because a lost afternoon does not care which.
     smoke run, and only the second one could have failed silently — nothing on
     screen says what the music is doing.
 
+59. **A LOOP IS AS LONG AS THE THING IT PLAYS UNDER.** The score was taken from
+    a sixteen-second loop to ninety-four for exactly one stated reason — "the
+    loop point is now four times further apart than the longest thing anybody
+    does in one place" — and the ROOM TONE, which plays under the whole twelve
+    hours, was left at three seconds with a seeded noise floor, so it repeated
+    identically about fourteen thousand times a shift. Eleven seconds now, plus
+    one slow breath per loop so the tone is not a synthesiser holding a note.
+    The constraint that makes it seamless without a cross-fade is that every
+    partial fits a WHOLE number of cycles in the buffer (50 Hz × 11 s = 550,
+    74 Hz × 11 s = 814); pick a length that leaves either mid-cycle and it
+    clicks once per loop forever, under everything, where nothing else in this
+    repo would ever hear it. `AudioMgr.HUM_PARTIALS` exists so the smoke run
+    can check the arithmetic, and it was proven red with a length of 11.017.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -610,7 +624,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 298 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 170 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 172 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |

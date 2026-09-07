@@ -244,6 +244,7 @@ static func slider(text: String, value: float, min_v: float, max_v: float,
 	sl.value = value
 	sl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	sl.custom_minimum_size = Vector2(220, 24)
+	_paint_slider(sl)
 	row_box.add_child(sl)
 
 	var readout := label("", 15, ACCENT, HORIZONTAL_ALIGNMENT_RIGHT)
@@ -276,6 +277,51 @@ static func slider(text: String, value: float, min_v: float, max_v: float,
 	sl.focus_entered.connect(func(): wrap.add_theme_stylebox_override("panel", lit))
 	sl.focus_exited.connect(func(): wrap.add_theme_stylebox_override("panel", quiet))
 	return wrap
+
+## HOW MUCH OF IT IS TURNED UP, IN THE GAME'S OWN INK.
+##
+## Godot's stock HSlider is a light grey groove with a slightly darker grey
+## groove beside it and a grey circle between them, and on a manila card that is
+## three greys none of which is the accent colour every other control on the
+## screen uses. Worse, it does not say which end is "more": at 70% the filled
+## half and the empty half differ by about six levels, so the settings screen
+## was eleven rows of ambiguous grey bar.
+##
+## Teal for what is turned ON, paper for what is not, and the margin rule on the
+## grabber — the same three marks the rest of the paper theme is made of.
+static func _paint_slider(sl: HSlider) -> void:
+	var groove := StyleBoxFlat.new()
+	groove.bg_color = Color(INK.r, INK.g, INK.b, 0.13)
+	groove.set_corner_radius_all(3)
+	groove.content_margin_top = 6
+	groove.content_margin_bottom = 6
+	sl.add_theme_stylebox_override("slider", groove)
+
+	# THE FILLED HALF. `grabber_area` is what Godot draws from the minimum up to
+	# the handle, and overriding it is the only way to say "this much".
+	var filled := StyleBoxFlat.new()
+	filled.bg_color = ACCENT
+	filled.set_corner_radius_all(3)
+	filled.content_margin_top = 6
+	filled.content_margin_bottom = 6
+	sl.add_theme_stylebox_override("grabber_area", filled)
+	var filled_hi := StyleBoxFlat.new()
+	filled_hi.bg_color = ACCENT.lightened(0.12)
+	filled_hi.set_corner_radius_all(3)
+	filled_hi.content_margin_top = 6
+	filled_hi.content_margin_bottom = 6
+	sl.add_theme_stylebox_override("grabber_area_highlight", filled_hi)
+
+	# AND THE HANDLE IS LEFT ALONE, deliberately.
+	#
+	# It wanted to be a slip of card with the margin rule round it, like every
+	# other grabbable thing here — and `add_theme_stylebox_override("grabber",
+	# ...)` does NOTHING, silently. HSlider splits its theme: `slider`,
+	# `grabber_area` and `grabber_area_highlight` are styleboxes, and `grabber`,
+	# `grabber_highlight` and `grabber_disabled` are ICONS. A stylebox handed to
+	# an icon slot is not an error and is not drawn; it is four lines that look
+	# like they styled something. The stock circle reads perfectly well against
+	# the teal, so this is a note rather than a texture.
 
 ## A labelled on/off switch. A CheckButton rather than a checkbox because at a
 ## glance "is this on" should be readable without reading.

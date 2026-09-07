@@ -1,23 +1,26 @@
-# HANDOFF — read this first if the session was interrupted
+# HANDOFF — read this first
 
-Rewritten continuously. `PROGRESS_LOG.md` is the append-only history; this file
-is only ever "where things stand right now".
+`PROGRESS_LOG.md` is the append-only history. This file is only ever "where
+things stand right now", and it is rewritten rather than added to.
+
+> **This file was, until recently, three reworks out of date.** It described
+> minigames on an anatomy rig, an evening street phase, a lawsuit system,
+> twenty-five achievements and a balance simulation — none of which exist, and
+> most of which were deliberately cut. If anything below ever stops matching
+> `git log`, believe the log.
 
 ## Where the work lives
 
-Branch: `claude/github-repo-deletion-3hf0gq`. Everything is committed and pushed
-after each milestone — there should never be more than one batch of uncommitted
-work. `main` is untouched.
-
-An earlier stretch of this work was pushed to `claude/chronic-care`; the
-designated branch was fast-forwarded onto it, so the two share history and the
-designated branch is the one to use. If a container recycle ever leaves the
-checkout behind again, `git log --oneline origin/claude/chronic-care` is where
-to look for what went missing.
+Branch: `claude/github-repo-deletion-3hf0gq`. Everything is committed and
+pushed after each milestone; there should never be more than one batch of
+uncommitted work. `main` is untouched. An earlier stretch was pushed to
+`claude/chronic-care` and the designated branch was fast-forwarded onto it, so
+the two share history — if a container recycle ever leaves the checkout behind,
+`git log --oneline origin/claude/chronic-care` is where to look.
 
 ## How to run anything
 
-Godot is NOT installed in this container by default; it gets wiped when the
+Godot is NOT installed in this container by default and is wiped when the
 container recycles. Re-fetch it first:
 
 ```bash
@@ -30,93 +33,60 @@ export GODOT=/tmp/Godot_v4.3-stable_linux.x86_64
 Then, from `/home/user/crypts-of-chaos`:
 
 ```bash
-./run_tests.sh                       # units + smoke + live. Must be green before committing.
-./check.sh scripts/foo.gd            # parse errors for specific files
-./screenshots.sh                     # renders 32 stills — run after ANY world/UI change
-./playfast.sh first_shift            # scripted playthrough, timings only, no renderer
-./play.sh first_shift                # same but rendered, with screenshots
-BALANCE_DAYS=30 BALANCE_SEEDS=3 $GODOT --headless --path . --script res://tests/balance_sim.gd
+./run_tests.sh                    # all of it, ~6 min. Green before committing.
+./check.sh scripts/foo.gd         # parse errors for specific files
+./look.sh try1                    # FOUR frames, ~4 min — the loop for a shader,
+                                  # a light, a line weight or a face
+./screenshots.sh                  # all 21 frames plus two layout measurements
+SHOT_ONLY=struck_off ./screenshots.sh   # one frame, ~90 s
+./playfast.sh day                 # play a whole shift with a controller
+./play.sh keys                    # WASD and a real mouse, under Xvfb
+./export.sh all                   # windows, linux, macos — and RUNS the linux one
 ```
 
-Screenshots land in `~/.local/share/godot/app_userdata/Chronic Care/shots/`.
-Play-run logs land in `.../Chronic Care/play/`.
+Screenshots land in `~/.local/share/godot/app_userdata/Chronic Care/shots/`,
+`look.sh` frames under `.../look/`.
+
+Export templates are a separate ~1GB download and are NOT vendored; `export.sh`
+prints the exact command to fetch them.
 
 ## Last known good
 
-**2,202 assertions · 132 smoke checks (incl. an object-overlap audit) · 45 live
-checks over 7,000 frames · boot check · 21/21 balance design checks · 71
-screenshots.** Windows and Linux both export,
-and the exported Linux build boots and exits cleanly.
+**298 assertions · 170 smoke checks on three seeds · 7 day criteria · 6 career
+properties on three seeds · 2,601-strategy frontier probe per ward · both play
+runs · the quiet check · the boot check.** All three platforms export and the
+Linux build boots and exits cleanly.
 
-`play.sh` takes 30-45 real minutes under this container's software GL — it is
-rendering-bound, not simulation-bound. Use `playfast.sh` for the quick loop and
-`play.sh` only when you need the photographs.
+## What this game is, in one paragraph
 
-## Building
+First-person, one hospital floor, one twelve-hour shift, five beds. Six verbs,
+all of which cost minutes off one clock, so a day is a budget rather than a
+checklist. Three layers are allowed to disagree — what is TRUE, what the
+RECORD says, and what somebody BELIEVES — and the ward sister's review at eight
+o'clock is a read across the gaps. There is no evening phase, no legal phase
+and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
 
-```bash
-GODOT=/tmp/Godot_v4.3-stable_linux.x86_64 ./export.sh          # windows + linux, then runs the linux one
-GODOT=/tmp/Godot_v4.3-stable_linux.x86_64 ./boot_check.sh      # real entry point only
-```
+## Open, in rough order of value
 
-Export templates are a separate ~1GB download and are NOT vendored. `export.sh`
-prints the exact command to fetch them if they are missing.
+1. **Nothing is known-broken.** The suite, the screenshots and the exports are
+   all green as of the last commit.
+2. **Whether tripling the outline weight costs real fill on hardware.**
+   Unmeasurable on llvmpipe; needs a machine with a GPU.
+3. **Faces are geometry, not lighting.** Measured twice: `BACKLIGHT` at 0.28
+   moved 6,100 pixels by at most 27 levels and the face read identically, and
+   at 0.70 — well past subtle — 6,300 pixels by at most 52. The heads have
+   varied skulls, noses, jaws and five hairstyles now, which is what made the
+   ward read as five people; the FACE itself is still an egg with decal eyes.
+   If it is worth another attempt it belongs in `npc_body.gd`.
+4. **The game has never been played by a person.** Every design number in it —
+   the verb costs, the round times, the forty-five-minute window — is validated
+   by probes rather than by anybody's hands.
 
-## What has been done this session
+## Two noises that are not bugs
 
-See the Session 5 sections of `PROGRESS_LOG.md`. Headlines:
-
-- **The minigames happen on a body.** `Anatomy` draws nine rigs (forearm,
-  wrist, hand, ankle, knee, shoulder, ribs, brow, flank) out of one primitive.
-  Setting a bone is holding a fragment steady against tremor and spasm;
-  suturing is six bites down a laceration that moves as they breathe; dosing is
-  which bottle times how much, drawn against graduations into a real arm.
-- **You declare intent first and are graded against it.** Treat them or make it
-  worse — doing either well is rewarded, doing either badly is punished, and
-  intending harm and fumbling it is the worst square on the board.
-- **The day ends at your office desk.** Anybody you did not see personally is
-  treated correctly by a nurse, so the day is "which of these five is worth MY
-  hands" rather than "get through the list".
-- **The envelope**: any witness can be offered money in three sizes, with the
-  odds off who they are and what they saw. Refusal costs no money and leaves
-  behind something worse than what they saw.
-- **The letter**: discharged patients sue. Settle for about half, or fight it
-  with one of four lawyers ascending in price and descending in scruple.
-  Imaging you ordered weeks ago cannot be edited and turns up in court.
-- **The evening is a street you walk down**, in first person, with the same
-  controls as the ward — not a top-down diagram. Road, pavements, two terraces
-  of lit houses, a van to hide behind, sodium lamps that pool, watchers whose
-  cones of vision are drawn on the pavement, and an exposure bar on the HUD.
-  Reach somebody unseen and they are on your list in the morning; walk back the
-  way you came if you change your mind. It is built four hundred metres UNDER
-  the hospital, because hiding the hospital hides its meshes and not its
-  colliders (`Street.ORIGIN`).
-- **The title screen is a live 3D ward** rendered into a SubViewport behind the
-  panel, with the camera drifting across it.
-- **A fourth verb**: taking a dislocated joint through an arc, which is a
-  tracking skill rather than a holding or clicking one.
-- Rebindable keys, gamepad support, controls/credits/achievements screens,
-  twenty-five achievements, click and hover sounds on every button.
-- Every room dressed — curtains, gas panels, sharps bins, noticeboards,
-  handrails, floor guide lines, bedside cabinets, vending machines.
-- The balance simulation is **fully green for the first time**.
-
-## Immediately next
-
-Nothing is known-broken. The open questions are all playtest ones:
-
-- Is the street's difficulty right? Three watchers with a 0.62 rad cone at 17 m
-  over a 74 m street, exposure at 0.42/s scaled by how lit you are. It has
-  never been played by a person, and all of those numbers are guesses.
-- Walk-ins arrive as appointment slots. If the redesign wants more upright
-  patients than bedbound ones, that ratio lives in
-  `AppointmentSystem._make()`.
-
-Two harmless noises worth knowing about before chasing them:
-
-- ~180 `mesh_get_surface_count: Parameter "m" is null` errors per headless run.
-  They come from Godot's *dummy* renderer, which has no meshes to count. They
-  do not appear in the rendered screenshot runs and they are not a bug in this
-  project.
-- `ObjectDB instances leaked at exit` after a screenshot run. The harness quits
-  from inside a `--script` main loop without tearing the scene down.
+- `Parameter "m" is null` from the headless dummy rasterizer, one line per
+  `Label3D` freed. `run_tests.sh` filters it and says why.
+- `ObjectDB instances leaked at exit` after a `--script` run: a looping
+  AudioStreamWAV that is still playing when `quit()` yanks the audio server.
+  `boot_check.sh` documents it at length. The RID leak that used to sit beside
+  it was real, and is fixed.

@@ -9,7 +9,17 @@ config/name="Chronic Care"
 config/description="A broke doctor. A struggling hospital. Patients who really should have gone home by now."
 config/version="0.1.0"
 run/main_scene="res://scenes/Boot.tscn"
-config/features=PackedStringArray("4.3", "Forward Plus")
+; "GL Compatibility", NOT "Forward Plus".
+;
+; This is the feature tag list the project exports and imports against, and it
+; said Forward Plus while `renderer/rendering_method` below has been
+; gl_compatibility for the whole of this project's life — the one renderer this
+; game has ever been started under, and the reason for the long note beside
+; that setting. The mismatch is inert today because there is not a single
+; imported texture in the build, but it is the tag that decides which
+; compressed variant of one would ship, and a project that disagrees with
+; itself about its own renderer is a trap for whoever adds the first one.
+config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 boot_splash/show_image=false
 

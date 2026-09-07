@@ -87,8 +87,23 @@ func _pulse_pass(delta: float) -> void:
 	var left: int = Cases.DEBT_DUE_MINUTE - GameState.minute_of_day
 	if left > PULSE_FROM or left < 0:
 		_pulse = 0.0
+		# ...AND THE MUSIC COMES BACK UP OUTSIDE THE WINDOW, which matters
+		# because the next morning is a new day on the same audio server: a
+		# duck that is only ever applied leaves the score nine decibels down
+		# for the rest of the career.
+		AudioMgr.duck_music(0.0)
 		return
 	_pulse -= delta
+	# THE SCORE STEPS BACK OVER THE SAME FORTY MINUTES THE HEART BEATS IN.
+	#
+	# One piece of music, played the whole time, at exactly the same level at
+	# ten past eight in the morning as at five to eight at night — in a game
+	# whose entire pressure is a man arriving at eight. Pulling it down here
+	# adds nothing and composes nothing; it lets the ward the player has been
+	# standing in all day finally be audible, with the monitors and the pulse
+	# in front of it. Ramped off `left`, so it arrives with the deadline
+	# rather than at it.
+	AudioMgr.duck_music(1.0 - clampf(float(left) / float(PULSE_FROM), 0.0, 1.0))
 	if _pulse > 0.0:
 		return
 	var t: float = clampf(float(left) / float(PULSE_FROM), 0.0, 1.0)

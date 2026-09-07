@@ -1188,6 +1188,32 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(snd_quiet.is_empty(), "and something plays every one of them%s"
 		% ("" if snd_quiet.is_empty() else " — never played: " + ", ".join(PackedStringArray(snd_quiet))))
 
+	# THE SCORE STEPS BACK IN THE LAST STRETCH, AND COMES BACK AFTERWARDS.
+	#
+	# Both halves matter and only the first one is obvious. A duck that is
+	# applied and never released leaves the music nine decibels down for the
+	# rest of a nine-night career — silently, because nothing on screen says
+	# what the music is doing and the next morning is the same audio server.
+	var amb = tree.get_first_node_in_group("ambience")
+	if amb == null:
+		for n in _all_nodes(game):
+			if n.get_script() != null and String(n.get_script().resource_path).ends_with("ambience.gd"):
+				amb = n
+				break
+	if amb != null:
+		var was_min: int = GameState.minute_of_day
+		GameState.minute_of_day = Cases.DEBT_DUE_MINUTE - 4
+		amb._pulse_pass(0.0)
+		var ducked: float = AudioMgr.music_duck
+		GameState.minute_of_day = Cases.DAY_START_MINUTE + 60
+		amb._pulse_pass(0.0)
+		var released: float = AudioMgr.music_duck
+		GameState.minute_of_day = was_min
+		_ok(ducked < -4.0, "the score steps back as eight o'clock arrives (%.1f dB)" % ducked)
+		_ok(is_equal_approx(released, 0.0), "and comes back up outside that window (%.1f dB)" % released)
+	else:
+		_ok(false, "the ambience system is on the ward")
+
 	# THE ROOM EXISTS, AND EVERYTHING POSITIONAL IS IN IT.
 	#
 	# A reverb bus is invisible to every other check in this repo: the sounds

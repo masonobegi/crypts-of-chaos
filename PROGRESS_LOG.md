@@ -2467,3 +2467,23 @@ uniform, and it is 0 — kept rather than deleted, with the measurements, becaus
 the next person to reach for an edge light needs those more than they need a
 clean file. If it is ever turned back on, the lights have to give first.
 
+## Session 17, continued — the last forty minutes get quieter
+
+There is one piece of music and it plays the whole time, which is a decision
+this project made on purpose after three shift moods produced the bug where the
+menu's track was thrown away the moment a shift started. But a score at exactly
+the same level at ten past eight in the morning as at five to eight at night —
+in a game whose entire pressure is a man arriving at eight — is not a score in
+the game, it is a score playing over it.
+
+So it steps back rather than changing. `AmbienceSystem` already knows when the
+last stretch begins, because that is where it starts the heartbeat; the same
+window pulls the music down nine decibels on a ramp and lets the ward the
+player has been standing in all day finally be audible, with the monitors and
+the pulse in front of it. Nothing is composed and nothing is added.
+
+The half that would have failed silently is the release. `_pulse_pass` returns
+early outside the window, and without a `duck_music(0.0)` on that path the
+score stays nine decibels down for the rest of a nine-night career, with
+nothing on screen to say so. Both halves are in the smoke run.
+

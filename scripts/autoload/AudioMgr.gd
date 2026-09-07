@@ -693,6 +693,35 @@ func stop_music() -> void:
 		_music_player.stop()
 	_music_kind = ""
 
+## THE LAST HOUR, IN DECIBELS.
+##
+## There is one piece of music and it plays the whole time, which is a decision
+## and a good one (three shift moods is how the menu's track came to be thrown
+## away the moment a shift started). But a score that is at exactly the same
+## level at ten past eight in the morning as it is at five to eight at night —
+## in a game whose entire pressure is a man arriving at eight — is a score that
+## is not in the game, it is a score playing over it.
+##
+## So it steps back rather than changing. `AmbienceSystem` already knows when
+## the last stretch begins, because it starts the heartbeat there; the same
+## window pulls the music down and lets the ward, the monitors and the pulse
+## come forward. Nothing new is added and nothing is composed twice: what the
+## player hears at the end is the room they have been standing in all day,
+## which they have not been able to hear until now.
+##
+## Negative decibels, applied on top of both sliders, so a player who has
+## turned the music down does not get it turned back up by this.
+var music_duck := 0.0
+
+## 0 at the start of the window, 1 at the end of it. Idempotent and cheap: it
+## is called every frame of the last forty minutes.
+func duck_music(amount: float) -> void:
+	var to: float = -9.0 * clampf(amount, 0.0, 1.0)
+	if is_equal_approx(to, music_duck):
+		return
+	music_duck = to
+	refresh_music_volume()
+
 func refresh_music_volume() -> void:
 	# -4, not -13.
 	#
@@ -703,7 +732,7 @@ func refresh_music_volume() -> void:
 	# background music", and they were effectively right.
 	var g: float = maxf(master_volume * music_volume, 0.0001)
 	if _music_player != null:
-		_music_player.volume_db = -4.0 + linear_to_db(g)
+		_music_player.volume_db = -4.0 + linear_to_db(g) + music_duck
 	# The room tone is on the same two sliders and has to be re-levelled here
 	# too. start_ambience() runs exactly once, at ward load, and baked the slider
 	# values into volume_db at that moment — so a player who dragged "Ambience"

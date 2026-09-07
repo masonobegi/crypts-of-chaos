@@ -1157,6 +1157,37 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	_ok(bad_sounds.is_empty(), "and every one is a recipe that exists%s"
 		% ("" if bad_sounds.is_empty() else " — " + ", ".join(PackedStringArray(bad_sounds))))
 
+	# ...AND THE OTHER WAY ROUND: EVERY RECIPE IS PLAYED BY SOMETHING.
+	#
+	# The check above catches a typo. This catches the opposite and much
+	# quieter fault: a sound that exists, is synthesised correctly, and is
+	# played by nothing at all. Thirteen of forty-three were in that state —
+	# a procedure bench, a shift loop and two machine states, every one of them
+	# left behind by a system that was cut. It reads exactly like a game that
+	# has those features until you go looking.
+	#
+	# Sounds are named as string literals at their call sites and in
+	# AmbienceSystem.SPARSE, so the source is the only place that knows. Two
+	# are named indirectly and are listed here rather than being special-cased
+	# in the scan: `AudioMgr.mumble` picks one of three banks by hash.
+	var snd_played := {"mumble": true, "mumble_lo": true, "mumble_hi": true}
+	var snd_body := ""
+	for path in _all_scripts("res://scripts"):
+		if path.ends_with("AudioMgr.gd"):
+			continue
+		snd_body += FileAccess.get_file_as_string(path)
+	for spec in AmbienceSystem.SPARSE:
+		snd_played[String(spec[0])] = true
+	var snd_quiet: Array = []
+	for name in AudioMgr.RECIPES:
+		var nm := String(name)
+		if snd_played.has(nm) or snd_body.contains("\"%s\"" % nm):
+			continue
+		snd_quiet.append(nm)
+	_ok(AudioMgr.RECIPES.size() > 20, "%d sound recipes" % AudioMgr.RECIPES.size())
+	_ok(snd_quiet.is_empty(), "and something plays every one of them%s"
+		% ("" if snd_quiet.is_empty() else " — never played: " + ", ".join(PackedStringArray(snd_quiet))))
+
 	# AND EVERY SETTING IS READ BY SOMETHING.
 	#
 	# CLAUDE.md 15, made automatic. `show_damage_flash` and `pad_vibration` were

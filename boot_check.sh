@@ -52,7 +52,17 @@ CODE=$?
 # AudioMgr._notification on WM_CLOSE_REQUEST. What is left is an artifact of
 # --quit-after yanking the process out from under the audio server, which no
 # player will ever do. Everything else still fails this check.
-IGNORE='ALSA lib|snd_|audio_driver_alsa|All audio drivers failed|Could not set V-Sync|PulseAudio|pcm\.c|conf\.c|confmisc\.c|Unknown PCM|ERR_CANT_OPEN|init_output_device|ObjectDB instances leaked at exit'
+#
+# ...and ONE more, which every player WILL see exactly once. Godot caches
+# compiled shader binaries under user:// and prints "Failed to load cached
+# shader, recompiling." on a cache MISS — which is what a first launch on a new
+# machine, a driver update, or a fresh checkout is. It is a cache notice, not a
+# compile failure: a shader that genuinely fails to build says "Shader
+# compilation failed" and carries the errors with it, and that still fails this
+# check. Without this line the boot check goes red on the first run after
+# .godot/ is cleared and green on every run after, which is the worst kind of
+# red — one nobody can reproduce and everybody learns to re-run.
+IGNORE='ALSA lib|snd_|audio_driver_alsa|All audio drivers failed|Could not set V-Sync|PulseAudio|pcm\.c|conf\.c|confmisc\.c|Unknown PCM|ERR_CANT_OPEN|init_output_device|ObjectDB instances leaked at exit|Failed to load cached shader, recompiling'
 PROBLEMS=$(grep -E "ERROR|SCRIPT ERROR|WARNING" "$OUT" | grep -vE "$IGNORE" || true)
 
 if [ "$CODE" -ne 0 ]; then

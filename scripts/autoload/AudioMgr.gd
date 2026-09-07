@@ -34,8 +34,6 @@ const RECIPES := {
 	"squeak":    {"w": "saw",   "f": 700.0, "d": 0.16, "dec": 10.0, "n": 0.06, "sw": 0.4,   "vib": 22.0},
 	"step":      {"w": "noise", "f": 200.0, "d": 0.07, "dec": 30.0, "n": 1.0,  "sw": -0.3,  "vib": 0.0},
 	"paper":     {"w": "noise", "f": 3000.0,"d": 0.14, "dec": 18.0, "n": 1.0,  "sw": 0.2,   "vib": 0.0},
-	"machine_on":{"w": "saw",   "f": 120.0, "d": 0.7,  "dec": 2.2,  "n": 0.05, "sw": 0.5,   "vib": 5.0},
-	"machine_bad":{"w":"square","f": 70.0,  "d": 0.9,  "dec": 2.0,  "n": 0.15, "sw": -0.25, "vib": 11.0},
 	"alarm":     {"w": "square","f": 660.0, "d": 0.6,  "dec": 1.5,  "n": 0.0,  "sw": 0.0,   "vib": 9.0},
 	"gasp":      {"w": "noise", "f": 900.0, "d": 0.3,  "dec": 7.0,  "n": 1.0,  "sw": 0.6,   "vib": 0.0},
 	"grunt":     {"w": "saw",   "f": 130.0, "d": 0.22, "dec": 11.0, "n": 0.3,  "sw": -0.3,  "vib": 4.0},
@@ -57,25 +55,17 @@ const RECIPES := {
 	"monitor":   {"w": "sine",  "f": 1180.0,"d": 0.09, "dec": 16.0, "n": 0.0,  "sw": 0.0,   "vib": 0.0},
 	"trolley":   {"w": "noise", "f": 260.0, "d": 0.5,  "dec": 5.0,  "n": 1.0,  "sw": 0.1,   "vib": 7.0},
 	"pipe":      {"w": "sine",  "f": 95.0,  "d": 0.8,  "dec": 3.5,  "n": 0.12, "sw": -0.15, "vib": 1.5},
-	# The three that arrived with the shift loop. A snap for something giving
-	# way under your hands, a wet drag for theatre, and a rattle for a bottle of
-	# pills going into somebody's bag.
-	"snap":      {"w": "noise", "f": 1400.0,"d": 0.11, "dec": 34.0, "n": 0.85, "sw": -0.65, "vib": 0.0},
-	"theatre":   {"w": "noise", "f": 240.0, "d": 0.55, "dec": 6.0,  "n": 0.9,  "sw": -0.25, "vib": 3.0},
-	"pills":     {"w": "noise", "f": 2100.0,"d": 0.22, "dec": 15.0, "n": 1.0,  "sw": 0.15,  "vib": 26.0},
-	# The procedure bench. Asked for by name after the second playtest: "sound
-	# effects for all the things I can do, gross if needed". These are the gross
-	# ones. Every hand-procedure in the game makes at least one of them, and the
-	# difference between a good manoeuvre and a bad one is audible before the
-	# verdict text arrives.
-	"squelch":   {"w": "noise", "f": 300.0, "d": 0.30, "dec": 9.0,  "n": 1.0,  "sw": -0.58, "vib": 4.0},
-	"stitch":    {"w": "noise", "f": 2500.0,"d": 0.07, "dec": 30.0, "n": 0.9,  "sw": -0.45, "vib": 0.0},
-	"crack":     {"w": "noise", "f": 950.0, "d": 0.09, "dec": 46.0, "n": 0.7,  "sw": -0.80, "vib": 0.0},
-	"bone_grind":{"w": "saw",   "f": 145.0, "d": 0.45, "dec": 4.5,  "n": 0.55, "sw": -0.18, "vib": 28.0},
-	"seat":      {"w": "sine",  "f": 190.0, "d": 0.20, "dec": 15.0, "n": 0.30, "sw": -0.45, "vib": 0.0},
-	"inject":    {"w": "saw",   "f": 680.0, "d": 0.45, "dec": 3.2,  "n": 0.22, "sw": 0.30,  "vib": 13.0},
-	"swab":      {"w": "noise", "f": 1600.0,"d": 0.20, "dec": 11.0, "n": 1.0,  "sw": -0.25, "vib": 0.0},
-	"wet":       {"w": "noise", "f": 175.0, "d": 0.40, "dec": 7.0,  "n": 1.0,  "sw": -0.62, "vib": 2.0},
+	# THIRTEEN RECIPES USED TO SIT HERE AND NOTHING PLAYED ANY OF THEM: a
+	# procedure bench (squelch, stitch, crack, bone_grind, inject, swab, wet),
+	# three that came in with a shift loop (snap, theatre, pills), a chair, and
+	# two machine states. Every one of them belonged to a system that has since
+	# been cut, and a recipe with no caller is the audio version of a constant
+	# nothing reads — it looks like the game has a feature and it does not.
+	#
+	# Two of the survivors were rescued rather than deleted: `alarm`, `squeak`
+	# and `gasp` went into the sparse ambience, and `heartbeat` beats in the
+	# last forty minutes of the shift. Every recipe below is played by
+	# something, and there is a check in the smoke run that keeps it that way.
 }
 
 ## The continuous bed: a long, low, quietly unpleasant loop. Built separately

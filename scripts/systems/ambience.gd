@@ -19,10 +19,49 @@ const SPARSE := [
 	["door", -30.0, 0.3],
 	["step", -33.0, 0.3],
 	["beep_low", -32.0, 0.3],
+	# Three that were synthesised and then never played by anything. A ward two
+	# corridors away has an alarm going off in it every so often and nobody in
+	# this one reacts, which is both what a hospital sounds like and a free
+	# reminder that the building is bigger than the room you are standing in.
+	["alarm", -37.0, 0.15],
+	["squeak", -34.0, 0.4],
+	["gasp", -33.0, 0.3],
 ]
+
+## THE SOUND A WARD ACTUALLY MAKES.
+##
+## Five occupied beds and not one of them had a monitor on it. A bedside
+## monitor is the single most recognisable noise in a hospital and it is also
+## the most useful one this game could have: it is positional, so it tells you
+## where the beds are with your eyes shut; it is per-patient, so the ward has
+## five voices rather than one; and it is CONTINUOUS, which is what turns a set
+## of rooms into a place somebody works.
+##
+## Round-robin rather than a timer per bed, so five monitors cost one timer and
+## can never drift into unison — which is the thing that would make them read
+## as one machine instead of five.
+const MONITOR_CYCLE := 4.6
+
+## YOUR OWN PULSE, IN THE LAST HOUR.
+##
+## `heartbeat` was synthesised and played by nothing. The obvious hook — beat
+## whenever somebody can see you — is the wrong one: being seen is the NORMAL
+## state of standing in a ward, so it would sound constantly and mean nothing,
+## and the visible tells on the staff already say it better.
+##
+## The pressure this game actually has is the evening arriving. Everything
+## costs minutes off one clock, the day force-ends at eight, and the last of it
+## is when a player is deciding what to leave undone. So it beats there, and
+## nowhere else: slow at forty minutes to go, tightening as it closes.
+const PULSE_FROM := 40
+const PULSE_SLOW := 1.75
+const PULSE_FAST := 0.95
 
 var hospital: Hospital = null
 var _timer := 0.0
+var _mon_timer := 0.0
+var _mon_index := 0
+var _pulse := 0.0
 
 func _ready() -> void:
 	add_to_group("ambience")
@@ -33,11 +72,62 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if not GameState.clock_running:
 		return
+	_monitors(delta)
+	_pulse_pass(delta)
 	_timer -= delta
 	if _timer > 0.0:
 		return
 	_timer = RNG.randf_range_s("ambience", MIN_GAP, MAX_GAP)
 	_play_one()
+
+## Two beats, a fifth of a second apart, because one is a click and two is a
+## heart. Not positional: it is the only sound in the game that is inside the
+## player's head rather than in the room.
+func _pulse_pass(delta: float) -> void:
+	var left: int = Cases.DEBT_DUE_MINUTE - GameState.minute_of_day
+	if left > PULSE_FROM or left < 0:
+		_pulse = 0.0
+		return
+	_pulse -= delta
+	if _pulse > 0.0:
+		return
+	var t: float = clampf(float(left) / float(PULSE_FROM), 0.0, 1.0)
+	_pulse = lerpf(PULSE_FAST, PULSE_SLOW, t)
+	var vol: float = lerpf(-19.0, -27.0, t)
+	AudioMgr.play("heartbeat", vol, 1.0)
+	# The second beat, quieter and a touch lower, is what stops it reading as a
+	# metronome.
+	var tree := get_tree()
+	if tree:
+		await tree.create_timer(0.21).timeout
+		if is_inside_tree() and GameState.clock_running:
+			AudioMgr.play("heartbeat", vol - 4.0, 0.88)
+
+## One beep, from one bed, moving round the ward.
+func _monitors(delta: float) -> void:
+	_mon_timer -= delta
+	if _mon_timer > 0.0:
+		return
+	var beds := get_tree().get_nodes_in_group("bed")
+	var live: Array = []
+	for b in beds:
+		if b is Node3D and b.get("occupant") != null:
+			live.append(b)
+	if live.is_empty():
+		_mon_timer = MONITOR_CYCLE
+		return
+	# The whole cycle is divided between the beds that exist, so the ward beeps
+	# at a steady rate however many people are in it.
+	_mon_timer = MONITOR_CYCLE / float(live.size())
+	_mon_index = (_mon_index + 1) % live.size()
+	var bed: Node3D = live[_mon_index]
+	if not bed.is_inside_tree():
+		return
+	# A pitch per BED, stable across the shift: two monitors at the same pitch
+	# are one monitor, and a monitor that changes pitch is a monitor nobody
+	# believes in. Quiet, because five of them are playing.
+	var pitch := 0.94 + float(_mon_index) * 0.035
+	AudioMgr.play_at("monitor", bed.global_position + Vector3(0, 1.1, 0), -26.0, pitch)
 
 func _play_one() -> void:
 	if hospital == null:

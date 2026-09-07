@@ -398,12 +398,29 @@ func _build_body() -> void:
 	# A mouth in three pieces: a bar, and a corner block each side that rides up
 	# for a smile and down for a grimace. One rotated bar cannot do both, and a
 	# face that cannot do both has no opinion about what you just did to it.
-	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.086, 0.018, 0.022), 0.008),
-		Build.unshaded(Color(0.38, 0.20, 0.20)), Vector3(0, -0.062, 0.196))
+	# A LOWER LIP FIRST, so the dark bar has something to be the edge OF.
+	#
+	# The mouth was one flat bar and two flat corner blocks, all unshaded, and
+	# on a head that now has a nose with a bridge and eyes in sockets it was the
+	# last thing on the face reading as a sticker: a dark red letterbox with
+	# nothing above or below it. A mouth is a LINE between two lips, and the
+	# lower one is the half that catches light — so it is a small warm piece
+	# sitting just under the bar, in the person's own skin pushed toward it
+	# rather than a fixed pink, which is the only way this works across a range
+	# from 0.29 to 0.96.
+	#
+	# BEHIND the bar in z and BELOW it in y, both by a couple of millimetres, so
+	# it never fights the bar for a pixel and never pokes through when the bar
+	# scales open for a grimace.
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.072, 0.019, 0.020), 0.009),
+		Build.unshaded(skin.lerp(Color(0.62, 0.34, 0.34), 0.38).lightened(0.05)),
+		Vector3(0, -0.072, 0.192)))
+	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.086, 0.014, 0.022), 0.006),
+		Build.unshaded(Color(0.30, 0.15, 0.16)), Vector3(0, -0.062, 0.196))
 	_head.add_child(_mouth)
 	for sx in [-1.0, 1.0]:
-		var corner := Build.mi(Build.rbox_mesh(Vector3(0.026, 0.018, 0.022), 0.008),
-			Build.unshaded(Color(0.38, 0.20, 0.20)),
+		var corner := Build.mi(Build.rbox_mesh(Vector3(0.026, 0.014, 0.022), 0.006),
+			Build.unshaded(Color(0.30, 0.15, 0.16)),
 			Vector3(sx * 0.052, -0.062, 0.194))
 		_head.add_child(corner)
 		_mouth_corners.append(corner)

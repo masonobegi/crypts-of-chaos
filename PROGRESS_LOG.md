@@ -2537,3 +2537,17 @@ mid-cycle and it clicks, once per loop, under everything, forever — and nothin
 else in this repo would ever hear it. `HUM_PARTIALS` exists so the smoke run can
 do the arithmetic, and the check was proven red with a length of 11.017.
 
+## Session 17, continued — and a lip
+
+With the nose given a bridge and the eyes given sockets, the mouth was the last
+thing on the face reading as a sticker: one dark red bar and two corner blocks,
+all flat, with nothing above or below them. A mouth is a LINE BETWEEN TWO LIPS,
+and the lower one is the half that catches light.
+
+So: the bar is thinner, and a small warm piece sits directly under it, tucked
+inside its width. The colour is the person's OWN skin pushed toward a lip rather
+than a fixed pink — across a cast whose skin runs from 0.29 to 0.96 that is the
+only version of this that works at all. Behind the bar in z and below it in y by
+a couple of millimetres, so it never fights for a pixel and never pokes through
+when the bar scales open for a grimace.
+

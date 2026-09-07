@@ -76,13 +76,13 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by
    some distance and no amount of further polish substitutes for it.
-4. **The MOUTH is the last flat thing on a face.** The nose has a bridge and
-   the eyes sit in sockets now, which is what took the head off being an egg;
-   the mouth is still one dark bar and two corner blocks. It is the cheapest
-   remaining piece and it belongs in `npc_body.gd` with the rest of them.
-   (Lighting is NOT the lever and has been measured twice: `BACKLIGHT` at 0.28
-   moved 6,100 pixels by at most 27 levels, and at 0.70 — well past subtle —
-   6,300 by at most 52, with the face reading identically both times.)
+4. **The head is done for now.** It has a varied skull, nose, jaw and five
+   hairstyles; the nose has a bridge, the eyes sit in sockets and the mouth has
+   a lower lip. Lighting is NOT the lever for any of it and has been measured
+   twice: `BACKLIGHT` at 0.28 moved 6,100 pixels by at most 27 levels, and at
+   0.70 — well past subtle — 6,300 by at most 52, with the face reading
+   identically both times. If somebody wants to go further, the next piece is
+   cheekbones, and it is `npc_body.gd`.
 
 ## Two noises that are not bugs
 

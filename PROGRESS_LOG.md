@@ -2427,3 +2427,43 @@ guessed at: the next attempt should reproduce the exact shot first (it is in
 `shot_impl.gd`) instead of building a synthetic scene, which is where four
 attempts went.
 
+## Session 17, continued — the rim light was erasing the building
+
+The previous entry left "two figures that blow out to white" open, and said the
+next attempt should reproduce the actual frame instead of building a synthetic
+one. That is what fixed it, in ninety seconds, on the first try.
+
+`SHOT_ONLY=struck_off ./screenshots.sh` renders one frame out of twenty-one.
+With that, the bisect is trivial: rim term to zero, re-render, measure. The
+figure box goes from **28.8% pure 255 to 0.3%**.
+
+Godot adds `RIM` PER LIGHT, scaled by that light's energy and attenuation. A
+ward has a ceiling fitting every five metres, each carrying a spot at
+`SPOT_GAIN` 4.4 and a fill at `FILL_GAIN` 3.1, and four of them reach any given
+square metre — so the rim arrives four times over at about three units each.
+The sweep is a cliff rather than a slope (0.22 → 26.8%, 0.10 → 17.5%, 0.05 →
+1.7%), because the term saturates the moment several lights agree.
+
+And it was never only the characters. Side by side at the nurses' station:
+
+  with rim      Adeyemi's blue scrubs are a white blob, the counter is a white
+                slab, the notice board is a blank yellow rectangle
+  without       her scrubs are blue with visible weave, the counter is a grey
+                counter, the board has coloured notes pinned to it
+
+Same in the ward: every bed was a featureless white shape and is now a bed.
+Same at the bedside: the blanket was a flat pink slab and now has a fold in it.
+
+The comment being replaced said the rim was "most of what gives a body its form
+in a room lit from straight above", and it was true when it was written. Then
+`ceiling_light` was split into a shadowed spot plus an unshadowed fill and the
+gains went up to compensate, and nothing went back to the rim. Third instance
+this session of the same fault, after the ceiling's `self_lit` (0.22 in the
+comment, 0.85 in the code) and the fabric's weave pitch: a number tuned against
+a world that has since moved, still doing exactly what it was told.
+
+`Surfaces.RIM_EDGE` is one constant, set from GDScript into both shaders as a
+uniform, and it is 0 — kept rather than deleted, with the measurements, because
+the next person to reach for an edge light needs those more than they need a
+clean file. If it is ever turned back on, the lights have to give first.
+

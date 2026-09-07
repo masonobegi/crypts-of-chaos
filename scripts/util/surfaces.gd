@@ -143,6 +143,37 @@ static func _shader(key: String, body: String, modes := "cull_back") -> Shader:
 	_cache[key] = s
 	return s
 
+## HOW MUCH EDGE LIGHT A SURFACE CATCHES, AND IT IS ZERO.
+##
+## Godot's `RIM` is added PER LIGHT and scaled by that light's energy and
+## attenuation. A ward has a ceiling fitting every five metres, the spot on
+## each carries `Build.SPOT_GAIN` (4.4) and the fill `FILL_GAIN` (3.1), and
+## four of them reach any given square metre — so the rim term arrives four
+## times over at roughly three units of energy each. Nothing survives that.
+##
+## Measured on the real frames rather than argued about. The figure box in
+## `20_struck_off` is 28.8% pure 255 at the old 0.55, and 0.3% at zero; the
+## sweep between them is a cliff, not a slope (0.22 -> 26.8%, 0.10 -> 17.5%,
+## 0.05 -> 1.7%), because the term saturates the moment several lights agree.
+## Side by side, the difference is not subtle and it is not confined to
+## characters: with the rim on, Adeyemi's blue scrubs are a white blob, the
+## nurses' station counter is a white slab, the notice board is a blank yellow
+## rectangle and every bed in the ward is a featureless white shape. With it
+## off, all of them have form.
+##
+## The comment this replaces said the rim was "most of what gives a body its
+## form in a room lit from straight above". It was true when it was written and
+## the lights were dimmer; after `ceiling_light` was split into a shadowed spot
+## plus a fill and the gains went up, the term stopped supplementing the
+## shading and started erasing it. Same shape as the ceiling's `self_lit` and
+## the fabric's weave pitch: a number tuned against a world that has since
+## moved, still doing exactly what it was told.
+##
+## Kept as a constant at zero rather than deleted, because the next person to
+## reach for an edge light needs the measurements more than they need a clean
+## file. If it is ever turned back on, the lights are what has to give first.
+const RIM_EDGE := 0.0
+
 ## ------------------------------------------------------------------ floor
 ##
 ## Hospital vinyl: two-metre welded sheets, a fine speckle through the body of
@@ -382,6 +413,7 @@ static func fabric_mat(base: Color, weave := WEAVE, shared := true) -> ShaderMat
 		return _cache[key]
 	var sh := _shader("fab_sh", """
 uniform vec3 base_col : source_color = vec3(0.8, 0.8, 0.85);
+uniform float rim_edge = 0.0;
 uniform float weave = 180.0;   // see WEAVE above; this is only the fallback
 
 void fragment() {
@@ -416,12 +448,9 @@ void fragment() {
 	ALBEDO = base_col * (0.955 + cloth * 0.055 + (slub - 0.5) * 0.055);
 	ROUGHNESS = 0.94 - cloth * 0.08;
 	SPECULAR = 0.16;
-	// Cloth catches the light along its silhouette harder than paint does, and
-	// on a gown that edge is most of what gives a body its form in a room lit
-	// from straight above. The prop shader carries a rim and the first version
-	// of this one silently dropped it, so the largest soft surface in the game
-	// was the one thing with no edge light on it.
-	RIM = 0.55;
+	// See `RIM_EDGE`. Set from GDScript, and this default only applies if
+	// nobody sets it.
+	RIM = rim_edge;
 	RIM_TINT = 0.35;
 }
 """)
@@ -429,6 +458,7 @@ void fragment() {
 	m.shader = sh
 	m.set_shader_parameter("base_col", Vector3(base.r, base.g, base.b))
 	m.set_shader_parameter("weave", weave)
+	m.set_shader_parameter("rim_edge", RIM_EDGE)
 	if shared:
 		_cache[key] = m
 	return m
@@ -465,6 +495,7 @@ static func prop_mat(base: Color, rough := 0.85, metal := 0.0,
 		return _cache[key]
 	var sh := _shader("prop_sh", """
 uniform vec3 base_col : source_color = vec3(0.8, 0.8, 0.8);
+uniform float rim_edge = 0.0;
 uniform float rough = 0.85;
 uniform float metal = 0.0;
 uniform vec3 emis : source_color = vec3(0.0);
@@ -482,7 +513,7 @@ void fragment() {
 	ROUGHNESS = rough;
 	METALLIC = metal;
 	SPECULAR = 0.5;
-	RIM = 0.42;
+	RIM = rim_edge;
 	RIM_TINT = 0.55;
 	EMISSION = emis * emis_energy;
 }
@@ -495,6 +526,7 @@ void fragment() {
 	m.set_shader_parameter("emis", Vector3(emission.r, emission.g, emission.b))
 	m.set_shader_parameter("emis_energy", 1.6 if (emission.r + emission.g + emission.b) > 0.0 else 0.0)
 	m.set_shader_parameter("grain", grain)
+	m.set_shader_parameter("rim_edge", RIM_EDGE)
 	if shared:
 		_cache[key] = m
 	return m

@@ -96,15 +96,35 @@ func tick() -> bool:
 			menu._open_menu_screen("settings")
 			menu_opened = true
 			return false
+		_skip_only = not _shot_wanted(String(MENU_SHOTS[menu_index]))
+		if not _skip_only:
+			_wanted += 1
 		_save(String(MENU_SHOTS[menu_index]))
 		menu_index += 1
 		return false
 
 	if index >= SHOTS.size():
-		print("captured %d frames to %s" % [SHOTS.size(),
-			ProjectSettings.globalize_path(out_dir)])
+		print("captured %d frames to %s" % [_wanted, ProjectSettings.globalize_path(out_dir)])
 		return true
 	var shot: Array = SHOTS[index]
+	# ONE FRAME, WHEN ONE FRAME IS WHAT YOU ARE LOOKING AT.
+	#
+	# Twenty-one frames is twenty minutes on a software rasteriser, and chasing
+	# a fault that appears in exactly two of them means paying for nineteen you
+	# already have. `look.sh` exists for the same reason and does not help here:
+	# these are UI stages, and it does not build them.
+	#
+	# `SHOT_ONLY` is a comma-separated list of names or fragments of them —
+	# `SHOT_ONLY=struck_off,17` renders two. The staging still runs in order,
+	# because several stages depend on the ones before them; only the SAVE is
+	# skipped, which costs a few frames and nothing else.
+	_skip_only = not _shot_wanted(String(shot[0]))
+	if not _skip_only and _counted != index:
+		# ONCE PER SHOT, NOT ONCE PER FRAME. A `ui:` stage returns false four
+		# or five times while it settles and re-enters this line each time, so
+		# counting here without the guard reported ten frames for two.
+		_counted = index
+		_wanted += 1
 	var cam: Camera3D = game.player.camera
 	var w = tree.get_first_node_in_group("ward_day")
 
@@ -381,7 +401,31 @@ func _mk(kind: String):
 	f.kind = kind
 	return f
 
+## Which frames this run wants. Empty means all of them, which is the default
+## and what `screenshots.sh` does.
+var _only: PackedStringArray = PackedStringArray()
+var _only_read := false
+var _skip_only := false
+var _wanted := 0
+var _counted := -1
+
+func _shot_wanted(name: String) -> bool:
+	if not _only_read:
+		_only_read = true
+		var raw := OS.get_environment("SHOT_ONLY").strip_edges()
+		if raw != "":
+			for part in raw.split(",", false):
+				_only.append(String(part).strip_edges())
+	if _only.is_empty():
+		return true
+	for want in _only:
+		if name.contains(want):
+			return true
+	return false
+
 func _save(name: String) -> void:
+	if _skip_only:
+		return
 	var img := tree.root.get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)

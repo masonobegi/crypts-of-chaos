@@ -481,6 +481,32 @@ with it because a lost afternoon does not care which.
     the tile, speckle, paint tooth or contact shading of any room behind it. It
     uses `Surfaces` now, like everything else.
 
+56. **`RIM` IS ADDED PER LIGHT, and a ward has a fitting every five metres.**
+    Godot scales the rim term by each light's energy and attenuation and sums
+    it, so four ceiling fittings at `SPOT_GAIN` 4.4 and `FILL_GAIN` 3.1 deliver
+    it four times over. `cloth_mat` carried 0.55 and `prop_mat` 0.42, both set
+    when the building was lit by a single dim omni per room — and after
+    `ceiling_light` was split into a shadowed spot plus a fill and the gains
+    went up, the term stopped supplementing the shading and started erasing it.
+    Measured on the real frames: the figure box in `20_struck_off` is **28.8%
+    pure 255** at 0.55 and **0.3%** at zero, and the sweep between is a cliff
+    rather than a slope (0.22 → 26.8%, 0.10 → 17.5%, 0.05 → 1.7%) because the
+    term saturates the moment several lights agree. It was not only characters:
+    side by side, the rim turned Adeyemi's blue scrubs into a white blob, the
+    nurses' station counter into a white slab, the notice board into a blank
+    yellow rectangle and every bed in the ward into a featureless white shape.
+    `Surfaces.RIM_EDGE` is one constant, set from GDScript into both shaders,
+    and it is 0. Third instance of the same fault after the ceiling's
+    `self_lit` and the fabric's weave pitch: a number tuned against a world
+    that has since moved, still doing exactly what it was told.
+57. **`SHOT_ONLY=struck_off ./screenshots.sh` renders one frame.** Twenty-one
+    frames is twenty minutes on a software rasteriser, and four attempts at the
+    rim fault above went into building synthetic scenes to avoid paying it —
+    none of which reproduced anything, because the fault needed the real
+    staging. Reproducing the actual frame took ninety seconds and settled it on
+    the first try. The staging still runs in order (several stages depend on
+    the ones before them); only the save is skipped.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

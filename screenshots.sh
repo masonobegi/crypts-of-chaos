@@ -6,6 +6,16 @@
 # Uses Xvfb plus Godot's GL Compatibility renderer, because Forward+ needs a
 # Vulkan device that headless boxes generally do not have. Output lands in the
 # project's user:// data directory; the path is printed at the end.
+#
+# ONE FRAME AT A TIME, when that is what you are looking at:
+#
+#   SHOT_ONLY=struck_off GODOT=/path/to/godot ./screenshots.sh
+#
+# Comma-separated, matched as fragments of the frame name. Twenty-one frames is
+# twenty minutes on a software rasteriser and chasing a fault that shows up in
+# two of them means paying for nineteen you already have. The staging still
+# runs in order — several stages depend on the ones before them — so only the
+# save is skipped; it costs a few frames and nothing else.
 set -uo pipefail
 GODOT="${GODOT:-godot}"
 DIR="$(cd "$(dirname "$0")" && pwd)"

@@ -160,7 +160,7 @@ func _consequences(verdict: String, short: bool) -> Array:
 		ReviewSystem.OUTCOME_CLEAR:
 			out.append("Nothing was queried. Adeyemi is on again and so are you.")
 		ReviewSystem.OUTCOME_QUESTIONS:
-			out.append("Sister Nkemelu has made a note. She will read your charts first tomorrow.")
+			out.append("Sister %s has made a note. She will read your charts first tomorrow." % DB.WARD_SISTER)
 		# THE SAME TWO CONSEQUENCES, because the auditor is gated on FLAGGED
 		# now and not on REFERRED — she was expensive content behind a trigger
 		# the money-optimal play never once reached. The screen has to say what
@@ -186,7 +186,7 @@ func _consequences(verdict: String, short: bool) -> Array:
 			out.append("This is going upstairs. Adeyemi is writing her rounds up twice and Coding are here for two shifts.")
 			out.append("Your office has somebody in it. Anything you write, you write in front of her.")
 			out.append("It leaves the ward tonight. A copy of the folder, a covering letter, and a date for a panel that has not been set yet.")
-			out.append("Sister Nkemelu wrote the letter. She is also on at eight tomorrow, and so are you, and neither of you is going to mention it.")
+			out.append(("Sister %s wrote the letter. She is also on at eight tomorrow, and so are you, and neither of you is going to mention it.") % DB.WARD_SISTER)
 	# The beds she could not stand up, by name. This is the part that carries
 	# regardless of the stamp: a "noted" day still puts somebody on a list.
 	var remembered := PackedStringArray(ctx.get("remembered", PackedStringArray()))

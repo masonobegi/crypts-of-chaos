@@ -1068,7 +1068,6 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 ## The rule for adding to this: if you would describe the colour with the word
 ## "slightly", it is wrong. Pick the actual colour.
 const FLOOR_A := Color(0.72, 0.80, 0.74)
-const FLOOR_B := Color(0.66, 0.75, 0.72)
 const WALL_LOWER := Color(0.22, 0.62, 0.60)
 const WALL_UPPER := Color(0.87, 0.83, 0.71)
 ## Darker than the walls on purpose. A ceiling is the top third of every
@@ -1077,9 +1076,6 @@ const WALL_UPPER := Color(0.87, 0.83, 0.71)
 ## lid — the first pass had 0.84 here and the corners of every photograph were
 ## pure paper.
 const CEILING := Color(0.66, 0.67, 0.66)
-const TRIM := Color(0.13, 0.50, 0.54)
-const BED_FRAME := Color(0.90, 0.92, 0.95)
-const LINEN := Color(0.96, 0.97, 0.99)
 ## SCRUBS THE SAME AGE AS THE BUILDING.
 ##
 ## These were (0.20, 0.56, 0.94) and (0.16, 0.78, 0.56) — fully saturated
@@ -1099,11 +1095,7 @@ const SCRUB_GREEN := Color(0.31, 0.53, 0.46)
 ## metallic has nothing to reflect and renders as grey mud. Chrome in this game
 ## is painted chrome.
 const METAL := Color(0.80, 0.85, 0.92)
-const PLASTIC := Color(0.90, 0.92, 0.95)
 const WARN := Color(1.00, 0.74, 0.14)
 const BAD := Color(0.98, 0.32, 0.32)
 const GOOD := Color(0.28, 0.86, 0.46)
 const PAPER := Color(0.97, 0.96, 0.89)
-## Two more, because a cartoon needs an accent that is not a warning.
-const SUNNY := Color(1.00, 0.85, 0.32)
-const GRAPE := Color(0.60, 0.44, 0.90)

@@ -398,7 +398,6 @@ func grab(body: RigidBody3D) -> void:
 	# Held items must not shove the player around; they still hit everything else.
 	body.add_collision_exception_with(player)
 	AudioMgr.play_var("pickup", -14.0)
-	EventBus.item_picked_up.emit(body)
 	if body.has_method("on_grabbed"):
 		body.call("on_grabbed", player)
 	_show_carry_prompt()
@@ -412,7 +411,6 @@ func drop() -> void:
 	b.angular_damp = _held_damp
 	b.remove_collision_exception_with(player)
 	AudioMgr.play_var("drop", -16.0)
-	EventBus.item_dropped.emit(b)
 	if b.has_method("on_dropped"):
 		b.call("on_dropped", player)
 	_hover = null

@@ -9,7 +9,6 @@ extends Node3D
 ## One nurse on the floor. A five-bed ward does not need a rota, and every
 ## extra body is another pair of eyes that has to mean something.
 const NURSE_COUNT := 1
-const DOCTOR_COUNT := 0
 
 var hospital: Hospital
 var player: Player
@@ -372,7 +371,8 @@ func _seed_social_graph() -> void:
 ## argue with about a written discharge plan, so she is authored like the
 ## patients are rather than rolled out of an archetype table.
 func _spawn_staff() -> void:
-	_spawn_nurse("rule_follower", 0)
+	for i in NURSE_COUNT:
+		_spawn_nurse("rule_follower", i)
 	_refresh_days_visitors()
 	_seed_social_graph()
 	# EVERY MORNING, NOT ONCE. `_spawn_staff` runs in `_ready`, and both of these

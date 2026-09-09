@@ -106,7 +106,6 @@ func load_game(slot: String = AUTOSAVE) -> bool:
 		var fn: Callable = _providers[key]["load"]
 		if fn.is_valid() and systems.has(key):
 			fn.call(systems[key])
-	EventBus.game_loaded.emit()
 	Log.i("loaded slot '%s' (day %d)" % [slot, GameState.day], "Save")
 	return true
 

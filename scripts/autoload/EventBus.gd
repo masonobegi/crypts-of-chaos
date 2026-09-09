@@ -13,16 +13,20 @@ extends Node
 ## one of these; perception turns it into Evidence for whoever could see it.
 signal world_event(evt)              ## WorldEvent
 
-## Emitted after perception has resolved, once per witness.
-signal evidence_recorded(witness, ev) ## Node, Evidence
+## SIX SIGNALS WERE CUT FROM THIS FILE, and every one of them was emitted and
+## listened to by nobody: what a witness recorded, what a mind now believes, a
+## rumour moving between two people, an item picked up, an item put down, and a
+## save finishing loading. Each one had a comment describing something the game
+## does — and the game does all of it, directly, at the point where it happens,
+## because that is what got built when the signal turned out to reach nothing.
+## An emit with no listener is a load-bearing-looking line that costs a frame's
+## work and delivers nothing; the smoke run fails on a new one now.
 
 # ---------------------------------------------------------------- shift / time
 
 # ---------------------------------------------------------------- patients
 
 # ---------------------------------------------------------------- suspicion
-signal suspicion_changed(who: String, value: float)
-signal rumor_spread(from_id: String, to_id: String, ev)
 signal complaint_filed(about: String, by_id: String, severity: float)
 
 # ---------------------------------------------------------------- investigation
@@ -34,8 +38,6 @@ signal complaint_filed(about: String, by_id: String, severity: float)
 # ---------------------------------------------------------------- interaction
 signal interact_prompt(text: String, sub: String)
 signal interact_prompt_cleared()
-signal item_picked_up(item: Node)
-signal item_dropped(item: Node)
 signal item_broke(item: Node)
 
 # ---------------------------------------------------------------- ui / feedback
@@ -73,5 +75,3 @@ signal objective_target_changed(pos: Vector3, label: String)  ## where it is
 ## Where that objective is, in the world. Vector3.INF means "nowhere in
 ## particular" — a step that is about a screen rather than a place.
 
-# ---------------------------------------------------------------- meta
-signal game_loaded()

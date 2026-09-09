@@ -138,26 +138,8 @@ const TRAIT_DEFAULTS := {
 }
 
 # =============================================================== NAMES
-const FIRST_NAMES := [
-	"Greg", "Marlene", "Dougie", "Priya", "Constance", "Bev", "Yusuf", "Tam",
-	"Delia", "Roland", "Fenwick", "Moira", "Cliff", "Ines", "Bartholomew",
-	"Sandra", "Ogden", "Lurleen", "Vikram", "Trish", "Maurice", "Camille",
-	"Herb", "Nadia", "Pontus", "Glenda", "Wes", "Oksana", "Rudy", "Bernadette",
-	"Chip", "Femi", "Rosalind", "Duncan", "Marguerite", "Kip", "Astrid", "Lyle",
-]
 
-const LAST_NAMES := [
-	"Pumbleton", "Vasquez", "Nokes", "Achterberg", "Dill", "Crumb", "Okafor",
-	"Feathers", "Stankiewicz", "Bright", "Muldoon", "Han", "Pratchett-Adjacent",
-	"Wollop", "Bream", "Oyelaran", "Gundersen", "Spleen", "Marchetti", "Blunt",
-	"Kowalczyk", "Tremble", "Dupree", "Nkemdirim", "Fossey", "Ratchet", "Vane",
-	"Pillsbury-Ng", "Ostrowski", "Bracket", "Quill", "Mbeki", "Sunderland",
-]
 
-const STAFF_FIRST := [
-	"Sarah", "Deepa", "Marcus", "Nell", "Terrance", "Yolanda", "Joon", "Bridget",
-	"Ola", "Craig", "Simone", "Hank", "Amara", "Vince", "Petra", "Desmond",
-]
 
 # =============================================================== HELPERS
 
@@ -195,8 +177,3 @@ func make_mind(id: String, display: String, role: String, arch: String) -> Mind:
 ##
 ## Kept because the redesign still bills by who is paying, and the joke is in
 ## the names of the companies rather than in the illnesses.
-const INSURANCE := {
-	"meridian": {"name": "Meridian Mutual", "blurb": "Pays quickly. Reads everything."},
-	"standard": {"name": "Standard cover", "blurb": "Pays eventually."},
-	"state": {"name": "State", "blurb": "Pays what it decides to pay."},
-}

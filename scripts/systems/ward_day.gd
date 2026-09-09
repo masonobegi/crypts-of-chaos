@@ -45,10 +45,10 @@ var telemetry: Array = []
 ## ward sister, she reads her mother's chart the way she read charts for thirty
 ## years, and she is the only person in the building who will look at the notes
 ## without being asked to.
-## Kept as the hour Dot Kerrigan's daughter is due, which is what the smoke run
-## and `_reads_own_chart` both mean by "Ruth has been". The other two families
-## carry their own `family_at`.
-const RUTH_ARRIVES := 19 * 60
+## The hour she is due is `family_at` on her own entry in `Cases`, like the other
+## two families — there was a `RUTH_ARRIVES` constant here for a long time after
+## the hardcoded block that read it was replaced, which is a promise made in a
+## comment and kept nowhere.
 ## patient id -> their family has been today.
 var _family_been: Dictionary = {}
 ## minutes-before-eight -> already called today.

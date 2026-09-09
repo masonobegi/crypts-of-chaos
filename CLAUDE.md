@@ -786,6 +786,23 @@ with it because a lost afternoon does not care which.
     `ceiling_sign` fault again on the most looked-at object in the room. Ninety
     seconds a look with `SHOT_ONLY=ward_from_door ./screenshots.sh`, and both
     bad versions looked perfectly sensible in the source.
+84. **TWENTY CONSTANTS AND SIX SIGNALS WERE READ BY NOTHING, AND THE FILE
+    ALREADY HAD A GOTCHA ABOUT IT.** Gotcha 15 says to grep every key of a data
+    table for a reader before trusting the table; nobody had ever run that over
+    the whole repo. The haul: the hour a named visitor arrives, left behind when
+    the hardcoded block that read it was replaced by an authored per-patient
+    time; a count of doctors on a ward that deliberately has one clinician; the
+    ward sister's surname, spelled out as a literal in three places instead
+    (gotcha 48 again); three pools of generated names from before the cast was
+    authored; a table of insurance companies whose entire point was the jokes in
+    their names, which never reached a screen; twelve palette entries; and six
+    signals emitted every frame they fire and listened to by nobody. An emit
+    with no listener is worse than a dead constant, because it LOOKS
+    load-bearing: it costs work and it reads in review as the place where the
+    thing happens. The smoke run now fails on either, and both were proven red.
+    **Do not name an identifier in the comment above a check that greps for
+    identifiers** — the first draft of that paragraph named the sister's
+    surname, which gave it a second occurrence and kept it passing.
 
 ## Design rules that are load-bearing
 
@@ -1017,7 +1034,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 358 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 251 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 253 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | nothing on its own either, and it is the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

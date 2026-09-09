@@ -25,7 +25,7 @@ func _build() -> void:
 	pauses_world = true
 
 	var v := card_shell(780, 700, "HANDOVER",
-		"Sister Nkemelu has last night's folder")
+		"Sister %s has last night's folder" % DB.WARD_SISTER)
 
 	# HOW LONG YOU HAVE BEEN DOING THIS, in her voice, before the folder opens.
 	#

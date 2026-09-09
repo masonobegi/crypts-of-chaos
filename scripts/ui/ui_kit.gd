@@ -13,8 +13,6 @@ extends RefCounted
 ##
 ## The HUD stays dark and keeps its own explicit colours — it is an overlay on
 ## a lit 3D room, and paper floating in front of a ward reads as a bug.
-const BG := Color(0.09, 0.11, 0.13, 0.96)
-const BG_SOLID := Color(0.09, 0.11, 0.13, 1.0)
 const PANEL := Color(0.93, 0.91, 0.85, 1.0)          ## manila
 const PANEL_LIGHT := Color(0.975, 0.966, 0.938, 1.0) ## a fresh sheet
 const INK := Color(0.12, 0.13, 0.15)
@@ -24,7 +22,6 @@ const GOOD := Color(0.10, 0.45, 0.23)
 const WARN := Color(0.66, 0.41, 0.04)
 const BAD := Color(0.68, 0.13, 0.12)
 const MONEY := Color(0.10, 0.40, 0.21)
-const SUS := Color(0.42, 0.18, 0.52)
 ## The HUD, and anything painted onto the 3D world, keeps the old light-on-dark
 ## palette. Paper belongs in a modal; a manila readout floating in front of a
 ## lit ward reads as a bug.
@@ -32,10 +29,8 @@ const HUD_INK := Color(0.90, 0.93, 0.92)
 const HUD_DIM := Color(0.62, 0.67, 0.68)
 const HUD_ACCENT := Color(0.35, 0.78, 0.72)
 const HUD_GOOD := Color(0.42, 0.80, 0.52)
-const HUD_WARN := Color(0.94, 0.70, 0.28)
 const HUD_BAD := Color(0.90, 0.36, 0.32)
 const HUD_MONEY := Color(0.55, 0.85, 0.60)
-const HUD_SUS := Color(0.80, 0.55, 0.90)
 
 ## The margin rule down every form in the world.
 const MARGIN_RED := Color(0.78, 0.30, 0.28)

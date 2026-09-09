@@ -179,10 +179,7 @@ func _on_world_event(evt) -> void:
 			if other != id:
 				ev.corroborators.append(other)
 		var stored := mind.add_evidence(ev)
-		EventBus.evidence_recorded.emit(_body(id), stored)
 		_react(id, mind, stored)
-
-	EventBus.suspicion_changed.emit(ids[0], suspicion_of(ids[0]))
 
 func _react(id: String, mind: Mind, ev: Evidence) -> void:
 	var body = _body(id)
@@ -280,7 +277,6 @@ func _gossip_pass() -> void:
 			var retold := worst.retold()
 			retold.corroborators.append(id)
 			listener.add_evidence(retold)
-			EventBus.rumor_spread.emit(id, other_id, retold)
 			# Make it a scene rather than a line of dialogue with nobody in it.
 			#
 			# Gossip is how a thing one person half-saw becomes a thing four

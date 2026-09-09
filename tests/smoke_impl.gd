@@ -292,6 +292,8 @@ func _check_the_verbs_work() -> void:
 	_check_the_build_is_polite_to_the_machine()
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
+	_check_every_constant_has_a_reader()
+	_check_every_signal_is_wired_at_both_ends()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 	_check_the_sound_design()
 
@@ -1799,6 +1801,104 @@ func _calls_on(src: String, autoload: String) -> Array:
 			if not out.has(name):
 				out.append(name)
 	return out
+
+
+## A CONSTANT NOTHING READS IS A PROMISE THE GAME IS MAKING IN A COMMENT AND NOT
+## KEEPING IN CODE, and this project has been caught by that four times.
+##
+## `SHIFTS[kind]["scrutiny"]` was documented as "how carefully the paperwork is
+## read afterwards", printed at the player on both shift cards, and read by
+## nothing — so the night shift paid the best multiplier and drew attention at
+## exactly the same rate as a day shift. `SLEEP_CHANCE` was a table on a member
+## that did not exist, read by a handler with no caller. `RIM_EDGE` and the
+## fabric weave were the same fault one step on: a number still doing exactly
+## what it was told after the world around it moved.
+##
+## Twenty of these were live when this check was written: the hour a named
+## visitor arrives, left behind when the hardcoded block that read it was
+## replaced by an authored per-patient time; a count of doctors on a ward that
+## deliberately has one clinician; the ward sister's surname, spelled out as a
+## literal in three places instead; three pools of generated names from before
+## the cast was authored; a table of insurance companies whose whole point was
+## the jokes in their names, none of which reached a screen; and twelve palette
+## entries. NO IDENTIFIER IS NAMED IN THIS COMMENT ON PURPOSE — a name mentioned
+## here is a name with a reader, and the first draft of this paragraph is what
+## kept the sister's surname passing.
+##
+## Counted by TOKEN across `scripts/` and `tests/` in one pass, because asking
+## for each name separately is three hundred scans of a megabyte. A name
+## mentioned only in prose counts as a reader, which is deliberate: the failure
+## this is looking for is a constant nobody has thought about, and a constant
+## somebody wrote a paragraph about is not that.
+func _check_every_constant_has_a_reader() -> void:
+	var files: Array = _all_scripts("res://scripts")
+	files.append_array(_all_scripts("res://tests"))
+	var word := RegEx.create_from_string("[A-Za-z_][A-Za-z0-9_]*")
+	var decl := RegEx.create_from_string(
+		"^[\\t ]*(?:static[\\t ]+)?const[\\t ]+([A-Z][A-Z0-9_]*)[\\t ]*(?::=|=|:)")
+	var seen := {}
+	var decls: Array = []
+	for f in files:
+		var txt := FileAccess.get_file_as_string(f)
+		if txt == "":
+			continue
+		for m in word.search_all(txt):
+			var wd := m.get_string()
+			seen[wd] = int(seen.get(wd, 0)) + 1
+		if not String(f).begins_with("res://scripts"):
+			continue
+		var n := 0
+		for line in txt.split("\n"):
+			n += 1
+			var d := decl.search(line)
+			if d != null:
+				decls.append([d.get_string(1), f, n])
+	var orphans: Array = []
+	for d in decls:
+		if int(seen.get(String(d[0]), 0)) <= 1:
+			orphans.append("%s:%d %s" % [String(d[1]).get_file(), int(d[2]), String(d[0])])
+	_ok(orphans.is_empty(),
+		"every one of %d constants in scripts/ has something that reads it%s"
+			% [decls.size(), "" if orphans.is_empty() else " — " + ", ".join(orphans)])
+
+## ...AND THE SAME QUESTION ABOUT A SIGNAL, WHICH IS WORSE.
+##
+## A constant nothing reads is inert. An emit with no listener is a line that
+## LOOKS load-bearing: it costs work every time it fires, it reads in review as
+## the place where the thing happens, and it delivers nothing. Six of them were
+## live when this was written — what a witness recorded, what a mind now
+## believes, a rumour moving between two people, an item picked up, an item put
+## down and a save finishing loading — each with a comment describing something
+## the game does directly somewhere else.
+##
+## Both ends, because either half alone is a different fault: a signal with a
+## listener and no emitter is a handler that has never run, which is exactly how
+## a whole shift-type table survived in `patient_npc.gd` being read by a callback
+## nothing called.
+func _check_every_signal_is_wired_at_both_ends() -> void:
+	var files: Array = _all_scripts("res://scripts")
+	files.append_array(_all_scripts("res://tests"))
+	var text := ""
+	for f in files:
+		text += FileAccess.get_file_as_string(f) + "\n"
+	var bus := FileAccess.get_file_as_string("res://scripts/autoload/EventBus.gd")
+	var decl := RegEx.create_from_string("^signal[\\t ]+(\\w+)")
+	var loose: Array = []
+	var n := 0
+	for line in bus.split("\n"):
+		var m := decl.search(line)
+		if m == null:
+			continue
+		n += 1
+		var name := m.get_string(1)
+		var emits := RegEx.create_from_string("\\b" + name + "\\.emit\\b").search_all(text).size()
+		var hears := RegEx.create_from_string("\\b" + name + "\\.connect\\b").search_all(text).size()
+		hears += RegEx.create_from_string("[\"&]" + name + "\"").search_all(text).size()
+		if emits == 0 or hears == 0:
+			loose.append("%s (%d emit, %d listen)" % [name, emits, hears])
+	_ok(loose.is_empty(),
+		"every one of %d signals on the bus is wired at both ends%s"
+			% [n, "" if loose.is_empty() else " — " + ", ".join(loose)])
 
 func _all_scripts(dir: String) -> Array:
 	var out: Array = []

@@ -627,13 +627,26 @@ with it because a lost afternoon does not care which.
   off one clock in `GameState`, and the day ends at the office desk with the
   handover. `ShiftSystem`, `NightSystem` and `LegalSystem` are gone — if you are
   reading about them somewhere, that document is older than this one.
-- **Six verbs, and every one of them costs time.** Write it yourself (8 min),
-  lead the patient (10), send a nurse (15), order a test (5, back in 75),
-  examine them (15, and it writes NOTHING), ask the registrar (25, and only
-  during his hours). The costs are the game: the day is not long enough to do
-  all six on all five beds, so a day is a budget rather than a checklist. Add a
-  verb by adding a cost constant and a `WardDay` method that writes a
-  `ChartEntry` with an honest `author` and `written_minute`.
+- **Six verbs, and every one of them costs time.** Read a chart (15 min), write
+  it yourself (10), lead the patient (15), send a nurse (35), order a test (10,
+  back in 75), examine them (25, and it writes NOTHING), ask the registrar (50,
+  and only during his hours). The costs are the game: the day is not long enough
+  to do all six on all five beds, so a day is a budget rather than a checklist.
+  **That sentence was false for as long as there were six verbs** — at
+  12/8/10/15/5/15/25 the whole checklist was 450 minutes of a 720-minute shift,
+  so the correct play was to do everything to everybody and then decide, with
+  two hundred and seventy minutes spare, and nothing had ever measured it
+  because every probe drives the ward with `advance_to(15 * 60)`. `WardDay`
+  counts `minutes_worked` now and `frontier_impl` fails on a checklist that
+  fits, on an honest day that does not, and on a top-of-the-money night that is
+  also a clean one. The numbers today: 160 a bed, 800 for the ward, and the
+  honest day works 510 of 720 and finishes about half past five. A uniform
+  multiplier cannot produce that shape — the honest day was already 74% of the
+  exhaustive one — so what is dear is CORROBORATION (the nurse and the
+  registrar are two thirds of the checklist), what is cheap is FINDING OUT
+  (reading and the lab), and examining sits in between. Add a verb by adding a
+  cost constant and a `WardDay` method that writes a `ChartEntry` with an
+  honest `author` and `written_minute`.
 - **Information must never have negative expected value.** This is the rule the
   career rework exists to enforce, and it was broken for three iterations:
   examining a patient wrote nothing to the chart, so the only thing looking at

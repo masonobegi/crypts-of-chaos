@@ -248,27 +248,69 @@ func start() -> void:
 	_log("day_start", {"cash": cash, "due": debt_tonight})
 	_update_objective()
 
-## Reading a chart properly takes time you do not have. THE HONEST DAY IS AN
-## INVESTIGATION: the only way to know Marchetti is the one who genuinely needs
-## the bed is to open five records and read them, and until this cost something
-## a careful day and a careless one were indistinguishable — the instrumentation
-## measured the honest run at five clicks, and it was right. Twelve minutes a
-## chart means reading the whole ward is an hour of a twelve-hour shift, which
-## is affordable once and not affordable twice.
-const READ_COST := 12
+## THE PRICE LIST, AND IT IS THE GAME.
+##
+## A twelve-hour shift is 720 minutes. These seven numbers decide whether that
+## is a budget or a backdrop, and for a long time it was a backdrop: at
+## 12/8/10/15/5/15/25 every verb in the game on every bed on the ward came to
+## 450 minutes, so the correct play was to do ALL SIX VERBS ON ALL FIVE PEOPLE
+## and then decide, with two hundred and seventy minutes spare. The honest day
+## the frontier probe plays measured 333. Nothing had ever taken that reading,
+## because every probe drives the ward with `advance_to(15 * 60)` and reads the
+## money at the end, and CLAUDE.md's own design rule — "the day is not long
+## enough to do all six on all five beds, so a day is a budget rather than a
+## checklist" — was a description of an intention, not of the build.
+##
+## The shape matters more than the scale, and a uniform multiplier could not
+## produce it: the honest day was already 74% of the exhaustive one, so
+## everything that made the exhaustive day impossible made the honest day
+## impossible with it. What had to change is WHICH verbs are dear.
+##
+##   FINDING OUT stays cheap. Reading and ordering a test are the two verbs that
+##   tell you something you did not know, and the career rework exists to
+##   enforce that information never has negative expected value. The whole ward
+##   read is 75 minutes.
+##
+##   LOOKING costs. Twenty-five minutes is curtains round, sleeves up and a
+##   proper examination, and laying hands on all five is over two hours — which
+##   is the point, because examining is the one verb that cannot be wrong.
+##
+##   CORROBORATION is the scarce thing, because a hold that somebody else's
+##   name supports is what the audit is actually asking for. Adeyemi has four
+##   bays and the registrar covers two wards; between them they are two thirds
+##   of the exhaustive day, and you cannot have them for everybody.
+##
+## Which gives 160 minutes a bed, 800 on a five-bed ward against a 720-minute
+## shift — so the checklist no longer fits — while the honest day comes to
+## about 570 and finishes around half past five with the evening to spend.
+## `frontier_impl` asserts both halves of that and reports the minute every
+## strategy finished at, so the next person to move one of these numbers finds
+## out immediately which way it went.
+const READ_COST := 15      ## opening a record and actually reading it
 
-## And so does everything else. A twelve-hour shift is a budget, not a backdrop:
-## every act of authorship walks you closer to the next round, which is the only
-## reason the timing of a note is a decision rather than a text field. The
-## cascade is the case that matters — patching a lie three times costs the best
-## part of an hour, and an hour is how far it is from a safe gap into Adeyemi
-## writing her round up beside you.
-const WRITE_COST := 8      ## typing it, at a terminal, properly
-const ASK_COST := 10       ## sitting down with somebody and leading them
-const NURSE_COST := 15     ## finding her, asking, waiting to be told
-const ORDER_COST := 5      ## a form
-const EXAMINE_COST := 15   ## curtains round, sleeves up, actually looking
-const COLLEAGUE_COST := 25 ## he covers two wards and you have to find him
+const WRITE_COST := 10     ## typing it, at a terminal, properly
+const ASK_COST := 15       ## sitting down with somebody and leading them
+const NURSE_COST := 35     ## finding her, asking, waiting to be told
+const ORDER_COST := 10     ## a form, and the cheapest verb on purpose
+const EXAMINE_COST := 25   ## curtains round, sleeves up, actually looking
+const COLLEAGUE_COST := 50 ## he covers two wards and you have to find him
+
+## EVERY MINUTE THIS SHIFT HAS ACTUALLY BOUGHT SOMETHING, which is not the same
+## as the minute on the clock. `minute` also moves when a probe skips to an
+## hour, when a round is walked forward and when the shift is forced to an end,
+## so it cannot answer the one question the design rests on: is a day a budget?
+##
+## It was not. Six verbs at 12/8/10/15/5/15/25 is 90 minutes a bed and 450 on a
+## five-bed ward, against a shift of 720 — so the correct play was to do
+## everything to everybody and then decide, with 270 minutes spare, and the
+## clock in the corner of the screen was decoration. Nothing had ever measured
+## it, because every probe drives the ward with `advance_to(15 * 60)` and reads
+## the money at the end.
+var minutes_worked := 0
+
+func _spend(cost: int) -> void:
+	minutes_worked += cost
+	advance_to(minute + cost)
 
 ## Charts read so far today, so re-checking something you already looked at is
 ## free. The cost is for LEARNING it, not for remembering it.
@@ -280,7 +322,7 @@ func read_chart(pid: String) -> void:
 	_read[pid] = true
 	_log("read_chart", {"pid": pid})
 	AudioMgr.play("page", -14.0)
-	advance_to(minute + READ_COST)
+	_spend(READ_COST)
 
 func has_read(pid: String) -> bool:
 	return _read.has(pid)
@@ -350,7 +392,7 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	# sound; a backdated one lands with a lower, flatter version of it, which is
 	# the only tell in the game that is not written down somewhere.
 	AudioMgr.play("paper", -12.0, 0.8 if e.is_backdated() else 1.0)
-	advance_to(minute + WRITE_COST)
+	_spend(WRITE_COST)
 	return e
 
 ## The most recent note of YOUR OWN making this same claim about this patient,
@@ -376,7 +418,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	_log("ask_patient", {"pid": pid, "symptom": symptom, "agreed": agreed})
 	if not agreed:
 		AudioMgr.play("mumble_lo", -13.0)
-		advance_to(minute + ASK_COST)
+		_spend(ASK_COST)
 		return null
 	var e := ChartEntry.new()
 	e.patient_id = pid
@@ -408,7 +450,7 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 		(st["suggested"] as Array).append(e.id)
 	entry_written.emit(e)
 	AudioMgr.play("mumble", -13.0)
-	advance_to(minute + ASK_COST)
+	_spend(ASK_COST)
 	return e
 
 ## WHAT THEY SAY WHEN YOU COME BACK.
@@ -467,7 +509,7 @@ func examine(pid: String) -> String:
 	_log("examine", {"pid": pid,
 		"found_unwell": not bool(Cases.by_id(pid).get("truly_well", true))})
 	AudioMgr.play("mumble_lo", -14.0)
-	advance_to(minute + EXAMINE_COST)
+	_spend(EXAMINE_COST)
 	return examination_of(pid)
 
 ## What you found, for anything that needs to say it again. No cost, no record.
@@ -590,7 +632,7 @@ func ask_colleague(pid: String) -> ChartEntry:
 	_log("ask_colleague", {"pid": pid, "backed": not well})
 	entry_written.emit(e)
 	AudioMgr.play("paper", -12.0, 0.9)
-	advance_to(minute + COLLEAGUE_COST)
+	_spend(COLLEAGUE_COST)
 	return e
 
 ## 3. ASK A NURSE TO CHECK. Independently authored, which is the strongest kind
@@ -626,7 +668,7 @@ func nurse_check(pid: String) -> ChartEntry:
 	EventBus.subtitle.emit("Adeyemi", _adeyemi_on(pid, well), 4.5)
 	entry_written.emit(e)
 	AudioMgr.play("paper", -13.0, 1.15)
-	advance_to(minute + NURSE_COST)
+	_spend(NURSE_COST)
 	return e
 
 ## What she says when you send her to look at somebody. Never a mechanic and
@@ -672,7 +714,7 @@ func order_test(pid: String, kind: String) -> ChartEntry:
 	_log("order_test", {"pid": pid, "kind": kind, "due": minute + TEST_TURNAROUND})
 	entry_written.emit(o)
 	AudioMgr.play("beep", -13.0)
-	advance_to(minute + ORDER_COST)
+	_spend(ORDER_COST)
 	return o
 
 ## The result lands later. It does not care what the chart says.

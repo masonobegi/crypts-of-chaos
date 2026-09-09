@@ -207,6 +207,7 @@ func _honest_day(day: int) -> Dictionary:
 		var pid := String(c["id"])
 		w.set_disposition(pid,
 			"discharge" if bool(Cases.by_id(pid).get("truly_well", true)) else "hold")
+	var done := w.minute
 	var res := w.end_day()
 	var rv := ReviewSystem.new()
 	rv.begin(res["findings"], w.records.entries, w.review_truth())
@@ -214,7 +215,8 @@ func _honest_day(day: int) -> Dictionary:
 		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])
 	var o := rv.outcome()
 	var row := {"cash": int(res["paid"]), "verdict": String(o["verdict"]),
-		"held": res["held"], "how": "the honest day", "pol": "stand"}
+		"held": res["held"], "how": "the honest day", "pol": "stand",
+		"worked": w.minutes_worked, "finished": done}
 	tree.root.remove_child(w)
 	w.free()
 	return row
@@ -346,6 +348,48 @@ func _search(day: int) -> void:
 			break
 		top_clean = false
 	print("  can the top figure be reached signed off? %s" % ("YES — DOMINANT STRATEGY" if top_clean else "no"))
+	# ...AND FAIL ON IT. This is the probe's headline property and for as long
+	# as it has existed it was PRINTED and never asserted, so a change that made
+	# the most profitable night in the game also a clean one would have printed
+	# "YES — DOMINANT STRATEGY" in the middle of a passing suite. The whole
+	# design rests on the top of the money curve costing you something.
+	if top_clean:
+		print("  *** THE MOST PROFITABLE NIGHT ON THIS WARD IS ALSO A CLEAN ONE ***")
+		_honest_failed = true
+
+	# ------------------------------------------------------------ THE BUDGET
+	#
+	# Is a day long enough to do everything? It must not be. CLAUDE.md states it
+	# as a design rule — "the day is not long enough to do all six on all five
+	# beds, so a day is a budget rather than a checklist" — and it was false for
+	# as long as there were six verbs: 90 minutes a bed against a 720-minute
+	# shift meant the exhaustive day finished at half past three with the
+	# evening spare, and the correct play was a checklist.
+	var per_bed: int = WardDay.READ_COST + WardDay.WRITE_COST + WardDay.ASK_COST \
+		+ WardDay.NURSE_COST + WardDay.ORDER_COST + WardDay.EXAMINE_COST \
+		+ WardDay.COLLEAGUE_COST
+	var shift: int = Cases.DEBT_DUE_MINUTE - Cases.DAY_START_MINUTE
+	var busiest := 0
+	var overran := 0
+	for r in rows:
+		busiest = maxi(busiest, int(r.get("worked", 0)))
+		if int(r.get("finished", 0)) > Cases.DEBT_DUE_MINUTE:
+			overran += 1
+	print("\n--- is the day a budget? ---")
+	print("  the shift is %d minutes, and every verb on every bed is %d (%d a bed)"
+		% [shift, per_bed * Cases.BEDS, per_bed])
+	print("  the honest day worked %d of them (%d%%), and finished at %s"
+		% [int(honest.get("worked", 0)),
+			int(round(100.0 * float(honest.get("worked", 0)) / float(shift))),
+			ChartEntry._hhmm(int(honest.get("finished", 0)))])
+	print("  the busiest strategy worked %d; %d of %d ran past eight o'clock"
+		% [busiest, overran, rows.size()])
+	if per_bed * Cases.BEDS <= shift:
+		print("  *** EVERY VERB ON EVERY BED FITS IN A SHIFT — A DAY IS A CHECKLIST ***")
+		_honest_failed = true
+	if int(honest.get("worked", 0)) > shift:
+		print("  *** THE HONEST DAY DOES NOT FIT IN A SHIFT ***")
+		_honest_failed = true
 
 func _run(held: Array, how: String, pol: String, mixed := false,
 		diligent := false) -> Dictionary:
@@ -378,6 +422,10 @@ func _run(held: Array, how: String, pol: String, mixed := false,
 			w.set_disposition(pid, "hold")
 		else:
 			w.set_disposition(pid, "discharge")
+	# The clock as the player left it. `end_day` pins `minute` to eight o'clock,
+	# so reading it afterwards reports twenty hundred for every strategy in the
+	# search and says nothing about any of them.
+	var done := w.minute
 	var res := w.end_day()
 	var rv := ReviewSystem.new()
 	rv.begin(res["findings"], w.records.entries, w.review_truth())
@@ -396,6 +444,10 @@ func _run(held: Array, how: String, pol: String, mixed := false,
 		"how": ("diligent+" if diligent else "") + (("mixed+" + how) if mixed else how),
 		"pol": pol,
 		"indef": int(o["indefensible"]), "solo": int(o["solo"]),
+		# WHAT THE DAY COST, which nothing had ever recorded. `w.minute` also
+		# moves when this probe skips to an hour, so the honest measure is the
+		# minutes the VERBS charged.
+		"worked": w.minutes_worked, "finished": done,
 	}
 	# free(), not queue_free(): a --script main loop runs no frames, so a queued
 	# node is never actually collected and six hundred wards stay in memory

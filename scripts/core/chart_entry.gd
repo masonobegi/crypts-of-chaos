@@ -87,6 +87,16 @@ func supports_stay() -> bool:
 	return claim == Claim.UNWELL or claim == Claim.RESULT_ABNORMAL \
 		or claim == Claim.SOCIAL
 
+## IS THIS A MACHINE'S ANSWER RATHER THAN SOMEBODY'S OPINION? A laboratory does
+## not have a bedside manner, a memory or a reason to be diplomatic, so a result
+## cannot "disagree" with a nurse the way two people can: it is the thing they
+## are both trying to describe. `Contradictions._conflicting_observations`
+## skips any pair with one of these in it, and `_objective_refutes` is where a
+## result speaks — which is the only place it should, because there it speaks
+## against the person who ignored it rather than against the person who asked.
+func is_objective() -> bool:
+	return claim == Claim.RESULT_NORMAL or claim == Claim.RESULT_ABNORMAL
+
 ## ...or that they were fit to go?
 func supports_discharge() -> bool:
 	return claim == Claim.SETTLED or claim == Claim.MOBILISING \

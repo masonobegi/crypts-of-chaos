@@ -284,12 +284,32 @@ static func _who(t: Dictionary) -> String:
 	return String(t.get("name", "them"))
 
 ## Two entries about the same half hour that argue opposite ways.
+##
+## A LABORATORY RESULT IS NOT AN OBSERVATION, and counting it as one inverted
+## the game's founding rule. `order_test` is world truth, "permanently, whatever
+## anybody wanted" — it is the arbiter the other entries are measured against,
+## and `_objective_refutes` is where it speaks against you. Left in this pass it
+## also spoke against you when it AGREED with you: Gwen Ashworth's repeat bloods
+## came back abnormal at 13:30, half an hour after the one o'clock round had
+## written her up as having slept through, and the doctor who ordered the test,
+## was proved right by it, and kept the bed was asked to explain the
+## disagreement at 0.45 — a finding that exists only because they paid ten
+## minutes to find out. That is the one inversion this project has a written
+## rule against: information must never have negative expected value. Without
+## the test there is no finding, so the test had a price and no upside.
+##
+## It also means every same-moment pair left in here has the doctor in it. The
+## rounds are three hours apart and the handover is before eight, so the only
+## entries that can land inside the same forty-five minutes as each other are
+## yours, the nurse's when you sent her, and the round you chose to write beside.
 static func _conflicting_observations(pid: String, list: Array) -> Array:
 	var out: Array = []
 	for i in list.size():
 		for j in range(i + 1, list.size()):
 			var a = list[i]
 			var b = list[j]
+			if a.is_objective() or b.is_objective():
+				continue
 			if not a.concerns_same_moment_as(b):
 				continue
 			if not ((a.supports_stay() and b.supports_discharge())

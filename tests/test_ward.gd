@@ -833,6 +833,179 @@ func test_the_paperwork_cannot_find_him() -> void:
 	seen.queue_free()
 	GameState.day = 1
 
+## TELLING HER WHAT TO LOOK FOR IS A DIFFERENT REQUEST FROM ASKING HER TO LOOK.
+##
+## The second ward's honest hold could not be corroborated by anybody, on any of
+## its twelve boards, ever: the round cannot see Peter Lomax, the lab cannot see
+## him, and the registrar repeats the chart. One bed on your word alone is
+## `noted`, and a doctor who works that ward honestly often enough crosses
+## `uncorroborated_rate` and it becomes `flagged for audit` — so playing it
+## right was a slow accumulating penalty with no way off it. A routine nurse
+## review is a SCORE; a nurse sent to check a finding you have made yourself and
+## written down is not.
+func test_telling_her_what_to_look_for_finds_him() -> void:
+	var w := _day_two()
+	w.advance_to(11 * 60)
+	var routine := w.nurse_check("lomax")
+	t.ok(routine != null and routine.supports_discharge(),
+		"an undirected review still scores him and finds nothing")
+	w.queue_free()
+
+	var told := _day_two()
+	told.examine("lomax")
+	told.advance_to(11 * 60)
+	told.write_entry("lomax", ChartEntry.Claim.UNWELL,
+		"Tremulous at the bedside. Not fit for home.", 11 * 60)
+	var directed := told.nurse_check("lomax")
+	t.ok(directed != null and directed.supports_stay(),
+		"but a check against a note you wrote after looking yourself does find it")
+	t.ok(String(directed.text).findn("your note") >= 0,
+		"and she says what she was checking (%s)" % String(directed.text))
+	told.queue_free()
+
+	# AND IT CANNOT MANUFACTURE ANYTHING. The same sequence on somebody who is
+	# well comes back settled, so the liar is no better off than before — which
+	# is the property that stops this being a free corroborating note.
+	var lie := _day_two()
+	lie.examine("voss")
+	lie.advance_to(11 * 60)
+	lie.write_entry("voss", ChartEntry.Claim.UNWELL, "Unsettled.", 11 * 60)
+	var refused := lie.nurse_check("voss")
+	t.ok(refused != null and refused.supports_discharge(),
+		"and a directed check on somebody who is well still comes back settled")
+	lie.queue_free()
+	GameState.day = 1
+
+## A LABORATORY CANNOT REFUTE A DOCTOR WHO WENT AND LOOKED.
+##
+## On the two wards built around a body no document can describe, the bloods
+## come back normal BECAUSE the bloods cannot see it — so `_objective_refutes`
+## and `_justification_undermined` were both asking the doctor who ordered the
+## test, was proved right by their own examination and kept the bed to explain
+## the laboratory. Without the test there was no finding, which means finding
+## out had a price and no upside: the one inversion this project has a written
+## rule against.
+func test_a_clear_result_does_not_convict_a_doctor_who_examined_them() -> void:
+	var looked := _day_two()
+	looked.examine("lomax")
+	looked.advance_to(11 * 60)
+	looked.write_entry("lomax", ChartEntry.Claim.UNWELL, "Tremulous.", 11 * 60)
+	var o := looked.order_test("lomax", "bloods")
+	looked.resolve_test(o)
+	looked.set_disposition("lomax", "hold")
+	_rest_home(looked)
+	var kinds: Array = []
+	for f in looked.end_day()["findings"]:
+		kinds.append(String(f.kind))
+	t.ok(not kinds.has("objective_refutes"),
+		"a normal result is not held against the doctor who laid hands on him (%s)" % str(kinds))
+	t.ok(not kinds.has("justification_undermined"),
+		"and it is not read as the doctor undermining themselves either")
+	looked.queue_free()
+
+	# ...AND IT STILL STANDS WHEN NOBODY LOOKED. A note against a clear result
+	# with nothing behind it is exactly what that rule is for.
+	var blind := _day_two()
+	blind.advance_to(11 * 60)
+	blind.write_entry("lomax", ChartEntry.Claim.UNWELL, "Tremulous.", 11 * 60)
+	var o2 := blind.order_test("lomax", "bloods")
+	blind.resolve_test(o2)
+	blind.set_disposition("lomax", "hold")
+	_rest_home(blind)
+	var blind_kinds: Array = []
+	for f in blind.end_day()["findings"]:
+		blind_kinds.append(String(f.kind))
+	t.ok(blind_kinds.has("objective_refutes") or blind_kinds.has("justification_undermined"),
+		"but a note against a clear result with nothing behind it does (%s)" % str(blind_kinds))
+	blind.queue_free()
+	GameState.day = 1
+
+## A WOMAN DOES NOT FORGET A NOTE SHE WROTE HERSELF.
+##
+## Tallulah Ferreira signs herself out and leaves a note in her own hand, which
+## is `Author.PATIENT` like everything the ask verb produces — and only one of
+## those two is a line you took down and attributed to somebody. The rule that
+## asks whether a patient remembers saying what you wrote fired on the one
+## document on the ward the doctor had nothing to do with.
+func test_she_does_not_forget_her_own_discharge_form() -> void:
+	var w := _day_two()
+	w.advance_to(18 * 60)                     ## past her four o'clock shift
+	var walked := false
+	for e in w.records.for_patient("ferreira"):
+		if e.author == ChartEntry.Author.PATIENT:
+			walked = true
+			t.ok(not e.at_your_request,
+				"the note she leaves on her way out is not one you asked her for")
+	t.ok(walked, "she does leave one")
+	var kinds: Array = []
+	for f in w.end_day()["findings"]:
+		if String(f.patient_id) == "ferreira":
+			kinds.append(String(f.kind))
+	t.ok(not kinds.has("patient_no_recall"),
+		"and she is not asked to remember telling you about it (%s)" % str(kinds))
+	w.queue_free()
+	GameState.day = 1
+
+## A DAY IS A BUDGET, AND FOR AS LONG AS THERE WERE SIX VERBS IT WAS NOT.
+##
+## CLAUDE.md states it as a design rule. Ninety minutes a bed against a
+## 720-minute shift meant the exhaustive day — every verb on every patient —
+## finished at half past three with the evening spare, and nothing had ever
+## measured it because every probe drives the ward with `advance_to`.
+func test_a_day_is_not_long_enough_to_do_everything() -> void:
+	var per_bed: int = WardDay.READ_COST + WardDay.WRITE_COST + WardDay.ASK_COST \
+		+ WardDay.NURSE_COST + WardDay.ORDER_COST + WardDay.EXAMINE_COST \
+		+ WardDay.COLLEAGUE_COST
+	var shift: int = Cases.DEBT_DUE_MINUTE - Cases.DAY_START_MINUTE
+	t.ok(per_bed * Cases.BEDS > shift,
+		"every verb on every bed is %d minutes and the shift is %d"
+			% [per_bed * Cases.BEDS, shift])
+	# ...and the clock the design rests on is counted rather than inferred.
+	var w := _day()
+	t.eq(w.minutes_worked, 0, "a shift starts having spent nothing")
+	w.read_chart("marchetti")
+	t.eq(w.minutes_worked, WardDay.READ_COST, "reading a chart spends a chart")
+	w.examine("marchetti")
+	t.eq(w.minutes_worked, WardDay.READ_COST + WardDay.EXAMINE_COST,
+		"and looking at somebody spends a look")
+	w.read_chart("marchetti")
+	t.eq(w.minutes_worked, WardDay.READ_COST + WardDay.EXAMINE_COST,
+		"reading the same chart twice is free, because the cost is for learning it")
+	w.advance_to(15 * 60)
+	t.eq(w.minutes_worked, WardDay.READ_COST + WardDay.EXAMINE_COST,
+		"and skipping the clock forward is not work")
+	w.queue_free()
+
+## WHICH WARD YOU WALK ONTO IS DRAWN.
+##
+## `DAYS[(day - 1) % DAYS.size()]` meant night one was always the Marchetti ward
+## and night four always the one Dr Costa covered — and because the four wards
+## are the four lessons, that was the largest single piece of transferable
+## knowledge in the game.
+func test_which_ward_you_walk_onto_is_drawn() -> void:
+	setup()                                    ## pins seed 0
+	for d in range(1, Cases.DAYS.size() * 2 + 1):
+		t.eq(Cases.pool_index(d), (d - 1) % Cases.DAYS.size(),
+			"seed 0 is the canonical order, night %d" % d)
+	var was: int = GameState.seed_value
+	var orders := {}
+	for sv in [7, 101, 555, 2024, 90210]:
+		GameState.seed_value = sv
+		for cycle in 2:
+			var seen := {}
+			for i in Cases.DAYS.size():
+				seen[Cases.pool_index(cycle * Cases.DAYS.size() + i + 1)] = true
+			t.eq(seen.size(), Cases.DAYS.size(),
+				"seed %d visits every ward in cycle %d" % [sv, cycle + 1])
+		var o: Array = []
+		for d in range(1, Cases.DAYS.size() + 1):
+			o.append(Cases.pool_index(d))
+		orders[str(o)] = true
+	GameState.seed_value = was
+	t.ok(orders.size() > 1,
+		"and five careers do not all start on the same ward (%d distinct orders)"
+			% orders.size())
+
 # ------------------------------------------------------ they come back
 ## THE CONSEQUENCE THE GAME DID NOT HAVE. Until this existed a discharge was
 ## free unless the ward sister happened to catch it in the morning: you sent a

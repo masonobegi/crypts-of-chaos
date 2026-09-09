@@ -129,6 +129,16 @@ func _picks_for(day: int, deal: Array) -> Array:
 	return picks
 
 func run() -> void:
+	# THE WARD IS NOT EMPTY WHILE YOU TYPE.
+	#
+	# No probe in this repo builds a world — a bare `WardDay` in the tree root
+	# and no suspicion system, no player body, no hospital — so `seen_by` was
+	# empty on every entry any of them ever wrote, and
+	# `_written_in_front_of_them` (up to 0.62, and a bed-killer) could not fire
+	# in a single one of the strategies searched. See `WardDay.witness_stub`.
+	# Adeyemi has been on this ward since six and writes every round in it; the
+	# office door is the thing that shuts.
+	WardDay.witness_stub = PackedStringArray(["Adeyemi"])
 	print("\n=== EVERY DEAL, PLAYED HONESTLY ===")
 	for day in range(1, Cases.DAYS.size() + 1):
 		# EVERY WARD THIS DAY CAN DEAL, not every product of its slots. Two beds

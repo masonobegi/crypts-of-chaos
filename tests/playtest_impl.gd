@@ -121,6 +121,16 @@ func _play(name: String, play: Callable, answer: Callable, day := 1) -> Dictiona
 	return row
 
 func run() -> void:
+	# THE WARD IS NOT EMPTY WHILE YOU TYPE.
+	#
+	# No probe in this repo builds a world — a bare `WardDay` in the tree root
+	# and no suspicion system, no player body, no hospital — so `seen_by` was
+	# empty on every entry any of them ever wrote, and
+	# `_written_in_front_of_them` (up to 0.62, and a bed-killer) could not fire
+	# in a single one of the strategies searched. See `WardDay.witness_stub`.
+	# Adeyemi has been on this ward since six and writes every round in it; the
+	# office door is the thing that shuts.
+	WardDay.witness_stub = PackedStringArray(["Adeyemi"])
 	GameState.start_new_career(31337)
 	var stand := func(_f, _o): return A.STAND_BY
 	var smart := func(_f, opts):

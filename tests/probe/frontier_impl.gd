@@ -257,6 +257,16 @@ func _answer_policy(name: String) -> Callable:
 var _honest_failed := false
 
 func run() -> bool:
+	# THE WARD IS NOT EMPTY WHILE YOU TYPE.
+	#
+	# No probe in this repo builds a world — a bare `WardDay` in the tree root
+	# and no suspicion system, no player body, no hospital — so `seen_by` was
+	# empty on every entry any of them ever wrote, and
+	# `_written_in_front_of_them` (up to 0.62, and a bed-killer) could not fire
+	# in a single one of the strategies searched. See `WardDay.witness_stub`.
+	# Adeyemi has been on this ward since six and writes every round in it; the
+	# office door is the thing that shuts.
+	WardDay.witness_stub = PackedStringArray(["Adeyemi"])
 	# OVERRIDABLE, LIKE THE OTHER THREE. 31337 was a magic number chosen once,
 	# and `_search` explores whatever ward that seed happens to deal — which on
 	# the second ward was the one board out of twelve where the ward's premise

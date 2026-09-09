@@ -112,6 +112,16 @@ func _play(w: WardDay, policy: String) -> void:
 			w.set_disposition(pid, "discharge")
 
 func run() -> bool:
+	# THE WARD IS NOT EMPTY WHILE YOU TYPE.
+	#
+	# No probe in this repo builds a world — a bare `WardDay` in the tree root
+	# and no suspicion system, no player body, no hospital — so `seen_by` was
+	# empty on every entry any of them ever wrote, and
+	# `_written_in_front_of_them` (up to 0.62, and a bed-killer) could not fire
+	# in a single one of the strategies searched. See `WardDay.witness_stub`.
+	# Adeyemi has been on this ward since six and writes every round in it; the
+	# office door is the thing that shuts.
+	WardDay.witness_stub = PackedStringArray(["Adeyemi"])
 	var endings := {}
 	for policy in ["blind_dump", "blind_prior", "blind_prior_plus", "blind_rich"]:
 		_fresh()

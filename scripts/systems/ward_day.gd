@@ -372,7 +372,7 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	# four are two observations, not a patch on a patch, and chaining those
 	# would have made ordinary thorough documentation look like a cover-up.
 	e.explains = explains if explains != "" else _restates(pid, claim)
-	e.seen_by = _who_can_see_me()
+	e.seen_by = _who_can_see_me(terminal)
 	# ...AND THE PEOPLE WHO SAW IT KNOW THEY SAW IT.
 	#
 	# The two halves of this game were not connected. The paperwork crime is
@@ -1493,7 +1493,27 @@ func _player_pos() -> Vector3:
 	var p = get_tree().get_first_node_in_group("player")
 	return p.global_position if p != null else Vector3.ZERO
 
-func _who_can_see_me() -> PackedStringArray:
+## WHO THE HEADLESS HARNESSES SAY IS WATCHING.
+##
+## `_who_can_see_me` needs a suspicion system, a player body and a hospital, and
+## NONE of the economics probes builds a world — `frontier_impl`,
+## `playtest_impl`, `draws_impl`, `career_impl` and `econ_impl` all add a bare
+## `WardDay` to the tree root and play a day against it. So `seen_by` was empty
+## on every entry any of them ever wrote, which means `_written_in_front_of_them`
+## — up to 0.62, and in the CONTRADICTED list, so it is a bed-killer — could not
+## fire in a single one of the 2,601 strategies a ward. The probe whose entire
+## purpose is that "a dominant strategy has to hide from a search rather than
+## from an author" was searching a game with one of its detectors switched off.
+##
+## A stub rather than a world, because the thing being modelled is one bit: was
+## there somebody standing there while you typed. The distinction the design
+## actually cares about is the TERMINAL — the office door shuts, the ward
+## terminal is in front of five beds, and "going somewhere private to write it"
+## is the crime the game is about. Set by the probes; empty in the real game,
+## where the real answer is computed.
+static var witness_stub: PackedStringArray = PackedStringArray()
+
+func _who_can_see_me(terminal := TERMINAL_WARD) -> PackedStringArray:
 	var out := PackedStringArray()
 	# CLAUDE.md 5: a node added during a SceneTree's _initialize() is not inside
 	# the tree, and get_tree() is null there. The headless harnesses build a
@@ -1504,7 +1524,9 @@ func _who_can_see_me() -> PackedStringArray:
 	var player = get_tree().get_first_node_in_group("player")
 	var h = get_tree().get_first_node_in_group("hospital")
 	if sus == null or player == null:
-		return out
+		if witness_stub.is_empty() or terminal == TERMINAL_OFFICE:
+			return out
+		return witness_stub.duplicate()
 	var mine: String = String(h.room_at(player.global_position)) if h != null else ""
 	for m in sus.all_minds():
 		var b = sus.body_of(m.id)

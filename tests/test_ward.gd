@@ -1408,6 +1408,57 @@ func _day_three() -> WardDay:
 ## diagnosis and the second in a body the chart cannot describe; here nobody is
 ## ill except a man who insists he is fine, and the two beds that cannot be
 ## emptied cannot be emptied for reasons no investigation will ever find.
+## GOING SOMEWHERE PRIVATE TO WRITE IT IS THE CRIME THE GAME IS ABOUT, and no
+## economics probe in this repo could see it.
+##
+## `_who_can_see_me` needs a suspicion system, a player body and a hospital, and
+## none of `frontier_impl`, `playtest_impl`, `draws_impl`, `career_impl` or
+## `econ_impl` builds a world — they put a bare `WardDay` in the tree root and
+## play a day against it. So `seen_by` was empty on every entry any of them ever
+## wrote, and `_written_in_front_of_them` — up to 0.62, and in the CONTRADICTED
+## list, so it kills a bed — could not fire in a single one of the 2,601
+## strategies searched per ward. The probe whose whole purpose is that a
+## dominant strategy has to hide from a SEARCH rather than from an author was
+## searching a game with one of its detectors switched off.
+##
+## `WardDay.witness_stub` is one bit — was somebody standing there while you
+## typed — and the terminal is what decides it, which is the distinction the
+## design has always been about.
+func test_the_office_door_is_the_thing_that_shuts() -> void:
+	var was := WardDay.witness_stub
+	WardDay.witness_stub = PackedStringArray(["Adeyemi"])
+
+	var open_ward := _day()
+	open_ward.advance_to(11 * 60)
+	# Oduya is perfectly well, so a note keeping him in is a fabrication, which
+	# is the only thing this rule is about — it exempts the genuinely unwell and
+	# the honest social hold, and both exemptions are load-bearing.
+	open_ward.write_entry("oduya", ChartEntry.Claim.UNWELL,
+		"Reports dizziness.", 11 * 60, WardDay.TERMINAL_WARD)
+	open_ward.set_disposition("oduya", "hold")
+	_rest_home(open_ward)
+	var seen: Array = []
+	for f in open_ward.end_day()["findings"]:
+		seen.append(String(f.kind))
+	t.ok(seen.has("written_in_front_of_them"),
+		"a fabrication typed at the bedside is typed in front of somebody (%s)" % str(seen))
+	open_ward.queue_free()
+
+	var behind_a_door := _day()
+	behind_a_door.advance_to(11 * 60)
+	behind_a_door.write_entry("oduya", ChartEntry.Claim.UNWELL,
+		"Reports dizziness.", 11 * 60, WardDay.TERMINAL_OFFICE)
+	behind_a_door.set_disposition("oduya", "hold")
+	_rest_home(behind_a_door)
+	var private: Array = []
+	for f in behind_a_door.end_day()["findings"]:
+		private.append(String(f.kind))
+	t.ok(not private.has("written_in_front_of_them"),
+		"and the same line typed in the office is not (%s)" % str(private))
+	behind_a_door.queue_free()
+
+	WardDay.witness_stub = was
+
 ## NOWHERE TO GO IS NOT YOUR WORD ALONE.
 ##
 ## `_uncorroborated_stay` has carried this exemption since it was written — "a

@@ -43,18 +43,20 @@ const AUTOLOADS := ["GameState", "EventBus", "AudioMgr", "RNG", "DB", "Settings"
 ## number everybody learns to re-run.
 const BUILD_BUDGET_MSEC := 1500
 
-## ONE KNOWN DEAD READ, EXCUSED BY NAME, AND IT HAS TO PROVE ITSELF STILL NEEDED.
+## AND THE ALLOWLIST IS EMPTY, WHICH IS WHERE IT SHOULD ALWAYS END UP.
 ##
-## `patient_npc.gd` reads `GameState.shift_kind`, which went with the three shift
-## types. It is inside `_on_shift_started`, which has no caller, so it throws
-## nothing today only because nothing reaches it — but the read is exactly the
-## fault this check exists for and it is in a file this pass does not own.
+## It held one entry for about an hour: `patient_npc.gd` read
+## `GameState.shift_kind`, which went with the three shift types, inside
+## `_on_shift_started`, which had no caller — so it threw nothing only because
+## nothing reached it. The excuse was deliberately not a mute; the check below
+## FAILS when an entry stops matching anything, so whoever fixed the read was
+## told to delete the line rather than leave a permanent hole behind them. That
+## is what happened: the sleeping-patient system is wired to the one clock the
+## game actually has, and the read is gone.
 ##
-## The excuse is not a mute: `_check_no_autoload_read_is_a_throw` FAILS if this
-## entry stops matching anything, so whoever fixes the read (or gives GameState
-## a `shift_kind` again, which would be its own kind of wrong) is told to delete
-## this line rather than leaving a permanent hole behind them.
-const KNOWN_DEAD_READS := {"patient_npc.gd": ["shift_kind"]}
+## Leave this empty. If something has to go in it, write down why here, and the
+## check will make sure it comes out again.
+const KNOWN_DEAD_READS := {}
 
 func _ok(cond: bool, what: String) -> void:
 	checks += 1

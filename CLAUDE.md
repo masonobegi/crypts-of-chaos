@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 343 assertions, a 222-check smoke run through the real tree
+`run_tests.sh` is 343 assertions, a 227-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -749,6 +749,18 @@ with it because a lost afternoon does not care which.
   Anything that makes the player *less* willing to find out what is true has
   inverted the game. `_never_laid_eyes_on_them` is the counterweight — three
   blind decisions is itself a finding.
+- **The ward goes quiet in the evening, and it is the only thing left of the
+  three shift types.** `SLEEP_CHANCE` was a table on `GameState.shift_kind`,
+  read by `_on_shift_started`, which had no caller, about a member that does not
+  exist — the shift types went with the redesign and left the table, the reader
+  and a docstring about a distraction economy behind. There is one shift and it
+  runs 08:00 to 20:00, so the honest version is the last few hours of it:
+  patients doze from half past four, once per twenty minutes of ward time, on a
+  ramp. The live half is `perception.suppressed` — a sleeping patient does not
+  witness you — which the audit reads through `seen_by`, so a note typed at a
+  bedside at half past six is less likely to have been typed in front of anybody
+  than the same note at ten. They wake when you speak to them and when you make
+  a noise.
 - **A PROBE THAT BUILDS NO WORLD SEARCHES A GAME THAT DOES NOT SHIP.**
   `_who_can_see_me` needs a suspicion system, a player body and a hospital, and
   not one of `frontier_impl`, `playtest_impl`, `draws_impl`, `career_impl` or

@@ -124,17 +124,52 @@ func can_step_aside() -> bool:
 ## It is not free. They wake to a bang, so the distraction you used to move the
 ## nurse also wakes the man in the next bed, and a shift you chose because
 ## nobody was watching becomes one where everybody is, because you made a noise.
-const SLEEP_CHANCE := {"night": 0.85, "evening": 0.30, "day": 0.06}
+## WHEN THE WARD STARTS TO GO QUIET, AND HOW FAST.
+##
+## This was `SLEEP_CHANCE = {"night": 0.85, "evening": 0.30, "day": 0.06}` read
+## through `GameState.shift_kind`, from a function nothing called, about a
+## member that does not exist — the three-way shift branch went with the
+## redesign and left the table, the reader and the docstring above it behind.
+## A property read of a member that is not there THROWS (gotcha 69), so the one
+## thing that could have called it would have aborted; and the smoke run's
+## gotcha-20 grep structurally could not see it, because it needs a bracket.
+##
+## There is one shift and it is 08:00 to 20:00, so the honest version of the
+## idea is the last few hours of it. After the four o'clock round people start
+## to doze, and a sleeping patient's perception is suppressed — which is the
+## live half of this, because `seen_by` is read by the audit: a note typed at a
+## bedside at half past six is less likely to have been typed in front of
+## anybody than the same note at ten. It is a small, learnable reason the
+## evening is different from the morning, and it costs nothing, because all the
+## machinery was already here and switched off.
+##
+## They still wake. `interact` wakes them — walking up and speaking to somebody
+## does — and so does any noise loud enough to hear.
+const DOZE_FROM := 16 * 60 + 30
+const DOZE_BY := 20 * 60
+## Per twenty-minute block, ramped from nothing at half four to this at eight.
+const DOZE_CHANCE := 0.13
 
 var asleep := false
+var _doze_block := -1
 
-func _on_shift_started(_day: int) -> void:
-	if data == null or data.discharged:
+## Rolled once per twenty minutes of ward time rather than per frame, so the
+## answer does not depend on the frame rate — and per BLOCK rather than per
+## minute so that a patient who has just woken is not immediately asleep again.
+func _maybe_doze() -> void:
+	if data == null or data.discharged or asleep or state != State.IN_BED:
 		return
-	if state != State.IN_BED:
+	var now: int = GameState.minute_of_day
+	if now < DOZE_FROM:
 		return
-	set_asleep(RNG.chance("patient_sleep", float(
-		SLEEP_CHANCE.get(GameState.shift_kind, 0.06))))
+	var block: int = now / 20
+	if block == _doze_block:
+		return
+	_doze_block = block
+	var into: float = clampf(float(now - DOZE_FROM)
+		/ float(maxi(1, DOZE_BY - DOZE_FROM)), 0.0, 1.0)
+	if RNG.chance("patient_doze_%s" % npc_id, DOZE_CHANCE * into):
+		set_asleep(true)
 
 func set_asleep(v: bool) -> void:
 	if asleep == v:
@@ -187,6 +222,7 @@ func _tick_state(_delta: float) -> void:
 		return
 	match state:
 		State.IN_BED:
+			_maybe_doze()
 			if _timer <= 0.0:
 				_timer = RNG.randf_range_s("patient_idle_t", 10.0, 24.0)
 				_maybe_bark()

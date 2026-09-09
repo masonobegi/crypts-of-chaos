@@ -285,6 +285,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_daughter_actually_turns_up()
 	_check_deciding_a_bed_moves_the_money()
 	_check_alt_tab_stops_the_shift()
+	_check_the_ward_goes_quiet_in_the_evening()
 	_check_every_setting_has_a_row()
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
@@ -912,6 +913,100 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 ## Two halves, because the first version of this check asserted against Dot
 ## Kerrigan by name and the smoke run's ward does not have her on it — so it
 ## passed by doing nothing, which is how a check that cannot fail gets written.
+## THE WARD GOES QUIET IN THE EVENING, AND THAT IS WORTH SOMETHING.
+##
+## `SLEEP_CHANCE` was a three-way table on `GameState.shift_kind`, read by
+## `_on_shift_started`, which had no caller, about a member that does not exist
+## — the shift types went with the redesign and left the table, the reader and
+## the docstring behind. A property read of a missing member throws (gotcha 69);
+## it never did only because nothing reached it.
+##
+## There is one shift and it is 08:00 to 20:00, so the honest version of the
+## idea is the last few hours of it, and the live half is `perception.suppressed`
+## — a sleeping patient does not witness you. That is read by the audit through
+## `seen_by`, so a note typed at a bedside at half past six is less likely to
+## have been typed in front of anybody than the same note at ten.
+##
+## Driven by calling `_maybe_doze` across blocks rather than by waiting for
+## frames: the roll is once per twenty minutes of WARD time and gotcha 14 says
+## an assertion in the same frame as its setup reads last frame's value.
+func _check_the_ward_goes_quiet_in_the_evening() -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	if ps == null:
+		_fail("no patients to send to sleep")
+		return
+	var bodies: Array = []
+	for p in ps.active():
+		var b = ps.get_body(p.id)
+		if b != null and b.has_method("_maybe_doze"):
+			bodies.append(b)
+	_ok(bodies.size() >= 3, "there are patients in beds to go quiet (%d)" % bodies.size())
+	if bodies.is_empty():
+		return
+	var was_minute: int = GameState.minute_of_day
+	# PUT THEM BACK IN THEIR BEDS FIRST, AND THE REASON IS GOTCHA 68. Four of the
+	# five are TALKING by the time this check runs, because half the checks above
+	# it walk up to somebody and open their card, and `TALK_SECONDS` has not
+	# elapsed in a run that never waits. `_maybe_doze` correctly refuses anybody
+	# who is not in a bed, so the first version of this check asserted nothing
+	# and said so — 0 of 5 — which is what a check looks like when its
+	# neighbours have moved the thing it is about.
+	for b in bodies:
+		b.set("state", PatientNPC.State.IN_BED)
+	# Nobody dozes in the morning: this is an evening, not a coin toss.
+	GameState.minute_of_day = 10 * 60
+	for b in bodies:
+		b.call("_maybe_doze")
+	var morning := 0
+	for b in bodies:
+		if bool(b.get("asleep")):
+			morning += 1
+	_ok(morning == 0, "nobody is asleep at ten in the morning (%d were)" % morning)
+	# ...AND BY EIGHT, SOME OF THEM ARE — MEASURED OVER THREE EVENINGS RATHER
+	# THAN ONE.
+	#
+	# Five patients at roughly even odds means one evening in thirty comes up
+	# empty, and a check that fails one run in thirty is a check people learn to
+	# re-run. Three evenings is fifteen chances and the sample says what the
+	# mechanism does rather than what one roll did. The RATE itself is a design
+	# number and belongs in the constant, not in a sample.
+	var evening := 0
+	var suppressed := 0
+	var slept := 0
+	for night in 3:
+		for b in bodies:
+			b.set("_doze_block", -1)
+			if bool(b.get("asleep")):
+				b.call("wake_up", "")
+		for m in range(PatientNPC.DOZE_FROM, PatientNPC.DOZE_BY + 1, 20):
+			GameState.minute_of_day = m
+			for b in bodies:
+				b.call("_maybe_doze")
+		for b in bodies:
+			if not bool(b.get("asleep")):
+				continue
+			slept += 1
+			if night == 2:
+				evening += 1
+				var per = b.get("perception")
+				if per != null and bool(per.get("suppressed")):
+					suppressed += 1
+	_ok(slept > 0, "and by eight o'clock people have dozed off (%d of %d bed-evenings)"
+		% [slept, bodies.size() * 3])
+	_ok(evening == suppressed,
+		"and every one of them has stopped watching you (%d of %d)" % [suppressed, evening])
+	# AND THEY WAKE. Walking up and speaking to somebody does it, and so does a
+	# noise — a ward you chose because nobody was looking becomes one where
+	# everybody is, the moment you make one.
+	var woke := 0
+	for b in bodies:
+		if bool(b.get("asleep")):
+			b.call("wake_up", "test")
+			if not bool(b.get("asleep")):
+				woke += 1
+	_ok(woke == evening, "and all %d of them wake up again" % evening)
+	GameState.minute_of_day = was_minute
+
 ## ALT-TAB STOPS THE SHIFT.
 ##
 ## The ward clock is the only currency in this game and it ran while the window

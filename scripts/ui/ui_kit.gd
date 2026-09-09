@@ -794,6 +794,33 @@ static func chart_line(e: ChartEntry, tint := INK, size := 14) -> Control:
 	var who := mono_label(e.author_label(), maxi(11, size - 2), INK_DIM,
 		HORIZONTAL_ALIGNMENT_RIGHT)
 	h.add_child(who)
+
+	# WHICH WAY THE LINE ARGUES, IN WORDS.
+	#
+	# The single most important structural fact on the most important screen in
+	# the game — does this note keep them in or send them home — was carried by
+	# the TINT and by nothing else: amber for one, green for the other. That is
+	# invisible to roughly one man in twelve, and it is the first thing an
+	# accessibility pass looks for.
+	#
+	# Redundant encoding rather than a palette swap, because it costs nothing
+	# and helps everybody: a chart of five entries can now be read for its shape
+	# at a glance without reading a word of it. The project has already done
+	# this once and it is the model — `metadata_line` puts "30 min after the
+	# fact" next to the red, so the backdating signal survives without colour.
+	#
+	# WORDS RATHER THAN AN ARROW. A glyph is a bet on the font: these faces are
+	# OFL text families, an arrow or a triangle may render as tofu, and a tofu
+	# box beside every line of a chart is worse than no mark at all. "+" and "-"
+	# would render and would read as arithmetic on a screen full of money.
+	var way := ""
+	if e.supports_stay():
+		way = "stays"
+	elif e.supports_discharge():
+		way = "home"
+	var mark := mono_label(way, maxi(11, size - 2), tint, HORIZONTAL_ALIGNMENT_RIGHT)
+	mark.custom_minimum_size.x = size * 2.9
+	h.add_child(mark)
 	return h
 
 ## A form field: a label, a dotted leader, and a value. The leader is what makes

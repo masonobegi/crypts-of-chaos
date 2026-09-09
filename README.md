@@ -89,8 +89,13 @@ single inequality — an admission worth *less* than a premium night and *more*
 than a discharge — is what stops "hold everybody" being the answer.
 
 Getting it wrong is not a game over. `CLEAR −1 · QUESTIONS 0 · FLAGGED +1 ·
-REFERRED +3`, and five ends the career. A clean night pays a strike back, which
-is why one bad night is survivable and four are not.
+REFERRED +3`, and five ends the career. A clean night pays a strike back — but
+only **three times in a whole career**, and that cap is the difference between a
+brake and a treadmill. Without it, alternating one bad night with one good one
+was net zero forever, so the doctor who lied every single night came out
+identical to the one who stopped as soon as she started reading his charts. The
+career probe found that directly: on one seed in three, lying every night paid
+off the entire debt.
 
 ## Running it
 
@@ -122,9 +127,9 @@ than printing them.
 
 One hospital floor built from a single layout table: a corridor, a five-bed
 ward, a nurses' station and your office. Hinged doors that block line of sight.
-Forty authored patients across four wards, of whom five are dealt each morning —
-the same board is never guaranteed twice, and every one of them is written
-rather than generated.
+**43 authored patients across 4 wards**, of whom five are dealt each morning —
+**88 boards** a career can reach, the order of the wards drawn per career as
+well, and every one of those people written rather than generated.
 
 There are no art or audio assets. Every mesh is built from primitives at
 runtime, every character's face and build is derived from who they are, and
@@ -171,16 +176,18 @@ If it ever goes wrong, that is the file to send.
 ## Tests
 
 ```
-341 assertions   — units, integration, save round-trips, floor connectivity
-210 smoke checks — boots the real scene and plays a whole shift, on three seeds
+358 assertions   — units, integration, save round-trips, floor connectivity
+254 smoke checks — boots the real scene and plays a whole shift, on three seeds
  32 ship checks  — is it a BUILD: identity, corrupt saves, RNG across a load
-  7 criteria     — day-level: does the risk actually cost anything
-  8 criteria     — career-level: does honest play pay it off, does greed not,
-                   and does a night you got right leave a trace in the morning
-  4 wards        — every one signs off on the day a careful person plays
- 52 deals        — every ward a career can deal, played honestly
+ 39 playtests    — day-level, against 7 criteria: does the risk actually cost
+                   anything, and is the biggest night on the board a dirty one
+  6 properties   — career-level: does honest play pay it off, does greed not,
+                   and can a career that never looks at anybody ever pay
+  4 wards        — 2,601 strategies searched per ward, adversarially
+ 88 deals        — every board a career can reach, played honestly
   2 play runs    — the buttons actually pressed, pad and keyboard
- 21 screenshots  — rendered offscreen, because five real bugs were only visible
+ 25 screenshots  — rendered offscreen, because the count of bugs found only by
+                   looking is now in double figures
 ```
 
 Run them before committing. Run the screenshots after any UI or world change —
@@ -200,14 +207,14 @@ All four are under the [SIL Open Font License
 1.1](https://openfontlicense.org/), whose text ships beside them in
 `assets/fonts/` and inside every exported build — `export_presets.cfg` carries
 an `include_filter` for them, because a `.txt` is not an imported resource and
-`all_resources` does not carry one. They are named on the Credits screen too.
+`all_resources` does not carry one.
 
 The engine is [Godot](https://godotengine.org/) under the MIT licence, which
 bundles some eighty further third-party components with notices of their own.
 All of them are compiled into the binary and readable at runtime through
-`Engine.get_license_text()` and `Engine.get_copyright_info()` — the ship probe
-asserts both are there and non-empty, so the material a licences screen needs is
-in the build. **Putting a reader on the Credits screen is the one shipping item
-still open**, and it is the only gap on this page that matters for a paid
-release rather than for taste.
+`Engine.get_license_text()` and `Engine.get_copyright_info()`. **There is a
+Licences screen in the game** — reachable from the title screen — which reads
+the four OFL texts off disk and the engine's own licence and copyright block out
+of the binary, so nothing about the attribution depends on a file somebody
+remembered to ship.
 

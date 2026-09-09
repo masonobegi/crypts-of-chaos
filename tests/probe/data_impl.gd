@@ -337,6 +337,35 @@ func run() -> void:
 			_fail("a ward bark still names Room 103: %s" % String(l))
 	print("  voices: Adeyemi does rounds, Vinnie and Ms Ferrand do not")
 
+	# ...AND THE FRONT PAGE HAS TO SAY WHAT IS ACTUALLY IN THE BOX.
+	#
+	# The README is the store page. It said "forty authored patients across four
+	# wards" when there are forty-three, "52 deals" when a career can reach 88,
+	# "341 assertions" and "210 smoke checks" against 358 and 254, and "putting a
+	# reader on the Credits screen is the one shipping item still open" about a
+	# Licences screen that had been in the game for a day. Every one of those is
+	# gotcha 15 in the file a buyer reads first, and the only one that could
+	# possibly have been caught by a test is the one nobody would think to test.
+	#
+	# The three that are computable are checked. Digits, not words, in the
+	# README, for exactly this reason.
+	var readme := FileAccess.get_file_as_string("res://README.md")
+	if readme == "":
+		_fail("there is no README to check")
+	else:
+		var deals := 0
+		for i in Cases.DAYS.size():
+			deals += Cases.enumerate_pool(i).size()
+		for claim in [["%d authored patients" % seen_ids.size(), "the head count"],
+				["%d wards" % Cases.DAYS.size(), "the ward count"],
+				["%d boards" % deals, "the board count"],
+				["%d deals" % deals, "the board count again, in the test block"]]:
+			if not readme.contains(String(claim[0])):
+				_fail("the README does not say \"%s\" — %s has moved"
+					% [String(claim[0]), String(claim[1])])
+		print("  README: %d people, %d wards, %d boards — as advertised"
+			% [seen_ids.size(), Cases.DAYS.size(), deals])
+
 	print("")
 	if bad == 0:
 		print("DATA CHECK PASSED — %d authored people, all complete" % seen_ids.size())

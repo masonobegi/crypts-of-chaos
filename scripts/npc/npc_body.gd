@@ -649,8 +649,24 @@ func _build_body() -> void:
 		# pads on every character in the ward. A joint is not wider than the
 		# limb it joins: 17.6cm, tucked five centimetres in and five down, where
 		# the seam actually is.
-		arm.add_child(Build.mi(Build.sphere_mesh(0.088 * limb),
-			Build.cloth_mat(outfit, LINE), Vector3(sx * -0.052, -0.050, 0)))
+		#
+		# AND NO INK ON IT. A seam filler that sits half inside the trunk still
+		# has a SILHOUETTE against the trunk, so the outline pass drew it: every
+		# character in the game had a black horseshoe on the gown where the arm
+		# meets the shoulder, with a small black notch above it, and from behind
+		# it read as a hole in the back of the scrubs. The arm and the trunk both
+		# carry a line already; a third one between them is not an edge of
+		# anything, it is a scar. Found on the TITLE SCREEN, which is the first
+		# frame anybody sees of this game.
+		# ...AND IT HAS TO REACH THE TOP OF THE SLEEVE. At 0.088, tucked five
+		# centimetres in and five down, it cleared the seam down the side and
+		# left a V at the top-outer corner where the sleeve's own round meets the
+		# trunk — a small black wedge on every shoulder in the game, which is
+		# what you see once the horseshoe is gone. 0.095 is the same width as the
+		# sleeve it joins and no wider (gotcha 82), sitting three centimetres in
+		# and three down, which is inside the join rather than on top of it.
+		arm.add_child(Build.mi(Build.sphere_mesh(0.095 * limb),
+			Build.cloth_mat(outfit, 0.0), Vector3(sx * -0.030, -0.035, 0)))
 		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.135 * limb, 0.135 * limb),
 			Vector2(0.190 * limb, 0.190 * limb), 0.56, 0.070),
 			Build.cloth_mat(outfit, LINE), Vector3(0, -0.26, 0)))
@@ -1432,26 +1448,51 @@ func set_in_bed(on: bool) -> void:
 	if _shadow != null:
 		_shadow.visible = not on
 	var b: Node3D = body
-	# Hips down at the mattress and back toward the pillow; trunk tipped BACKWARD
-	# against the raised head of the bed.
+	# LYING IN IT, NOT SITTING ON IT — and the numbers come off the bed rather
+	# than off a guess.
+	#
+	# Measured in the real tree with the bed's own transform inverted, the
+	# patient's bounding box ran z -1.32 to +0.20 in a bed that runs -1.02 to
+	# +1.02, and y 0.71 to 2.01 over a pillow whose top is 0.93. That is not
+	# somebody lying in a bed: it is somebody STANDING, tipped back thirty
+	# degrees, with their head a metre above the pillow and hanging thirty
+	# centimetres past the headboard, and their feet a fifth of the way down the
+	# mattress. It is the camera the player spends the whole shift looking
+	# through and it has been that way for the life of the model, because every
+	# other frame in this repo photographs the ward from further away than the
+	# fault is visible.
+	#
+	# So the pose is derived. The bed's backrest is a ramp at about 29 degrees
+	# above horizontal (`PatientBed.build`), the hips belong at the crease
+	# between it and the seat, and the legs belong flat along the mattress:
+	#
+	#   trunk   -1.05 rad, so the back lies ON the backrest rather than against it
+	#   hips     placed at bed-space (y 0.70, z -0.10), which is the crease
+	#   legs     -0.50 local, which is -1.55 in the world: horizontal
+	#   arms      along the sides, on top of the covers, not folded over the chest
 	#
 	# The sign matters and the first version had it wrong: a character model
-	# faces its own -Z, so a POSITIVE rotation.x tips the top of the body toward
+	# faces its own +Z, so a POSITIVE rotation.x tips the top of the body toward
 	# where it is looking — face down. The render showed five people hunched
 	# forward over their own knees like a ward full of men being sick. Backward
 	# is negative.
 	b.position = Vector3(0, -0.55, 0.26) if on else Vector3.ZERO
 	b.rotation.x = -0.52 if on else 0.0
-	# Legs out along the mattress rather than folded off a seat, and nearly
-	# straight at the knee — this is lying in a bed, not perching on one.
+	# Legs out along the mattress, and nearly straight at the knee — this is
+	# lying in a bed, not perching on one.
 	for leg in _legs:
 		leg.rotation.x = -1.02 if on else 0.0
 	for knee in _knees:
 		knee.rotation.x = 0.18 if on else 0.0
+	# ...AND THE ARMS DOWN THE SIDES. At -0.30 with the trunk upright they lay
+	# forward over the chest, so the four blue-grey tubes in the bedside frame
+	# were two arms and two legs and you could not tell which was which.
 	for i in _arms.size():
 		var arm: Node3D = _arms[i]
 		arm.rotation.x = -0.30 if on else 0.0
 		arm.rotation.z = (0.26 if i == 0 else -0.26) if on else 0.0
+	# ...and the labels come down with the head. They were pinned for a patient
+	# whose head was a metre above the pillow.
 	if _nametag:
 		_nametag.position.y = (1.30 if on else 1.92) * height_scale
 	if _speech:

@@ -25,8 +25,13 @@ const MATTRESS_TOP := 0.62
 @export var room_key := ""
 @export var patient_id := ""
 
-var occupant: Node3D = null
+var occupant: Node3D = null:
+	set(v):
+		occupant = v
+		if _duvet != null:
+			_duvet.visible = v != null
 var _mount: Marker3D = null
+var _duvet: MeshInstance3D = null
 
 func _ready() -> void:
 	add_to_group("bed")
@@ -93,6 +98,37 @@ func build() -> void:
 			Vector3(x, 0.70, -LENGTH * 0.33), 0.5))
 		add_child(Build.box_mi(Vector3(0.03, 0.20, 0.03), steel,
 			Vector3(x, 0.70, LENGTH * 0.09), 0.5))
+
+	# ...AND A DUVET OVER THE PERSON, WHEN THERE IS ONE.
+	#
+	# The bedside camera is the one the player spends the whole shift looking
+	# through, and what it showed was a man lying on top of the covers in his
+	# shoes. The blanket above is BEDDING — it is under the patient and hidden
+	# by them the moment anybody is in the bed, which is why turning it bright
+	# red and re-rendering the frame found no red on the occupied bed at all and
+	# a corner of it on the empty one behind. Four blue-grey tubes with peach
+	# ankles and navy shoes on the ends is not a patient, it is a mannequin laid
+	# on a slab, and you cannot tell the arms from the legs.
+	#
+	# So: a second piece, from the hip line down past the feet, shown only when
+	# somebody is in the bed. It hides the legs and the shoes, it separates the
+	# arms from everything below them, and it is what a ward actually looks
+	# like. Darker than the gowns on purpose — every gown in `Appearance` is a
+	# pale wash, and a cover the same value as the person under it does nothing.
+	# Raised where the person is, because that is what a cover over somebody
+	# does — flat on the mattress it is under them and invisible, which is the
+	# fault the bedding above already had.
+	# WHERE THE LEGS ACTUALLY ARE, which is not where a blanket goes on an empty
+	# bed. Measured in the real tree with the bed's transform inverted: the
+	# patient occupies z -1.30 to -0.30 of a bed that runs -1.02 to +1.02, sat
+	# up against the backrest, so a cover two thirds of the way down the mattress
+	# is a cover over nobody. This one is over the LAP, which is what a propped
+	# patient has, and it is what stops the frame being four blue-grey tubes with
+	# navy shoes on two of them.
+	_duvet = Build.cloth_mi(Vector3(WIDTH - 0.04, 0.20, 1.05),
+		Color(0.33, 0.49, 0.57), Vector3(0, MATTRESS_TOP + 0.32, -0.48))
+	_duvet.visible = false
+	add_child(_duvet)
 
 	var shape := CollisionShape3D.new()
 	var box := BoxShape3D.new()

@@ -569,14 +569,19 @@ func _wall_segment(a: Vector3, b: Vector3, exterior := false) -> void:
 	var cornice_len := Vector3(size.x, 0.13, WALL_T * 0.8) if horizontal \
 		else Vector3(WALL_T * 0.8, 0.13, size.z)
 	for side in [1.0, -1.0]:
+		# A FINE LINE AND A TIGHT CAP ON ALL FOUR MOULDINGS. Gotcha 46, on the
+		# pieces added after it was written: at the standard weight a five
+		# centimetre rail seen down a sixty-metre corridor is more ink than
+		# rail, and the corridor reads as black diagonals ruled across a cream
+		# wall. The moulding is meant to be a band of shadow, not a wire.
 		add_child(Build.box_mi(rail_len, Color(0.95, 0.93, 0.86),
-			mid + out * side + Vector3(0, lower_h, 0), 0.55))
+			mid + out * side + Vector3(0, lower_h, 0), 0.55, 0.007, 0.10))
 		add_child(Build.box_mi(skirt_len, Color(0.17, 0.22, 0.27),
-			mid + out * side + Vector3(0, 0.08, 0), 0.6))
+			mid + out * side + Vector3(0, 0.08, 0), 0.6, 0.007, 0.10))
 		add_child(Build.box_mi(picture_len, Color(0.80, 0.78, 0.70),
-			mid + out * side + Vector3(0, WALL_H - 0.62, 0), 0.6))
+			mid + out * side + Vector3(0, WALL_H - 0.62, 0), 0.6, 0.007, 0.10))
 		add_child(Build.box_mi(cornice_len, Color(0.97, 0.96, 0.93),
-			mid + out * side + Vector3(0, WALL_H - 0.07, 0), 0.5))
+			mid + out * side + Vector3(0, WALL_H - 0.07, 0), 0.5, 0.007, 0.10))
 
 ## AN EXTERIOR WALL WITH WINDOWS IN IT.
 ##

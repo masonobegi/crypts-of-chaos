@@ -616,6 +616,71 @@ static func shadow_texture() -> ImageTexture:
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
+## THE DARK IN A CORNER, WHICH THIS RENDERER CANNOT COMPUTE.
+##
+## gl_compatibility has no SSAO, no SSIL and no screen-space anything, so every
+## piece of contact darkening in this project is painted: the wall shader fades
+## toward the floor, the floor shader fades toward the wall, and objects sit on
+## a blob. The one place left was the vertical join where two walls meet — the
+## corner of a room is the darkest part of it in life and was the same value as
+## the middle of the wall here, which is a large part of why a room reads as a
+## box of flat planes rather than as a space.
+##
+## A LINEAR ramp, not the radial one `shadow_texture` builds: a corner darkens
+## with distance from ONE line. Alpha only, `BLEND_MODE_MIX` (gotcha 18 —
+## `BLEND_MODE_MUL` does not sample the albedo texture on this backend), and
+## mipmapped, without which the falloff exists in the image and never appears on
+## screen (gotcha 19).
+static var _corner_tex: ImageTexture = null
+static var _corner_mat: StandardMaterial3D = null
+
+static func corner_texture() -> ImageTexture:
+	if _corner_tex != null:
+		return _corner_tex
+	const N := 64
+	const STRENGTH := 0.30
+	var img := Image.create(N, N, true, Image.FORMAT_RGBA8)
+	for y in N:
+		for x in N:
+			# u = 0 at the corner, 1 at the far edge of the strip.
+			var u: float = float(x) / float(N - 1)
+			var t: float = clampf(1.0 - u, 0.0, 1.0)
+			t = t * t * t
+			# ...and it fades out at the top as well, because a shadow that
+			# runs to the ceiling line reads as a painted stripe.
+			var v: float = clampf(1.0 - float(y) / float(N - 1), 0.0, 1.0)
+			img.set_pixel(x, y, Color(0, 0, 0, t * STRENGTH * (0.35 + 0.65 * v)))
+	img.generate_mipmaps()
+	_corner_tex = ImageTexture.create_from_image(img)
+	return _corner_tex
+
+static func corner_material() -> StandardMaterial3D:
+	if _corner_mat != null:
+		return _corner_mat
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+	m.albedo_texture = corner_texture()
+	m.albedo_color = Color(1, 1, 1, 1)
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.disable_receive_shadows = true
+	_corner_mat = m
+	return m
+
+## One face of a corner: a strip `reach` wide and `tall` high, standing on the
+## floor, darkest along its own local -X edge.
+static func corner_shade(reach: float, tall: float) -> MeshInstance3D:
+	var q := QuadMesh.new()
+	q.size = Vector2(reach, tall)
+	var mi := MeshInstance3D.new()
+	mi.name = "CornerShade"
+	mi.mesh = q
+	mi.material_override = corner_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
 static func shadow_material() -> StandardMaterial3D:
 	if _shadow_mat != null:
 		return _shadow_mat
@@ -714,11 +779,16 @@ static func _fit_line(mesh: Mesh, material: Material) -> Material:
 ## Every "box" in the game is a rounded box now. The corner radius scales with
 ## the object so a syringe is not rounded off as hard as a wall, and is capped so
 ## a big flat panel keeps a crisp face.
+## `cap` is the share of the object's own thinnest dimension the ink may grow to
+## — see gotcha 46 and `INK_CAP`. A MOULDING wants a smaller one than a cabinet
+## does: at 0.30 a five-centimetre picture rail seen down a sixty-metre corridor
+## is more ink than rail, which is the two black diagonals gotcha 46 is about,
+## still there on the pieces added after it was written.
 static func box_mi(size: Vector3, color: Color, pos := Vector3.ZERO, rough := 0.85,
-		line := 0.016) -> MeshInstance3D:
+		line := 0.016, cap := INK_CAP) -> MeshInstance3D:
 	var thin: float = minf(size.x, minf(size.y, size.z))
 	return mi(rbox_mesh(size, corner_for(size)),
-		mat(color, rough, 0.0, Color(0, 0, 0), line_for(size, line), thin * INK_CAP), pos)
+		mat(color, rough, 0.0, Color(0, 0, 0), line_for(size, line), thin * cap), pos)
 
 ## The same box, made of cloth. Bedding, curtains, upholstery — anything whose
 ## surface should have a weave in it rather than a paint finish.

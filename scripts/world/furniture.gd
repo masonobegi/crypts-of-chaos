@@ -86,7 +86,48 @@ const RIGHT_ROT := -PI * 0.5
 ## Called for every room after its real furniture is placed. Nothing here takes
 ## a footprint or has collision, so it can be added anywhere without a nurse
 ## getting stuck on it — which is the rule that lets there be a lot of it.
+## THE CORNERS OF EVERY ROOM WERE THE SAME VALUE AS THE MIDDLE OF THE WALL.
+##
+## This renderer has no SSAO and no screen-space anything (gotcha 39), so all of
+## the contact darkening in the game is painted: the wall fades toward the floor,
+## the floor fades toward the wall, objects sit on a blob. The vertical join
+## where two walls meet had nothing at all — and a corner is the darkest part of
+## a real room, so a room without one reads as a box of flat planes with things
+## standing in it.
+##
+## Two strips per corner, one on each wall, dark along the join and fading out
+## over a metre. `scale.x = -1` mirrors a strip rather than needing a second
+## texture: which way round the ramp runs depends on which corner it is, and a
+## mirrored quad is free.
+const CORNER_REACH := 1.0
+const CORNER_TALL := 2.5
+
+static func _corner_shading(h: Hospital, r: Room) -> void:
+	var x0: float = r.rect.position.x + 0.06
+	var x1: float = r.rect.end.x - 0.06
+	var z0: float = r.rect.position.y + 0.06
+	var z1: float = r.rect.end.y - 0.06
+	for corner in [[x0, z0, 1.0, 1.0], [x0, z1, 1.0, -1.0],
+			[x1, z0, -1.0, 1.0], [x1, z1, -1.0, -1.0]]:
+		var cx: float = corner[0]
+		var cz: float = corner[1]
+		var sx: float = corner[2]      ## +1 if this corner is on the room's west side
+		var sz: float = corner[3]      ## +1 if this corner is on the room's south side
+		# On the side wall, running along z, facing into the room.
+		var a := Build.corner_shade(CORNER_REACH, CORNER_TALL)
+		a.position = Vector3(cx, CORNER_TALL * 0.5, cz + sz * CORNER_REACH * 0.5)
+		a.rotation.y = PI * 0.5 * sx
+		a.scale.x = sz * sx
+		h.add_child(a)
+		# ...and on the end wall, running along x.
+		var b := Build.corner_shade(CORNER_REACH, CORNER_TALL)
+		b.position = Vector3(cx + sx * CORNER_REACH * 0.5, CORNER_TALL * 0.5, cz)
+		b.rotation.y = 0.0 if sz > 0.0 else PI
+		b.scale.x = -sx * sz
+		h.add_child(b)
+
 static func _dress(h: Hospital, r: Room) -> void:
+	_corner_shading(h, r)
 	var c := r.center()
 	var w: float = r.rect.size.x
 	var d: float = r.rect.size.y

@@ -894,6 +894,28 @@ with it because a lost afternoon does not care which.
     where the corridor wall meets them and no join can be seen); and the palette
     belongs in `Cases.WARDS` rather than in `Furniture`, because adding a ward
     must not require touching a system.
+90. **GOTCHA 46 AGAIN, ON THE PIECES ADDED AFTER IT WAS WRITTEN.** The dado
+    rail, the skirting, the picture rail and the cornice all took the standard
+    line and the standard `INK_CAP` of 0.30 — a fifty-millimetre moulding may
+    grow fifteen millimetres of ink on each side, so seen down a sixty-metre
+    corridor it is more ink than rail and the corridor reads as black diagonals
+    ruled across a cream wall. Exactly the picture gotcha 46 describes, on four
+    pieces added to fix a different problem. `box_mi` takes a `cap` now; the
+    mouldings pass 0.10 and a 7mm line, and read as bands of shadow rather than
+    as wires. **The A/B mattered**: the streaks looked exactly like an artifact
+    of the corner shading that went in the same hour, and switching that off and
+    re-rendering was what proved they had been there all along.
+91. **A ROOM WITH NO DARK IN ITS CORNERS IS A BOX OF FLAT PLANES.** This
+    renderer has no SSAO and no screen-space anything (gotcha 39), so every
+    piece of contact darkening here is painted — the wall fades toward the
+    floor, the floor fades toward the wall, objects sit on a blob — and the
+    vertical join where two walls meet had nothing at all, which is the darkest
+    part of a real room. `Build.corner_shade` is a LINEAR ramp rather than the
+    radial one `shadow_texture` builds, because a corner darkens with distance
+    from one line; alpha only and `BLEND_MODE_MIX` (18), mipmapped (19), and
+    faded out toward the ceiling so it does not read as a painted stripe. Two
+    strips per corner, mirrored with `scale.x = -1` rather than a second
+    texture.
 
 ## Design rules that are load-bearing
 

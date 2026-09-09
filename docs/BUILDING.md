@@ -43,7 +43,8 @@ ship. Export templates are a separate ~1GB download and are not vendored;
 ```
 GODOT=/path/to/godot ./screenshots.sh                 # 21 frames, ~20 min
 SHOT_ONLY=struck_off GODOT=/path/to/godot ./screenshots.sh   # one frame, ~90 s
-GODOT=/path/to/godot ./look.sh try1                   # 4 frames, ~4 min
+GODOT=/path/to/godot ./look.sh try1                   # 4 frames — a shader or a light
+GODOT=/path/to/godot ./faces.sh try1                  # 7 frames — a CHARACTER
 ```
 
 All three render the real game offscreen through Xvfb using the **GL
@@ -55,8 +56,10 @@ ships.
 and MEASURES two things a real 1600x900 window is the only place to measure:
 how much of a card is below the fold, and what a card is sitting on top of.
 `look.sh` is four of those frames — the ward wide, a bedside, the corridor and
-the five patients side by side — and is the loop for a shader, a light, a line
-weight or a face. Twenty minutes is the wrong loop for any of those.
+the five patients side by side — and is the loop for a shader, a light or a line
+weight. `faces.sh` draws six people through `Appearance` and photographs each
+from eighty centimetres, which is the loop for a character: a head is sixty
+pixels tall in the lineup and that is not enough to judge a face by.
 
 Run the full set after any UI or world change. The count of bugs found only by
 looking is now well into double figures, and the most expensive of them was a

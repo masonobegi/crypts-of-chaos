@@ -250,10 +250,10 @@ func _build_body() -> void:
 	# It also has to move FORWARD on a deeper skull, for the same reason as the
 	# ears — the head is an ellipsoid and its front moves when its depth does.
 	var nose_z: float = 0.180 * skull.z + 0.010
-	_head.add_child(Build.mi(Build.sphere_mesh(0.040 * nose_size),
+	_head.add_child(Build.mi(Build.sphere_mesh(0.035 * nose_size),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.022, nose_z), Vector3.ZERO,
-		Vector3(0.78, 0.70, 1.15)))
+		Vector3(0.80, 0.72, 1.02)))
 	# A BRIDGE, so the nose is part of the face rather than stuck to it.
 	#
 	# A single ball between two eyes reads as a clown nose, and at the closest
@@ -317,10 +317,16 @@ func _build_body() -> void:
 	var crown: float = lerpf(1.0, 0.80, bald)
 	var hair_mat := Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), LINE)
 	var hair_flat := Build.mat(hair, 0.9, 0.0, Color(0, 0, 0), 0.0)
+	# SET BACK FAR ENOUGH THAT IT IS NOT THE HAIRLINE. At z=-0.030 with a
+	# z-scale of 1.0 the crown's front face reaches 0.194 — in FRONT of the eyes
+	# at 0.184 — so the crown itself came down over the forehead and the
+	# forelock below was decorating a helmet. Pulled back and narrowed in depth,
+	# it is hair on the back and top of a head, which is what a crown is; the
+	# forelock owns the front edge.
 	_head.add_child(Build.mi(Build.sphere_mesh(0.224 * crown),
 		hair_mat,
-		Vector3(0, 0.078 + 0.012 * bald, -0.030 - 0.030 * bald), Vector3.ZERO,
-		Vector3(0.99 * skull.x, lerpf(0.70, 0.48, bald) * skull.y, 1.0 * skull.z)))
+		Vector3(0, 0.086 + 0.012 * bald, -0.052 - 0.030 * bald), Vector3.ZERO,
+		Vector3(0.99 * skull.x, lerpf(0.70, 0.48, bald) * skull.y, 0.92 * skull.z)))
 	# ...and a forelock, so there is a hairLINE. Hair with no edge on the
 	# forehead reads as a swimming cap — but a straight BAR across the forehead
 	# reads as a headband, which is what the first attempt at this was. A second
@@ -328,69 +334,86 @@ func _build_body() -> void:
 	# ...and the hairline goes back with it, which is the half of this that
 	# actually reads: a smaller cap alone looks like a smaller haircut.
 	if bald < 0.85:
-		_head.add_child(Build.mi(Build.sphere_mesh(0.185 * lerpf(1.0, 0.72, bald)),
+		# AND HIGH ENOUGH TO LEAVE A FOREHEAD. Its bottom edge was at y=-0.014
+		# — below the brows at 0.052 and below the eyes at 0.008 — so the hair
+		# ran down to the eyebrows on every character in the game and the whole
+		# cast read as wearing swimming caps. It sits at 0.087 now, which is
+		# about three centimetres of forehead on a head half a metre tall, and
+		# it is the single change that stopped these looking like helmets.
+		_head.add_child(Build.mi(Build.sphere_mesh(0.170 * lerpf(1.0, 0.72, bald)),
 			hair_flat,
-			Vector3(0, 0.082 + 0.020 * bald, (0.055 - 0.075 * bald) * skull.z),
+			Vector3(0, 0.165 + 0.020 * bald, (0.048 - 0.075 * bald) * skull.z),
 			Vector3.ZERO,
-			Vector3(1.02 * skull.x, lerpf(0.52, 0.34, bald) * skull.y, 0.86 * skull.z)))
+			Vector3(1.02 * skull.x, lerpf(0.46, 0.30, bald) * skull.y, 0.88 * skull.z)))
 	_hair_style(hair_mat)
-	# Eyes: the cheapest possible way to make "is this person looking at me"
-	# legible across a corridor, which the whole suspicion system depends on.
-	# Bigger than life, with a white behind them — a dot on a sphere is a mole;
-	# a dot on a white oval is an eye. Unshaded and unlined: a black ring round
-	# an eyeball at this scale is just a bigger pupil.
+	# THE EYE IS A MARK, NOT A BALL.
 	#
-	# BIGGER THAN LIFE, NOT BIGGER THAN THE FACE. The whites were 0.056 with an
-	# x-scale of 0.92, which is 0.10 of half-width each on a head 0.21 across —
-	# the two of them spanned the entire face and every character in the game
-	# appeared to be wearing swimming goggles. Nobody had seen it, because the
-	# only two shots framed on a person had been silently photographing the far
-	# wall instead. Down about a third: still unmistakable from the corridor,
-	# and a face at the bedside now.
+	# This was a big white sclera with a dark disc floating in it, and photo-
+	# graphed close up (`./faces.sh`) it is the single thing that made this cast
+	# read as default-stylised rather than as a look somebody chose: two white
+	# ovals with an ink line round each, sitting ON the face rather than in it.
+	# Every note above it was a real fix — the whites came down a third for
+	# "swimming goggles", the pupil was flattened for "walleyed", the pupil was
+	# grown for "permanently surprised" — and each one was fixing a symptom of
+	# the sclera being there at all.
+	#
+	# A solid dark almond with one catchlight is what a stylised eye is: it is
+	# the shape you draw when you draw an eye, and it is what every flat-shaded
+	# game with an ink line does. Nothing is lost by dropping the white, because
+	# NOTHING IN THIS GAME EVER MOVED A PUPIL — gaze is carried entirely by
+	# `look_toward` turning the head, and an almond on the front of a head that
+	# has turned toward you is exactly as legible as an oval was. That legibility
+	# is load-bearing (the suspicion system is built on "is this person looking
+	# at me"), which is why it is spelled out here rather than left to be
+	# rediscovered.
 	for sx in [-1.0, 1.0]:
-		# WIDER THAN TALL, and not quite white. A sphere scaled 0.92 x 1.18 is
-		# an egg standing on end, which is not the shape of an eye opening — and
-		# in pure unshaded white against skin it glared. Two of those with a
-		# small dot in the middle of each is a pair of goggles, which is exactly
-		# what every character in this game was wearing.
-		var white := Build.mi(Build.sphere_mesh(0.036),
-			Build.unshaded(Color(0.94, 0.94, 0.96)),
-			Vector3(sx * 0.072, 0.010, 0.178), Vector3.ZERO, Vector3(1.04, 0.82, 0.72))
-		# PAINTED ON, NOT STUCK ON. The pupil was a full 3cm sphere whose centre
-		# sat 3cm proud of the eye white, so it parallaxed against the white as
-		# soon as you were off-axis — and you are off-axis for most of the game,
-		# because you stand beside a bed looking down at somebody lying in it.
-		# Both pupils drifted toward the top outer corner of their whites and
-		# every patient in the ward looked walleyed. Flattened into a disc that
-		# hugs the surface of the white, it reads as a painted eye from any
-		# angle, which is what the sphere was pretending to be.
-		# AND THE DARK PART IS MOST OF IT. On a real face the iris fills nearly
-		# the whole height of the opening and the white shows at the corners;
-		# a small dot centred in a large white is a cartoon of surprise, and
-		# that was the permanent expression of everybody in the building.
-		var pupil := Build.mi(Build.sphere_mesh(0.027), Build.unshaded(Color(0.11, 0.10, 0.13)),
-			Vector3(sx * 0.072, 0.008, 0.194), Vector3.ZERO, Vector3(1.0, 1.02, 0.24))
-		_head.add_child(white)
-		_head.add_child(pupil)
-		_eyes_open.append(white)
-		_eyes_open.append(pupil)
-		# A brow above each eye, in the hair colour. Two small dark bars are the
-		# whole of this model's expression budget and they are worth every
-		# triangle: without them the face is permanently, blankly surprised.
+		# The opening: about two to one, and wider than the old white was tall.
+		# Near-black rather than black, so it sits in the palette with the ink.
+		var eye := Build.mi(Build.sphere_mesh(0.030), Build.unshaded(Color(0.10, 0.09, 0.11)),
+			Vector3(sx * 0.070, 0.008, 0.184), Vector3.ZERO, Vector3(1.15, 0.62, 0.30))
+		# A CATCHLIGHT, AND IT IS NOT MIRRORED. One small bright dot is what
+		# stops a dark eye reading as a hole, and it is the only thing keeping
+		# an eye legible on the darkest skin in `Appearance.SKIN` — where a dark
+		# almond against a dark face has very little else to work with.
 		#
-		# Kept, because they move. A brow angled down toward the nose is the
-		# entire difference between "this is going well" and "you have made me
-		# worse", and it is the fastest thing on this model to read at three
-		# metres.
-		var brow := Build.mi(Build.rbox_mesh(Vector3(0.076, 0.018, 0.024), 0.008),
-			Build.mat(hair.lightened(0.10), 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.076, 0.060, 0.196))
+		# Both eyes take it on the SAME side rather than mirrored, because a
+		# catchlight is a reflection of a light and there is one sun. Mirroring
+		# it reads as decoration; not mirroring it reads as lit, and costs
+		# exactly the same.
+		var glint := Build.mi(Build.sphere_mesh(0.0085),
+			Build.unshaded(Color(0.97, 0.98, 1.0)),
+			Vector3(sx * 0.070 - 0.010, 0.017, 0.196), Vector3.ZERO,
+			Vector3(1.0, 1.0, 0.30))
+		_head.add_child(eye)
+		_head.add_child(glint)
+		_eyes_open.append(eye)
+		_eyes_open.append(glint)
+		# A brow above each eye. Two small dark bars are the whole of this
+		# model's expression budget and they are worth every triangle: without
+		# them the face is permanently, blankly surprised.
+		#
+		# DARKENED, NOT LIGHTENED, and floored. It was `hair.lightened(0.10)`,
+		# which on the white hair of a seventy-three-year-old is a white bar on
+		# a pale forehead — invisible, on the one part of the model that carries
+		# every expression in the game. A brow has to be darker than the face it
+		# is on whatever colour the hair is, so it is mixed toward the ink.
+		var brow_col: Color = hair.darkened(0.25).lerp(Color(0.16, 0.13, 0.12), 0.55)
+		var brow := Build.mi(Build.rbox_mesh(Vector3(0.066, 0.014, 0.020), 0.007),
+			Build.mat(brow_col, 0.9, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.072, 0.052, 0.192))
+		# Angled out and down a little at rest, which is a face at ease rather
+		# than a face at attention. `set_mood` rotates from here.
+		brow.rotation.z = sx * 0.09
 		_head.add_child(brow)
 		_brows.append(brow)
-		# A closed lid, hidden until it is needed. Hiding the eyes alone leaves
-		# a blank face, which reads as a missing texture rather than as sleep.
-		var lid := Build.mi(Build.rbox_mesh(Vector3(0.072, 0.015, 0.022), 0.007),
-			Build.unshaded(skin.darkened(0.18)), Vector3(sx * 0.074, 0.012, 0.198))
+		# A CLOSED EYE IS A LINE. It was a skin-coloured bar, which on a light
+		# face is nothing at all and on a dark one is a smudge — so a sleeping
+		# patient read as a patient with no eyes. The lash line is the same
+		# colour as the eye and a third of its height, which is what a shut eye
+		# looks like from any distance.
+		var lid := Build.mi(Build.rbox_mesh(Vector3(0.068, 0.011, 0.018), 0.005),
+			Build.unshaded(Color(0.10, 0.09, 0.11)),
+			Vector3(sx * 0.070, 0.010, 0.190))
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)
@@ -412,16 +435,21 @@ func _build_body() -> void:
 	# BEHIND the bar in z and BELOW it in y, both by a couple of millimetres, so
 	# it never fights the bar for a pixel and never pokes through when the bar
 	# scales open for a grimace.
-	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.072, 0.019, 0.020), 0.009),
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.054, 0.017, 0.020), 0.008),
 		Build.unshaded(skin.lerp(Color(0.62, 0.34, 0.34), 0.38).lightened(0.05)),
 		Vector3(0, -0.072, 0.192)))
-	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.086, 0.014, 0.022), 0.006),
+	# NARROWER THAN THE EYES ARE APART. The bar was 0.086 half-width against an
+	# eye span of 0.105, so the mouth was 82% as wide as the whole face — which
+	# on a stylised head is a letterbox, and it is what kept these reading as
+	# blocky once the eyes had stopped. A mouth is about as wide as the gap
+	# between the pupils, and no wider.
+	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.062, 0.013, 0.022), 0.006),
 		Build.unshaded(Color(0.30, 0.15, 0.16)), Vector3(0, -0.062, 0.196))
 	_head.add_child(_mouth)
 	for sx in [-1.0, 1.0]:
-		var corner := Build.mi(Build.rbox_mesh(Vector3(0.026, 0.014, 0.022), 0.006),
+		var corner := Build.mi(Build.rbox_mesh(Vector3(0.020, 0.013, 0.022), 0.006),
 			Build.unshaded(Color(0.30, 0.15, 0.16)),
-			Vector3(sx * 0.052, -0.062, 0.194))
+			Vector3(sx * 0.038, -0.062, 0.194))
 		_head.add_child(corner)
 		_mouth_corners.append(corner)
 
@@ -1343,6 +1371,9 @@ func _hair_style(hair_mat: Material) -> void:
 			# FULL. More volume everywhere rather than a shape, which is a
 			# haircut in its own right and also the one that survives being
 			# seen from directly above — the angle you get standing over a bed.
+			# Volume at the BACK and top. Left where it was it reached z=0.227,
+			# well in front of the eyes, and buried the forehead the forelock
+			# above had just uncovered.
 			_head.add_child(Build.mi(Build.sphere_mesh(0.238), hair_mat,
-				Vector3(0, 0.098 * skull.y, -0.020), Vector3.ZERO,
-				Vector3(1.06 * skull.x, 0.82, 1.04 * skull.z)))
+				Vector3(0, 0.126 * skull.y, -0.075), Vector3.ZERO,
+				Vector3(1.06 * skull.x, 0.72, 0.95 * skull.z)))

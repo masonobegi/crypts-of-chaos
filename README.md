@@ -91,6 +91,7 @@ godot --path .                                   # or open project.godot and hit
 GODOT=/path/to/godot ./run_tests.sh              # the whole suite
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh            # render offscreen, photograph every screen
+GODOT=/path/to/godot ./faces.sh try1             # six faces close up, for character work
 GODOT=/path/to/godot ./export.sh all             # Windows, Linux, macOS
 ```
 

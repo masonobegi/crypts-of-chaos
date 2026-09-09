@@ -13,7 +13,9 @@ loudest single tell that a game was made in an afternoon. See gotcha 51.
 GODOT=/path/to/godot ./run_tests.sh      # all of it, ~4 min
 GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific files
 GODOT=/path/to/godot ./screenshots.sh    # render offscreen, photograph every room and screen
-GODOT=/path/to/godot ./look.sh try1      # three vantages, ninety seconds, for tuning the look
+GODOT=/path/to/godot ./look.sh try1      # four vantages, for tuning a shader or a light
+GODOT=/path/to/godot ./faces.sh try1     # six faces close up, for tuning a CHARACTER
+SHOT_ONLY=struck_off GODOT=/path/to/godot ./screenshots.sh   # one frame, ~90s
 GODOT=/path/to/godot ./export.sh all     # windows, linux, macos — and RUNS the linux one
 GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
@@ -530,6 +532,44 @@ with it because a lost afternoon does not care which.
     clicks once per loop forever, under everything, where nothing else in this
     repo would ever hear it. `AudioMgr.HUM_PARTIALS` exists so the smoke run
     can check the arithmetic, and it was proven red with a length of 11.017.
+
+60. **THE EYE IS A MARK, NOT A BALL, and the sclera was the whole problem.**
+    Every character had a big white oval with a dark disc floating in it, and
+    three separate fixes are recorded above it — the whites came down a third
+    for "swimming goggles", the pupil was flattened for "walleyed", the pupil
+    was grown for "permanently surprised". Each was real and each was a symptom
+    of the white being there at all. A solid dark almond with ONE catchlight is
+    what a stylised eye is, and nothing is lost by dropping the sclera because
+    NOTHING IN THIS GAME EVER MOVED A PUPIL: gaze is carried entirely by
+    `look_toward` turning the head, and it is still legible at four and a half
+    metres. The catchlight is not mirrored between the eyes — there is one sun
+    — and it is what keeps an eye visible on the darkest skin in
+    `Appearance.SKIN`, where a dark almond has very little else to work with.
+    A closed eye is a dark LINE in the same colour, not the old skin-coloured
+    bar, which on a light face was nothing at all.
+61. **THE HAIR CAME DOWN TO THE EYEBROWS ON EVERY CHARACTER.** The forelock's
+    bottom edge sat at y=-0.014 — below the brows at 0.052 and below the eyes
+    at 0.008 — and the crown's front face reached z=0.194, in front of the eyes
+    at 0.184. So the crown was the hairline, the forelock was decorating a
+    helmet, and the whole cast had no forehead. The crown is pulled back to own
+    the top and the back; the forelock is raised to own the front edge and
+    leaves about three centimetres of forehead. It is the single change that
+    stopped these reading as blocky, and it is worth more than any amount of
+    lighting work.
+62. **`./faces.sh` — six faces, close up, in the game's own light.** Character
+    work was being judged from `screenshots.sh` (twenty-one frames, twenty
+    minutes) or from `look.sh`'s lineup, where a head is sixty pixels tall.
+    Neither is a loop you can do an art pass in, which is how a hairstyle that
+    is invisible from the front got shipped. Six draws through `Appearance`, so
+    what is photographed is what ships, each from eighty centimetres, then the
+    whole cast together. **Two harness faults cost a render each and both looked
+    exactly like modelling faults**: subjects spaced five metres apart from
+    x=2.5 in a twenty-metre corridor put the last two OUTSIDE the building,
+    falling, so their portraits framed the top of a skull and I nearly went and
+    "fixed" `_tick_look`; and the cast camera four and a half metres back in a
+    four-metre-deep corridor photographed the far side of a wall. It asserts
+    nobody is falling now. When a subject looks wrong, check where it is
+    standing before you change the model.
 
 ## Design rules that are load-bearing
 

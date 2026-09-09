@@ -2551,3 +2551,72 @@ only version of this that works at all. Behind the bar in z and below it in y by
 a couple of millimetres, so it never fights for a pixel and never pokes through
 when the bar scales open for a grimace.
 
+## Session 18 — the faces, which is what stops somebody clicking on it
+
+Asked for a rating of the game, I said the character art was the ceiling on
+everything else and the thing most likely to stop it being clicked. Asked to fix
+it, the first thing needed was a way to SEE it.
+
+### `./faces.sh`
+
+Six people drawn through `Appearance` — the same machinery the ward uses, so
+what is photographed is what ships — stood in the corridor and photographed one
+at a time from eighty centimetres, then all six together in the ward. Seven
+frames. `screenshots.sh` is twenty-one frames and twenty minutes; `look.sh`'s
+lineup renders a head sixty pixels tall. Neither is a loop anybody can do an art
+pass in, and that is exactly how a hairstyle invisible from the front got
+shipped last session.
+
+**Two harness faults cost a render each and both looked precisely like modelling
+faults.** Six subjects five metres apart from x=2.5 in a twenty-metre corridor
+puts the last two at 22.5 and 27.5 — outside the building, with nothing under
+them. They fell; by the time the camera reached them their heads were at y=0.43
+and dropping, so the portraits framed the top of a skull with the head pitched
+up at a lens above it, and I was one edit away from "fixing" a `_tick_look` that
+was working perfectly. Then the cast camera, four and a half metres back in a
+four-metre-deep corridor, photographed the far side of a wall. The harness
+asserts nobody is falling now, and the cast shot happens in the ward.
+
+Also a process fault worth writing down: an edit script whose `assert` threw was
+followed by a render in the same command, separated by a newline instead of
+`&&` — so eight minutes went into photographing the unmodified source, and the
+render came back looking exactly like a change that had not worked. Chain the
+edit to the render, or verify the edit landed first.
+
+### What was actually wrong
+
+THE SCLERA. Every character had a big white oval with a dark disc floating in
+it. Three separate fixes are recorded in the comments above that code — the
+whites came down a third for "swimming goggles", the pupil was flattened for
+"walleyed", the pupil was grown for "permanently surprised" — and every one of
+them was a real fix for a symptom of the white being there at all.
+
+A solid dark almond with one catchlight is what a stylised eye is. Nothing is
+lost by dropping the sclera, because **nothing in this game ever moved a
+pupil**: gaze is carried entirely by `look_toward` turning the head, and it is
+still legible at four and a half metres, which is what the suspicion system
+needs. The catchlight is not mirrored between the two eyes — there is one sun —
+and it is what keeps an eye visible on the darkest skin in `Appearance.SKIN`. A
+closed eye is a dark LINE in the same colour now, rather than the skin-coloured
+bar it was, which on a light face was nothing at all.
+
+THE HAIRLINE. The forelock's bottom edge sat at y=-0.014 — below the brows at
+0.052 and below the eyes at 0.008 — and the crown's front face reached z=0.194,
+in front of the eyes at 0.184. So the crown WAS the hairline, the forelock was
+decorating a helmet, and not one character in the game had a forehead. The
+crown is pulled back to own the top and the back; the forelock is raised to own
+the front edge and leaves about three centimetres of forehead. It is the single
+change that stopped these reading as blocky.
+
+And three smaller ones off the same photographs: the brows were
+`hair.lightened(0.10)`, which on a seventy-three-year-old's white hair is a
+white bar on a pale forehead — invisible, on the one part of the model that
+carries every expression in the game. The mouth bar was 0.086 half-width
+against an eye span of 0.105, so a mouth was 82% as wide as the face. The nose
+ball was a shade large and a shade too round.
+
+Verified: 298 assertions, 172 smoke checks on three seeds, seven day criteria,
+the data and draw checks, careers on three seeds, the frontier probe, both play
+runs, the quiet check and the boot check. All green, and the title, bedside,
+lineup, station and visitor frames re-rendered and reviewed.
+

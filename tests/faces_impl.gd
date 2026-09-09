@@ -138,7 +138,10 @@ func tick() -> bool:
 	settle = 0
 	var shot := "%s__%02d" % [tag, index] if index < WHO.size() \
 		else ("%s__body" % tag if index == WHO.size() else "%s__cast" % tag)
-	tree.root.get_texture().get_image().save_png("user://faces/%s.png" % shot)
+	var img: Image = tree.root.get_texture().get_image()
+	if index < WHO.size():
+		_measure_contrast(img, cam, bodies[index], shot)
+	img.save_png("user://faces/%s.png" % shot)
 	print("  face: ", shot)
 	index += 1
 	return false
@@ -157,3 +160,54 @@ func _spawn() -> void:
 		b.set_in_bed(false)
 		b.set_eyes_open(true)
 		bodies.append(b)
+
+## HOW MUCH ROOM THIS FACE HAS LEFT FOR FEATURES.
+##
+## Every feature on this model works by being DARKER than the skin — the eye,
+## the brows, the line of the mouth, the socket under each eye — and the dark end
+## of `Appearance.SKIN` had almost nowhere below it to put four of them. Measured
+## off these very frames: at an albedo of 0.29 a cheek rendered at 34 of 255
+## while the same person\'s gown rendered at 179, and the darkest face carried 21
+## levels of contrast between its features and its cheek where the mid and pale
+## faces carried 91. A quarter of the contrast, on a third of the cast, invisible
+## to every other harness in this repo — and reported from outside as "some of
+## the black characters\' faces look messed up compared to the white ones", which
+## is exactly what that measurement looks like from the other side.
+##
+## So it is measured now, on the real frame, per subject. The window is the band
+## from the brows to just under the nose, sized off the head\'s own projected
+## width so it works at any skull. The number is the gap between the ink — which
+## is near-black on every character, so it is the floor of the whole image — and
+## the median pixel, which is skin. That is exactly the quantity that ran out:
+## how much room there is BELOW this face to put anything on it. `FLOOR` is a
+## regression guard set below today\'s worst (44 on the darkest of the six, 175
+## on the palest) and above what the palette measured before it was lifted.
+const FLOOR := 35.0
+
+func _measure_contrast(img: Image, cam: Camera3D, body, shot: String) -> void:
+	var head: Vector3 = body.head_position()
+	var c: Vector2 = cam.unproject_position(head)
+	var edge: Vector2 = cam.unproject_position(head + cam.global_transform.basis.x * 0.09)
+	var scale: float = absf(edge.x - c.x)
+	if scale < 8.0:
+		return
+	var x0 := int(c.x - scale * 0.85)
+	var x1 := int(c.x + scale * 0.85)
+	var y0 := int(c.y - scale * 0.55)
+	var y1 := int(c.y + scale * 0.75)
+	var vals: Array = []
+	for y in range(maxi(y0, 0), mini(y1, img.get_height())):
+		for x in range(maxi(x0, 0), mini(x1, img.get_width())):
+			var p: Color = img.get_pixel(x, y)
+			vals.append((p.r + p.g + p.b) / 3.0 * 255.0)
+	if vals.size() < 64:
+		return
+	vals.sort()
+	var lo: float = float(vals[int(float(vals.size()) * 0.02)])
+	var mid: float = float(vals[vals.size() / 2])
+	var gap: float = mid - lo
+	print("    room for features %5.1f levels (skin %3.0f, ink %3.0f)  %s"
+		% [gap, mid, lo, shot])
+	if gap < FLOOR:
+		printerr("faces: %s has only %.0f levels between its features and its skin — "
+			% [shot, gap] + "there is no room left on it for a face")

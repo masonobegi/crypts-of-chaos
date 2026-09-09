@@ -40,7 +40,6 @@ func _physics_process(delta: float) -> void:
 	_impact_cooldown = maxf(0.0, _impact_cooldown - delta)
 	_last_speed = linear_velocity.length()
 
-func get_item_id() -> String: return item_id
 func display_name() -> String: return display
 
 func prompt(_player) -> Array:

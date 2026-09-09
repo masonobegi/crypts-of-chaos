@@ -49,12 +49,3 @@ func interact(_player, _held) -> void:
 func use_seconds(_player, _held) -> float:
 	return 0.0
 
-func emit_event(kind: String, visual := 0.0, tags: Array = [], cover := "", summary := "") -> WorldEvent:
-	var e := WorldEvent.new(kind, "player").at(global_position, room_key).seen(visual)
-	for t in tags:
-		e.tag(String(t))
-	if cover != "":
-		e.cover(cover)
-	if summary != "":
-		e.says(summary)
-	return e.emit()

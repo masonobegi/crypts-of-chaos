@@ -316,6 +316,13 @@ static func _dress_office(h: Hospital, r: Room) -> void:
 	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, r.rect.get_center().y),
 		Vector2(2.6, 1.8), Color(0.42, 0.24, 0.22))
 	Dressing.whiteboard(h, _left_wall(r, 0.62, 1.66), LEFT_ROT, 1.1, 0.8)
+	# THE DESK HAD NOTHING ON IT. `Dressing.desk_clutter` — a stack, a mug and a
+	# tray of pens — has existed since the dressing pass and was placed nowhere,
+	# which is the same fault as a constant nothing reads with a modelling
+	# session behind it. The office desk is the one surface in the building the
+	# player stands over for a whole conversation.
+	Dressing.desk_clutter(h, Vector3(r.rect.get_center().x + 0.35, 0.74,
+		r.rect.get_center().y + 0.10), _far_rot(r))
 
 ## Record a solid footprint, grown slightly so NPCs keep their shoulders clear.
 static func _occupy(centre_x: float, centre_z: float, w: float, d: float) -> void:

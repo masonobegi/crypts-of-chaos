@@ -2246,20 +2246,6 @@ static func enumerate_pool(index: int) -> Array:
 		out = doubled
 	return out
 
-## Every authored person on a ward, drawn or not. The data check walks this;
-## `roster` walks the five who are actually in the beds.
-## How many candidates each slot has, in bed order — the shape of the draw.
-static func slot_sizes(day: int) -> Array:
-	var by_bed := {}
-	for c in DAYS[pool_index(day)]:
-		var b := int(c["bed"])
-		by_bed[b] = int(by_bed.get(b, 0)) + 1
-	var beds: Array = by_bed.keys()
-	beds.sort()
-	var out: Array = []
-	for b in beds:
-		out.append(int(by_bed[b]))
-	return out
 
 static func pool_for(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day

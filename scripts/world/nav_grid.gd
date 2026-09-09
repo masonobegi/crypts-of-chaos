@@ -167,27 +167,7 @@ func _near_pinch(p: Vector3) -> bool:
 			return true
 	return false
 
-## Temporarily block cells — a toppled cart genuinely reroutes staff, which is
-## the whole reason toppling a cart is a strategy.
-func block_area(r: Rect2) -> Array[Vector2i]:
-	var affected: Array[Vector2i] = []
-	for c in _ids:
-		var centre := cell_center(c)
-		if r.has_point(Vector2(centre.x, centre.z)):
-			_blocked[c] = int(_blocked.get(c, 0)) + 1
-			affected.append(c)
-			astar.set_point_disabled(_ids[c], true)
-	return affected
 
-func unblock_cells(cells: Array[Vector2i]) -> void:
-	for c in cells:
-		var n := int(_blocked.get(c, 0)) - 1
-		if n <= 0:
-			_blocked.erase(c)
-			if _ids.has(c):
-				astar.set_point_disabled(_ids[c], false)
-		else:
-			_blocked[c] = n
 
 func random_point_in(r: Rect2, stream := "nav") -> Vector3:
 	var candidates: Array[Vector3] = []

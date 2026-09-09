@@ -149,8 +149,6 @@ func active() -> Array:
 			out.append(p)
 	return out
 
-func active_count() -> int:
-	return active().size()
 
 func _hook_the_day() -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")

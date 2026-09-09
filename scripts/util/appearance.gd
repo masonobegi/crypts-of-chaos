@@ -20,8 +20,26 @@ class_name Appearance
 
 ## Real ranges, dark to light, deliberately not evenly spaced: the middle of
 ## this range is where most people are.
+##
+## THE DARK END HAD NO ROOM LEFT FOR A FACE, AND IT WAS MEASURED. Every feature
+## on this model works by being darker than the skin — the eye, the brows, the
+## line of the mouth, the socket under each eye — and at an albedo of 0.29 under
+## this grade a cheek renders at 34 of 255 while the same person\'s gown renders
+## at 179. There is nowhere below 34 to put four features: measured on the real
+## frames, the darkest face carried 21 levels of contrast between its features
+## and its cheek where the mid and pale faces carried 91. Reported from outside
+## as "some of the black characters\' faces look messed up compared to the white
+## ones", which is exactly what a quarter of the feature contrast looks like.
+##
+## The bottom three are lifted about six hundredths — enough to clear the crush,
+## small enough that the palette still runs genuinely dark to genuinely pale, and
+## the hue and saturation are untouched. It is the same lesson as the eye and the
+## lip one file over: a value chosen for the middle of a range is not a value the
+## END of that range can carry. The other two thirds of the fix are there —
+## features placed on the skull they actually have, and an eye that is lit rather
+## than a fixed emissive lighter than the face it is on.
 const SKIN := [
-	Color(0.29, 0.20, 0.15), Color(0.36, 0.25, 0.18), Color(0.44, 0.31, 0.22),
+	Color(0.35, 0.25, 0.19), Color(0.41, 0.29, 0.21), Color(0.48, 0.34, 0.25),
 	Color(0.52, 0.38, 0.27), Color(0.60, 0.45, 0.33), Color(0.68, 0.52, 0.39),
 	Color(0.75, 0.60, 0.47), Color(0.82, 0.67, 0.54), Color(0.87, 0.73, 0.61),
 	Color(0.91, 0.78, 0.68), Color(0.94, 0.82, 0.73), Color(0.96, 0.86, 0.79),

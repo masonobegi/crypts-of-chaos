@@ -224,8 +224,6 @@ func _settle() -> void:
 	_latched = true
 	AudioMgr.play_at_var("door_latch", global_position, -17.0, 0.12)
 
-func angle_deg() -> float:
-	return rad_to_deg(angle)
 
 func is_open() -> bool:
 	return absf(angle) > 0.35

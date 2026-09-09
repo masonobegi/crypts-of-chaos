@@ -2894,3 +2894,33 @@ with a comment on the next line about the hand being wider than the wrist, about
 a hand 1.4cm narrower than the arm it is on.
 
 351 assertions... 358, and 251 smoke checks on three seeds. Everything green.
+
+## Three constants, twenty-six functions, six signals — and the dark end of the
+## palette
+
+Two sweeps in one stretch.
+
+The dead-code one: gotcha 15 has said since the shift-type table that a constant
+nothing reads is a promise made in copy and not kept in code, and nobody had run
+that question over the whole repo. Twenty constants, twenty-six functions and six
+signals came out — including a whole `Dressing` piece modelled and placed in no
+room, the only way a fixture had to emit a world event, and a colour for a
+reputation system that was cut two reworks ago. Three new smoke checks, all
+proven red. An emit with no listener is the worst of the three: it costs work
+every time it fires and it reads in review as the place where the thing happens.
+
+And the faces one, which came in from outside mid-stretch: "some of the black
+characters\' faces look messed up compared to the white ones". Three separate
+causes and all of them the same shape — an absolute value chosen for the middle
+of a range that the end of the range cannot carry. Features pinned at a literal
+depth on a skull whose front moves four centimetres across the cast. An unshaded
+eye that measured LIGHTER than the darkest skin. And a lower lip lerped toward
+one fixed pink, which is darker than a pale face and two thirds lighter than the
+darkest, so the one bright thing on that face was a salmon block under the mouth
+that read as an open mouth with the tongue showing.
+
+Underneath all three: at an albedo of 0.29 a cheek renders at 34 of 255 while
+the same person\'s gown renders at 179. The darkest face had 21 levels of
+contrast for its features where the pale ones had 91. `./faces.sh` measures that
+per subject now and exits non-zero under a floor, which is the harness that
+should have existed before any of this was authored.

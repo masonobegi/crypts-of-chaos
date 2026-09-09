@@ -62,9 +62,6 @@ func heard(w: float, radius: float = 12.0) -> WorldEvent:
 	hear_radius = radius
 	return self
 
-func smelled() -> WorldEvent:
-	ambient = true
-	return self
 
 ## Same flag, honest name. "Ambient" means being in the room is enough — no line
 ## of sight and no facing check — which is right for a smell, and equally right

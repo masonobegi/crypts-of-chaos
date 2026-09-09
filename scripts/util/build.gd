@@ -792,11 +792,6 @@ static func outside_mi(size: Vector3, color: Color, pos := Vector3.ZERO,
 	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return m
 
-static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 24) -> MeshInstance3D:
-	var thin: float = minf(radius * 2.0, height)
-	return mi(cyl_mesh(radius, height, sides),
-		mat(color, 0.85, 0.0, Color(0, 0, 0),
-			line_for(Vector3(thin, thin, thin)), thin * INK_CAP), pos)
 
 # ------------------------------------------------------------------ static geo
 ## A solid, collidable box — walls, floors, counters, anything you bump into.
@@ -821,12 +816,6 @@ static func wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0,
 	b.add_child(box_mi(size, color, Vector3.ZERO, 0.85, line))
 	return b
 
-## Same, but flagged so NPC vision cannot see through it.
-static func opaque_wall(size: Vector3, color: Color, pos: Vector3, rot_y := 0.0,
-		line := 0.016) -> StaticBody3D:
-	var w := wall(size, color, pos, rot_y, line)
-	w.collision_layer = 1 | 32   # world | vision_blocker
-	return w
 
 ## THE SAME WALL, WITH A SURFACE ON IT.
 ##
@@ -842,11 +831,6 @@ static func surfaced_wall(size: Vector3, mat_override: Material, pos: Vector3,
 	_repaint(b, mat_override)
 	return b
 
-static func surfaced_opaque_wall(size: Vector3, mat_override: Material, pos: Vector3,
-		rot_y := 0.0) -> StaticBody3D:
-	var w := surfaced_wall(size, mat_override, pos, rot_y)
-	w.collision_layer = 1 | 32
-	return w
 
 ## THE SAME AGAIN, ON A MESH A LAMP CAN REACH. See `slab_mesh`: the room-sized
 ## surfaces are the ones with no vertex anywhere near a fitting, so they are the
@@ -897,9 +881,6 @@ static func make_prop(id: String, disp: String, collision_size: Vector3, mass: f
 			part.get("pos", Vector3.ZERO), part.get("rot", Vector3.ZERO), part.get("scl", Vector3.ONE)))
 	return p
 
-## Shorthand: a single-box prop.
-static func simple_prop(id: String, disp: String, size: Vector3, color: Color, mass := 1.5) -> Prop:
-	return make_prop(id, disp, size, mass, [{"mesh": box_mesh(size), "mat": mat(color)}])
 
 # ------------------------------------------------------------------ text
 ## World-space label. Used for room signs, machine dials and floating name tags.

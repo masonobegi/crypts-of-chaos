@@ -458,15 +458,5 @@ func carry_speed_penalty() -> float:
 		return 1.0
 	return clampf(1.0 - (held.mass / 70.0), 0.45, 1.0)
 
-func is_holding(id: String) -> bool:
-	return held != null and held.has_method("get_item_id") and String(held.call("get_item_id")) == id
 
-func held_item_id() -> String:
-	if held and held.has_method("get_item_id"):
-		return String(held.call("get_item_id"))
-	return ""
 
-## Force-release, used when a nurse takes something off you or a cutscene starts.
-func force_release() -> void:
-	if held:
-		drop()

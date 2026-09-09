@@ -97,12 +97,6 @@ static func mono_label(text: String, size := 15, color := INK,
 		align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	return label(text, size, color, align, false, Typeface.mono())
 
-## Something the player wrote. See Typeface: this is the hand the whole record
-## layer is read against, so it is one call and not a font argument sprinkled
-## about.
-static func hand_label(text: String, size := 15, color := INK,
-		align := HORIZONTAL_ALIGNMENT_LEFT, wrap := false) -> Label:
-	return label(text, int(round(size * Typeface.HAND_SCALE)), color, align, wrap, Typeface.hand())
 
 ## THE INSTITUTION'S VOICE. Serif, because a hospital's own paperwork is set in
 ## one and a sans heading on a manila card reads as a settings screen.
@@ -112,16 +106,6 @@ static func title(text: String, size := 30, color := INK) -> Label:
 	l.add_theme_constant_override("shadow_offset_y", 2)
 	return l
 
-static func rich(text: String, size := 15) -> RichTextLabel:
-	var r := RichTextLabel.new()
-	r.bbcode_enabled = true
-	r.text = text
-	r.fit_content = true
-	r.scroll_active = false
-	r.add_theme_font_size_override("normal_font_size", size)
-	r.add_theme_font_size_override("bold_font_size", size)
-	r.add_theme_color_override("default_color", INK)
-	return r
 
 ## A button is a slip of card with an ink rule round it and a coloured tab down
 ## the left, like the tab on a divider in a filing drawer.
@@ -437,17 +421,6 @@ static func bar(value: float, color := ACCENT, width := 180.0, height := 8.0) ->
 	root.add_child(fill)
 	return root
 
-## "3h 20m", "45m", "now". Used everywhere a deadline is shown, so that the
-## shift clock, the appointment list and the tablet all count down in the same
-## words.
-static func span_str(minutes: int) -> String:
-	if minutes <= 0:
-		return "now"
-	if minutes < 60:
-		return "%dm" % minutes
-	if minutes % 60 == 0:
-		return "%dh" % int(minutes / 60)
-	return "%dh %02dm" % [int(minutes / 60), minutes % 60]
 
 static func money_str(amount: int) -> String:
 	var neg := amount < 0
@@ -496,9 +469,6 @@ static func place(node: Control, preset: int, left: float, top: float,
 	node.offset_bottom = top + height
 	return node
 
-static func full_screen(node: Control) -> Control:
-	node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	return node
 
 static func center_panel(width: float, height: float) -> PanelContainer:
 	var p := panel(PANEL, 3, 2, Color(0.22, 0.23, 0.25))
@@ -560,14 +530,6 @@ static func scroll(child: Control) -> ScrollContainer:
 	s.add_child(child)
 	return s
 
-static func scroll_horizontal(child: Control) -> ScrollContainer:
-	var s := ScrollContainer.new()
-	s.follow_focus = true
-	s.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	s.custom_minimum_size.y = 44
-	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	s.add_child(child)
-	return s
 
 static func dim_background(alpha := 0.72) -> ColorRect:
 	var r := ColorRect.new()
@@ -576,14 +538,7 @@ static func dim_background(alpha := 0.72) -> ColorRect:
 	r.mouse_filter = Control.MOUSE_FILTER_STOP
 	return r
 
-static func tier_color(tier: int) -> Color:
-	return [INK_DIM, Color(0.90, 0.86, 0.55), WARN, Color(0.94, 0.52, 0.34), BAD][clampi(tier, 0, 4)]
 
-static func rep_color(track: String, value: float) -> Color:
-	# Government scrutiny is the one where high is bad.
-	if track == "gov_scrutiny":
-		return BAD if value > 0.4 else (WARN if value > 0.2 else GOOD)
-	return GOOD if value > 0.6 else (WARN if value > 0.35 else BAD)
 
 ## The card-with-a-tab stylebox every button uses.
 ## ---------------------------------------------------------------- focus

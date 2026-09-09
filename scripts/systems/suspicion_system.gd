@@ -420,20 +420,6 @@ func file_complaint(from_id: String, severity: float) -> void:
 		ev.tags = PackedStringArray(["complaint"])
 		inst.add_evidence(ev)
 
-# ------------------------------------------------------------------ queries
-## What one mind currently believes about you, derived on the spot.
-##
-## The only survivor of a block of five. `suspicion_pct`, `ranked_suspicions`,
-## `highest_suspicion` and `is_observed` fed a tablet UI that showed the player
-## a percentage, and the design rule that replaced it is that nothing is ever
-## labelled: suspicion is a read over evidence, and the player finds out by
-## watching people rather than by opening a panel. Four accessors nothing had
-## called since that screen was deleted.
-func suspicion_of(id: String) -> float:
-	var m: Mind = minds.get(id, null)
-	if m == null:
-		return 0.0
-	return m.suspicion(GameState.career_minutes, GameState.active_covers)
 
 ## WHAT THE WARD SAW, and the only route the belief layer has ever had to a
 ## verdict.

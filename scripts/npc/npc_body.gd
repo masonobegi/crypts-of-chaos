@@ -184,6 +184,28 @@ var _note_pad: Node3D = null
 ## the piece sits, in metres, and the numbers below are exactly the offsets the
 ## old literals had on an average head — so nobody who looked right changes, and
 ## everybody who did not is fixed.
+## A LIP IS A PROPORTION OF A FACE, NOT A COLOUR.
+##
+## This was `skin.lerp(Color(0.62, 0.34, 0.34), 0.32).lightened(0.10)` — a lerp
+## toward one fixed pink — and a lerp toward an absolute does opposite things at
+## the two ends of a palette that runs from 0.29 to 0.96. On the pale skins the
+## result is DARKER than the face and vanishes, which is why it looked fine; on
+## the darkest it is two thirds lighter, so the one bright thing on the whole
+## face was a salmon block under the mouth that read as an open mouth with the
+## tongue showing. Reported as "some of the black characters\' faces look messed
+## up compared to the white ones", and it is the same fault as the unshaded eye
+## one line of this file away: an absolute value chosen against the middle of a
+## range that the ends of the range cannot carry.
+##
+## In HSV off the person\'s own skin, so it is the same small step on all twelve.
+## A TENTH, NOT A FIFTH: at s * 1.20 the middle of the palette — where the skins
+## are most saturated — came out as an orange sliver under the bar, which is the
+## same fault one notch along. Its job is only to be the thing the dark line is
+## the top edge of; if you can name its colour it is wrong.
+static func _lip(skin: Color) -> Color:
+	return Color.from_hsv(skin.h, clampf(skin.s * 1.10, 0.0, 1.0),
+		clampf(skin.v * 1.05, 0.0, 1.0), 1.0)
+
 func _face_z(x: float, y: float, proud: float) -> float:
 	var a: float = 0.215 * 0.98 * skull.x
 	var b: float = 0.215 * 1.14 * skull.y
@@ -472,7 +494,7 @@ func _build_body() -> void:
 		# catchlight is a reflection of a light and there is one sun. Mirroring
 		# it reads as decoration; not mirroring it reads as lit, and costs
 		# exactly the same.
-		var glint := Build.mi(Build.sphere_mesh(0.0085),
+		var glint := Build.mi(Build.sphere_mesh(0.0074),
 			Build.unshaded(Color(0.97, 0.98, 1.0)),
 			Vector3(sx * 0.070 - 0.010, 0.017, _face_z(sx * 0.070 - 0.010, 0.017, 0.0062)),
 			Vector3.ZERO,
@@ -542,10 +564,9 @@ func _build_body() -> void:
 	# edge of: narrower than the bar, so the bar's ends overhang it and the
 	# corners read as lips meeting, and short enough that most of it is hidden
 	# behind the bar.
-	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.040, 0.011, 0.020), 0.005),
-		Build.mat(skin.lerp(Color(0.62, 0.34, 0.34), 0.32).lightened(0.10),
-			SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, -0.0685, _face_z(0.0, -0.0685, 0.0021))))
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.038, 0.0095, 0.020), 0.004),
+		Build.mat(_lip(skin), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, -0.0660, _face_z(0.0, -0.0660, 0.0021))))
 	# NARROWER THAN THE EYES ARE APART. The bar was 0.086 half-width against an
 	# eye span of 0.105, so the mouth was 82% as wide as the whole face — which
 	# on a stylised head is a letterbox, and it is what kept these reading as
@@ -1472,16 +1493,6 @@ func head_position() -> Vector3:
 		return _head.global_position
 	return global_position + Vector3(0, 1.5, 0)
 
-## Where the trunk actually ended up, for tests.
-##
-## Nothing in the game needs this; the seated-pose bug that put every sitting
-## character's torso 1.21m below their own head does. A pose is written straight
-## onto a node's transform every physics frame, so the only way to catch one
-## being written wrong is to go and look at the transform.
-func torso_position() -> Vector3:
-	if _torso and _torso.is_inside_tree():
-		return _torso.global_position
-	return global_position + Vector3(0, 0.95, 0)
 
 func display_name() -> String:
 	return display

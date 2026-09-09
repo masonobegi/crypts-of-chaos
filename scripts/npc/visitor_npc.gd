@@ -19,13 +19,6 @@ func _ready() -> void:
 	super._ready()
 	add_to_group("visitor")
 
-func begin_visit(p_patient_id: String, ward_key: String, minutes: int) -> void:
-	patient_id = p_patient_id
-	_visit_minutes = minutes
-	state = State.ARRIVING
-	var h = get_tree().get_first_node_in_group("hospital")
-	if h:
-		goto(h.point_in(ward_key, "visitor_pt"))
 
 ## Park a visitor somewhere and let them stay there for a while with nobody to
 ## visit. Used by the corridor row.

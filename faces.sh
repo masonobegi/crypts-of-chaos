@@ -19,12 +19,19 @@ export FACES_TAG="${1:-x}"
 OUT=$(timeout 1200 xvfb-run -a -s "-screen 0 1600x900x24" "$GODOT" \
   --rendering-method gl_compatibility --rendering-driver opengl3 \
   --path "$DIR" --script res://tests/faces_run.gd 2>&1)
-echo "$OUT" | grep -E "face:|faces done|SCRIPT ERROR|Parse Error|SHADER ERROR|Shader compilation"
+echo "$OUT" | grep -E "face:|room for features|faces done|SCRIPT ERROR|Parse Error|SHADER ERROR|Shader compilation"
 if echo "$OUT" | grep -q "SHADER ERROR\|Shader compilation failed"; then
   echo "faces.sh: a shader did not compile" >&2
   exit 1
 fi
 if ! echo "$OUT" | grep -q "faces done"; then
   echo "faces.sh: rendered nothing" >&2
+  exit 1
+fi
+# ...AND A FACE WITH NO ROOM LEFT ON IT FOR FEATURES IS A FAILURE, NOT A NOTE.
+# See `_measure_contrast`: the darkest skin in the palette had a quarter of the
+# feature contrast of the palest, and no harness in this repo could see it.
+if echo "$OUT" | grep -q "there is no room left on it for a face"; then
+  echo "$OUT" | grep "no room left on it for a face" >&2
   exit 1
 fi

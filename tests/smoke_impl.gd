@@ -294,6 +294,7 @@ func _check_the_verbs_work() -> void:
 	_check_nothing_calls_a_method_that_is_not_there()
 	_check_every_constant_has_a_reader()
 	_check_every_signal_is_wired_at_both_ends()
+	_check_nothing_in_scripts_is_uncalled()
 	_check_the_money_on_the_hud_is_the_money_you_get()
 	_check_the_sound_design()
 
@@ -1899,6 +1900,54 @@ func _check_every_signal_is_wired_at_both_ends() -> void:
 	_ok(loose.is_empty(),
 		"every one of %d signals on the bus is wired at both ends%s"
 			% [n, "" if loose.is_empty() else " — " + ", ".join(loose)])
+
+## ...AND THE THIRD ONE: A FUNCTION NOBODY CALLS.
+##
+## Twenty-six were live when this went in, and they are the reason this project
+## keeps finding features that were built and never wired: a whole `Dressing`
+## piece — a stack of paper, a mug and a tray of pens — modelled and placed in no
+## room; a way for a fixture to emit a world event, which is the one thing that
+## makes anything in this game observable; five layout helpers on the UI kit;
+## a colour for a reputation system that was cut; two ways for the navigation
+## grid to be blocked at runtime; and three accessors for a held item.
+##
+## Counted by bare token across `scripts/` and `tests/`, so a name reached
+## through `call()`, `has_method()` or a `connect` by string counts as a caller.
+## Engine callbacks are exempt because the engine is the caller.
+func _check_nothing_in_scripts_is_uncalled() -> void:
+	var files: Array = _all_scripts("res://scripts")
+	files.append_array(_all_scripts("res://tests"))
+	var word := RegEx.create_from_string("[A-Za-z_][A-Za-z0-9_]*")
+	var decl := RegEx.create_from_string("^(?:static[\\t ]+)?func[\\t ]+(\\w+)[\\t ]*\\(")
+	var engine := ["_ready", "_process", "_physics_process", "_input",
+		"_unhandled_input", "_init", "_enter_tree", "_exit_tree", "_notification",
+		"_draw", "_to_string", "_get", "_set", "_get_property_list",
+		"_integrate_forces", "_initialize", "_finalize", "_iteration",
+		"_shortcut_input", "_unhandled_key_input", "_gui_input"]
+	var seen := {}
+	var decls: Array = []
+	for f in files:
+		var txt := FileAccess.get_file_as_string(f)
+		if txt == "":
+			continue
+		for m in word.search_all(txt):
+			var wd := m.get_string()
+			seen[wd] = int(seen.get(wd, 0)) + 1
+		if not String(f).begins_with("res://scripts"):
+			continue
+		var n := 0
+		for line in txt.split("\n"):
+			n += 1
+			var d := decl.search(line)
+			if d != null and not (d.get_string(1) in engine):
+				decls.append([d.get_string(1), f, n])
+	var orphans: Array = []
+	for d in decls:
+		if int(seen.get(String(d[0]), 0)) <= 1:
+			orphans.append("%s:%d %s" % [String(d[1]).get_file(), int(d[2]), String(d[0])])
+	_ok(orphans.is_empty(),
+		"every one of %d functions in scripts/ has something that calls it%s"
+			% [decls.size(), "" if orphans.is_empty() else " — " + ", ".join(orphans)])
 
 func _all_scripts(dir: String) -> Array:
 	var out: Array = []

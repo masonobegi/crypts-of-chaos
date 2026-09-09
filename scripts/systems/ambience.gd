@@ -31,7 +31,7 @@ const SPARSE := [
 	["cough", -28.0, 0.35, [0.9, 1.0, 1.0, 1.5]],
 	["pipe", -32.0, 0.2, [0.5, 0.6, 0.9, 1.7]],
 	["trolley", -31.0, 0.25, [1.2, 1.5, 1.6, 0.4]],
-	["door", -30.0, 0.3, [1.3, 1.6, 1.4, 0.5]],
+	["door_swing", -30.0, 0.3, [1.3, 1.6, 1.4, 0.5]],
 	["step", -33.0, 0.3, [1.3, 1.6, 1.4, 0.5]],
 	["beep_low", -32.0, 0.3, [1.0, 1.0, 1.0, 1.0]],
 	# Three that were synthesised and then never played by anything. A ward two
@@ -200,9 +200,19 @@ func _outside_pass(delta: float) -> void:
 		(float(GameState.minute_of_day) - float(Cases.DAY_START_MINUTE)) / maxf(span, 1.0),
 		0.0, 1.0)
 	var busy: float = sin(PI * through)
-	# On the effects slider, like every other positional sound in the game and
-	# unlike the room tone, which is levelled with the score.
-	var gain: float = linear_to_db(maxf(AudioMgr._sfx_gain(), 0.0001))
+	# ON THE AMBIENCE SLIDER, WITH THE ROOM TONE, and not on Effects with the
+	# coughs and the trolleys.
+	#
+	# It was on Effects because when it was written the only two choices were
+	# the score's slider and the effects slider, and it is not the score. Now
+	# there is a control that means what this is: these four emitters and the
+	# room tone are the level the building sits at rather than things that have
+	# just happened, and a player who turns "Ambience" down and goes on hearing
+	# traffic through the glass has been given a slider that does not do what
+	# it says. At the shipped defaults it is 0.7 x 0.75 rather than 0.7 x 1.0,
+	# so the world outside is 2.5 dB quieter than it was — which is inside the
+	# band the busy/quiet arc moves it through anyway.
+	var gain: float = linear_to_db(maxf(AudioMgr._ambience_gain(), 0.0001))
 	var db: float = lerpf(OUTSIDE_QUIET_DB, OUTSIDE_BUSY_DB, busy) + gain
 	var pitch: float = lerpf(OUTSIDE_QUIET_PITCH, OUTSIDE_BUSY_PITCH, busy)
 	for v in _outside:
@@ -210,6 +220,18 @@ func _outside_pass(delta: float) -> void:
 			continue
 		v.volume_db = db
 		v.pitch_scale = pitch
+
+## Re-level the window beds NOW rather than at the next half-second tick.
+##
+## `AudioMgr.refresh_music_volume()` is what `Settings` calls when any volume
+## key moves, and it can reach the room tone directly because the hum player is
+## its own child — these four are not, they belong to the ward. Without this
+## the Ambience slider moved the hum immediately and the windows up to half a
+## second later, which on a slider being dragged reads as one of the two not
+## being wired up.
+func relevel_outside() -> void:
+	_outside_timer = 0.0
+	_outside_pass(0.0)
 
 ## THE WARD BELONGS TO THE WARD, AND SO DOES EVERYTHING IT IS DOING TO THE MIX.
 ##

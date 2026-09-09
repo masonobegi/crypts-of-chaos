@@ -18,6 +18,24 @@ const DEFAULTS := {
 	"master_volume": 0.7,
 	"sfx_volume": 1.0,
 	"music_volume": 0.75,
+	## THE ROOM TONE HAD NO SLIDER OF ITS OWN AND WAS ON THE SCORE'S.
+	##
+	## The third slider was renamed from "Ambience" to "Music" deliberately —
+	## a player who wants the score turned down does not go looking under
+	## "Ambience" and concludes there is no way to do it — but the rename left
+	## the ward's own air handling, and now the world outside the windows,
+	## levelled by a control labelled after something else. So the one slider
+	## somebody reaches for to quieten a hospital turned down the vibraphone,
+	## and "Effects" — the other thing they would try — did not touch it
+	## either.
+	##
+	## 0.75 and not 0.8 or 1.0: it is exactly what `music_volume` defaults to,
+	## which is what the hum was levelled by until this key existed, so the
+	## gain staging measured in `AudioMgr.start_ambience` (-15 dB source, about
+	## -46 dBFS at the speaker, sixteen under the score) is the same number
+	## after this change as before it. A new slider that moves the default mix
+	## is a new mix, not a new control.
+	"ambience_volume": 0.75,
 	"mouse_sensitivity": 1.0,     ## multiplier on Player.MOUSE_SENS
 	"invert_y": false,
 	"fov": 78.0,
@@ -315,11 +333,15 @@ func apply_all() -> void:
 
 func _apply(key: String) -> void:
 	match key:
-		"master_volume", "sfx_volume", "music_volume":
+		# A KEY MISSING FROM THIS ARM IS A SLIDER THAT DOES NOTHING, which is
+		# the silent no-op gotcha 15 is about and is worse here than elsewhere:
+		# the control is on screen, it moves, and the number beside it changes.
+		"master_volume", "sfx_volume", "music_volume", "ambience_volume":
 			if Engine.has_singleton("AudioMgr") or AudioMgr != null:
 				AudioMgr.master_volume = float(get_value("master_volume"))
 				AudioMgr.sfx_volume = float(get_value("sfx_volume"))
 				AudioMgr.music_volume = float(get_value("music_volume"))
+				AudioMgr.ambience_volume = float(get_value("ambience_volume"))
 				AudioMgr.refresh_music_volume()
 		"fullscreen":
 			# Guarded: a headless run has no window to resize, and every test

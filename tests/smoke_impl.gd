@@ -1256,10 +1256,21 @@ func _check_nothing_calls_a_method_that_is_not_there() -> void:
 	# has those features until you go looking.
 	#
 	# Sounds are named as string literals at their call sites and in
-	# AmbienceSystem.SPARSE, so the source is the only place that knows. Two
-	# are named indirectly and are listed here rather than being special-cased
-	# in the scan: `AudioMgr.mumble` picks one of three banks by hash.
-	var snd_played := {"mumble": true, "mumble_lo": true, "mumble_hi": true}
+	# AmbienceSystem.SPARSE, so the source is the only place that knows. The
+	# voice banks are named INDIRECTLY — `AudioMgr.mumble` picks one by hash —
+	# and are exempted by reading the list it picks from rather than by a copy
+	# of the three names written out here, which is what it used to be.
+	#
+	# That matters more than tidiness. The hard-coded copy was the thing hiding
+	# the biggest fault in the audio layer: `Typewriter` and `mumble()` were a
+	# complete per-character dialogue voice system that NOTHING CALLED, and
+	# this exemption is what stopped the scan reporting three orphaned recipes
+	# and saying so. Read off the constant, a bank that stops being reachable
+	# goes red and a fourth bank is covered the day it is added.
+	var snd_played := {}
+	for bank in AudioMgr.MUMBLE_BANKS:
+		snd_played[String(bank)] = true
+	snd_played[AudioMgr.PA_BANK] = true
 	var snd_body := ""
 	for path in _all_scripts("res://scripts"):
 		if path.ends_with("AudioMgr.gd"):
@@ -2858,6 +2869,278 @@ func _check_the_score_comes_back_from_every_way_out(amb) -> void:
 			"and comes back up when the ward goes away (%.1f dB)" % released)
 		_ok(humming and quiet, "and the ward's air handling does not follow you to the menu"))
 
+## THE MOMENTS THE GAME IS ABOUT MUST NOT SOUND LIKE ITS BUTTONS.
+##
+## `examine` — a quarter of an hour, and the only verb in the game that cannot
+## be wrong — was one 60 ms `mumble_lo` blip. Adeyemi's rounds, the metronome
+## the whole timing game is played against, arrived on the `paper` rustle every
+## tutorial line uses. The returning lab result, the single delayed payoff in
+## the loop, was the `beep` that ordered it at 1.35. And eight o'clock, the
+## arrival of the man the entire game is about, was the `error` that plays when
+## a verb is refused.
+##
+## NOTHING IN THIS REPO COULD SEE ANY OF THAT. The two source scans above check
+## that every name asked for is a real recipe and that every recipe is named
+## somewhere — spelling, at both ends — and neither of them can tell that two
+## different events are asking for the SAME name. `AudioMgr.heard` is what
+## makes the question answerable at all: it records what was asked for before
+## the headless guard, so a check can assert that doing a thing makes a noise
+## rather than that a noise exists.
+##
+## Proven red by pointing `examine` back at `mumble_lo` and by giving the
+## result toast the `beep` back.
+const UI_SOUNDS := ["beep", "beep_low", "tick", "paper", "page", "error", "money"]
+
+func _check_the_big_moments_do_not_sound_like_buttons() -> void:
+	var hud = tree.get_first_node_in_group("hud")
+	if hud == null or not hud.has_method("_toast_sound"):
+		_fail("no HUD to listen to")
+		return
+	var w := WardDay.new()
+	tree.root.add_child(w)
+	w.start()
+	var acts := {}
+	AudioMgr.forget_heard()
+	w.examine(String(Cases.roster()[0]["id"]))
+	acts["examining somebody"] = _sounds_since()
+	# `_toast_sound` AND NOT `_show_toast`, which is why that split exists. The
+	# first version of this called `_show_toast` and thereby pushed three real
+	# panels into the corner of the screen — the column holds three — and broke
+	# `_check_nothing_is_said_into_a_closed_card`, which counts them. A check
+	# that changes the thing the next check measures is worse than no check.
+	AudioMgr.forget_heard()
+	hud.call("_toast_sound", "round")
+	acts["her round landing"] = _sounds_since()
+	AudioMgr.forget_heard()
+	hud.call("_toast_sound", "result")
+	acts["a result coming back"] = _sounds_since()
+	tree.root.remove_child(w)
+	w.free()
+
+	# EIGHT O'CLOCK IS READ OUT OF THE SOURCE AND NOT DRIVEN, and that is a
+	# deliberate hole rather than laziness: the same `_on_minute` that plays it
+	# calls `sign_off()` and emits `request_ui("review")`, so driving it here
+	# would close the shift and open the handover over the live ward this file
+	# spends two hundred checks on. The property it is in this list for is
+	# DISTINCTNESS, and a name is enough for that.
+	var wd := FileAccess.get_file_as_string("res://scripts/systems/ward_day.gd")
+	var vinnie: bool = wd.contains("AudioMgr.play(\"vinnie\"")
+	_ok(vinnie, "eight o'clock has a sound of its own")
+	acts["eight o'clock"] = ["vinnie"] if vinnie else []
+
+	var shared: Array = []
+	var seen := {}
+	for act in acts:
+		var names: Array = acts[act]
+		if names.is_empty():
+			shared.append("%s makes no sound at all" % act)
+			continue
+		for nm in names:
+			if UI_SOUNDS.has(String(nm)):
+				shared.append("%s plays the interface's own %s" % [act, String(nm)])
+			if seen.has(nm):
+				shared.append("%s and %s are the same sound (%s)"
+					% [act, String(seen[nm]), String(nm)])
+			seen[nm] = act
+	_ok(shared.is_empty(), "the four moments the game is about each sound like themselves%s"
+		% ("" if shared.is_empty() else " — " + ", ".join(PackedStringArray(shared))))
+
+	# ...AND ONE OF THEM SWELLS RATHER THAN STRIKES, which is a property of the
+	# WAVEFORM and the only reader of the `atk` key. Every other sound in the
+	# table peaks in its first four milliseconds because that is how long the
+	# attack ramp is; dread has to be audibly on its way before it is there.
+	# Proven red by deleting `atk` from the recipe, which puts the peak at
+	# sample 176 of 74,970.
+	var sw: AudioStreamWAV = AudioMgr._build("vinnie")
+	var d: PackedByteArray = sw.data
+	var n := d.size() / 2
+	var peak := 0
+	var peak_at := 0
+	for i in n:
+		var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		if absi(v) > peak:
+			peak = absi(v)
+			peak_at = i
+	_ok(n > 0 and peak_at > n / 8,
+		"and the one that is an arrival takes its time arriving (peak at %.2fs of %.2fs)"
+			% [float(peak_at) / float(sw.mix_rate), float(n) / float(sw.mix_rate)])
+
+## The distinct sound names asked for since the last `forget_heard()`.
+##
+## DISTINCT, because `play_at` records a name and then falls through to `play()`
+## when there is no scene to place a sound in — which is every headless
+## harness — so a positional sound is recorded twice and nothing about that is
+## worth asserting on.
+func _sounds_since() -> Array:
+	var out: Array = []
+	for nm in AudioMgr.heard:
+		if not out.has(String(nm)):
+			out.append(String(nm))
+	return out
+
+## EVERY SCREEN IN THE GAME OPENED AND CLOSED IN SILENCE.
+##
+## The patient card, the chart, records, the board, the pause menu, settings and
+## the morning briefing — the first thing a stranger ever sees — all appeared
+## and vanished without a sound, in a build where every BUTTON has a press and a
+## hover. Only two screens had audio and each hard-coded its own, which is
+## exactly why the other eight had none.
+##
+## Proven red by deleting either `AudioMgr.play` line in `UIRoot`.
+func _check_a_screen_is_heard(ui) -> void:
+	if ui == null or not ui.has_method("open"):
+		return
+	AudioMgr.forget_heard()
+	ui.call("open", "board", {})
+	var on_open: Array = _sounds_since()
+	AudioMgr.forget_heard()
+	ui.call("close")
+	var on_close: Array = _sounds_since()
+	_ok(not on_open.is_empty(), "a card arriving makes a sound (%s)" % str(on_open))
+	_ok(not on_close.is_empty(), "and so does one going away (%s)" % str(on_close))
+
+## A COMPLETE DIALOGUE VOICE SYSTEM THAT NOTHING CALLED.
+##
+## `class_name Typewriter` had exactly one reference anywhere in this repo and
+## it was the global class cache. `AudioMgr.mumble()` — three timbre banks, a
+## steady per-character pitch — was called from one place, inside that file. So
+## the whole thing was written, tuned and never wired to anything, and every
+## line anybody says in this game appeared instantly under one 220 ms grunt.
+##
+## The check the SCAN could have been is the one that hid it: `mumble`,
+## `mumble_lo` and `mumble_hi` were hard-coded as always-played, because they
+## are picked by hash and a source scan cannot see that. This drives the real
+## signal instead and listens for the blips.
+##
+## `_process` IS CALLED BY HAND. The typewriter reveals in real seconds and a
+## headless frame is not a real frame — waiting for frames here would mean
+## waiting for microseconds and asserting that nothing had been said yet.
+##
+## Proven red by putting `_subtitle.text = ...` back and dropping `_speak`.
+func _check_the_ward_speaks_in_a_voice(ui) -> void:
+	var hud = tree.get_first_node_in_group("hud")
+	if hud == null or hud.get("_tw") == null:
+		_fail("the HUD has no typewriter — nothing speaks")
+		return
+	# Nothing is captioned behind a card, which is most of what this file has
+	# open most of the time.
+	if ui != null and ui.has_method("close"):
+		ui.call("close")
+	var was_subs = Settings.get_value("subtitles")
+	Settings.set_value("subtitles", true)
+
+	AudioMgr.forget_heard()
+	EventBus.subtitle.emit("Oduya", "Is it my heart, doctor?", 4.0, "smoke_patient")
+	hud.get("_tw")._process(0.3)
+	var spoke: Array = _sounds_since()
+	var human := false
+	for nm in spoke:
+		if AudioMgr.MUMBLE_BANKS.has(String(nm)):
+			human = true
+	_ok(human, "a line of dialogue is spoken a character at a time, in a voice (%s)"
+		% str(spoke))
+
+	# AND THE BUILDING IS NOT A PERSON. A tannoy handed to the same hash would
+	# be dealt one of the three human banks, and a ceiling speaker that sounds
+	# like the man in bed two is a man in the ceiling.
+	AudioMgr.forget_heard()
+	EventBus.subtitle.emit("Tannoy", "Housekeeping to Room 103.", 4.0, AudioMgr.PA_VOICE)
+	hud.get("_tw")._process(0.3)
+	var paged: Array = _sounds_since()
+	_ok(paged.has(AudioMgr.PA_BANK), "and the tannoy is not one of the people (%s)"
+		% str(paged))
+
+	# ...AND THE TEXT IS BEING UNCOVERED RATHER THAN RETYPED. The visible label
+	# holds the WHOLE line and `visible_characters` walks along it, because
+	# `Typewriter` assigns a growing substring and a centred autowrapped label
+	# re-centres and re-wraps on every character — the sentence crawls sideways
+	# under itself while it arrives. This asserts the mirror is actually
+	# running: partway through, the label has its full text and is showing some
+	# of it.
+	hud.call("_reveal_subtitle")
+	var lbl: Label = hud.get("_subtitle")
+	var shown: int = lbl.visible_characters
+	_ok(lbl.text.length() > 0 and shown > 0 and shown < lbl.text.length(),
+		"and the line is uncovered in place rather than retyped (%d of %d)"
+			% [shown, lbl.text.length()])
+	Settings.set_value("subtitles", was_subs)
+
+## ONE BUZZING SAW WAS EVERY DOOR IN THE BUILDING, AND ONE PUSH PLAYED IT THREE
+## TIMES.
+##
+## `push()`, the `is_open()` threshold crossing a few frames later, and the
+## crossing back on the way shut all played the same 350 ms saw at 180 Hz with
+## a ten per cent pitch spread — one shove-and-let-go was that buzz three times
+## inside two seconds, on the most common physical interaction in a building
+## made of corridors.
+##
+## Counted as DISTINCT names over a whole swing, which is the property: three
+## events, three sounds. It also catches the other half — a door left to the
+## passive closer used to arrive home in silence, because the latch was played
+## only from the deliberate `pull_shut` path, and that is every door an NPC
+## ever touches.
+##
+## Proven red by pointing all three call sites back at one name.
+func _check_a_door_is_three_sounds() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		return
+	var door = null
+	for n in _all_nodes(h):
+		if n is SwingDoor and (n as SwingDoor).leaf != null:
+			door = n
+			break
+	if door == null:
+		_fail("no door to listen to")
+		return
+	AudioMgr.forget_heard()
+	door.push(door.global_position + door.global_transform.basis.x * 1.2)
+	var opened: Array = _sounds_since()
+	_ok(not opened.is_empty(), "pushing a door makes a sound (%s)" % str(opened))
+	# TEN SECONDS, AND SIXTY STEPS WAS NOT ENOUGH — the first version of this
+	# ran three seconds and reported the door as never latching, which looked
+	# exactly like the latch being broken. The passive closer is
+	# `lerpf(angle, 0, 1 - exp(-1.1 * delta))`, so from the stop at 1.75 rad it
+	# needs about eighty steps of a twentieth of a second to get inside the
+	# 0.02 the latch fires at. Driven by hand because a headless frame is
+	# microseconds long and this needs real time to pass.
+	for _i in 200:
+		door._physics_process(0.05)
+	var whole: Array = _sounds_since()
+	_ok(whole.size() >= 3,
+		"and a whole swing is three different sounds rather than one played three times (%s)"
+			% str(whole))
+	_ok(whole.has("door_latch"), "and it is audibly shut at the end of it (%s)" % str(whole))
+
+## A SLIDER THAT MOVES AND CHANGES NOTHING IS THE WORST KIND OF SETTING.
+##
+## The room tone and the world outside the windows were levelled by
+## `music_volume` — a control the settings screen calls "Music", renamed from
+## "Ambience" deliberately so a player could find the score. So the one slider
+## somebody reaches for to quieten a hospital turned down the vibraphone, and
+## "Effects" did not touch either of them.
+##
+## `_check_every_setting_has_a_row` proves the new key has a control. This
+## proves the control does something, which is the other half and the half
+## gotcha 15 is about: a key missing from `Settings._apply`'s match arm is a
+## slider that moves, prints a percentage, and is wired to nothing.
+##
+## Proven red by dropping `ambience_volume` from that match arm.
+func _check_the_ambience_slider_moves_the_ward() -> void:
+	if AudioMgr._hum_player == null:
+		return
+	var was: float = float(Settings.get_value("ambience_volume"))
+	Settings.set_value("ambience_volume", 1.0)
+	var loud: float = AudioMgr._hum_player.volume_db
+	Settings.set_value("ambience_volume", 0.1)
+	var quiet: float = AudioMgr._hum_player.volume_db
+	Settings.set_value("ambience_volume", was)
+	_ok(loud - quiet > 6.0,
+		"the Ambience slider is wired to the room tone (%.1f dB against %.1f)"
+			% [loud, quiet])
+
 ## The audio block, run together because several of them need the live
 ## AmbienceSystem and finding it is the fiddly part.
 func _check_the_sound_design() -> void:
@@ -2867,6 +3150,16 @@ func _check_the_sound_design() -> void:
 	_check_a_footstep_is_not_always_the_same_footstep()
 	_check_the_mix_has_a_shape()
 	_check_the_score_can_be_put_in_the_next_room()
+	# The CALL SITES, which is where all of the above could be perfect and the
+	# game still make one beep for everything. These need the live tree and
+	# they leave `AudioMgr.heard` in whatever state they finish in, which
+	# nothing else reads.
+	var ui = game.get("ui")
+	_check_a_screen_is_heard(ui)
+	_check_the_ward_speaks_in_a_voice(ui)
+	_check_the_big_moments_do_not_sound_like_buttons()
+	_check_a_door_is_three_sounds()
+	_check_the_ambience_slider_moves_the_ward()
 	var amb = tree.get_first_node_in_group("ambience")
 	if amb == null:
 		for n in _all_nodes(game):

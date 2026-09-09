@@ -57,14 +57,28 @@ var _next_voice3d := 0
 ## 48, quietly. They stay literals, because an autoload cannot safely read
 ## another autoload's constants while its own members are initialising — so
 ## the smoke run asserts this dictionary equals `Settings.DEFAULTS` instead.
-const VOLUME_FALLBACK := {"master_volume": 0.7, "sfx_volume": 1.0, "music_volume": 0.75}
+const VOLUME_FALLBACK := {"master_volume": 0.7, "sfx_volume": 1.0,
+	"music_volume": 0.75, "ambience_volume": 0.75}
 var master_volume: float = VOLUME_FALLBACK["master_volume"]
 var sfx_volume: float = VOLUME_FALLBACK["sfx_volume"]
 var music_volume: float = VOLUME_FALLBACK["music_volume"]
+var ambience_volume: float = VOLUME_FALLBACK["ambience_volume"]
 
 ## Effective gain for a one-shot effect, in linear terms.
 func _sfx_gain() -> float:
 	return clampf(master_volume * sfx_volume, 0.0, 1.0)
+
+## ...AND FOR THE TWO CONTINUOUS BEDS, which are neither effects nor music.
+##
+## The line is the useful part and it is not "positional or not": it is whether
+## the sound is an EVENT. A cough down the corridor, a trolley, a door two
+## rooms away are things that just happened and belong with every other thing
+## that just happened, on Effects. The room tone and the world beyond the
+## glazing are not happening — they are the level the building sits at, and the
+## slider a person reaches for to quieten a hospital is the one that should
+## move them. See `Settings.DEFAULTS["ambience_volume"]`.
+func _ambience_gain() -> float:
+	return clampf(master_volume * ambience_volume, 0.0, 1.0)
 
 ## name -> waveform, frequency, duration, decay, noise mix, sweep, vibrato,
 ## and — new, and the reason eleven of these stopped being the same sound —
@@ -102,7 +116,6 @@ const RECIPES := {
 	"heartbeat": {"w": "sine",  "f": 55.0,  "d": 0.25, "dec": 12.0, "n": 0.0,  "sw": -0.2,  "vib": 0.0},
 	"pickup":    {"w": "sine",  "f": 520.0, "d": 0.09, "dec": 16.0, "n": 0.05, "sw": 0.35,  "vib": 0.0},
 	"drop":      {"w": "sine",  "f": 300.0, "d": 0.1,  "dec": 18.0, "n": 0.15, "sw": -0.4,  "vib": 0.0},
-	"door":      {"w": "saw",   "f": 180.0, "d": 0.35, "dec": 7.0,  "n": 0.2,  "sw": -0.3,  "vib": 3.0},
 	"tick":      {"w": "noise", "f": 1800.0,"d": 0.04, "dec": 40.0, "n": 1.0,  "sw": 0.0,   "vib": 0.0, "filt": "hp"},
 	# THE CLOCK, WHICH IS THE ONLY THING IN THIS GAME THE PLAYER ACTUALLY
 	# SPENDS. Every verb costs minutes and `advance_to` skips them instantly, so
@@ -124,6 +137,61 @@ const RECIPES := {
 	# was read by nothing; on the filter corner it is the rumble of a wheel.
 	"trolley":   {"w": "noise", "f": 260.0, "d": 0.5,  "dec": 5.0,  "n": 1.0,  "sw": 0.1,   "vib": 7.0, "filt": "bp"},
 	"pipe":      {"w": "sine",  "f": 95.0,  "d": 0.8,  "dec": 3.5,  "n": 0.12, "sw": -0.15, "vib": 1.5},
+	# ---------------------------------------------------------------------
+	# THE FIVE MOMENTS THE GAME IS ACTUALLY ABOUT, WHICH SHARED THREE UI SOUNDS.
+	#
+	# `examine` costs a quarter of an hour, is the only verb in the game that
+	# cannot be wrong, and was a 60 ms `mumble_lo` blip. Adeyemi's four fixed
+	# rounds are the rhythm of the day and the one pattern a player has to learn
+	# by ear, and they arrived on the same `paper` as every tutorial line. The
+	# returning test result — the only delayed payoff in the whole loop, ten
+	# minutes to order and seventy-five to come back — was the `beep` you heard
+	# when you ordered it, a third higher. And eight o'clock, the arrival of the
+	# man the entire game is about, was a 220 ms square wave it shared with a
+	# failed button press.
+	#
+	# `round` and `lab` are single notes ON PURPOSE: the FIGURE is built at the
+	# call site (`HUD._chime`) out of two or three plays at fixed intervals,
+	# because a two-note chime cannot be written as one oscillator and a decay,
+	# and because an interval is what makes a sound learnable rather than
+	# merely different from the last one.
+	"curtain":   {"w": "noise", "f": 900.0, "d": 0.55, "dec": 4.2,  "n": 1.0,  "sw": -0.66, "vib": 0.0, "filt": "bp"},
+	"round":     {"w": "sine",  "f": 720.0, "d": 0.34, "dec": 9.0,  "n": 0.02, "sw": -0.10, "vib": 0.0},
+	"lab":       {"w": "sine",  "f": 990.0, "d": 0.45, "dec": 6.5,  "n": 0.0,  "sw": 0.0,   "vib": 2.5},
+	# THE ONLY SOUND IN THE GAME THAT SWELLS RATHER THAN STRIKES, which is the
+	# whole reason `atk` exists — see `_build`. Everything else in this table is
+	# a thing that has happened; this one is a thing that is arriving, and it
+	# has to be audibly on its way before it is here or it is just a low beep.
+	# 150 Hz, not 116, and the reason is the room tone's reason: at 116 with the
+	# low-pass corner tied to the fundamental it measured 80/19/0 across the
+	# three bands, which is `pipe` with a longer front on it and is not there
+	# at all on a laptop. At 150 it is 72/28/0 — still unmistakably the bottom
+	# of the mix, and now with something in it a television can reproduce.
+	"vinnie":    {"w": "saw",   "f": 150.0, "d": 1.7,  "dec": 0.70, "n": 0.10, "sw": -0.22, "vib": 0.55, "filt": "lp", "atk": 0.55},
+	# ---------------------------------------------------------------------
+	# ONE BUZZING SAW WAS EVERY DOOR IN A BUILDING MADE OF CORRIDORS, and one
+	# push played it three times: `push()`, the `is_open()` threshold crossing a
+	# few frames later, and the crossing back on the way shut, all inside two
+	# seconds with a ten per cent pitch spread. `door` was a 350 ms saw at
+	# 180 Hz with a 3 Hz vibrato on it, which is a kazoo, and it measured
+	# 43/46/11 across the three bands — a drone with no transient in it at all.
+	#
+	# A door is three separate events and they do not sound alike: the leaf
+	# moving is hinge and air, the latch is a bright tick collapsing into a
+	# thump, and somebody else's door swinging past you down the corridor is a
+	# short bump. See `SwingDoor`, which plays one of each at the moment it
+	# belongs to instead of the same buzz at all three.
+	"door_swing": {"w": "noise", "f": 320.0, "d": 0.42, "dec": 5.5,  "n": 1.0, "sw": -0.50, "vib": 0.0, "filt": "bp"},
+	"door_latch": {"w": "noise", "f": 1400.0,"d": 0.22, "dec": 13.0, "n": 1.0, "sw": -0.88, "vib": 0.0, "filt": "lp"},
+	"door_bump":  {"w": "noise", "f": 620.0, "d": 0.09, "dec": 32.0, "n": 1.0, "sw": -0.40, "vib": 0.0, "filt": "bp"},
+	# A FOURTH VOICE BANK, AND IT IS NOT A PERSON. The tannoy speaks through
+	# `Typewriter` like everybody else now, and a ceiling speaker that blips in
+	# the same three timbres as the man in bed two is a person hiding in the
+	# ceiling. A square wave with grit on it and no low end is what a small
+	# paging horn sounds like. Picked by `mumble()` off `PA_VOICE` and never by
+	# hash, so it can never be dealt to a character.
+	"mumble_pa": {"w": "square","f": 430.0, "d": 0.05, "dec": 40.0, "n": 0.22, "sw": -0.15, "vib": 0.0},
+	# ---------------------------------------------------------------------
 	# THIRTEEN RECIPES USED TO SIT HERE AND NOTHING PLAYED ANY OF THEM: a
 	# procedure bench (squelch, stitch, crack, bone_grind, inject, swab, wet),
 	# three that came in with a shift loop (snap, theatre, pills), a chair, and
@@ -357,10 +425,30 @@ const BUS_WORLD := "World"
 const BUS_VOICE := "Voice"
 const BUS_MUSIC := "Music"
 
+## THE THREE TIMBRES A PERSON CAN HAVE, as a list rather than as a literal
+## inside `mumble()`.
+##
+## It was a literal, and the smoke run's "every recipe is played by something"
+## scan carried a hard-coded copy of the same three names as a permanent
+## exemption — because these are chosen by hash rather than written at a call
+## site, so the source scan cannot see them. A hard-coded exemption is a list
+## that stops matching the code the moment either one moves; the check reads
+## THIS now, so a fourth bank is covered the day it is added and a bank dropped
+## from here without being deleted from `RECIPES` goes red.
+const MUMBLE_BANKS := ["mumble", "mumble_lo", "mumble_hi"]
+
+## The tannoy is not a person and must never be dealt a person's bank. Any
+## caller that speaks as the building passes this as the voice id — see
+## `PASystem.announce` — and it is a string no `npc_id` can collide with.
+const PA_VOICE := "@pa"
+const PA_BANK := "mumble_pa"
+
 ## Which recipes are somebody talking. `grunt` is what `NPCBody.say` plays under
 ## every line in the game, so this is not hypothetical routing: it is the key
-## the sidechain fires on, several times a minute, all shift.
-const VOICE_SOUNDS := {"grunt": true, "mumble": true, "mumble_lo": true, "mumble_hi": true}
+## the sidechain fires on, several times a minute, all shift — and now that
+## `Typewriter` is actually wired to a subtitle, so is every blip in this list.
+const VOICE_SOUNDS := {"grunt": true, "mumble": true, "mumble_lo": true,
+	"mumble_hi": true, "mumble_pa": true}
 
 func _ensure_buses() -> void:
 	_ensure_master_limiter()
@@ -523,6 +611,14 @@ func _build(name: String, variant := 0) -> AudioStreamWAV:
 	var dec: float = float(r["dec"])
 	var sweep: float = float(r["sw"])
 	var vibrato: float = float(r["vib"])
+	# HOW LONG IT TAKES TO ARRIVE. Four milliseconds for everything was right
+	# for as long as every sound in the table was a thing that had already
+	# happened — the attack existed only to stop the click on the first sample.
+	# `vinnie` is not one of those: eight o'clock is a thing approaching, and a
+	# swell with a 4 ms front on it is a low beep. Defaulted, so the other
+	# thirty-eight recipes are untouched, and floored well above zero because
+	# zero is exactly the click this multiplier exists to remove.
+	var atk: float = maxf(float(r.get("atk", 0.004)), 0.0005)
 	# Rendered as floats and converted at the end, because the level a filter
 	# leaves behind is not knowable in advance: a band-pass at this Q throws
 	# away six to ten decibels and a high-pass on a low corner throws away
@@ -569,7 +665,7 @@ func _build(name: String, variant := 0) -> AudioStreamWAV:
 				_: s = hi
 		var env: float = exp(-dec * t)
 		# Short fade-in kills the click on attack.
-		env *= clampf(t / 0.004, 0.0, 1.0)
+		env *= clampf(t / atk, 0.0, 1.0)
 		# ...AND A SHORT FADE-OUT KILLS THE ONE ON THE WAY OUT, which is the
 		# half that was missing. Every stream in the table stopped mid-decay
 		# and the mixer dropped straight to DC: measured on the built buffers,
@@ -1212,15 +1308,25 @@ func refresh_music_volume() -> void:
 	var g: float = maxf(master_volume * music_volume, 0.0001)
 	if _music_player != null:
 		_music_player.volume_db = -4.0 + linear_to_db(g) + music_duck
-	# The room tone is on the same two sliders and has to be re-levelled here
-	# too. start_ambience() runs exactly once, at ward load, and baked the slider
-	# values into volume_db at that moment — so a player who dragged "Ambience"
-	# (or Master) to zero silenced the score and then listened to a 50/74 Hz hum
-	# at its original level for the rest of the run, which is the one sound the
-	# slider is actually named after. Settings only knows to call this function,
-	# so this is where the hum gets told.
+	# The room tone has to be re-levelled here too, and it is on its OWN slider
+	# now rather than on the score's. `start_ambience()` runs exactly once, at
+	# ward load, and baked the slider values into volume_db at that moment — so
+	# a player who dragged a slider to zero silenced the score and then listened
+	# to the hum at its original level for the rest of the run. Settings only
+	# knows to call this function, so this is where the beds get told.
+	#
+	# The name of the function is now half a lie and it keeps it anyway: it is
+	# the one entry point Settings calls for every volume key, and splitting it
+	# would give the ambience slider a second place to be forgotten from.
 	if _hum_player != null:
-		_hum_player.volume_db = _hum_base_db + linear_to_db(g)
+		_hum_player.volume_db = _hum_base_db + linear_to_db(
+			maxf(_ambience_gain(), 0.0001))
+	# ...and so does the world outside the windows, which is the other bed and
+	# lives on the ward rather than in here. It is re-levelled every half
+	# second off the same gain, so this only has to not contradict it.
+	var amb := get_tree().get_first_node_in_group("ambience") if get_tree() != null else null
+	if amb != null and amb.has_method("relevel_outside"):
+		amb.call("relevel_outside")
 
 ## The hum's level BEFORE the sliders, remembered so refresh_music_volume() can
 ## re-apply them to it without start_ambience() being called again.
@@ -1248,7 +1354,7 @@ func start_ambience(volume_db := -15.0) -> void:
 		add_child(_hum_player)
 	_hum_player.stream = _build_hum()
 	_hum_base_db = volume_db
-	_hum_player.volume_db = volume_db + linear_to_db(maxf(master_volume * music_volume, 0.0001))
+	_hum_player.volume_db = volume_db + linear_to_db(maxf(_ambience_gain(), 0.0001))
 	_hum_player.play()
 
 func stop_ambience() -> void:
@@ -1256,7 +1362,40 @@ func stop_ambience() -> void:
 		_hum_player.stop()
 
 # ------------------------------------------------------------------ playback
+## WHAT WAS ASKED FOR, WHETHER OR NOT THERE WAS ANYWHERE TO PLAY IT.
+##
+## Every harness in this repo is headless, `play()` returns on the first line
+## when there is no audio device, and `AudioStreamPlayer.playing` is false in a
+## paused tree anyway — so until this existed NO check anywhere in the project
+## could assert that doing a thing makes a noise. The two source scans in the
+## smoke run verify that every name asked for is a recipe and that every recipe
+## is named somewhere, which is a check on the SPELLING at both ends; neither
+## of them can tell whether the sound a verb plays is the same one the button
+## next to it plays, and that is exactly how five of the game's biggest moments
+## came to share three interface beeps and how eleven recipes came to be one
+## white noise.
+##
+## A short ring of names, appended before the headless guard and before
+## anything else can fail. `play_at` records too, and records TWICE on the path
+## where it has no scene to place a sound in and falls through to `play()` —
+## which nothing cares about, because the question this answers is "was it
+## asked for", never "how many times".
+const HEARD_MAX := 32
+var heard: PackedStringArray = PackedStringArray()
+
+func _heard(name: String) -> void:
+	heard.append(name)
+	if heard.size() > HEARD_MAX:
+		heard.remove_at(0)
+
+## Everything since the last time somebody looked. The caller clears it; there
+## is no automatic reset, because a check that clears its own window is a check
+## that cannot be confused by the frame it happens to run in.
+func forget_heard() -> void:
+	heard.clear()
+
 func play(name: String, volume_db: float = -6.0, pitch: float = 1.0, variant := 0) -> void:
+	_heard(name)
 	# Nothing to play to. The headless harnesses call every verb in the game a
 	# few thousand times and each one wanted a sound, which buried the actual
 	# output of a probe under eighteen identical engine errors per simulated
@@ -1277,6 +1416,7 @@ func play(name: String, volume_db: float = -6.0, pitch: float = 1.0, variant := 
 
 func play_at(name: String, pos: Vector3, volume_db: float = -4.0, pitch: float = 1.0,
 		variant := 0) -> void:
+	_heard(name)
 	_ensure_voices()
 	var tree := get_tree()
 	if tree == null or tree.current_scene == null:
@@ -1300,13 +1440,34 @@ func play_at(name: String, pos: Vector3, volume_db: float = -4.0, pitch: float =
 ## `voice` is any stable string — an npc_id — so the same character always
 ## sounds like themselves. Three base timbres and a pitch offset off the hash is
 ## enough that a ward full of people is a ward full of different voices.
+##
+## The pitch comes from `voice_pitch()`, which is now the ONLY place a
+## character's pitch is decided. It used to be `0.82 + (h % 40) * 0.011` here
+## and `0.74 + (h % 1000) / 1000 * 0.68` in `NPCBody._voice_pitch()` — two
+## different numbers off the same string, so the grunt a person makes under a
+## line and the blips of the line itself were two different people. Nobody
+## could hear it while nothing called `mumble()` at all.
 func mumble(voice: String, volume_db := -20.0) -> void:
-	var h := absi(hash(voice))
-	var bank: String = ["mumble", "mumble_lo", "mumble_hi"][h % 3]
-	# A fifth of an octave either side, plus a small per-syllable wobble so a
-	# line is not a monotone.
-	var base := 0.82 + float(h % 40) * 0.011
-	play(bank, volume_db, base + randf_range(-0.06, 0.06))
+	# The building talking, which is a different instrument and not a voice on
+	# the ward's spread at all: a paging horn is band-limited, honky, and the
+	# same every time it speaks because there is only one of it.
+	if voice == PA_VOICE:
+		play(PA_BANK, volume_db, 0.97 + randf_range(-0.04, 0.04))
+		return
+	var bank: String = MUMBLE_BANKS[absi(hash(voice)) % MUMBLE_BANKS.size()]
+	# Plus a small per-syllable wobble, so a line is not a monotone.
+	play(bank, volume_db, voice_pitch(voice) + randf_range(-0.06, 0.06))
+
+## A STEADY PITCH PER CHARACTER, AND ONE DEFINITION OF IT.
+##
+## 0.74 to 1.42 — deep enough for an eighty-year-old man, high enough for a
+## twenty-two-year-old, and every step between is audibly a different person
+## rather than the same one on a bad day. It lived in `NPCBody._voice_pitch()`,
+## which is where it was measured; it is here because the HUD now needs it too
+## and the alternative was a second formula (see `mumble`). `NPCBody` still
+## caches its own answer, because a hash per line is a hash per line.
+func voice_pitch(voice: String) -> float:
+	return 0.74 + float(absi(hash(voice)) % 1000) / 1000.0 * 0.68
 
 ## Slight random pitch keeps repeated sounds from sounding like a machine gun —
 ## and, for the noise recipes, a different noise as well as a different pitch.

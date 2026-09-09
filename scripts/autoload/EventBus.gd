@@ -40,7 +40,22 @@ signal item_broke(item: Node)
 
 # ---------------------------------------------------------------- ui / feedback
 signal toast(text: String, kind: String)   ## info|good|bad|money|result|suspicion
-signal subtitle(speaker: String, text: String, seconds: float)
+## WHO IS SPEAKING, and not only what their name is.
+##
+## `voice` is a stable id — an `npc_id`, or `AudioMgr.PA_VOICE` for the tannoy —
+## and it is a fourth parameter rather than a lookup off `speaker` because
+## `speaker` is a DISPLAY name that the writing is free to change ("Sister
+## Nkemelu", "the man in the corridor") and a voice must not change with it.
+##
+## It exists because `scripts/ui/typewriter.gd` and `AudioMgr.mumble()` are a
+## complete, tuned, per-character dialogue voice system that nothing in the
+## game called: the only reference to `class_name Typewriter` anywhere in the
+## repo was the global class cache. The HUD set the label text complete and
+## started a timer, so every line anybody says arrived instantly with one
+## 220 ms grunt under it, and the file's own opening argument — "text that
+## arrives at the speed of speech, with a voice under it" — described a fix
+## that had been written, tuned and never wired in.
+signal subtitle(speaker: String, text: String, seconds: float, voice: String)
 ## Fixtures ask the UI layer to open a screen. context carries whatever the
 ## screen needs (patient id, machine reference, terminal mode).
 signal request_ui(id: String, context: Dictionary)

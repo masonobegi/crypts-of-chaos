@@ -93,7 +93,13 @@ func _unhandled_input(event: InputEvent) -> void:
 			if _came_from != "":
 				var back := _came_from
 				_came_from = ""
+				# One swap, one sound. Escape out of Settings is the same
+				# gesture `_back()` performs from the button, and the guard
+				# has to be in both places or the escape key gets a card put
+				# away and another taken out in the same frame.
+				_swapping = true
 				close()
+				_swapping = false
 				open(back, {})
 			else:
 				close()
@@ -105,9 +111,40 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 # ------------------------------------------------------------------ routing
+## EVERY SCREEN IN THE GAME OPENED AND CLOSED IN SILENCE.
+##
+## The patient card, the chart, records, the handover board, the pause menu,
+## settings, controls, credits and the morning briefing — the first thing a
+## stranger ever sees — all appeared and vanished with no sound at all, in a
+## build where every BUTTON has a press sound and a hover sound. A game whose
+## widgets are louder than the modals they live in reads as unfinished, and
+## this is the most repeated interaction in the loop: a card opened five times
+## a bed, five beds a night, nine nights.
+##
+## It goes HERE and not in the screens. Two screens already play their own and
+## that is precisely why the other eight were silent — a per-screen sound is a
+## thing eight people have to remember, and eight of them did not.
+##
+## The two that own theirs are listed rather than asked, because the screens
+## are built from a path table by `script.new()` and a `owns_open_sound`
+## property would have to be declared on each of them — which is the same
+## per-screen bookkeeping this exists to remove. `review` opens on a folder
+## being opened and `day_over` on a rubber stamp; both are the sound of the
+## thing that just happened, not of a card arriving, and a rustle underneath
+## either would only blur it.
+const OWN_OPEN_SOUND := {"review": true, "day_over": true}
+const CARD_UP_DB := -14.0
+const CARD_DOWN_DB := -16.0
+## True while `open()` is replacing one screen with another. Without it a swap
+## fires the down and the up in the same frame, which is not two sounds — it is
+## one muddy one.
+var _swapping := false
+
 func open(id: String, ctx: Dictionary = {}) -> void:
 	if current != null:
+		_swapping = true
 		close()
+		_swapping = false
 	var screen: Control = null
 	if SCREEN_SCRIPTS.has(id):
 		var script: GDScript = load(SCREEN_SCRIPTS[id])
@@ -123,6 +160,12 @@ func open(id: String, ctx: Dictionary = {}) -> void:
 		return
 	current = screen
 	current_id = id
+	# Before `add_child`, so the card and its sound arrive together. A sheet
+	# lifted off the pile: the same material as the one that goes down on
+	# `close()`, a fifth higher, because up and down is the one thing a player
+	# needs to be able to tell without looking.
+	if not OWN_OPEN_SOUND.has(id):
+		AudioMgr.play("paper", CARD_UP_DB, 1.25)
 	add_child(screen)
 	# The pause menu, settings, controls and credits are plain Controls built by
 	# `_build_simple`, not ScreenBases, so they have no `_focus_first` of their
@@ -148,7 +191,12 @@ func _back() -> void:
 		return
 	var to := _came_from
 	_came_from = ""
+	# One gesture, one sound. Backing out of Settings into the pause menu is a
+	# card being replaced, not a card being put away and a different one taken
+	# out a frame later; the sound the player wants is the one that arrives.
+	_swapping = true
 	close()
+	_swapping = false
 	open(to, {})
 
 func close() -> void:
@@ -160,6 +208,10 @@ func close() -> void:
 	# visit opened already waiting for a key nobody had asked it to want.
 	if current_id == "controls":
 		_listening_for = ""
+	# The card going back down — but not when it is being swapped for another
+	# one, which is a single gesture and gets a single sound. See `_swapping`.
+	if not _swapping:
+		AudioMgr.play("paper", CARD_DOWN_DB, 0.85)
 	current.queue_free()
 	current = null
 	current_id = ""
@@ -318,6 +370,14 @@ func _settings_screen() -> Control:
 	# `music_volume`, which is what it has always actually been.
 	v.add_child(UIKit.slider("Music", Settings.get_value("music_volume"),
 		0.0, 1.0, 0.05, func(x): Settings.set_value("music_volume", x), pct))
+	# ...AND THE ROW THE RENAME ABOVE LEFT WITHOUT ONE. Calling the score's
+	# slider "Music" was right, and it left the room tone and the world outside
+	# the windows — the two continuous beds, which are the sound of the
+	# building itself — being turned down by a control named after the
+	# vibraphone, with "Effects" not touching them either. A player wanting a
+	# quieter hospital had nothing to drag.
+	v.add_child(UIKit.slider("Ambience", Settings.get_value("ambience_volume"),
+		0.0, 1.0, 0.05, func(x): Settings.set_value("ambience_volume", x), pct))
 
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("CONTROLS AND CAMERA", 13, UIKit.INK_DIM))

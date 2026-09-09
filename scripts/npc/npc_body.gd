@@ -1097,7 +1097,10 @@ func say(text: String, seconds := 3.2) -> void:
 	# meant a patient muttering in Room 101 was captioned from the treatment bay,
 	# which made the whole channel read as UI noise rather than as the ward.
 	if _player_can_hear():
-		EventBus.subtitle.emit(display, text, seconds)
+		# The voice id is what `_voice_pitch()` is keyed on, not the display
+		# name, so the subtitle's blips and the grunt below it are the same
+		# person even for somebody whose name on screen changes.
+		EventBus.subtitle.emit(display, text, seconds, voice_id())
 	# EIGHT PEOPLE ON A WARD SHOULD NOT BE ONE MAN CLEARING HIS THROAT.
 	#
 	# Every line anybody spoke — Adeyemi, the patients, Ruth Kerrigan, Ms
@@ -1117,15 +1120,27 @@ func say(text: String, seconds := 3.2) -> void:
 ## cannot drift between two lines from the same person.
 var _voice := 0.0
 
+## The string everything about this character's voice is keyed on. One
+## definition, because two of them is two different people: the grunt under a
+## line and the blips of the line itself both derive from this, and until the
+## subtitle carried it the HUD had no way to ask.
+##
+## PUBLIC, and that is not tidiness. `WardDay` puts words in Adeyemi's mouth
+## from a system with no reference to her body — she answers when you send her
+## to check on somebody — and her `npc_id` is assigned by index in `game.gd`,
+## so the only honest way for that line to be the same woman as the one walking
+## the ward is to ask her what she is called.
+func voice_id() -> String:
+	return npc_id if npc_id != "" else display
+
 func _voice_pitch() -> float:
 	if _voice > 0.0:
 		return _voice
-	var who := npc_id if npc_id != "" else display
-	var h: int = absi(hash(who))
-	# 0.74 to 1.42 — deep enough for an eighty-year-old man, high enough for a
-	# twenty-two-year-old, and every step in between is audibly a different
-	# person rather than the same one on a bad day.
-	_voice = 0.74 + float(h % 1000) / 1000.0 * 0.68
+	# The formula moved to `AudioMgr.voice_pitch` — unchanged, and now read by
+	# `mumble()` as well, so the grunt under a line and the blips that reveal
+	# it are the same person. Two copies of it was gotcha 48 waiting to be
+	# audible, and it became audible the moment the typewriter was wired in.
+	_voice = AudioMgr.voice_pitch(voice_id())
 	return _voice
 
 func _player_can_hear() -> bool:

@@ -106,7 +106,19 @@ func _on_minute(now: int) -> void:
 	_last_call(now)
 	_registrar_moves(now)
 	if now >= Cases.DEBT_DUE_MINUTE:
-		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "bad")
+		# "debt", not "bad". The arrival of the man the entire game is about
+		# shared a 220 ms square wave with a failed button press — the same
+		# `error` the game plays when a patient refuses a verb. It has its own
+		# kind now, which is the only place a toast kind exists for the sound
+		# rather than for the colour; the colour is still the bad one.
+		EventBus.toast.emit("Eight o'clock. He is in the corridor.", "debt")
+		# PLAYED HERE AND NOT FROM THE TOAST, because the two lines under this
+		# one open the review, and the HUD holds its whole toast queue behind a
+		# card. On the toast the sound would have arrived some minutes later
+		# from behind the End of Shift screen; the swell has to land on the
+		# clock reaching eight. Dry rather than positional: it is dread, and
+		# dread does not have a direction.
+		AudioMgr.play("vinnie", -7.0)
 		sign_off()
 		EventBus.request_ui.emit("review", {})
 
@@ -516,7 +528,12 @@ func examine(pid: String) -> String:
 	st["examined"] = true
 	_log("examine", {"pid": pid,
 		"found_unwell": not bool(Cases.by_id(pid).get("truly_well", true))})
-	AudioMgr.play("mumble_lo", -14.0)
+	# A CURTAIN, NOT A GRUNT. This is a quarter of an hour, it is the only verb
+	# in the game that cannot be wrong, and it was one 60 ms `mumble_lo` blip —
+	# the same three-frame saw that a patient answering a question makes, for
+	# the act of going round the bed and actually looking at somebody. What is
+	# audible from outside a drawn curtain is the curtain.
+	AudioMgr.play("curtain", -13.0)
 	_spend(EXAMINE_COST)
 	return examination_of(pid)
 
@@ -708,7 +725,7 @@ func nurse_check(pid: String) -> ChartEntry:
 	# she had not spoken once in the entire game. Being asked to go and confirm
 	# something about a man she wrote up as comfortable an hour ago is the
 	# moment she would.
-	EventBus.subtitle.emit("Adeyemi", _adeyemi_on(pid, well), 4.5)
+	EventBus.subtitle.emit("Adeyemi", _adeyemi_on(pid, well), 4.5, _nurse_voice())
 	entry_written.emit(e)
 	AudioMgr.play("paper", -13.0, 1.15)
 	_spend(NURSE_COST)
@@ -725,6 +742,40 @@ func _told_her_what_to_look_for(pid: String) -> bool:
 		if e.supports_stay():
 			return true
 	return false
+
+## HER VOICE, ASKED OF HER RATHER THAN GUESSED AT.
+##
+## The subtitle now carries a voice id and the HUD blips a line out in it, so
+## "who is this" has an audible answer for the first time — and there are two
+## Adeyemis to get wrong. `game.gd` gives her body an `npc_id` of `nurse_0`,
+## assigned by INDEX, while everything in this file calls her by name; keying
+## this line on the name would have made the woman who answers you when you
+## send her to a bed a different person from the woman walking past you in the
+## corridor, which is precisely the fault `AudioMgr.voice_pitch` was collapsed
+## into one place to prevent.
+##
+## Falls back to her name, because every headless probe in this repo builds a
+## `WardDay` with no ward around it and there is then nobody to ask. Matched on
+## the display name rather than on the id for the same reason: the id is an
+## index and the name is what she is.
+##
+## `is_inside_tree()` FIRST, AND NOT `get_tree() != null`. Calling `get_tree()`
+## on a node that is not in the tree does not quietly return null — it pushes
+## `Parameter "data.tree" is null` and then returns null, and `frontier_impl`
+## builds a detached `WardDay` for each of 2,601 plays a ward. The first
+## version of this guard read the result instead of the precondition and put
+## 1,778 engine errors into a suite run that still passed, because the quiet
+## check watches the play run and the unit run and not the probes. Ask whether
+## you are in a tree before you ask the tree for anything.
+func _nurse_voice() -> String:
+	if is_inside_tree():
+		var t := get_tree()
+		for n in t.get_nodes_in_group("staff"):
+			if not n.has_method("voice_id"):
+				continue
+			if String(n.get("display")).contains(DB.WARD_NURSE):
+				return String(n.call("voice_id"))
+	return DB.WARD_NURSE
 
 ## What she says when you send her to look at somebody. Never a mechanic and
 ## never a warning — she is not the game's conscience, she is a colleague who
@@ -1050,7 +1101,11 @@ func _self_discharges(from: int) -> void:
 		# roughly half the times it fired, at the moment it most wanted to land.
 		EventBus.toast.emit(Cases.about(pid,
 			"%s has signed {themselves} out." % String(c.get("name", pid))), "bad")
-		AudioMgr.play("door", -10.0)
+		# Somebody leaving the ward, heard from wherever you happen to be
+		# standing. Dry rather than positional, because the point of this event
+		# is that you did not see it happen — and the swing rather than the
+		# latch, because a latch with no leaf moving in front of it is a click.
+		AudioMgr.play("door_swing", -12.0)
 		patient_changed.emit(pid)
 		_update_objective()
 
@@ -1163,9 +1218,15 @@ func _routine_round(at: int, which := 0) -> void:
 		# give. The hour is also the thing worth learning: she is at ten, one,
 		# four and seven, and a note within forty-five minutes of any of them
 		# reads as an argument.
+		# "round", not "info", and the only reason is the SOUND. Her four fixed
+		# rounds are the metronome the whole timing game is played against, and
+		# they arrived on the `paper` rustle every tutorial line uses — so the
+		# one rhythm a player has to learn by ear was indistinguishable from
+		# the game explaining itself. A falling three-note figure is a thing
+		# you can count without looking. The colour is unchanged.
 		EventBus.toast.emit("%d:%02d — %s has been round. %d note%s on the chart."
 			% [at / 60, at % 60, DB.WARD_NURSE, wrote,
-				"" if wrote == 1 else "s"], "info")
+				"" if wrote == 1 else "s"], "round")
 	_log("round", {"at": at})
 
 ## What a nurse writes at a bedside four times a night — EIGHT on a watched day,

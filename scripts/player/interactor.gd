@@ -213,6 +213,40 @@ func _handle_input(delta: float) -> void:
 const LONG_PRESS := 0.42
 var _long_fired := false
 
+# ------------------------------------------------------------------ hold audio
+## A PERCENTAGE ON SCREEN AND NOTHING IN THE EARS.
+##
+## A hold rendered "Use [43%]" every frame and played nothing at the start, at
+## any point during it, or at the end. That is a feedback channel half wired:
+## the player watches a number instead of feeling a commitment, and on a pad —
+## which `play_run.gd`'s `day` plan proves the whole game is playable on —
+## there is no confirmation of any kind that the press registered.
+##
+## A tick per quarter, rising; a `ding` at the top; and a single low note if a
+## hold that had actually got going is abandoned. Quarters rather than a
+## continuous tone because the sound has to say HOW FAR, and four steps is
+## something a person can count while doing something else.
+##
+## SAY WHAT IS AND IS NOT LIVE, because half of this is a seam. `use_seconds()`
+## is declared on `Fixture` and OVERRIDDEN BY NOTHING IN THE GAME — the same
+## kind of unimplemented hook as `can_grab` and `on_dropped` below — so the
+## progress readout and these quarter-ticks belong to a path nothing currently
+## reaches. The LONG_PRESS branch is the one a player actually meets: a tap on
+## a patient talks to them and a hold opens their card, two outcomes of one
+## button that sounded identical, which is the half of this that was really
+## broken.
+const HOLD_STEPS := 4
+## Below this, letting go is not an abandoned hold — it is a tap that happened
+## to be on a holdable, and it must be silent. `_cancel_use` is called from
+## several paths including simply looking away, so without a floor the cancel
+## note fires every time the crosshair leaves a door.
+const HOLD_ABANDON := 0.15
+## Which quarter has been ticked. MINUS ONE and not zero, so the first frame of
+## a hold ticks: "the press registered" is the one thing a hold has to say
+## immediately, and a first tick at 25% is a quarter of a second of nothing
+## while a player wonders whether the button did anything.
+var _use_step := -1
+
 ## How far a target you have already pressed on is allowed to drift before the
 ## press is dropped. The ray is 2.9m; this is "they took a step".
 const KEEP_DISTANCE := 3.6
@@ -255,16 +289,23 @@ func _handle_use(delta: float) -> void:
 		if Input.is_action_just_pressed("interact"):
 			_use_target = target
 			_use_progress = 0.0
+			_use_step = -1
 			_long_fired = false
 		if Input.is_action_pressed("interact") and _use_target == target:
 			_use_progress += delta / LONG_PRESS
 			if _use_progress >= 1.0 and not _long_fired:
 				_long_fired = true
+				# NOT the quarter-ticks. This branch is 0.42 seconds long, so
+				# four of them would be a machine gun rather than a count —
+				# what a long press needs to say is only "that was the long
+				# one", and it needs to say it a fifth above the tap so the two
+				# outcomes of the same button are told apart by pitch.
+				AudioMgr.play("ding", -18.0, 1.2)
 				target.call("interact_held", player, held)
 		if Input.is_action_just_released("interact") and _use_target == target:
 			if not _long_fired:
 				target.call("interact", player, held)
-			_cancel_use()
+			_cancel_use(true)
 		return
 
 	if Input.is_action_just_pressed("interact") and hold_time <= 0.0:
@@ -275,12 +316,26 @@ func _handle_use(delta: float) -> void:
 		if _use_target != target:
 			_use_target = target
 			_use_progress = 0.0
+			_use_step = -1
 		_use_progress += delta / hold_time
+		# One tick per quarter of the way, rising — so the readout in the
+		# prompt and the sound are saying the same thing, and a player looking
+		# at the person rather than at the corner of the screen still knows how
+		# far in they are. Compared against a STEP INDEX rather than against
+		# the progress, because a boundary tested with a float and a delta is
+		# crossed twice on a slow frame and never on a fast one.
+		var step := clampi(int(_use_progress * float(HOLD_STEPS)), 0, HOLD_STEPS - 1)
+		if step > _use_step:
+			_use_step = step
+			AudioMgr.play("beep", -24.0, 0.9 + _use_progress * 0.5)
 		EventBus.interact_prompt.emit(
 			"%s  [%d%%]" % [_prompt_title(target), int(_use_progress * 100.0)],
 			"hold [%s]" % Settings.prompt_label("interact"))
 		if _use_progress >= 1.0:
-			_cancel_use()
+			# Quiet, because the confirm below IS the end of the hold and a
+			# cancel note under it would say the opposite.
+			_cancel_use(true)
+			AudioMgr.play("ding", -14.0)
 			target.call("interact", player, held)
 	elif not Input.is_action_pressed("interact"):
 		_cancel_use()
@@ -299,8 +354,17 @@ func _still_near(n: Node) -> bool:
 		return false
 	return player.global_position.distance_to(n3.global_position) <= KEEP_DISTANCE
 
-func _cancel_use() -> void:
+## `silent` is for the two paths where the hold ENDED rather than was dropped:
+## the completion below the confirm, and a tap released on a tap-or-hold
+## target. Everything else that reaches here is an abandonment — including
+## simply looking away, which is why the note is floored at `HOLD_ABANDON` and
+## why zeroing the progress here is what stops it repeating every frame the
+## crosshair is off the door.
+func _cancel_use(silent := false) -> void:
+	if not silent and _use_progress > HOLD_ABANDON:
+		AudioMgr.play("beep_low", -22.0)
 	_use_progress = 0.0
+	_use_step = -1
 	_use_target = null
 	_long_fired = false
 

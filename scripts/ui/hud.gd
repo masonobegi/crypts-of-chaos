@@ -192,6 +192,7 @@ func _build() -> void:
 	_subtitle_panel.add_child(_subtitle)
 	_subtitle_panel.visible = false
 	add_child(_subtitle_panel)
+	_build_typewriter()
 
 	# ---- toasts
 	_toasts = UIKit.vbox(6)
@@ -268,6 +269,7 @@ func _process(delta: float) -> void:
 		_subtitle_timer -= delta
 		if _subtitle_timer <= 0.0:
 			_subtitle_panel.visible = false
+	_reveal_subtitle()
 	_drain_toasts(delta)
 	_refresh_objective_arrow()
 
@@ -467,8 +469,13 @@ func set_modal(on: bool) -> void:
 		_subtitle_timer = 0.0
 		if _subtitle_panel != null:
 			_subtitle_panel.visible = false
+		# AND THE VOICE STOPS WITH THE TEXT. The HUD is under UIRoot, whose
+		# process mode is ALWAYS, so a typewriter left running when a card
+		# opened would have gone on blipping its way through a sentence that is
+		# no longer on screen — somebody talking from behind the paperwork.
+		_hush()
 
-func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
+func _on_subtitle(speaker: String, text: String, seconds: float, voice := "") -> void:
 	# Nothing goes behind a card. The world is still talking — it just is not
 	# worth showing half a sentence for.
 	if _modal_open:
@@ -480,6 +487,73 @@ func _on_subtitle(speaker: String, text: String, seconds: float) -> void:
 	_subtitle.text = "%s: \"%s\"" % [speaker, text]
 	_subtitle_panel.visible = true
 	_subtitle_timer = seconds
+	_speak(voice)
+
+# ------------------------------------------------------------------ the voice
+## A COMPLETE DIALOGUE VOICE SYSTEM THAT NOTHING CALLED.
+##
+## `scripts/ui/typewriter.gd` declares `class_name Typewriter`, and the only
+## reference to that name anywhere in this repo was the global class cache:
+## reveal at the speed of speech, a blip every three characters, punctuation
+## silent, per-character pitch through `AudioMgr.mumble` — written, tuned, and
+## never wired to anything. This label was set complete and given a timer, so
+## every spoken line in the game appeared instantly under one 220 ms grunt, and
+## the first playtester's note ("the subtitles go so quick") was answered by a
+## file the game did not run.
+##
+## IT DRIVES A SECOND, HIDDEN LABEL AND NOT THIS ONE, and the reason is
+## `Typewriter._apply`: it assigns `label.text` a growing substring. On a
+## CENTRED label with autowrap on — which is what a subtitle is — every
+## character re-centres the line and every wrap re-flows it, so the sentence
+## crawls sideways under itself as it arrives. Setting the full text once and
+## revealing it with `visible_characters` lays the line out exactly where it
+## will finish and then uncovers it, which is the only version of this that
+## holds still. A hidden Label costs nothing: an invisible child is skipped by
+## its container, and it is parented rather than orphaned because an unparented
+## Control is gotcha 53.
+var _tw: Typewriter = null
+var _tw_label: Label = null
+
+func _build_typewriter() -> void:
+	_tw_label = Label.new()
+	_tw_label.visible = false
+	_subtitle_panel.add_child(_tw_label)
+	_tw = Typewriter.new()
+	_tw.name = "Typewriter"
+	add_child(_tw)
+
+func _speak(voice: String) -> void:
+	if _tw == null or _tw_label == null:
+		return
+	# The quotes and the speaker's name are revealed with the rest of it. A
+	# prefix that is already there when the line starts arriving reads as a
+	# caption with a caption underneath; this reads as somebody talking.
+	_tw.speak(_tw_label, _subtitle.text, voice)
+	_subtitle.visible_characters = 0
+
+## Cut a line off mid-word without saying the rest of it.
+##
+## `Typewriter` has no `stop()`, and `hurry()` is not one: it jumps `_shown` to
+## the end and calls `_apply`, which walks the blip loop over every character
+## that had not arrived yet and fires them all in a single frame — a burst of
+## thirty mumbles, which is a worse sound than the one being cancelled.
+## Speaking an EMPTY line ends the current one on the next frame with the blip
+## loop finding nothing to say, which is what "she stopped talking" is.
+func _hush() -> void:
+	if _tw != null and _tw.is_running():
+		_tw.speak(_tw_label, "", "")
+	if _subtitle != null:
+		_subtitle.visible_characters = -1
+
+## Mirror the hidden label's progress onto the visible one. Cheap — one integer
+## a frame — and it is what keeps the layout still; see `_build_typewriter`.
+func _reveal_subtitle() -> void:
+	if _subtitle == null:
+		return
+	if _tw != null and _tw.is_running():
+		_subtitle.visible_characters = _tw_label.text.length()
+	elif _subtitle.visible_characters >= 0:
+		_subtitle.visible_characters = -1
 
 ## Toasts arrive in bursts — five patients handed over at 8:00, a run of
 ## machine alarms, an argument's worth of complaints — and six of them landing
@@ -542,7 +616,10 @@ func _show_toast(text: String, kind: String) -> void:
 	# layer is not allowed to tell you.
 	match kind:
 		"good": colour = UIKit.HUD_GOOD
-		"bad": colour = UIKit.HUD_BAD
+		# "debt" is eight o'clock, and it is the same red as any other bad
+		# news. It is a kind of its own only because it needs a sound of its
+		# own — see below.
+		"bad", "debt": colour = UIKit.HUD_BAD
 		"money": colour = UIKit.HUD_MONEY
 	var p := UIKit.panel(Color(0.08, 0.10, 0.12, 0.88), 5, 0)
 	var l := UIKit.label(text, 14, colour, HORIZONTAL_ALIGNMENT_LEFT, true)
@@ -562,14 +639,7 @@ func _show_toast(text: String, kind: String) -> void:
 	# spend five minutes ordering it and seventy-five waiting, and it arrived as
 	# a small grey rectangle in the corner with no sound, frequently while a card
 	# was open on top of it. It could land and expire completely unseen.
-	match kind:
-		"money": AudioMgr.play("money", -14.0)
-		"bad": AudioMgr.play("error", -14.0)
-		"result": AudioMgr.play("beep", -10.0, 1.35)
-		# Deliberately silent: suspicion toasts are the game telling you
-		# something you are supposed to notice out of the corner of your eye.
-		"suspicion": pass
-		_: AudioMgr.play("paper", -20.0, 1.1)
+	_toast_sound(kind)
 	while _toasts.get_child_count() > 3:
 		_toasts.get_child(0).free()
 	# Guard every await: the HUD can be torn down while a toast is still
@@ -594,6 +664,69 @@ func _show_toast(text: String, kind: String) -> void:
 	await tw.finished
 	if is_instance_valid(p):
 		p.queue_free()
+
+## WHICH SOUND A TOAST KIND MAKES, on its own and away from the panel.
+##
+## Split out of `_show_toast` so a check can ask the question without building
+## a Control: the smoke run compares what the game's four biggest moments play
+## against what its interface plays, and a version of that check that went
+## through `_show_toast` pushed three real toast panels into the corner of the
+## screen and broke the unrelated check that counts them.
+##
+## THREE OF THESE ARE NOT UI EVENTS AT ALL. The returning result was the same
+## `beep` that ordered it, a third higher, so the payoff and the request were
+## one sound; the ward round was the `paper` rustle every tutorial line uses;
+## and eight o'clock was the `error` a refused verb plays. Those are the three
+## most dramatic beats in a shift and all three were indistinguishable from the
+## interface. The two that are chimes are FIGURES rather than notes, because an
+## interval is what makes a sound recognisable from the other end of a corridor.
+func _toast_sound(kind: String) -> void:
+	match kind:
+		"money": AudioMgr.play("money", -14.0)
+		"bad": AudioMgr.play("error", -14.0)
+		# The lab, answering. A rising fourth: it is the one thing in the day
+		# that arrives without being asked for a second time.
+		"result": _chime("lab", -12.0, [1.0, 1.3348], 0.17)
+		# Adeyemi, having been round. Three notes falling a tone at a time —
+		# the same figure every time, so it becomes a clock rather than a
+		# notification.
+		"round": _chime("round", -15.0, [1.0, 0.891, 0.794], 0.13)
+		# Him. SILENT HERE, and played by `WardDay` at the instant the clock
+		# reaches eight instead — which is the one case on this list where the
+		# sound must not ride on the toast. The same `_on_minute` that emits it
+		# calls `sign_off()` and opens the review, so the card is up before the
+		# queue drains and `_drain_toasts` holds everything behind a card:
+		# routed through here, the arrival of the loan shark would have
+		# sounded some minutes later, from behind the End of Shift screen.
+		"debt": pass
+		# Deliberately silent: suspicion toasts are the game telling you
+		# something you are supposed to notice out of the corner of your eye.
+		"suspicion": pass
+		_: AudioMgr.play("paper", -20.0, 1.1)
+
+## A FIGURE, NOT A NOTE — and it lives here rather than in `AudioMgr` because
+## an `AudioMgr` recipe is one oscillator, one envelope and one decay.
+##
+## A single note is exactly what made the returning lab result indistinguishable
+## from the beep that ordered it: same recipe, one third up. Two or three plays
+## of one recipe at fixed ratios is an INTERVAL, and an interval is the thing an
+## ear learns. After three shifts "she has been round" should be a shape you
+## hear from the far end of the corridor without reading the corner of the
+## screen, and that cannot be built out of a timbre.
+##
+## Started and not awaited: the caller is `_show_toast`, which still has a panel
+## to build, so everything after the first `await` here happens on later frames
+## while it carries on. Re-guarded at every resumption for the same reason the
+## toast timer is — a scene change or a headless rebuild frees the HUD out from
+## under a coroutine, and resuming on a freed node throws.
+func _chime(name: String, db: float, steps: Array, gap: float) -> void:
+	for i in steps.size():
+		if not is_inside_tree():
+			return
+		AudioMgr.play(name, db, float(steps[i]))
+		if i >= steps.size() - 1:
+			return
+		await get_tree().create_timer(gap).timeout
 
 func set_crosshair_visible(v: bool) -> void:
 	_crosshair.visible = v

@@ -106,4 +106,9 @@ func announce(text: String) -> void:
 	await get_tree().create_timer(0.45).timeout
 	if not is_inside_tree():
 		return
-	EventBus.subtitle.emit("Tannoy", text, 5.5)
+	# THE BUILDING IS NOT A PERSON. Every other speaker in the game passes an
+	# npc_id and gets one of three human timbres at a pitch off the hash; a
+	# ceiling horn given a hash would be dealt somebody's voice, and a paging
+	# speaker that sounds like the man in bed two is a man hiding in the
+	# ceiling. `AudioMgr.PA_VOICE` selects the fourth bank explicitly.
+	EventBus.subtitle.emit("Tannoy", text, 5.5, AudioMgr.PA_VOICE)

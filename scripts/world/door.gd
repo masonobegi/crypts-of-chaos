@@ -44,6 +44,36 @@ var _latch := 0.0
 ## ever eases a door that has run out of momentum.
 var _closing := false
 
+# ------------------------------------------------------------------ sound
+## A DOOR IS THREE EVENTS AND IT USED TO BE ONE SOUND PLAYED THREE TIMES.
+##
+## `push()`, the `is_open()` threshold crossing three or four frames later, and
+## the crossing back on the way shut all played the same 350 ms saw at 180 Hz
+## with a ±10-15% pitch spread — so one shove-and-let-go was that buzz three
+## times inside two seconds, on the most common physical interaction in a
+## building made of corridors. Distant doors in `AmbienceSystem.SPARSE` were
+## the same buzz again.
+##
+## Now: `door_swing` when somebody moves the leaf on purpose, `door_latch` when
+## it comes to rest shut, and `door_bump` for the threshold crossing — quiet,
+## and only when the swing was not one the player just started, because that
+## crossing is exactly the moment their own push is still ringing.
+##
+## The bump is NOT deleted, which was the tempting simplification: `push()` and
+## `pull_shut()` are the player's verbs and NPCs use neither. `NPCBody`
+## (`_open_door_ahead` and `_push_obstacles`) calls `open_for()` directly, so
+## the crossing is the only audio a door gets when somebody else walks through
+## it, and deleting it makes every staff member in the building a ghost.
+const SWING_QUIET := 0.75
+var _swing_quiet := 0.0
+## True while the leaf is at rest against its frame. The latch used to be
+## played only from the `_closing` branch — the deliberate pull — so a door
+## left to the passive closer, which is every door an NPC ever touches and most
+## of the ones the player does, arrived home in silence. Tracked as a state
+## rather than fired from one code path, because there are two ways for a door
+## to reach zero and both of them are a latch.
+var _latched := true
+
 ## How long a swing keeps its direction before the door will listen to where the
 ## person leaning on it is standing again.
 ##
@@ -125,6 +155,7 @@ func _physics_process(delta: float) -> void:
 	var held := _held > 0
 	_held = maxi(0, _held - 1)
 	_latch = maxf(0.0, _latch - delta)
+	_swing_quiet = maxf(0.0, _swing_quiet - delta)
 	if _closing:
 		var was := angle
 		angle += angular_velocity * delta
@@ -135,9 +166,9 @@ func _physics_process(delta: float) -> void:
 			_closing = false
 			_open_dir = 0.0
 			_latch = 0.0
-			AudioMgr.play_at_var("door", global_position, -16.0, 0.1)
 		leaf.rotation.y = angle
 		_was_open = is_open()
+		_settle()
 		return
 	if absf(angular_velocity) > 0.001 or absf(angle) > 0.001:
 		angle += angular_velocity * delta
@@ -166,7 +197,32 @@ func _physics_process(delta: float) -> void:
 	var open := is_open()
 	if open != _was_open:
 		_was_open = open
-		AudioMgr.play_at_var("door", global_position, -20.0, 0.15)
+		# Somebody ELSE's door. Suppressed for three quarters of a second after
+		# a deliberate push or pull, because that crossing happens three or
+		# four frames into a swing the player has already heard start — which
+		# is where two of the three copies of the old buzz came from.
+		if _swing_quiet <= 0.0:
+			AudioMgr.play_at_var("door_bump", global_position, -22.0, 0.18)
+	_settle()
+
+## The latch, from whichever of the two ways home the leaf took.
+##
+## `pull_shut()` drives the `_closing` branch to exactly zero; everything else
+## — an NPC's `open_for`, a shove that ran out of momentum — is eased to
+## somewhere under 0.02 by the passive closer and never reaches zero at all. A
+## sound fired from the first path only meant that the doors the player deals
+## with deliberately clicked shut and every other door in the building went
+## quiet mid-swing. A hysteresis band rather than a threshold, so a leaf
+## resting a hair off its frame and jittering cannot chatter the latch.
+func _settle() -> void:
+	if _latched:
+		if absf(angle) > 0.06:
+			_latched = false
+		return
+	if absf(angle) >= 0.02 or absf(angular_velocity) >= 0.05:
+		return
+	_latched = true
+	AudioMgr.play_at_var("door_latch", global_position, -17.0, 0.12)
 
 func angle_deg() -> float:
 	return rad_to_deg(angle)
@@ -220,7 +276,8 @@ func open_for(pos: Vector3, speed := OPEN_SPEED) -> void:
 func push(from: Vector3) -> void:
 	_closing = false
 	open_for(from, PUSH_SPEED)
-	AudioMgr.play_at_var("door", global_position, -14.0)
+	AudioMgr.play_at_var("door_swing", global_position, -14.0)
+	_swing_quiet = SWING_QUIET
 
 ## Pull it shut behind you.
 ##
@@ -235,7 +292,11 @@ func pull_shut() -> void:
 	_closing = true
 	_held = 0
 	angular_velocity = -signf(angle) * PUSH_SPEED
-	AudioMgr.play_at_var("door", global_position, -14.0)
+	# Three decibels under the push: pulling a door to is a smaller gesture
+	# than shoving one open, and the latch that follows it a moment later is
+	# the loud half of the act.
+	AudioMgr.play_at_var("door_swing", global_position, -17.0)
+	_swing_quiet = SWING_QUIET
 
 func slam() -> void:
 	_closing = false
@@ -246,6 +307,11 @@ func slam() -> void:
 	angular_velocity = 0.0
 	if leaf:
 		leaf.rotation.y = 0.0
+	# A slam IS the latch, at volume. Marked as settled so `_settle` does not
+	# put a small click on the end of a bang on the next physics frame.
+	_latched = true
+	_was_open = false
+	_swing_quiet = SWING_QUIET
 	AudioMgr.play_at("thud", global_position, -6.0)
 	var pl = get_tree().get_first_node_in_group("player")
 	if pl != null and pl.has_method("shake") \

@@ -823,6 +823,24 @@ with it because a lost afternoon does not care which.
     is HSV off the person's own skin now, and the bottom three entries of
     `Appearance.SKIN` are lifted about six hundredths. `./faces.sh` MEASURES it
     per subject and exits non-zero under `FLOOR`; proven red at 50.
+86. **THE FOURTH NOTE ABOUT THE EYES, AND THE FIRST ONE THAT NAMED IT: "a lot
+    of the eyes look like they're demons".** The first three — goggles,
+    walleyed, permanently surprised — were all symptoms of the white sclera, and
+    dropping the sclera fixed those three and not this one, because what makes a
+    dark eye read as a hole is not the missing white. Three measurable things:
+    the almond was 6.5cm on a 42cm head, a SIXTH of the face per eye; it was
+    very nearly pure black, which no part of a person is; and it was shiny —
+    roughness 0.35, so it carried a specular sheen and read as glass.
+    5.5cm, a very dark warm brown, and matte. **An upper lid was tried first and
+    was worse, which is the half worth keeping**: a flattened sphere in the
+    person's own skin cutting the top quarter off the almond is the textbook
+    answer and it produced a heavy pale hood over a low dark crescent — every
+    character looked drugged. Three overlapping ellipsoids around one eye
+    (socket, lid, almond) is a lumpy mess at any weight, and raising and
+    thinning it only turned the hood into a pale blob catching its own light.
+    This style does not want lid geometry; it wants a smaller, warmer, matte
+    mark. Checked at the cast distance as well as at eighty centimetres, because
+    the suspicion layer is built on "is this person looking at me".
 
 ## Design rules that are load-bearing
 

@@ -98,7 +98,7 @@ const ARM_REST_Z := 0.055
 ## mouth. The catchlight stays unshaded, because a catchlight IS a light.
 ## Gotcha 40's lesson exactly: take a reading off a render before choosing a
 ## colour, and take it off the hardest case rather than the average one.
-const EYE_INK := Color(0.030, 0.028, 0.034)
+const EYE_INK := Color(0.058, 0.040, 0.034)
 const MOUTH_INK := Color(0.080, 0.045, 0.048)
 
 const BROW_REST_Y := 0.052
@@ -480,11 +480,30 @@ func _build_body() -> void:
 	# at me"), which is why it is spelled out here rather than left to be
 	# rediscovered.
 	for sx in [-1.0, 1.0]:
-		# The opening: about two to one, and wider than the old white was tall.
-		# Near-black rather than black, so it sits in the palette with the ink.
-		var eye := Build.mi(Build.sphere_mesh(0.030), Build.mat(EYE_INK, 0.35, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.070, 0.008, _face_z(0.070, 0.008, -0.0025)), Vector3.ZERO,
-			Vector3(1.15, 0.62, 0.30))
+		# SMALLER, WARMER AND MATTE, WHICH IS WHAT STOPS IT BEING A DEMON.
+		#
+		# Reported from outside as "a lot of the eyes look like they\'re demons",
+		# and that is the fourth separate note about this one piece. The first
+		# three — goggles, walleyed, permanently surprised — were all symptoms of
+		# the white sclera, and dropping the sclera fixed those and not this one,
+		# because what makes a dark eye read as a hole is not the missing white.
+		# It is three things that are all measurable: the almond was 6.5cm on a
+		# 42cm head, which is a SIXTH of the width of the face per eye; it was
+		# very nearly pure black, which no part of a person is; and it was shiny
+		# — roughness 0.35, so it carried a specular sheen and read as glass.
+		#
+		# AN UPPER LID WAS TRIED FIRST AND WAS WORSE, which is the useful half.
+		# A flattened sphere in the person\'s own skin, cutting the top quarter
+		# off the almond, is the textbook answer and it produced a heavy pale
+		# hood over a low dark crescent: every character looked drugged. Three
+		# overlapping ellipsoids around one eye — socket, lid, almond — is a
+		# lumpy mess at any weight, and the second attempt (lid raised, thinner,
+		# barely tinted) was still a pale blob catching its own light. The style
+		# this game is in does not want lid geometry; it wants a smaller, warmer,
+		# matte mark.
+		var eye := Build.mi(Build.sphere_mesh(0.030), Build.mat(EYE_INK, 0.85, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.068, 0.007, _face_z(0.068, 0.007, -0.0025)), Vector3.ZERO,
+			Vector3(0.92, 0.50, 0.30))
 		# A CATCHLIGHT, AND IT IS NOT MIRRORED. One small bright dot is what
 		# stops a dark eye reading as a hole, and it is the only thing keeping
 		# an eye legible on the darkest skin in `Appearance.SKIN` — where a dark
@@ -494,9 +513,9 @@ func _build_body() -> void:
 		# catchlight is a reflection of a light and there is one sun. Mirroring
 		# it reads as decoration; not mirroring it reads as lit, and costs
 		# exactly the same.
-		var glint := Build.mi(Build.sphere_mesh(0.0074),
-			Build.unshaded(Color(0.97, 0.98, 1.0)),
-			Vector3(sx * 0.070 - 0.010, 0.017, _face_z(sx * 0.070 - 0.010, 0.017, 0.0062)),
+		var glint := Build.mi(Build.sphere_mesh(0.0058),
+			Build.unshaded(Color(0.93, 0.95, 0.97)),
+			Vector3(sx * 0.068 - 0.009, 0.0122, _face_z(sx * 0.068 - 0.009, 0.0122, 0.0062)),
 			Vector3.ZERO,
 			Vector3(1.0, 1.0, 0.30))
 		_head.add_child(eye)
@@ -532,9 +551,13 @@ func _build_body() -> void:
 		# patient read as a patient with no eyes. The lash line is the same
 		# colour as the eye and a third of its height, which is what a shut eye
 		# looks like from any distance.
-		var lid := Build.mi(Build.rbox_mesh(Vector3(0.068, 0.011, 0.018), 0.005),
-			Build.mat(EYE_INK, 0.35, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.070, 0.010, _face_z(0.070, 0.010, 0.0036)))
+		# ...AND IT IS THE WIDTH OF THE OPEN EYE, NOT WIDER. The bar was 6.8cm
+		# against an almond that is now 5.5, so a sleeping patient had a wider
+		# line across the face than an awake one has an eye — which reads as a
+		# stitch rather than as a shut eye.
+		var lid := Build.mi(Build.rbox_mesh(Vector3(0.056, 0.010, 0.018), 0.0045),
+			Build.mat(EYE_INK, 0.85, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.068, 0.009, _face_z(0.068, 0.009, 0.0036)))
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)

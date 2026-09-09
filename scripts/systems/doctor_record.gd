@@ -68,7 +68,27 @@ const STRIKE_FOR := {
 	ReviewSystem.OUTCOME_ESCALATED: 3,
 }
 const STRIKES_TO_STRIKE_OFF := 5
+
+## HOW MANY STRIKES A CAREER MAY EVER GET BACK.
+##
+## A clean night paid a strike back and a flagged night charged one, with no
+## limit either way — so alternating one bad night with one good one was net
+## zero, forever, at five strikes' distance from the end. That is not a brake,
+## it is a treadmill: the every-night liar and the doctor who stops when she
+## starts reading his charts came out identical, and "crime pays only if you can
+## stop" had nothing behind it. The career probe found it directly — lying every
+## single night PAID OFF THE WHOLE DEBT on one of its three seeds.
+##
+## A CAP rather than a streak, deliberately. A streak makes the record
+## order-dependent and the design rule is that the career score is a pure read
+## over counters that never reset; a cap is one more counter. Three is chosen
+## against the numbers rather than picked: an honest career takes eight nights
+## and is flagged once or twice on a bad draw, so it never reaches the cap,
+## while a liar who does it every night is flagged four or five times and finds
+## the fourth refund is not there.
+const FORGIVENESS := 3
 var strikes := 0
+var forgiven := 0
 var flagged_nights := 0
 var clean_nights := 0
 var nights := 0
@@ -79,6 +99,7 @@ static func load_from_state() -> DoctorRecord:
 	r.counts = Dictionary(d.get("counts", {})).duplicate(true)
 	r.referrals = int(d.get("referrals", 0))
 	r.strikes = int(d.get("strikes", 0))
+	r.forgiven = int(d.get("forgiven", 0))
 	r.flagged_nights = int(d.get("flagged_nights", 0))
 	r.clean_nights = int(d.get("clean_nights", 0))
 	r.nights = int(d.get("nights", 0))
@@ -89,6 +110,7 @@ func save_to_state() -> void:
 		"counts": counts.duplicate(true),
 		"referrals": referrals,
 		"strikes": strikes,
+		"forgiven": forgiven,
 		"flagged_nights": flagged_nights,
 		"clean_nights": clean_nights,
 		"nights": nights,
@@ -133,7 +155,14 @@ func record_night(findings: Array, verdict: String) -> void:
 			# career.
 			seen[k] = true
 			counts[k] = times(k) + 1
-	strikes = maxi(0, strikes + int(STRIKE_FOR.get(verdict, 0)))
+	var delta: int = int(STRIKE_FOR.get(verdict, 0))
+	if delta < 0:
+		# She has a long memory and a short supply of the benefit of the doubt.
+		if forgiven >= FORGIVENESS or strikes <= 0:
+			delta = 0
+		else:
+			forgiven += 1
+	strikes = maxi(0, strikes + delta)
 	match verdict:
 		ReviewSystem.OUTCOME_ESCALATED:
 			referrals += 1

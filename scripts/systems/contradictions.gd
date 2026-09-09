@@ -96,6 +96,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 	out.append_array(_sent_home_unwell(by_patient, truth))
 	out.append_array(_never_laid_eyes_on_them(truth))
 	out.append_array(_they_came_back(truth))
+	out.append_array(_sent_home_with_nowhere_to_go(truth))
 
 	out.append_array(pattern_findings(entries, truth))
 	# A file already marked for review is read by somebody whose eyes are open.
@@ -244,6 +245,64 @@ static func _never_laid_eyes_on_them(truth: Dictionary) -> Array:
 	out.append(f)
 	return out
 
+## AND THE OTHER ONE THE PLAYER DID NOT AUTHOR: YOU SENT SOMEBODY HOME AND THERE
+## IS NO HOME.
+##
+## `no_care_at_home` had a defensive half and no offensive half. It appeared in
+## this file four times, every one of them an EXEMPTION protecting a hold — and
+## nowhere at all on the other side of the ledger. All six socially-stuck people
+## in the game are `truly_well`, so `_sent_home_unwell` returns early on them,
+## `audit_beds`'s `emptied_wrongly` requires `not well`, and `end_day`'s bounce
+## list requires `not truly_well`. Sending the eighty-one-year-old found on the
+## floor twice this year back to an empty flat, or the woman with no heating
+## since November, produced no finding, no audited bed, no readmission and no
+## line on the record. It is the third ward's entire authored subject and the
+## review could not see it.
+##
+## Ungated, like `_they_came_back` and for the same reason: it is a fact about a
+## person, not a question about a document, and no amount of not-looking may
+## make it go away. Graded like `_sent_home_unwell` — worse if you ASKED them
+## and did it anyway, because then you were told.
+static func _sent_home_with_nowhere_to_go(truth: Dictionary) -> Array:
+	var out: Array = []
+	for pid in truth:
+		var t: Dictionary = truth[pid]
+		if not bool(t.get("no_care_at_home", false)):
+			continue
+		if not bool(t.get("discharged", false)):
+			continue
+		# Somebody who signs themselves out has decided for themselves, and
+		# that is not on your conscience — the same carve-out `audit_beds`
+		# makes for a walkout.
+		if bool(t.get("self_discharged", false)):
+			continue
+		var f := Finding.new()
+		f.kind = "sent_home_with_nowhere_to_go"
+		f.patient_id = pid
+		f.axis = "where they went"
+		if bool(t.get("was_asked", false)):
+			f.severity = 0.80
+			f.question = Cases.about(pid,
+				"You sat down with %s and {they} told you there was nobody at "
+				+ "home. And then you sent {them} there.") % _who(t)
+			f.because = ("They told you there was nobody at home and you "
+				+ "discharged them anyway.")
+		elif bool(t.get("looked_at", false)):
+			f.severity = 0.60
+			f.question = Cases.about(pid,
+				"%s has nobody at home. You had the file open. Where did "
+				+ "{they} go last night?") % _who(t)
+			f.because = "You knew enough to know, and they went home to nothing."
+		else:
+			f.severity = 0.50
+			f.question = Cases.about(pid,
+				"%s has nobody at home, and it is written on the front of "
+				+ "{their} file. Did you read it?") % _who(t)
+			f.because = ("Nowhere to go is on the record, and the bed was "
+				+ "emptied without anybody reading it.")
+		out.append(f)
+	return out
+
 ## THEY CAME BACK.
 ##
 ## The one finding in this file the PLAYER did not author. Everything else is a
@@ -310,6 +369,25 @@ static func _conflicting_observations(pid: String, list: Array, t: Dictionary) -
 			var a = list[i]
 			var b = list[j]
 			if a.is_objective() or b.is_objective():
+				continue
+			# NOWHERE TO GO AND MEDICALLY SETTLED DO NOT DISAGREE.
+			#
+			# A `SOCIAL` claim supports staying and a round's `SETTLED` supports
+			# going home, so this rule read the two as a contradiction — but
+			# they are answers to different questions, and the honest social
+			# hold is a bed where BOTH are true. It cost every honest career in
+			# the probe from night three: the social note lands within
+			# forty-five minutes of the ten o'clock round about half the time,
+			# and a bed CONTRADICTED is at minimum flagged.
+			#
+			# This is the FIFTH reader of the same fact after
+			# `_uncorroborated_stay`, `_written_in_front_of_them`,
+			# `pattern_findings` and `audit_beds`, and it is exactly the lesson
+			# the fourth one taught: when a rule is exempted, grep for
+			# everything else that reads what it reads.
+			if bool(t.get("no_care_at_home", false)) \
+					and (a.claim == ChartEntry.Claim.SOCIAL
+						or b.claim == ChartEntry.Claim.SOCIAL):
 				continue
 			if not a.concerns_same_moment_as(b):
 				continue
@@ -1211,9 +1289,14 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 		# on their own is not on your conscience.
 		var t: Dictionary = truth[pid]
 		var kept: bool = bool(t.get("held", false))
+		# EMPTIED WRONGLY IS NOT ONLY A MEDICAL QUESTION. This required `not
+		# well`, so the six people in this game who are perfectly well and have
+		# nowhere to go were not audited on the way out at all — their beds did
+		# not appear on the list the reviewer walks, whatever was written.
 		var emptied_wrongly: bool = bool(t.get("discharged", false)) \
-			and not bool(t.get("well", true)) \
-			and not bool(t.get("self_discharged", false))
+			and not bool(t.get("self_discharged", false)) \
+			and (not bool(t.get("well", true))
+				or bool(t.get("no_care_at_home", false)))
 		if not kept and not emptied_wrongly:
 			continue
 		var a := BedAudit.new()
@@ -1295,7 +1378,11 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 		if not a.billed:
 			var caught := false
 			for f in a.findings:
-				if f.kind == "sent_home_unwell":
+				# BOTH WAYS OF EMPTYING A BED WRONGLY. The medical one and the
+				# one that has nothing to do with medicine, which is the third
+				# ward's whole subject and was not in this list at all.
+				if f.kind == "sent_home_unwell" \
+						or f.kind == "sent_home_with_nowhere_to_go":
 					caught = true
 			if caught:
 				a.state = Defence.CONTRADICTED

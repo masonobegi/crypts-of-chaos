@@ -84,9 +84,17 @@ func test_the_money_creates_the_decision() -> void:
 		"discharging everybody does not pay the debt — refusing to hold anyone fails")
 	w.queue_free()
 
+	# DOT KERRIGAN GOES ON THE LIST. She is medically fine and has nobody at
+	# home, and sending her back to an empty flat is a finding now — so a day
+	# that holds only Marchetti is not the honest day any more, it is the honest
+	# medicine with a social discharge in it.
 	var w2 := _day()
 	w2.set_disposition("marchetti", "hold")
-	for id in ["kerrigan", "brennan", "oduya", "blake"]:
+	w2.advance_to(11 * 60)
+	w2.write_entry("kerrigan", ChartEntry.Claim.SOCIAL,
+		String(Cases.by_id("kerrigan").get("social_reason", "Nothing arranged.")), 11 * 60)
+	w2.set_disposition("kerrigan", "hold")
+	for id in ["brennan", "oduya", "blake"]:
 		w2.set_disposition(id, "discharge")
 	var honest: int = int(w2.projected()["earned"])
 	t.gt(float(honest), float(Cases.DEBT_DUE),
@@ -1458,6 +1466,77 @@ func test_the_office_door_is_the_thing_that_shuts() -> void:
 	behind_a_door.queue_free()
 
 	WardDay.witness_stub = was
+
+## AND SENDING THEM THERE IS AUDITED, WHICH IT WAS NOT.
+##
+## `no_care_at_home` appeared in `Contradictions` four times and every one of
+## them was an EXEMPTION protecting a hold. There was nothing at all on the
+## other side of the ledger: all six socially stuck people in the game are
+## `truly_well`, so `_sent_home_unwell` returned early on them, `audit_beds`'s
+## `emptied_wrongly` required `not well`, and the bounce list required it too.
+## Sending the eighty-one-year-old found on the floor twice this year back to an
+## empty flat produced no finding, no audited bed, no readmission and no line on
+## the record — on the ward whose entire authored subject that is.
+func test_sending_them_home_to_nowhere_is_audited() -> void:
+	var w := _day_three()
+	var social := ""
+	for c in Cases.roster():
+		if bool(c.get("no_care_at_home", false)):
+			social = String(c["id"])
+			break
+	t.ok(social != "", "this ward has somebody with nowhere to go")
+	w.advance_to(11 * 60)
+	w.read_chart(social)
+	for c in Cases.roster():
+		w.set_disposition(String(c["id"]), "discharge")
+	var res := w.end_day()
+	var kinds: Array = []
+	for f in res["findings"]:
+		if String(f.patient_id) == social:
+			kinds.append(String(f.kind))
+	t.ok(kinds.has("sent_home_with_nowhere_to_go"),
+		"emptying that bed is a question she asks (%s)" % str(kinds))
+	var rv := ReviewSystem.new()
+	rv.begin(res["findings"], w.records.entries, w.review_truth())
+	while not rv.finished():
+		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])
+	t.ok(int(rv.outcome()["indefensible"]) > 0,
+		"and the bed does not stand up (%d indefensible)" % int(rv.outcome()["indefensible"]))
+	w.queue_free()
+	GameState.day = 1
+
+## SHE HAS A SHORT SUPPLY OF THE BENEFIT OF THE DOUBT.
+##
+## A clean night paid a strike back and a flagged night charged one, with no
+## limit either way — so alternating one bad night with one good one was net
+## zero, forever, at five strikes' distance from the end. That is a treadmill
+## rather than a brake: the every-night liar and the doctor who stops when she
+## starts reading his charts came out identical, and the career probe found it
+## directly, with lying every single night paying off the whole debt.
+##
+## A CAP, not a streak: a streak makes the record order-dependent, and the
+## design rule is that the career score is a pure read over counters that never
+## reset.
+func test_she_only_forgives_three_times() -> void:
+	DoctorRecord.wipe()
+	var r := DoctorRecord.load_from_state()
+	for i in 8:
+		r.record_night([], ReviewSystem.OUTCOME_FLAGGED)
+		r.record_night([], ReviewSystem.OUTCOME_CLEAR)
+	t.eq(r.forgiven, DoctorRecord.FORGIVENESS,
+		"eight bad nights and eight good ones use up every refund there is")
+	t.gt(float(r.strikes), 4.0,
+		"and the alternating liar drifts upward rather than standing still (%d)" % r.strikes)
+	# ...AND AN HONEST CAREER NEVER REACHES IT. Eight nights, flagged twice on a
+	# bad draw, is the shape this has to leave alone.
+	DoctorRecord.wipe()
+	var h := DoctorRecord.load_from_state()
+	for i in 8:
+		h.record_night([], ReviewSystem.OUTCOME_FLAGGED if i == 2 or i == 5
+			else ReviewSystem.OUTCOME_CLEAR)
+	t.lt(float(h.strikes), float(DoctorRecord.STRIKES_TO_STRIKE_OFF),
+		"an honest career flagged twice in eight is nowhere near struck off (%d)" % h.strikes)
+	DoctorRecord.wipe()
 
 ## NOWHERE TO GO IS NOT YOUR WORD ALONE.
 ##

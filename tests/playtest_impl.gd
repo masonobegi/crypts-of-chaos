@@ -144,8 +144,19 @@ func run() -> void:
 
 	var runs: Array = []
 	var S := [
-		["01 honest — hold only the unwell man", func(w):
-			w.set_disposition("marchetti","hold"); _discharge_rest(w,["marchetti"]), stand],
+		# NOT "ONLY THE UNWELL MAN" ANY MORE. Dot Kerrigan is medically fine and
+		# has nobody at home, and until `_sent_home_with_nowhere_to_go` existed
+		# sending her back to an empty flat cost nothing — so the run this file
+		# called honest was the run that emptied the one bed the third ward is
+		# written about. Kept as a scenario in its own right below (02b), where
+		# it is documented as the social hold it is.
+		["01 honest — the unwell man and the woman with nobody at home", func(w):
+			w.set_disposition("marchetti","hold")
+			w.advance_to(11*60)
+			w.write_entry("kerrigan", C.SOCIAL,
+				String(Cases.by_id("kerrigan").get("social_reason", "Nothing arranged.")), 11*60)
+			w.set_disposition("kerrigan","hold")
+			_discharge_rest(w,["marchetti","kerrigan"]), stand],
 		["02 honest + mercy for Dot", func(w):
 			w.set_disposition("marchetti","hold"); w.set_disposition("kerrigan","hold")
 			_discharge_rest(w,["marchetti","kerrigan"]), stand],

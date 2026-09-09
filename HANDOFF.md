@@ -54,7 +54,7 @@ prints the exact command to fetch them.
 
 ## Last known good
 
-**343 assertions · 228 smoke checks on three seeds · 39 day criteria runs
+**349 assertions · 240 smoke checks on three seeds · 39 day criteria runs
 against 7 criteria · the authored-data, ship, draw and economics checks · 6
 career properties on three seeds · a 2,601-strategy frontier probe per ward plus
 an honest day on all 52 reachable boards · both play runs · the quiet check ·
@@ -75,20 +75,6 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
 
 1. **Nothing is known-broken.** The suite, the screenshots and the exports are
    all green as of the last commit.
-1b. **A saved patch is waiting to land:
-   `docs/social-discharge.patch`.** It adds
-   `_sent_home_with_nowhere_to_go` — the offensive half of `no_care_at_home`,
-   which for the whole life of the project has been an EXEMPTION protecting a
-   hold and nothing at all on the other side of the ledger, so sending the
-   eighty-one-year-old found on the floor twice this year back to an empty flat
-   produced no finding, no audited bed and no line on the record. It is the
-   third ward's entire authored subject and the review cannot see it. The patch
-   is correct and tested against `data_run`, `draws_run` and `frontier_run`; it
-   was held back because it also requires `career_impl`'s honest policies to
-   stop discharging the socially stuck, and that file was being edited by
-   another pass at the time. Apply it, then fix `career_impl._needs_bed`,
-   `playtest_impl` scenario 01 and `test_ward.gd::test_the_money_creates_the_
-   decision` — all three fail loudly and all three fail for the same reason.
 2. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
 3. **The game has never been played by a person.** Every design number in it —

@@ -164,7 +164,23 @@ func _honest_day(day: int) -> Dictionary:
 	w.advance_to(11 * 60)
 	for c in Cases.roster():
 		var pid := String(c["id"])
-		if bool(Cases.by_id(pid).get("truly_well", true)):
+		var c2 := Cases.by_id(pid)
+		# ...AND THE ONES WHO ARE MEDICALLY FINE AND HAVE NOWHERE TO GO.
+		#
+		# This day used to discharge them, because it only ever asked
+		# `truly_well` — and until the audit grew the other half of
+		# `no_care_at_home`, sending the eighty-one-year-old found on the floor
+		# twice this year back to an empty flat cost nothing at all. It is a
+		# different note, in a different claim, and the third ward is built on
+		# it: `SOCIAL` is what makes the hold defensible and what stops
+		# `_social_hold_is_a_lie` firing, and the reason comes from the patient
+		# rather than from this file.
+		if bool(c2.get("no_care_at_home", false)):
+			w.write_entry(pid, ChartEntry.Claim.SOCIAL,
+				String(c2.get("social_reason", "Nothing arranged for tonight.")),
+				w.minute)
+			continue
+		if bool(c2.get("truly_well", true)):
 			continue
 		w.write_entry(pid, ChartEntry.Claim.UNWELL,
 			"Examined at the bedside. Not fit for discharge today.", w.minute)
@@ -199,6 +215,13 @@ func _honest_day(day: int) -> Dictionary:
 		if not bool(Cases.by_id(pid).get("truly_well", true)):
 			w.order_test(pid, "Repeat bloods")
 	for c in Cases.roster():
+		# ...BUT NOT TO CONFIRM A HOUSING SITUATION. Adeyemi reviews a patient,
+		# so sending her to somebody who is medically settled and has nowhere to
+		# go gets "settled, no complaints" back — a second opinion you asked for
+		# and were contradicted by, on the bed you were right about. It is the
+		# wrong question and the ward is where you learn so.
+		if bool(Cases.by_id(String(c["id"])).get("no_care_at_home", false)):
+			continue
 		w.nurse_check(String(c["id"]))
 	# ...AND DO NOT ASK A MAN WHO HAS ALREADY TOLD YOU.
 	#
@@ -217,8 +240,10 @@ func _honest_day(day: int) -> Dictionary:
 		w.ask_colleague(pid)
 	for c in Cases.roster():
 		var pid := String(c["id"])
-		w.set_disposition(pid,
-			"discharge" if bool(Cases.by_id(pid).get("truly_well", true)) else "hold")
+		var c3 := Cases.by_id(pid)
+		var needs_it: bool = not bool(c3.get("truly_well", true)) \
+			or bool(c3.get("no_care_at_home", false))
+		w.set_disposition(pid, "hold" if needs_it else "discharge")
 	var done := w.minute
 	var res := w.end_day()
 	if OS.has_environment("FRONTIER_DEBUG"):

@@ -100,14 +100,51 @@ func _one_day(policy: String) -> Dictionary:
 	return row
 
 ## The genuinely unwell, found the only way they can be found.
+## WHO GENUINELY NEEDS THE BED TONIGHT — and it is not only a medical question.
+##
+## This asked `truly_well` and nothing else, so every honest policy in this
+## probe sent the eighty-one-year-old found on the floor twice this year, and
+## the woman with no heating since November, back to an empty flat. That cost
+## nothing at all until `_sent_home_with_nowhere_to_go` existed, because
+## `no_care_at_home` had a defensive half — four exemptions protecting a hold —
+## and no offensive half anywhere on the other side of the ledger. It is the
+## third ward's entire authored subject and every policy here was on the wrong
+## side of it.
 func _needs_bed(w: WardDay) -> Array:
 	var out: Array = []
 	for c in Cases.roster():
 		var pid := String(c["id"])
 		w.examine(pid)
-		if not bool(c.get("truly_well", true)):
+		if not bool(c.get("truly_well", true)) or bool(c.get("no_care_at_home", false)):
 			out.append(pid)
 	return out
+
+## KEEPING SOMEBODY WHO HAS NOWHERE TO GO IS A DIFFERENT NOTE.
+##
+## Every policy in this file held a bed with `set_disposition` and nothing else,
+## and for a genuinely ill patient that is enough — Adeyemi's rounds write
+## UNWELL about them all day, so the bed is BACKED by somebody who is not you
+## without your writing a word. A socially stuck patient is medically WELL, so
+## the rounds write SETTLED, and holding them silently is a bed with no reason
+## in it at all. The first version of this change put them on the honest list
+## and left the policies alone, and every honest career was REFERRED on night
+## one with three strikes.
+##
+## `SOCIAL` is the claim that says why, and the reason comes off the patient
+## rather than out of this file.
+func _hold(w: WardDay, pid: String) -> void:
+	var c := Cases.by_id(pid)
+	if bool(c.get("no_care_at_home", false)):
+		w.write_entry(pid, C.SOCIAL,
+			String(c.get("social_reason", "Nothing arranged for tonight.")), w.minute)
+	w.set_disposition(pid, "hold")
+
+## ...AND YOU DO NOT SEND THE NURSE OR THE REGISTRAR TO CONFIRM ONE. They review
+## a patient, not a housing situation, so a second opinion on somebody who is
+## medically settled comes back settled — which is a contradiction you asked for,
+## on the bed you were right about.
+func _is_social(pid: String) -> bool:
+	return bool(Cases.by_id(pid).get("no_care_at_home", false))
 
 func _play(w: WardDay, policy: String) -> void:
 	# COASTING DOES NOT LOOK. Everything else walks the ward first, which is
@@ -122,38 +159,54 @@ func _play(w: WardDay, policy: String) -> void:
 			pass
 		"honest":
 			for pid in honest:
-				w.set_disposition(pid, "hold")
+				_hold(w, pid)
 		"honest_corroborated":
 			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				w.ask_colleague(pid)
-				w.set_disposition(pid, "hold")
+				if not _is_social(pid):
+					w.ask_colleague(pid)
+				_hold(w, pid)
 		"one_lie":
 			for pid in honest:
-				w.set_disposition(pid, "hold")
-			var extra := _richest_well(w, honest)
+				_hold(w, pid)
+			var extra := "" if w.held_ids().size() >= 3 else _richest_well(w, honest)
 			if extra != "":
 				w.advance_to(17 * 60 + 20)
 				w.write_entry(extra, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 				w.set_disposition(extra, "hold")
 		"greedy":
 			for pid in honest:
-				w.set_disposition(pid, "hold")
+				_hold(w, pid)
 			w.advance_to(17 * 60 + 20)
 			for c in Cases.roster():
 				var pid := String(c["id"])
 				if honest.has(pid) or w.held_ids().size() >= 3:
 					continue
 				w.write_entry(pid, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
-				w.set_disposition(pid, "hold")
+				_hold(w, pid)
 		"skilled":
 			# What a good dishonest player does: spend the registrar on the bed
 			# that deserves it, so it is BACKED and only ONE bed is on your word
 			# alone — the difference between "noted" and "referred".
 			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				w.ask_colleague(pid)
-				w.set_disposition(pid, "hold")
+				if not _is_social(pid):
+					w.ask_colleague(pid)
+				_hold(w, pid)
+			# AND NO ARITHMETIC GUARD, WHICH IS THE WHOLE DIFFERENCE BETWEEN
+			# THIS AND `restrained`.
+			#
+			# Four beds earn less than three, so on a ward where the honest hold
+			# already fills three the extra bed costs money as well as putting
+			# another bed on your word alone. `restrained` skips those nights.
+			# This one does not: it is disciplined about WHICH bed and not about
+			# WHETHER, which is exactly the doctor the design is trying to catch.
+			#
+			# Giving it the guard was tried and it is what made this policy PAY
+			# OFF THE WHOLE DEBT on one seed in three: skipping the crowded
+			# wards dropped its uncorroborated rate under `ENTRENCHED_RATE` and
+			# the ward sister never stopped taking its word. A liar who knows
+			# when not to is `restrained`, and that policy already exists.
 			var mark := _safest_well(w, honest)
 			if mark != "":
 				w.advance_to(17 * 60 + 20)
@@ -167,10 +220,48 @@ func _play(w: WardDay, policy: String) -> void:
 			# policy the whole design is trying to make findable.
 			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				w.ask_colleague(pid)
-				w.set_disposition(pid, "hold")
-			if GameState.day % 2 == 1 and not GameState.flag("watched", false):
-				var take := _safest_well(w, honest)
+				if not _is_social(pid):
+					w.ask_colleague(pid)
+				_hold(w, pid)
+			# WHAT A RESTRAINED LIAR ACTUALLY DOES, AND IT IS NOT A FOURTH BED.
+			#
+			# Four beds earn less than three, so once the honest holds have
+			# filled three — which they do the moment the socially stuck are on
+			# the honest list — there is no profitable extra bed to take, and
+			# the policy tied honest at eight nights on two seeds in three while
+			# collecting strikes for it. A tie with more risk is nobody's
+			# strategy, and a probe that cannot tell honesty apart from restraint
+			# is not measuring the thing the whole design rests on.
+			#
+			# The real play is a SWAP: the cheapest honest hold on this ward is
+			# a state-funded social bed worth £180, and the richest well patient
+			# is a premium bed worth £850. You send the woman with nobody at
+			# home back to the empty flat and you keep the man who is fine and
+			# insured. It is the sharpest thing in the game — the lie is not an
+			# extra bed, it is a bed taken FROM somebody who needed it — and it
+			# costs a `sent_home_with_nowhere_to_go` finding, which is exactly
+			# what it should cost.
+			# LIE WHEN THERE IS ROOM, AND STOP WHEN SHE IS READING YOU.
+			#
+			# Two things were tried and both failed, and the failures are the
+			# interesting part. A FOURTH BED does not pay: four beds earn less
+			# than three, so once the honest holds fill three — which they do
+			# the moment the socially stuck are on the honest list — the extra
+			# bed costs money AND puts a bed on your word alone. And a SWAP,
+			# sending the state-funded woman with nobody at home back to the
+			# empty flat and keeping the insured man who is fine, pays
+			# handsomely and is struck off in seven nights: emptying that bed is
+			# CONTRADICTED and the fabricated one is SOLO, which is two bad beds
+			# on the same night, every other night.
+			#
+			# What works is the arithmetic plus the brake. Take a third bed on
+			# the wards that leave room for one — three of the four do — and
+			# stop entirely the moment `watched` is set, which is the ward
+			# sister telling you she has started reading your charts first. That
+			# is the policy the whole design is trying to make findable, and it
+			# is the only one that both pays and survives.
+			if not GameState.flag("watched", false) and w.held_ids().size() < 3:
+				var take := _richest_well(w, honest)
 				if take != "":
 					w.advance_to(17 * 60 + 20)
 					w.write_entry(take, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
@@ -178,7 +269,7 @@ func _play(w: WardDay, policy: String) -> void:
 		"adaptive":
 			# Lie only on a ward nobody is already reading.
 			for pid in honest:
-				w.set_disposition(pid, "hold")
+				_hold(w, pid)
 			if not GameState.flag("watched", false):
 				var extra := _richest_well(w, honest)
 				if extra != "":

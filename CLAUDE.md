@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 298 assertions, a 172-check smoke run through the real tree
+`run_tests.sh` is 301 assertions, a 210-check smoke run through the real tree
 on three different wards, 31 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -611,6 +611,80 @@ with it because a lost afternoon does not care which.
     back now: what you did, and what they were, flat, in that order, with no
     score attached — the rule that nothing grades the player's choice for them
     is about JUDGEMENT, not about facts.
+
+67. **`AudioStreamPlayer.playing` reads FALSE while the tree is PAUSED.** It
+    asks the audio server whether the playback is active, and a playback
+    belonging to a node in a paused tree is not — so a looping emitter that is
+    running perfectly reads as stopped for as long as any world-pausing screen
+    is open. It cost an hour and, worse, it produced a plausible wrong fix.
+68. **A smoke assertion deferred N frames on a piece of UI STATE is not testing
+    that state.** `_check_the_ward_is_audible_behind_a_card` set
+    `clock_running = false` and asserted three frames later — and passed with
+    the broken guard restored, because half the checks in `smoke_impl` open and
+    close a screen and `UIRoot._set_modal(false)` puts the flag back on the way
+    out. Gotcha 14 says an assertion in the same frame as its setup reads last
+    frame's value; this is the other end of it. Anything a neighbouring check
+    can reset has to be asserted synchronously.
+69. **The other half of gotcha 20 is a PROPERTY READ, and the grep could not see
+    it.** `smoke_impl._calls_on` requires a `(` after the identifier, so
+    `GameState.stats.items_broken += 1` was skipped — and a read of a member
+    that does not exist throws exactly like a call to a method that does not,
+    which aborts the function. `Prop._break()` had therefore done nothing since
+    the stats dictionary was deleted: no `item_broke`, no `room.soil()`, no
+    `prop_broken` WorldEvent, no darkened material, no flattened mesh. A prop
+    broke, made a glass noise, and stayed pristine on a spotless floor. The
+    ship probe walks the reads too — ninety of them.
+70. **A SEED IS NOT A POSITION, and a 64-bit value does not survive JSON.**
+    Every `chance`/`pick`/`randf_s` advances the stream it names, so a stream is
+    (seed, position) and `RNG.save_state` returning `{"seed": ...}` saved half
+    of it — a load rewound every stream to draw zero, deterministically. It
+    never actually fired, because RNG was not a registered save provider at all
+    and a continued career simply inherited whatever the title screen left
+    behind. And `RandomNumberGenerator.state` is a full 64-bit value while JSON
+    has one numeric type and it is a double, so written as a number every stream
+    resumes a few draws from where it stopped. It is saved as a decimal STRING.
+71. **A save provider bound to an object that is replaced every morning saves
+    nothing, and reads as working.** `SaveSystem.register("records",
+    ward.records.to_dict, ...)` binds two Callables to the `Records` instance
+    alive at `Game._ready()`; `ward.start()` then assigns a fresh one every
+    morning, so from the first frame of every career the provider serialised an
+    orphan. Register a callable that LOOKS THE OBJECT UP, never one bound to it.
+72. **`FileAccess.WRITE` truncates, so a save written straight to its own path
+    has a window in which a crash leaves a zero-length file where nine nights
+    were.** Write a `.tmp`, rename the old file to `.bak`, rename the temporary
+    into place, and fall back to the `.bak` when the primary will not parse.
+    And `JSON.parse_string` pushes the engine's own error on top of yours, so a
+    player with one damaged save got two errors in the log, the first about a
+    line number in a file they have never opened — `JSON.new().parse()` returns
+    the code and says nothing.
+73. **A load that refuses only what will not PARSE is not a load that refuses.**
+    `[1,2,3]`, `{}` and a save from a newer build all parse as dictionaries and
+    went into `GameState.from_dict`, which defaults every field it cannot find —
+    day 1, no cash, seed 0 — WITHOUT `start_new_career`, so Continue produced
+    something that looked like a new career and was not one. Validate the shape
+    and the version, not the syntax.
+74. **Filtered noise CAN loop seamlessly, and the trick is a warm-up rather than
+    a cross-fade.** The filter's state is zero at the top of the buffer and
+    whatever the last few hundred samples left it at the bottom, and the
+    difference is a click once per loop forever — gotcha 59's fault in a new
+    place. But the noise is SEEDED, so the samples before position zero are
+    knowable: run the filter over the buffer's own tail first and start from the
+    state that leaves. **And a seam cannot be measured sample by sample once
+    there is noise in the loop** — two seam detectors were written and both were
+    noise-dominated, reading 0.66 of a typical step on the good buffer against
+    0.83 on one deliberately broken with the length gotcha 59 was proven red
+    with. The smoke run checks the arithmetic and the spectrum instead.
+75. **A recipe table is tuned against the level it produced.** A band-pass at
+    Q 1.2 throws away six to ten decibels of a noise burst, so putting eleven
+    recipes onto a filter would have quietly dropped every one of them below the
+    level its call sites were mixed at — and the peak check would have gone red
+    for the wrong reason. Normalise the peak after any change to the synthesis,
+    so `volume_db` at a call site still means what it meant.
+76. **`boot_check.sh` stops at the main menu and every other harness starts
+    after it, so the step between them — the button a player presses first — had
+    never been executed by anything.** That was survivable while New Career was
+    one synchronous `change_scene_to_file`; it stopped being survivable the
+    moment there was a loading screen in front of it.
 
 ## Design rules that are load-bearing
 

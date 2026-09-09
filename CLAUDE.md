@@ -1009,6 +1009,27 @@ with it because a lost afternoon does not care which.
     colour, so two colours are two objects and a colour that did not change is
     the same object. Failing that, measure the pixel.
 
+99. **THE MAN IN BED WAS STILL IN HIS SHOES, AND THE COVER WAS NOT IN THE
+    WRONG PLACE — THE LEGS WERE TALLER THAN IT.** Gotcha 87 put the duvet over
+    the lap and stopped there. Measured properly this time — the occupant's
+    mesh boxes through the bed's own inverted transform — the body runs
+    z -1.32..0.20 and the SHINS AND SHOES reach y 0.78..1.15, while a 20cm
+    cover sitting on a mattress at 0.62 tops out at 1.01. Fourteen centimetres
+    of foot came up through the bedding, in the frame the whole game is played
+    from. Feet tent a blanket, so the duvet is now as deep as they are.
+    **And the probe that measures this has to run PHYSICS frames with the tree
+    UNPAUSED**: the pose is applied in `_physics_process`, the morning briefing
+    pauses the world, and a probe that waits on `process_frame` measures a
+    patient standing to attention beside the bed and reports nonsense with
+    great precision.
+100. **A CONSTANT MIXED "TOWARD THE FLOOR'S OWN COLOUR" WAS MIXED TOWARD ONE
+    WARD'S.** `floor_zone`'s bay strip — the largest painted shape on the floor
+    — lerped 55% toward a literal sage green, chosen when there was one ward,
+    so on the slate-blue ward it read as a green rug somebody had laid down on
+    lino. The comment beside it had said "the floor's own colour" the whole
+    time. Gotcha 48's fault with the number in the right place and the wrong
+    ward's value in it; it now reads `Cases.ward_look()["floor"]`.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

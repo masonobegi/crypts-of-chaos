@@ -125,8 +125,26 @@ func build() -> void:
 	# is a cover over nobody. This one is over the LAP, which is what a propped
 	# patient has, and it is what stops the frame being four blue-grey tubes with
 	# navy shoes on two of them.
-	_duvet = Build.cloth_mi(Vector3(WIDTH - 0.04, 0.20, 1.05),
-		Color(0.33, 0.49, 0.57), Vector3(0, MATTRESS_TOP + 0.32, -0.48))
+	# ...AND FAR ENOUGH DOWN THE BED TO REACH THE FEET. At 1.05 long it stopped
+	# at the knees, and photographed from the bedside — which is the camera the
+	# whole game is played through — the frame was a man propped up in bed with
+	# two navy SHOES sticking out past the near edge of his own bedding. That is
+	# the fault this piece exists to fix, half fixed: the lap was covered and the
+	# legs were not. Found by turning it bright red and re-rendering the one
+	# frame, which is ninety seconds and the only way anybody was ever going to
+	# see it.
+	# MEASURED, not guessed, and it took two goes. Printing the occupant's mesh
+	# boxes through the bed's own inverted transform — after ninety PHYSICS
+	# frames with the tree unpaused, because the pose is applied in
+	# `_physics_process` and the morning briefing pauses the world, so a probe
+	# that waits on `process_frame` measures a patient standing to attention —
+	# puts the body at z -1.32..0.20 and the SHINS AND SHOES at y 0.78..1.15.
+	# A cover 20cm thick over the lap therefore has fourteen centimetres of foot
+	# coming up through it, which is what "navy shoes on a man in bed" actually
+	# was: not a cover in the wrong place, a cover the legs were taller than.
+	# Feet tent the bedding, so the duvet is as deep as they are.
+	_duvet = Build.cloth_mi(Vector3(WIDTH - 0.04, 0.42, 1.42),
+		Color(0.33, 0.49, 0.57), Vector3(0, MATTRESS_TOP + 0.37, -0.34))
 	_duvet.visible = false
 	add_child(_duvet)
 

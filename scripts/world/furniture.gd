@@ -206,9 +206,16 @@ static func _dress_ward_body(h: Hospital, r: Room) -> void:
 	# toward the floor's own colour rather than painted in a room tint, because
 	# a saturated rectangle reads as a rug somebody laid down and this is meant
 	# to be vinyl somebody specified.
+	# TOWARD THIS WARD'S FLOOR, not toward a sage green chosen when there was
+	# one ward. The comment below has always said "mixed toward the floor's own
+	# colour"; the literal it mixed toward was Ward C's, so the bay strip under
+	# the beds — the largest painted shape on the floor — was the same green in
+	# every room, and on the slate-blue ward it read as a green rug somebody
+	# had laid down on lino.
 	Dressing.floor_zone(h, Vector3(r.rect.get_center().x, 0, bed_z + into * 0.4),
 		Vector2(r.rect.size.x - 1.6, 3.6),
-		_bay_tint(0).darkened(0.28).lerp(Color(0.56, 0.66, 0.57), 0.55))
+		_bay_tint(0).darkened(0.28).lerp(
+			Color(Cases.ward_look().get("floor", Build.FLOOR_A)).darkened(0.10), 0.58))
 	# A curtain track between each pair of bays, gathered against the divider.
 	for i in Hospital.BEDS - 1:
 		var mid: float = (h.bed_position(i + 1).x + h.bed_position(i + 2).x) * 0.5

@@ -3095,3 +3095,28 @@ room after the floor is a swatch.
 failures and for its own measured regressions and exited 0 on a `SCRIPT ERROR`
 printed in the middle of a page of "shot:" lines — which is how a card built for
 the wrong ward got rendered, noticed by eye, and would otherwise have shipped.
+
+### The man in bed was still in his shoes
+
+The bedside camera is the one the whole game is played through, and it showed a
+head above a blue lump with two navy shoes sticking out of the near end. Turning
+the duvet bright red and re-rendering that one frame — ninety seconds — showed
+the cover was exactly where the last pass put it, over the lap, and that the
+problem was elsewhere.
+
+Measured: the occupant's mesh boxes through the bed's own inverted transform put
+the body at z -1.32..0.20 and the shins and shoes at y 0.78..1.15, against a
+20cm cover on a mattress at 0.62 that tops out at 1.01. Fourteen centimetres of
+foot coming up through the bedding. Feet tent a blanket; the duvet is as deep as
+they are now, and the ward from the door is five made beds rather than five
+white trays with people on them.
+
+The probe that measures that has to run PHYSICS frames with the tree unpaused.
+The pose is applied in `_physics_process`, the morning briefing pauses the world,
+and the first two versions waited on `process_frame` and measured a patient
+standing to attention beside the bed — reporting nonsense to two decimal places.
+
+And the bay strip on the floor, which the comment beside it has always described
+as "mixed toward the floor's own colour", was mixed toward a literal sage green
+chosen when there was one ward. On the slate-blue ward that is a green rug on
+lino. It reads `Cases.ward_look()["floor"]` now.

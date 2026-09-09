@@ -138,8 +138,6 @@ const TRAIT_DEFAULTS := {
 }
 
 # =============================================================== NAMES
-
-# =============================================================== NAMES
 const FIRST_NAMES := [
 	"Greg", "Marlene", "Dougie", "Priya", "Constance", "Bev", "Yusuf", "Tam",
 	"Delia", "Roland", "Fenwick", "Moira", "Cliff", "Ines", "Bartholomew",
@@ -180,8 +178,6 @@ func trait_of(arch: String, key: String, fallback: float = -9999.0) -> float:
 	return float(TRAIT_DEFAULTS.get(key, 0.5))
 
 ## Build a Mind pre-configured from an archetype.
-
-## Build a Mind pre-configured from an archetype.
 func make_mind(id: String, display: String, role: String, arch: String) -> Mind:
 	var m := Mind.new(id, display, role)
 	m.archetype = arch
@@ -192,8 +188,11 @@ func make_mind(id: String, display: String, role: String, arch: String) -> Mind:
 	m.escalation = trait_of(arch, "escalation")
 	return m
 
-## Which treatments are correct for a condition.
-
+## WHO IS PAYING. The heading above this used to read "Which treatments are
+## correct for a condition", left behind when the treatment table went — a
+## comment describing code that is not there is the same fault as a constant
+## nothing reads, and it is the one a reader trusts.
+##
 ## Kept because the redesign still bills by who is paying, and the joke is in
 ## the names of the companies rather than in the illnesses.
 const INSURANCE := {

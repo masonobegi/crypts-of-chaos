@@ -31,13 +31,18 @@ func _ready() -> void:
 	var go := UIKit.button("New Career", _new_career, Color(0.11, 0.30, 0.29))
 	go.add_theme_font_size_override("font_size", 20)
 	v.add_child(go)
-	if SaveSystem.has_save(SaveSystem.AUTOSAVE):
-		var info := SaveSystem.list_saves()
-		var label := "Continue"
-		for s in info:
-			if String(s["slot"]) == SaveSystem.AUTOSAVE:
-				label = "Continue — Day %d, %s" % [int(s["day"]), UIKit.money_str(int(s["money"]))]
-		v.add_child(UIKit.button(label, _continue))
+	# READABLE, NOT MERELY PRESENT. This asked `has_save()`, which is a
+	# file-exists test, and then looked for a matching row in `list_saves()` to
+	# label the button — so a truncated or hand-mangled autosave found the file,
+	# found no row, and fell through to the bare fallback label "Continue". A
+	# button with no day and no money on it reads as a cosmetic glitch, and
+	# pressing it took the load path, which failed and dropped the player into
+	# something that looked like a new career and was not one. If the save cannot
+	# be read there is nothing to continue and no button is the honest answer.
+	var saved := SaveSystem.readable_save(SaveSystem.AUTOSAVE)
+	if not saved.is_empty():
+		v.add_child(UIKit.button("Continue — Day %d, %s"
+			% [int(saved["day"]), UIKit.money_str(int(saved["money"]))], _continue))
 
 	# A career tally, a list of endings found and a rack of unlockable starting
 	# perks used to sit here. They were all reads over Meta, which was the save
@@ -70,6 +75,15 @@ func _ready() -> void:
 		12, Color(UIKit.INK.r, UIKit.INK.g, UIKit.INK.b, 0.45),
 		HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.button("Quit", func(): get_tree().quit()))
+	# THE BUILD NUMBER, WHERE A SCREENSHOT WILL CATCH IT. `config/version` was
+	# read by nothing anywhere in `scripts/`, so no screen in the game and no
+	# bug report attached to it could say which build it came from — and the one
+	# artefact a player sends you is a photograph of their monitor. Dim on
+	# purpose: it is for the person reading the screenshot, not the person
+	# taking it.
+	v.add_child(UIKit.label(version_string(), 11,
+		Color(UIKit.INK.r, UIKit.INK.g, UIKit.INK.b, 0.30),
+		HORIZONTAL_ALIGNMENT_CENTER))
 
 	# The title screen had no sound at all, which is the first thing anybody
 	# hears of this game and it was nothing. But building the score is about
@@ -94,6 +108,13 @@ func _ready() -> void:
 		# to look like it was waiting for something.
 		UIKit.focus_first(self)
 		AudioMgr.play_music()
+
+## What to call this build. ONE definition, read off the project rather than
+## typed anywhere — the version lives in `project.godot` and is mirrored into the
+## three export presets, and a fourth copy in a string literal here would be the
+## copy that goes stale (gotcha 48).
+static func version_string() -> String:
+	return "v%s" % String(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 
 ## Movement has four actions and one name, so it is the one line here that is
 ## not a straight lookup: a pad walks on a stick rather than on four buttons.
@@ -201,14 +222,17 @@ func _new_career() -> void:
 	# There is one save slot. "New Career" is the big dark-filled button and
 	# "Continue — Day 9" sits directly under it, so the misclick is one row and
 	# it silently erases eight or nine completed shifts with no way back.
-	if SaveSystem.has_save(SaveSystem.AUTOSAVE) and not _confirming:
+	# Only ask if there is a CAREER to destroy. An autosave that will not load is
+	# not one, and "this erases Day 1" about a file the game has already refused
+	# to read is a question with a wrong answer in it.
+	if not SaveSystem.readable_save(SaveSystem.AUTOSAVE).is_empty() and not _confirming:
 		_confirming = true
 		_ask_before_erasing(s)
 		return
 	_confirming = false
 	GameState.start_new_career(s)
 	SaveSystem.delete_save(SaveSystem.AUTOSAVE)
-	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+	_go_to_ward()
 
 var _confirming := false
 
@@ -247,7 +271,43 @@ func _ask_before_erasing(s: int) -> void:
 
 func _continue() -> void:
 	GameState.set_flag("continue_save", true)
-	get_tree().change_scene_to_file("res://scenes/Game.tscn")
+	_go_to_ward()
+
+## SAY SOMETHING BEFORE THE FREEZE.
+##
+## `Game._ready` builds the environment, the whole procedural hospital — rooms,
+## shell, outside, doors, signage, furniture, the nav bake — every system, the
+## player, the staff and the UI, synchronously, in one frame. Until it returns
+## the last drawn title frame is still on the screen, with the button the player
+## pressed still lit, which is indistinguishable from a game that has hung.
+##
+## Two `process_frame` awaits, for the same reason `_ready` waits twice before
+## synthesising the music: `process_frame` fires during the idle step and the
+## draw for that frame has not happened yet when the first one comes back, so
+## after the second the card is genuinely on the screen and the stall happens
+## behind something rather than instead of it. Anything longer than that would
+## be a real load screen, and this build does not need one — `Game.last_build_msec`
+## is asserted against a budget in `tests/probe/ship_impl.gd` so that stays true.
+func _go_to_ward() -> void:
+	if _panel != null:
+		_panel.visible = false
+	var card := UIKit.center_panel(420, 90)
+	var v := UIKit.vbox(4)
+	card.add_child(v)
+	v.add_child(UIKit.title("WARD C", 26, UIKit.ACCENT))
+	# Nothing here names a day or a date. This card is shown for New Career AND
+	# for Continue, and on the Continue path the save has not been read yet —
+	# `Game._start` does that — so anything read off GameState would be last
+	# career's number, printed with total confidence, for a fifth of a second.
+	v.add_child(UIKit.label("Eight o'clock. Five beds.", 15, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_CENTER))
+	add_child(card)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	# `is_inside_tree` because two frames is two frames in which the player could
+	# have closed the window, and `change_scene_to_file` on a dead tree errors.
+	if is_inside_tree():
+		get_tree().change_scene_to_file("res://scenes/Game.tscn")
 
 ## The options screen, from the title. UIRoot lives inside the game scene, so
 ## the menu builds its own instance of it rather than reaching for one that

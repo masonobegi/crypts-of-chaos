@@ -93,7 +93,16 @@ GODOT=/path/to/godot ./check.sh scripts/foo.gd   # parse errors for specific fil
 GODOT=/path/to/godot ./screenshots.sh            # render offscreen, photograph every screen
 GODOT=/path/to/godot ./faces.sh try1             # six faces close up, for character work
 GODOT=/path/to/godot ./export.sh all             # Windows, Linux, macOS
+GODOT=/path/to/godot STRICT=1 ./export.sh all    # ...and what a RELEASE has to pass
 ```
+
+`export.sh` builds all three targets and then *runs* the Linux one, because an
+export that produces a file and an export that produces a game are different
+claims. `STRICT=1` additionally fails the build on the things that are only
+cosmetic to a developer and are the first thing a buyer sees: a placeholder
+bundle id or company name, a preset version that has drifted from
+`project.godot`, and a Windows exe with no icon or version block because rcedit
+was not installed.
 
 **Controls** — `WASD` move · `E` use · `LMB` grab · `RMB` throw · `Shift` sprint ·
 `Ctrl` crouch · `Esc` pause. All rebindable; the HUD reads the bindings rather
@@ -130,11 +139,31 @@ Design is in [`docs/REDESIGN.md`](docs/REDESIGN.md). What actually does what,
 for developers only, is in [`docs/SPOILERS.md`](docs/SPOILERS.md). The build log
 is [`PROGRESS_LOG.md`](PROGRESS_LOG.md).
 
+## Saving
+
+**One slot, written once a night, at the handover.** A shift is one sitting —
+about ten minutes — and there is no mid-shift save: leaving the ward loses
+today, and the pause menu says so in plain English before you do it. What that
+buys is that a shift cannot be rewound one decision at a time, which is the
+whole game.
+
+The autosave is written to a temporary and renamed into place, keeping the
+previous night beside it as a `.bak`. If the primary will not parse, the game
+falls back to that and says it has. If neither will — a truncated write, a file
+from a newer build, something that is not a save at all — the title screen
+offers no `Continue` at all rather than a button that starts a career which
+looks new and is not one.
+
+A shipped build writes a rotating log to the platform user-data directory
+(`%APPDATA%\Godot\app_userdata\Chronic Care\logs` on Windows), beside the save.
+If it ever goes wrong, that is the file to send.
+
 ## Tests
 
 ```
-298 assertions   — units, integration, save round-trips, floor connectivity
+301 assertions   — units, integration, save round-trips, floor connectivity
 172 smoke checks — boots the real scene and plays a whole shift, on three seeds
+ 32 ship checks  — is it a BUILD: identity, corrupt saves, RNG across a load
   7 criteria     — day-level: does the risk actually cost anything
   6 criteria     — career-level: does honest play pay it off, and does greed not
   4 wards        — every one signs off on the day a careful person plays
@@ -161,4 +190,13 @@ All four are under the [SIL Open Font License
 `assets/fonts/` and inside every exported build — `export_presets.cfg` carries
 an `include_filter` for them, because a `.txt` is not an imported resource and
 `all_resources` does not carry one. They are named on the Credits screen too.
+
+The engine is [Godot](https://godotengine.org/) under the MIT licence, which
+bundles some eighty further third-party components with notices of their own.
+All of them are compiled into the binary and readable at runtime through
+`Engine.get_license_text()` and `Engine.get_copyright_info()` — the ship probe
+asserts both are there and non-empty, so the material a licences screen needs is
+in the build. **Putting a reader on the Credits screen is the one shipping item
+still open**, and it is the only gap on this page that matters for a paid
+release rather than for taste.
 

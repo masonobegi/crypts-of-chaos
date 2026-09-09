@@ -78,6 +78,22 @@ PLAY=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/data_run.gd 2>&1 | grep -vE "$NOISE"
 DATA=${PIPESTATUS[0]}
 
+# AND IS IT A BUILD SOMEBODY COULD BUY. Everything above this line asks whether
+# the GAME works; this asks whether the BUILD does, which had nothing looking at
+# it at all. What the file calls itself, what happens when the save on disk is
+# not a save, whether the randomness a career runs on survives being reloaded,
+# whether a crash leaves an artefact to send, and how long the title screen sits
+# frozen between the button and the ward.
+#
+# It also walks the half of gotcha 20 that smoke_impl structurally cannot see:
+# smoke greps `Autoload.method(` and needs the bracket, so a property READ is
+# skipped — and `GameState.stats.items_broken += 1` in prop.gd had been throwing,
+# and therefore aborting the whole of `_break()`, since the stats dictionary was
+# deleted. Every prop that broke in this game played a glass sound and stayed
+# pristine.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/ship_run.gd 2>&1 | grep -vE "$NOISE"
+SHIP=${PIPESTATUS[0]}
+
 # EVERY WARD A CAREER CAN DEAL, played honestly. A ward is a draw from a pool
 # now, so the game can deal a board nobody has ever looked at; this walks all of
 # them and asserts an honest day is never a disaster and always covers the
@@ -209,9 +225,9 @@ echo ""
 GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
-if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] \
+if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$SHIP" -ne 0 ] \
     || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$PLAY_DAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN day=$PLAY_DAY boot=$BOOT)" >&2
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA ship=$SHIP draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN day=$PLAY_DAY boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

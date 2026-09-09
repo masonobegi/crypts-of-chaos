@@ -79,7 +79,20 @@ func _emit_noise(loud: float) -> void:
 func _break() -> void:
 	broken = true
 	AudioMgr.play_at("glass", global_position, -6.0)
-	GameState.stats.items_broken += 1
+	# `GameState.stats.items_broken += 1` used to be the next line, and it is why
+	# nothing below it has run since the career-stats dictionary was deleted.
+	# GameState has no `stats` member — its own header records the deletion — and
+	# per gotcha 11/20 reading a member that is not there THROWS, and a throw
+	# ABORTS THE FUNCTION. So every prop that has broken in this game since that
+	# deletion has played the glass sound and then stopped dead: no
+	# `item_broke` (which is what kicks the player's camera), no `soil()` on the
+	# room, no `prop_broken` WorldEvent carrying the mess and facilities tags
+	# that four separate rules read, no darkened material, no flattened mesh, and
+	# no un-freeze. The prop stayed pristine and the ward stayed spotless.
+	#
+	# The gotcha-20 grep in smoke_impl.gd could never see this: it collects
+	# `Autoload.name(` CALL sites and this is a property READ, so the identifier
+	# was skipped entirely. tests/probe/ship_impl.gd now walks the reads too.
 	EventBus.item_broke.emit(self)
 	# Breaking hospital property is a facilities expense and a small reputational
 	# ding, but it is not evidence of fraud — which makes it a cheap distraction.

@@ -18,10 +18,22 @@ var patient_system: PatientSystem
 var ward: WardDay
 var ui: Node
 
+## How long the whole scene took to come up, in milliseconds. The title screen
+## has no frames to spare between `change_scene_to_file` and this — the last
+## drawn menu frame sits frozen on the screen for the whole of it — so this is
+## the number the loading card in `main_menu.gd` is hiding, and it is asserted
+## against a budget in `tests/probe/ship_impl.gd`. Nothing measured it before,
+## and nothing could: `--fixed-fps` reports a stalled frame as a sixtieth of a
+## second however long it really took, which is the same blind spot that hid the
+## title screen's 0.8-second music synthesis.
+static var last_build_msec := 0
+
 func _ready() -> void:
+	var t0 := Time.get_ticks_msec()
 	add_to_group("game")
 	_build_environment()
 	_build_world()
+	var t_world := Time.get_ticks_msec() - t0
 	_spawn_systems()
 	_spawn_player()
 	_spawn_staff()
@@ -34,6 +46,8 @@ func _ready() -> void:
 	add_child(marker)
 	_register_saves()
 	_start()
+	last_build_msec = Time.get_ticks_msec() - t0
+	Log.i("scene up in %d ms (%d of it the building)" % [last_build_msec, t_world], "Game")
 
 # ------------------------------------------------------------------ world
 func _build_environment() -> void:
@@ -508,11 +522,42 @@ func _spawn_ui() -> void:
 func _register_saves() -> void:
 	SaveSystem.register("suspicion", suspicion.to_dict, suspicion.from_dict)
 	SaveSystem.register("hospital", hospital.to_dict, hospital.from_dict)
-	SaveSystem.register("records", ward.records.to_dict, ward.records.from_dict)
+	# THE SEED IS NOT THE RANDOMNESS. RNG was never a save provider: on a cold
+	# launch it seeds itself with `randi()` (RNG._ready), the player presses
+	# Continue, and every roll that is not the ward deal — gossip, the
+	# suggestibility of an ask, the complication roll, the ambience — ran off a
+	# stream seeded by nothing to do with the number on the title screen, whose
+	# whole stated purpose is that a shift can be shared with it. The ward stayed
+	# right the entire time, because `Cases.draw_five` reads GameState.seed_value
+	# directly, which is exactly why nobody saw the other half go.
+	SaveSystem.register("rng", RNG.save_state, RNG.load_state)
 
+## THERE IS NO `records` PROVIDER, AND THAT IS THE FIX.
+##
+## There was one: `SaveSystem.register("records", ward.records.to_dict, ...)`,
+## right here, binding two Callables to the `Records` object that existed at
+## `_ready()`. `_start()` then calls `ward.start()`, which does
+## `records = Records.new()` — and `start()` runs EVERY MORNING, its own comment
+## says so. So the provider was bound to an orphan from before the player pressed
+## anything, on every career, and `systems.records` in every autosave that has
+## ever been written is `{"entries": [], "next": 1, "placements": {}}`.
+##
+## It is deliberately not being made live, because live would be wrong: the only
+## write is at the handover, `load_game` runs BEFORE `ward.start()` (it has to —
+## what carries out of a save is exactly what `start()` reads), and `start()`
+## then throws the restored chart away. Restoring it later would put yesterday's
+## chart into today's ward, which is worse than not restoring it. The chart is
+## per-day state and the save file should not pretend otherwise.
+##
+## If a mid-shift save is ever added, this is the shape it needs: register a
+## METHOD on this node rather than a Callable bound to `ward.records` (a bound
+## method reports invalid when its object dies, which is what makes SaveSystem's
+## `fn.is_valid()` guard work at all — a lambda that captured `ward` would stay
+## "valid" and throw), and load it after `ward.start()` rather than before.
+## `tests/probe/ship_impl.gd` fails if the key comes back without that.
+##
 ## Nothing on this ward keeps a device log any more — the machines, the
-## thermostats and the window units all went with the redesign. What is evidence
-## now is the chart, and the chart is saved with the records above.
+## thermostats and the window units all went with the redesign.
 
 func _start() -> void:
 	# CONTINUE. The main menu set this flag and NOTHING READ IT — pressing
@@ -524,7 +569,17 @@ func _start() -> void:
 	if GameState.flag("continue_save", false):
 		GameState.set_flag("continue_save", false)
 		if not SaveSystem.load_game(SaveSystem.AUTOSAVE):
-			Log.e("Continue pressed with no readable save; starting fresh", "Game")
+			# AND THEN ACTUALLY START ONE. This used to log an error nobody can
+			# see in a shipped build and carry straight on with the autoload at
+			# its untouched defaults — day 1, no cash, seed 0, debt falling back
+			# through `flag()` — WITHOUT `start_new_career()`, so
+			# `DoctorRecord.wipe()` never ran and the previous career's strikes
+			# were still on the record. The player got something that looked like
+			# a new career, was not one, and could be struck off on its first
+			# night for a night somebody else worked.
+			Log.e("Continue pressed with no readable save; starting a new career", "Game")
+			GameState.start_new_career()
+			EventBus.toast.emit("That save could not be read. Starting a new career.", "bad")
 	patient_system.populate()
 	ward.start()
 	if GameState.flag("headless_sim", false):
@@ -533,10 +588,23 @@ func _start() -> void:
 	EventBus.request_ui.emit("morning", {})
 
 var _place_accum := 0.0
+var _tell_accum := 0.0
 
 func _physics_process(delta: float) -> void:
-	if player and suspicion:
-		suspicion.refresh_tells(player.global_position)
+	# FIVE TIMES A SECOND, NOT SIXTY. `refresh_tells` walks every registered
+	# body, and for each one computes `mind.tier()` — a full pass over that
+	# mind's evidence array with an exp() and a divide per entry — in order to
+	# set a nametag's modulate colour and a `watching` boolean. Both of those
+	# change on the order of MINUTES; neither is worth a hundred and fifty
+	# evidence walks a second on a Deck's battery. The room-observation pass
+	# three lines below has run at 2Hz for exactly this reason since it was
+	# written, so this is the pattern rather than a new idea, and 5Hz is more
+	# than twice as often as the thing that decides where you were standing.
+	_tell_accum += delta
+	if _tell_accum >= 0.2:
+		_tell_accum = 0.0
+		if player and suspicion:
+			suspicion.refresh_tells(player.global_position)
 	# Twice a second is plenty to know which room somebody is standing in, and
 	# it is what turns "I was at the bedside" into a claim that can be wrong.
 	_place_accum += delta

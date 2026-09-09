@@ -7,7 +7,20 @@ config_version=5
 
 config/name="Chronic Care"
 config/description="A broke doctor. A struggling hospital. Patients who really should have gone home by now."
-config/version="0.1.0"
+; THE ONE PLACE THE BUILD NUMBER LIVES.
+;
+; It was 0.1.0 and was read by nothing in `scripts/` — no screen named a build
+; and no bug report attached to a screenshot could either. `MainMenu.version_string()`
+; reads it off ProjectSettings now and prints it under the Quit button, and
+; `tests/probe/ship_impl.gd` asserts that the three export presets carry the SAME
+; number, because a version in four files is three copies waiting to go stale
+; (gotcha 48). Bump it here and in export_presets.cfg together, or the probe
+; fails and tells you which one you forgot.
+;
+; 0.9: everything the design asks for is in and measured; what is not done is
+; the thing no container can do, which is a person playing it on real hardware.
+; That is the difference between this and a 1.0.
+config/version="0.9.0"
 run/main_scene="res://scenes/Boot.tscn"
 ; "GL Compatibility", NOT "Forward Plus".
 ;
@@ -49,6 +62,24 @@ window/stretch/mode="canvas_items"
 ; HUD plates stay in the corners they are anchored to, and the cards measure
 ; themselves against the real viewport (see ScreenBase.card_shell).
 window/stretch/aspect="expand"
+
+[debug]
+
+; A SHIPPED BUILD'S STDOUT GOES NOWHERE.
+;
+; `file_logging/enable_file_logging` defaults to false for a release export, so
+; everything `Log` writes — including the 400-line ring its own docstring says
+; exists "so the bug-report dump can show recent history" — was going to a
+; console no player has open. When the first buyer says "it crashed on day
+; three" there was no artefact to ask them for.
+;
+; On now, five files deep, which is about a week of play. They land in the
+; platform user data directory beside the save (`%APPDATA%/Godot/app_userdata/`
+; on Windows, `~/.local/share/godot/app_userdata/` on Linux) and cost one open
+; file handle. This changes where output ALSO goes, not what is printed, so
+; run_tests.sh's quiet check and boot_check.sh are inert against it.
+file_logging/enable_file_logging=true
+file_logging/max_log_files=5
 
 [input]
 

@@ -57,8 +57,44 @@ func noise(name: String, spread: float) -> float:
 	var r := stream(name)
 	return ((r.randf() + r.randf() + r.randf()) / 3.0 - 0.5) * 2.0 * spread
 
+## A SEED IS NOT A POSITION, and saving only the seed rewinds the whole career.
+##
+## Every `randf_s`/`chance`/`pick` ADVANCES the generator it names, so a stream
+## is (seed, position) and the seed alone is half of it. The first version of
+## this pair returned `{"seed": seed_value}` and restored it with `reseed()`,
+## which clears `_streams` — so loading a save put every stream back to position
+## zero and the next `chance("lead_oduya")` returned whatever the FIRST ask of
+## the career had returned. Deterministically, invisibly, and identically on
+## every reload, which is a save-scum surface on the suggestibility roll rather
+## than merely a lost seed.
+##
+## Neither half of the pair had a caller. RNG was not registered with SaveSystem
+## at all, so a loaded career simply inherited whatever positions the title
+## screen's music and idle chatter happened to leave behind — CLAUDE.md 15's
+## shape (a thing written, documented, and read by nothing), sitting in the save
+## system. `Game._register_saves` registers it now.
+##
+## The state goes to JSON as a DECIMAL STRING, not a number. `RandomNumberGenerator.state`
+## is a full 64-bit value; JSON has one numeric type and it is a double, so a
+## state above 2^53 would come back rounded and every stream would resume a few
+## draws away from where it stopped — the same bug as the one above, quieter.
 func save_state() -> Dictionary:
-	return {"seed": seed_value}
+	var positions := {}
+	for name in _streams:
+		positions[name] = str((_streams[name] as RandomNumberGenerator).state)
+	return {"seed": seed_value, "streams": positions}
 
 func load_state(d: Dictionary) -> void:
-	reseed(int(d.get("seed", 0)))
+	seed_value = int(d.get("seed", seed_value))
+	# CLEAR, THEN REBUILD. A stream the save does not mention has to go back to
+	# its derived seed rather than keep the position the menu left it at, and
+	# `reseed()` is not the way to do that here: it would re-log the seed on
+	# every load and it takes an argument this function has already applied.
+	_streams.clear()
+	var positions: Dictionary = d.get("streams", {})
+	for name in positions:
+		# Strings only. A save written before this field existed has no
+		# "streams" key at all, and anything else in it is a hand-edited file.
+		if typeof(positions[name]) != TYPE_STRING:
+			continue
+		stream(String(name)).state = int(String(positions[name]))

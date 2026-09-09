@@ -845,7 +845,7 @@ with it because a lost afternoon does not care which.
   strike total that never reset. There are no achievements and no stats
   dictionary — both existed, both were read by nothing, and both were cut.
 - **Content lives in `Cases`, and adding a patient must not require touching a
-  system.** Forty people across four wards, each a dictionary of authored
+  system.** Forty-three people across four wards, each a dictionary of authored
   strings; `tests/probe/data_run.gd` walks every one and fails on any field a
   system would otherwise silently default. If a new kind of patient needs a new
   `if` in `WardDay`, the data model is wrong, not the patient.

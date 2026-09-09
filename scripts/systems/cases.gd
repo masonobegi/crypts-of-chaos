@@ -813,6 +813,43 @@ const DAY_TWO := [
 		"readmit_pressed": "I've told you. It's the moving. It was always the moving.",
 		"readmit_on_your_note": "Have you put what I was doing when they took it? That's the whole of it.",
 	},
+	## ============ AND THE OTHER MAN IN BED ONE, WHO IS ALSO WORTH NOTHING.
+	##
+	## Bed one on this ward had ONE candidate for as long as the ward has
+	## existed, so the honest hold — the person the whole night turns on — was
+	## the same woman every career, forever. Alfie Renton is the same shape and
+	## a different person: genuinely ill, state funded, worth a hundred and
+	## eighty pounds to keep, and desperate to leave for a reason that has
+	## nothing to do with medicine.
+	{
+		"id": "renton", "name": "Alfie Renton", "age": 23, "bed": 1,
+		"they": "he",
+		"condition": "Osteomyelitis, day 4 of six weeks IV",
+		"tier": Tier.STATE,
+		"truly_well": false,          ## the honest hold, and it pays almost nothing
+		"suggestible": 0.35,
+		"recall": 0.85,
+		"summary": "Line in the right arm. CRP 88, down from 140. Four more doses this week.",
+		"opening": "I'm on the tablets version from Friday, they said. So I can go Friday.",
+		"later": "It's the agency. Three days off and they take you off the list.",
+		"evening": "I've done four days. Four days is a fortnight's rent.",
+		"pressed": "I'm not being difficult. I just need to know which day.",
+		"on_your_note": "Is that going to say I discharged myself? It can't say that.",
+		"on_hold": "Right. Okay. I'll ring them and see what they say.",
+		"on_discharge": "Brilliant. Cheers. I'll be back Friday for the next one, yeah?",
+		"exam_unwell": "The arm is hot along the line of the bone and he flinches when you get near it, then apologises for flinching.",
+		"note": "State funded, four days into six weeks, and a job that will not wait for him.",
+		"overnight": "Temp settled and the six o'clock dose went through. He asked the night staff twice what day it is.",
+		"readmit_summary": "Back at 19:30 with the arm twice the size. Line pulled at home on Tuesday.",
+		"readmit_opening": "I know. I know. I went back to work.",
+		"readmit_hold": "Yeah. No, you're right. I'll ring them tomorrow.",
+		"readmit_discharge": "Seriously? Look at it. Just look at it.",
+		"readmit_exam": "Swollen to the elbow and hot to the shoulder. This is four days of not being here.",
+		"readmit_later": "They took me off the list anyway. So that was that for nothing.",
+		"readmit_evening": "I'm not going anywhere this time. There's nowhere to go.",
+		"readmit_pressed": "Ask what you like. I've had a week to think about it.",
+		"readmit_on_your_note": "Put whatever you want. I'm not arguing with you twice.",
+	},
 ]
 
 
@@ -1142,6 +1179,46 @@ const DAY_THREE := [
 		"readmit_pressed": "I'm not exaggerating it now any more than I was yesterday.",
 		"readmit_on_your_note": "You've put that it perforated. Yes. That's what that was.",
 	},
+	## ============ AND THE OTHER PREMIUM BED, WHO WOULD NOT NOTICE.
+	##
+	## Bed five had one candidate, and she is the sharpest square on the board:
+	## Rosalind Fry wants it, will agree to anything, pays the most, remembers
+	## every word and tells the ward sister she asked. Gerald Pomfret is the
+	## same money and the OPPOSITE trap. He agrees with everything and retains
+	## almost none of it, which reads as the easiest bed on the ward to take —
+	## and a patient who does not remember saying it is `patient_no_recall`,
+	## which is a finding rather than a corroboration. The suggestible one is
+	## the dangerous one, and this ward now says so twice, in two directions.
+	{
+		"id": "pomfret", "name": "Gerald Pomfret", "age": 70, "bed": 5,
+		"they": "he",
+		"beard": true,
+		"condition": "Collapse, cause not found. All investigations normal.",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.9,            ## he will agree with anybody about anything
+		"recall": 0.25,                ## and will not be able to tell you he did
+		"summary": "Tilt table normal. Echo normal. Twenty-four hour tape unremarkable.",
+		"opening": "Whatever you think is best. You're the doctor, aren't you.",
+		"later": "Have I seen you before today? I'm sorry, I'm terrible with faces.",
+		"evening": "My wife will be wondering. She does worry. Did I say that already?",
+		"pressed": "Oh — yes. Yes, I should think so. If you say so.",
+		"on_your_note": "That's fine. That's absolutely fine. What does it say?",
+		"on_hold": "Another night? Well. If that's what's wanted, that's what's wanted.",
+		"on_discharge": "Home! Lovely. Now — did somebody take my shoes?",
+		"exam_well": "Nothing whatsoever, and he thanks you warmly for it and asks who you are.",
+		"note": "Premium cover, entirely well, and agrees with everything. He will not remember agreeing.",
+		"overnight": "Slept. Asked the night staff three times whether his wife had been.",
+		"readmit_summary": "Brought back at 21:00 after a second fall at home. Again nothing found.",
+		"readmit_opening": "Have I been in? My daughter says I've been in.",
+		"readmit_hold": "Right you are. Whatever's easiest for everybody.",
+		"readmit_discharge": "Home again! Marvellous. Is somebody coming?",
+		"readmit_exam": "Nothing, again, and a graze on the same elbow as last time that he cannot account for.",
+		"readmit_later": "Twice, they tell me. I'll take their word for it.",
+		"readmit_evening": "My daughter's cross. I can tell she's cross, she goes quiet.",
+		"readmit_pressed": "I'd rather not say the wrong thing. Ask my daughter, she'll know.",
+		"readmit_on_your_note": "Is that what I said? Then it must be right, mustn't it.",
+	},
 ]
 
 const PRIOR_THREE := [
@@ -1199,6 +1276,11 @@ const PRIOR_THREE := [
 		"patient": "ollerenshaw", "minute": 6 * 60 + 20,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Slept. No analgesia requested overnight. Declined breakfast.",
+	},
+	{
+		"patient": "pomfret", "minute": 7 * 60 + 35,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Up, washed and dressed himself. Asked about his wife three times.",
 	},
 ]
 
@@ -1558,6 +1640,45 @@ const DAY_FOUR := [
 		"readmit_pressed": "I've told the nurse. I've told you. I've told everybody who's stood there.",
 		"readmit_on_your_note": "Somebody's written 'head'. That's all I wanted. Somebody to write 'head'.",
 	},
+	## ============ AND THE OTHER ONE IN BED FOUR, WHO SAYS NOTHING AT ALL.
+	##
+	## Bed four had one candidate, and Hollis Vane is unmistakably ill and
+	## shouting about it — the joke of that bed is that everybody stopped
+	## listening. Marguerite Sowerby is the same illness, the same premium bed
+	## and the exact opposite manner: she apologises for the fuss, plays every
+	## symptom down by half, and the only way to find her is to go and look. On
+	## a ward built out of a colleague's confident overnight opinion, she is the
+	## bed where the colleague's note is confident, wrong, and entirely
+	## reasonable given what she told him.
+	{
+		"id": "sowerby", "name": "Marguerite Sowerby", "age": 58, "bed": 4,
+		"they": "she",
+		"condition": "Post-operative collection, drain in situ",
+		"tier": Tier.PREMIUM,
+		"truly_well": false,
+		"suggestible": 0.2,
+		"recall": 0.9,
+		"summary": "Reviewed by Dr Costa 05:20. Drain output reducing. For consideration of discharge.",
+		"opening": "I'm quite all right, honestly. Everyone has been so good.",
+		"later": "It's sore, but then it would be, wouldn't it. It's meant to be sore.",
+		"evening": "I didn't want to make a fuss when the night girl was so busy.",
+		"pressed": "I'd really rather not be a nuisance about it.",
+		"on_your_note": "Oh — is that all about me? Goodness. I hope I haven't caused trouble.",
+		"on_hold": "If you're sure it's not putting anybody out.",
+		"on_discharge": "Thank you. Everyone's been marvellous. Really.",
+		"exam_unwell": "The wound is tense and the drain has stopped because it is blocked, not because there is nothing left. She apologises while you press on it.",
+		"note": "Premium cover and genuinely unwell, and she will not tell you so. Only a pair of hands finds it.",
+		"overnight": "Drain flushed at two and came away with three hundred mils. She apologised to the night staff for the mess.",
+		"readmit_summary": "Readmitted 23:10, septic. Taken back to theatre at 01:00.",
+		"readmit_opening": "I'm so sorry. I should have said something this morning.",
+		"readmit_hold": "Thank you. I'll try not to be any bother.",
+		"readmit_discharge": "Of course. If that's what you think. I'm sure you know best.",
+		"readmit_exam": "Rigoring, and she is still apologising between them.",
+		"readmit_later": "They've told me not to say I'm fine. So I shan't.",
+		"readmit_evening": "My husband is being very calm about it, which means he isn't.",
+		"readmit_pressed": "I did say. I said it very quietly, which I suppose is the same as not saying it.",
+		"readmit_on_your_note": "You wrote it down this time. I noticed that. Thank you.",
+	},
 ]
 
 const PRIOR_FOUR := [
@@ -1618,6 +1739,13 @@ const PRIOR_FOUR := [
 		"patient": "sarraf", "minute": 3 * 60 + 50,
 		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
 		"text": "Collapse witnessed at home. For observation and a repeat ECG in the morning.",
+	},
+	## THE FOURTH CONFIDENT NOTE, AND IT IS REASONABLE. She told him she was
+	## fine, so he wrote down that she was fine.
+	{
+		"patient": "sowerby", "minute": 5 * 60 + 20,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Reviewed. Comfortable, drain output reducing. For discharge today.",
 	},
 ]
 
@@ -2423,5 +2551,10 @@ const PRIOR_TWO := [
 		"patient": "delacroix", "minute": 7 * 60 + 5,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Comfortable. Keeps yesterday's discharge letter on the locker.",
+	},
+	{
+		"patient": "renton", "minute": 6 * 60 + 5,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Six o'clock dose through. Afebrile. Asking which day he can go.",
 	},
 ]

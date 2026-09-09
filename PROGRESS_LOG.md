@@ -3147,3 +3147,9 @@ DIFFERENT ward", so it tests against `Cases.WARDS` itself.
 And the red has to be proven on the right line. Breaking the board's build-time
 literal proved nothing, because `rename_for_ward` runs on every reskin and put it
 straight back.
+
+### 1.0.0
+
+Version bumped from 0.9.0 in `project.godot` and all four fields of
+`export_presets.cfg`, which the ship probe cross-checks against each other.
+All three platforms export and the Linux build boots and exits clean.

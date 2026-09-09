@@ -20,7 +20,7 @@ config/description="A broke doctor. A struggling hospital. Patients who really s
 ; 0.9: everything the design asks for is in and measured; what is not done is
 ; the thing no container can do, which is a person playing it on real hardware.
 ; That is the difference between this and a 1.0.
-config/version="0.9.0"
+config/version="1.0.0"
 run/main_scene="res://scenes/Boot.tscn"
 ; "GL Compatibility", NOT "Forward Plus".
 ;

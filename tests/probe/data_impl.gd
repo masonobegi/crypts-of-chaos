@@ -57,6 +57,51 @@ func run() -> void:
 			# ...and a social hold needs its own reason, or the note is generic.
 			if bool(c.get("no_care_at_home", false)) and not c.has("social_reason"):
 				_fail("ward %d / %s / social_reason" % [day + 1, id])
+		# EVERY AUTHORED PERSON WALKS IN WITH A NOTE ALREADY ON THEM.
+		#
+		# The prior-entry lists used to cover only the FIRST candidate in each
+		# slot, so on any seed but zero up to four of the five beds opened with a
+		# blank chart — nothing to write against, nothing for the audit to read,
+		# and the whole record-versus-truth layer switched off for that bed. It
+		# looked like nothing: the ward populated, the game played, every test
+		# passed. Checked here rather than in the game because a missing note is
+		# an absence, and an absence never throws.
+		var noted := {}
+		for pe in Cases.PRIOR_BY_DAY[day]:
+			var who := String(pe["patient"])
+			if noted.has(who):
+				_fail("ward %d / %s has two handover notes" % [day + 1, who])
+			noted[who] = true
+			# `ChartEntry.Claim[...]` and `Author[...]` are looked up by NAME at
+			# ward start, so a typo here is a runtime error inside a loop that
+			# builds the chart — which, per gotcha 11, aborts the function and
+			# leaves the ward silently half-charted.
+			if not ChartEntry.Claim.has(String(pe.get("claim", ""))):
+				_fail("ward %d / %s / claim %s is not a Claim"
+					% [day + 1, who, String(pe.get("claim", ""))])
+			if not ChartEntry.Author.has(String(pe.get("author", ""))):
+				_fail("ward %d / %s / author %s is not an Author"
+					% [day + 1, who, String(pe.get("author", ""))])
+			if String(pe.get("author_id", "")).strip_edges() == "":
+				_fail("ward %d / %s / handover note is unsigned" % [day + 1, who])
+			if String(pe.get("text", "")).strip_edges() == "":
+				_fail("ward %d / %s / handover note says nothing" % [day + 1, who])
+			var mins := int(pe.get("minute", -1))
+			if mins < 0 or mins >= Cases.DAY_START_MINUTE:
+				_fail("ward %d / %s / handover note written at %d, not overnight"
+					% [day + 1, who, mins])
+		for c in roster:
+			if not noted.has(String(c["id"])):
+				_fail("ward %d / %s has no handover note" % [day + 1, String(c["id"])])
+		for who in noted:
+			var found := false
+			for c in roster:
+				if String(c["id"]) == String(who):
+					found = true
+			if not found:
+				_fail("ward %d: handover note about %s, who is not on this ward"
+					% [day + 1, String(who)])
+
 		if beds.size() != Cases.BEDS:
 			_fail("ward %d has %d slots, not %d" % [day + 1, beds.size(), Cases.BEDS])
 

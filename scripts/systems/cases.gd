@@ -974,7 +974,7 @@ const DAY_THREE := [
 
 const PRIOR_THREE := [
 	{
-		"patient": "tsang", "minute": 8 * 60 + 10,
+		"patient": "tsang", "minute": 6 * 60 + 50,
 		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Up and about. Asking about work.",
 	},
@@ -984,7 +984,7 @@ const PRIOR_THREE := [
 		"text": "Sats 94 on air overnight. Walked to the day room and back.",
 	},
 	{
-		"patient": "aldridge", "minute": 9 * 60 + 10,
+		"patient": "aldridge", "minute": 5 * 60 + 50,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Medically cleared. Psych liaison bleeped twice, no response.",
 	},
@@ -995,9 +995,38 @@ const PRIOR_THREE := [
 		"text": "Afebrile 24 hours. Says he feels well. For discharge today.",
 	},
 	{
-		"patient": "fry", "minute": 8 * 60 + 50,
+		"patient": "fry", "minute": 7 * 60 + 30,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Comfortable. Has asked the night staff twice about staying on.",
+	},
+	{
+		"patient": "mbeki", "minute": 7 * 60 + 20,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Stone passed at four and produced for inspection. No analgesia since.",
+	},
+	{
+		"patient": "ferrero", "minute": 7 * 60 + 0,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Redness settled inside the marked line. Asking about her husband's tablets.",
+	},
+	{
+		"patient": "quill", "minute": 5 * 60 + 45,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Wounds dry, dressings renewed. Liaison referral submitted 22:40. No response.",
+	},
+	{
+		"patient": "achterberg", "minute": 7 * 60 + 5,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Last dose given at six. Walked the corridor before breakfast.",
+	},
+	## A GOOD NIGHT IS NOT THE SAME AS A WELL PATIENT. Nita Ollerenshaw asked
+	## for nothing, so there is nothing in the notes, and the one clause that
+	## would give her away is the last one — which reads, at eight in the
+	## morning, like somebody who was not hungry.
+	{
+		"patient": "ollerenshaw", "minute": 6 * 60 + 20,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Slept. No analgesia requested overnight. Declined breakfast.",
 	},
 ]
 
@@ -1323,6 +1352,37 @@ const PRIOR_FOUR := [
 		"patient": "threlfall", "minute": 4 * 60 + 20,
 		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
 		"text": "Aura ongoing at review. For observation overnight.",
+	},
+	## THE SAME NOTE AS GWEN ASHWORTH'S, AND ON PURPOSE. Bed one holds one of
+	## them, the night registrar wrote nearly the same sentence about both,
+	## and he was right about one. There is no reading of the chart that
+	## separates them — only fifteen minutes at the bedside does.
+	{
+		"patient": "brightwell", "minute": 6 * 60 + 40,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Reviewed. Afebrile, bloods normalised. Fit for discharge today.",
+	},
+	{
+		"patient": "okereke", "minute": 1 * 60 + 40,
+		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Admitted for monitoring, palpitations. Telemetry overnight.",
+	},
+	{
+		"patient": "hollins", "minute": 4 * 60 + 30,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Course completed. Chest clear. Discharged. Awaiting family.",
+	},
+	## AND AGAIN ON BED THREE, WORD FOR WORD WITH ALMA PETROSSIAN'S. He went
+	## over, the films are clear, and what is wrong with him is not on a film.
+	{
+		"patient": "castellanos", "minute": 5 * 60 + 0,
+		"claim": "FIT_FOR_DISCHARGE", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "No injury on the films. Mobilising. Discharged. Awaiting transport.",
+	},
+	{
+		"patient": "sarraf", "minute": 3 * 60 + 50,
+		"claim": "UNWELL", "author": "DOCTOR", "author_id": "Dr Costa",
+		"text": "Collapse witnessed at home. For observation and a repeat ECG in the morning.",
 	},
 ]
 
@@ -1790,6 +1850,26 @@ const ROUNDS := [10 * 60, 13 * 60, 16 * 60, 19 * 60]
 ## which is why holding somebody means writing against a note that is already
 ## there — and why Peter Lomax is the hardest bed on the second ward: his prior
 ## entries all say improving, and they are not lying, they are just out of date.
+##
+## EVERY AUTHORED PERSON HAS ONE, INCLUDING THE ALTERNATES. For a long time only
+## the first five on each ward did, so on any seed but zero up to four of the
+## five beds opened with a completely blank chart — no handover, nothing to
+## write against, and the eight-till-ten window on them free. Half the design of
+## this game is the gap between what a document says and what is true, and on
+## three quarters of the boards the draw can deal there was no document. The
+## `data_run` probe now fails on a patient with no note, and on a note whose
+## claim or author is not a name the enum has.
+##
+## AND EVERY ONE OF THEM IS STAMPED BEFORE EIGHT O'CLOCK, which seventeen of
+## them were not. The chart prints `stated_minute` verbatim, so the first record
+## a player ever opened — Hal Brennan, bed three, ward one — carried a nurse's
+## observation timed 09:20 while the clock in the corner said 08:00: a note from
+## eighty minutes into the future, on the screen that teaches you the whole game
+## is about what a document says. It was worse than cosmetic. Half the audit
+## sorts a patient's entries by `stated_minute` and asks which claim is the
+## LATEST, so a handover note timed after the player's own note quietly
+## outranked it, and the ward's own opinion beat yours on the beds where you had
+## bothered to write early.
 const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE, PRIOR_FOUR]
 
 static func prior_entries(day := -1) -> Array:
@@ -1831,12 +1911,12 @@ static func prior_entries(day := -1) -> Array:
 
 const PRIOR_ONE := [
 	{
-		"patient": "brennan", "minute": 9 * 60 + 20,
+		"patient": "brennan", "minute": 7 * 60 + 20,
 		"claim": "FIT_FOR_DISCHARGE", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Obs stable. Eating and drinking. For discharge today.",
 	},
 	{
-		"patient": "marchetti", "minute": 8 * 60 + 40,
+		"patient": "marchetti", "minute": 6 * 60 + 35,
 		"claim": "UNWELL", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Leg remains warm to touch. Margin marked in pen.",
 	},
@@ -1846,14 +1926,42 @@ const PRIOR_ONE := [
 		"text": "Settled overnight after 3am. Ate breakfast.",
 	},
 	{
-		"patient": "oduya", "minute": 8 * 60 + 55,
+		"patient": "oduya", "minute": 7 * 60 + 35,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Comfortable. No further pain reported.",
 	},
 	{
-		"patient": "blake", "minute": 9 * 60 + 5,
+		"patient": "blake", "minute": 7 * 60 + 45,
 		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Up and dressed. Asking about going home.",
+	},
+	## THE SAME PEN, THE OTHER WAY ROUND. Bed one is either a cellulitis
+	## that is spreading or one that has gone, and Adeyemi marks the margin
+	## either way; what the ink says the next morning is the whole bed.
+	{
+		"patient": "vantol", "minute": 6 * 60 + 5,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Margin re-marked at six. Well inside yesterday's pen.",
+	},
+	{
+		"patient": "bassong", "minute": 7 * 60 + 55,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Walked the length of the bay with the frame. Films reported: no fracture.",
+	},
+	{
+		"patient": "whitcombe", "minute": 7 * 60 + 15,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Wound dry. Ate a full breakfast. Asking about the lift again.",
+	},
+	{
+		"patient": "sarkisian", "minute": 7 * 60 + 30,
+		"claim": "UNWELL", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Second troponin higher than the first. Cardiology bleeped and aware.",
+	},
+	{
+		"patient": "nwankwo", "minute": 6 * 60 + 55,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "No further episodes overnight. Neurology entry filed yesterday.",
 	},
 ]
 
@@ -1864,12 +1972,12 @@ const PRIOR_TWO := [
 		"text": "Temp 38.4 at 03:00. Paracetamol given. Two doses of IV left.",
 	},
 	{
-		"patient": "achebe_fry", "minute": 8 * 60 + 30,
+		"patient": "achebe_fry", "minute": 7 * 60 + 10,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Rate 78 and regular. Walked to the day room and back.",
 	},
 	{
-		"patient": "ferreira", "minute": 8 * 60 + 45,
+		"patient": "ferreira", "minute": 7 * 60 + 25,
 		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "Self-caring. Has asked about going home three times.",
 	},
@@ -1881,8 +1989,37 @@ const PRIOR_TWO := [
 		"text": "CIWA 4. Slept. No tremor observed at this round.",
 	},
 	{
-		"patient": "voss", "minute": 9 * 60 + 0,
+		"patient": "voss", "minute": 7 * 60 + 40,
 		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
 		"text": "No further episode. Sitting out. Reading her own chart again.",
+	},
+	{
+		"patient": "haldane", "minute": 7 * 60 + 0,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "No residual weakness. Started on the new tablets. Son telephoned twice.",
+	},
+	{
+		"patient": "grieve", "minute": 6 * 60 + 20,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Off nebulisers since midnight. Peak flow 610. His best is 620.",
+	},
+	{
+		"patient": "renshaw", "minute": 7 * 60 + 50,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Up and down the corridor twice before breakfast, to make a point.",
+	},
+	## TRUE, SIGNED, AND USELESS. Every observation on this ward is taken at
+	## the bedside with the patient sitting in it, and the one thing wrong
+	## with Celia Ibarra only happens when she stands up. The note is not a
+	## lie and nobody wrote it carelessly; it simply cannot see her.
+	{
+		"patient": "ibarra", "minute": 6 * 60 + 40,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Sats 96 on air. Comfortable. Observations taken sitting.",
+	},
+	{
+		"patient": "delacroix", "minute": 7 * 60 + 5,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Comfortable. Keeps yesterday's discharge letter on the locker.",
 	},
 ]

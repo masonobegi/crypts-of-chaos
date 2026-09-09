@@ -35,8 +35,10 @@ Then, from `/home/user/crypts-of-chaos`:
 ```bash
 ./run_tests.sh                    # all of it, ~6 min. Green before committing.
 ./check.sh scripts/foo.gd         # parse errors for specific files
-./look.sh try1                    # FOUR frames, ~4 min — the loop for a shader,
-                                  # a light, a line weight or a face
+./look.sh try1                    # FOUR frames — the loop for a shader, a light
+                                  # or a line weight
+./faces.sh try1                   # SIX faces close up, one body, the cast —
+                                  # the loop for a CHARACTER
 ./screenshots.sh                  # all 21 frames plus two layout measurements
 SHOT_ONLY=struck_off ./screenshots.sh   # one frame, ~90 s
 ./playfast.sh day                 # play a whole shift with a controller
@@ -76,13 +78,16 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by
    some distance and no amount of further polish substitutes for it.
-4. **The head is done for now.** It has a varied skull, nose, jaw and five
-   hairstyles; the nose has a bridge, the eyes sit in sockets and the mouth has
-   a lower lip. Lighting is NOT the lever for any of it and has been measured
-   twice: `BACKLIGHT` at 0.28 moved 6,100 pixels by at most 27 levels, and at
-   0.70 — well past subtle — 6,300 by at most 52, with the face reading
-   identically both times. If somebody wants to go further, the next piece is
-   cheekbones, and it is `npc_body.gd`.
+4. **The characters have had a full pass and `./faces.sh` is how to judge
+   them.** Eyes are dark almonds with a catchlight rather than white sclerae,
+   there is a forehead, the torso is round enough not to read as a board, the
+   legs have a two-centimetre gap and the arms hang. Lighting is NOT the lever
+   for any of it and has been measured twice: `BACKLIGHT` at 0.28 moved 6,100
+   pixels by at most 27 levels, and at 0.70 — well past subtle — 6,300 by at
+   most 52, with the face reading identically both times. If somebody wants to
+   go further the next pieces are cheekbones and the hands, which are still
+   mittens with a thumb; both are `npc_body.gd`, and both should be judged from
+   `faces.sh` and not from a twenty-minute screenshot run.
 
 ## Two noises that are not bugs
 

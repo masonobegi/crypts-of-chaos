@@ -2655,3 +2655,15 @@ Verified: 298 assertions, 172 smoke checks on three seeds, seven day criteria,
 the data and draw checks, careers on three seeds, the frontier probe, both play
 runs, the quiet check and the boot check. All green.
 
+### And a brow that was written in two places
+
+Setting a rest angle on the brows at build time and then letting `set_mood`
+write `sx * _mood * 0.42` over it means the first time anybody's mood is set to
+neutral, their brows snap flat and stay there — a different face to the one that
+was built, arrived at silently. The height had the same fault in the other
+direction: built at 0.052, set_mood at 0.068. `BROW_REST_Y` and `BROW_REST_Z`
+are the one definition and both places read them. Same class as the ceiling's
+`self_lit` and the fabric's weave pitch, found by reading the diff rather than
+by looking at a picture, because a face at neutral and a face at build are
+rarely in the same frame.
+

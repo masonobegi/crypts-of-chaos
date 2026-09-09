@@ -80,6 +80,11 @@ var _legs: Array[Node3D] = []
 ## posed is worse than one that is obviously not.
 const ARM_REST_X := 0.07
 const ARM_REST_Z := 0.055
+## Where a brow sits when nothing is happening. Written in TWO places — once
+## when the head is built and once every time `set_mood` runs — so they have to
+## be the same number or a neutral mood is a different face to a fresh one.
+const BROW_REST_Y := 0.052
+const BROW_REST_Z := 0.09
 var _eyes_open: Array[MeshInstance3D] = []
 var _eyes_shut: Array[MeshInstance3D] = []
 var _brows: Array[MeshInstance3D] = []
@@ -414,10 +419,16 @@ func _build_body() -> void:
 		var brow_col: Color = hair.darkened(0.25).lerp(Color(0.16, 0.13, 0.12), 0.55)
 		var brow := Build.mi(Build.rbox_mesh(Vector3(0.066, 0.014, 0.020), 0.007),
 			Build.mat(brow_col, 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.072, 0.052, 0.192))
+			Vector3(sx * 0.072, BROW_REST_Y, 0.192))
 		# Angled out and down a little at rest, which is a face at ease rather
-		# than a face at attention. `set_mood` rotates from here.
-		brow.rotation.z = sx * 0.09
+		# than a face at attention. `set_mood` rotates FROM here — see
+		# BROW_REST_Z, which is why that is a constant and not a literal: the
+		# first version set 0.09 at build time and `set_mood` then wrote
+		# `sx * _mood * 0.42` over it, so the moment anybody's mood was set to
+		# neutral their brows snapped flat and stayed there. Same for the
+		# height: build put it at 0.052 and set_mood at 0.068.
+		brow.rotation.z = sx * BROW_REST_Z
+		brow.position.y = BROW_REST_Y
 		_head.add_child(brow)
 		_brows.append(brow)
 		# A CLOSED EYE IS A LINE. It was a skin-coloured bar, which on a light
@@ -1282,8 +1293,8 @@ func set_mood(m: float) -> void:
 		var sx: float = -1.0 if i % 2 == 0 else 1.0
 		var brow: MeshInstance3D = _brows[i]
 		# Inner ends down for a scowl, up and out for pleased.
-		brow.rotation.z = sx * _mood * 0.42
-		brow.position.y = 0.068 + _mood * 0.012
+		brow.rotation.z = sx * (BROW_REST_Z + _mood * 0.42)
+		brow.position.y = BROW_REST_Y + _mood * 0.012
 	for i in _mouth_corners.size():
 		var corner: MeshInstance3D = _mouth_corners[i]
 		corner.position.y = -0.062 + _mood * 0.030

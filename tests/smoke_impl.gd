@@ -287,6 +287,7 @@ func _check_the_verbs_work() -> void:
 	_check_alt_tab_stops_the_shift()
 	_check_the_ward_goes_quiet_in_the_evening()
 	_check_every_setting_has_a_row()
+	_check_the_build_is_polite_to_the_machine()
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
 	_check_the_money_on_the_hud_is_the_money_you_get()
@@ -1080,6 +1081,89 @@ func _check_alt_tab_stops_the_shift() -> void:
 	if ui.has_method("close"):
 		ui.call("close")
 	GameState.clock_running = true
+
+## THE THINGS A BUYER HITS IN THE FIRST TEN SECONDS.
+##
+## None of these is clever and every one of them is the sort of thing that gets
+## a refund rather than a bug report: a window bigger than the screen it opened
+## on, a pad told to press buttons it does not have, no way out of the game
+## except through the title screen, a licence the SIL Open Font License asks you
+## to show and that only exists as a .txt nobody opens, and a settings file
+## written forty times while somebody drags one slider.
+func _check_the_build_is_polite_to_the_machine() -> void:
+	# THE WINDOW FITS THE SCREEN IT OPENS ON. Pure arithmetic on purpose,
+	# because the branch that matters is the one no machine in this repo has:
+	# 1366x768 is still a large slice of what Steam runs on and the game asks
+	# for 1600x900 windowed.
+	var big := Settings.fitted_window_size(Vector2i(1600, 900), Vector2i(2560, 1440))
+	_ok(big == Vector2i(1600, 900), "a big desktop gets the window it asked for (%s)" % str(big))
+	var small := Settings.fitted_window_size(Vector2i(1600, 900), Vector2i(1366, 768))
+	_ok(small.x <= 1286 and small.y <= 688 and small.x > 640,
+		"and a 1366x768 laptop gets one that fits on it (%s)" % str(small))
+	_ok(absf(float(small.x) / float(small.y) - 16.0 / 9.0) < 0.02,
+		"with the aspect the whole layout is pinned to")
+
+	# A PLAYSTATION PAD DOES NOT HAVE AN A BUTTON. Godot reports joypad buttons
+	# by INDEX, and index 0 is A on an Xbox pad and Cross on a DualSense — so
+	# the prompt layer, whose entire reason for existing is that nothing tells
+	# the player to press a key by name, was naming four buttons that are not on
+	# the controller in their hands.
+	_ok(Settings.PAD_LABELS.size() == Settings.PAD_LABELS_PS.size(),
+		"both pad glyph tables cover the same buttons (%d / %d)"
+			% [Settings.PAD_LABELS.size(), Settings.PAD_LABELS_PS.size()])
+	var drift: Array = []
+	for k in Settings.PAD_LABELS:
+		if not Settings.PAD_LABELS_PS.has(k):
+			drift.append(str(k))
+	_ok(drift.is_empty(), "and neither has a button the other lacks (%s)" % str(drift))
+
+	# A REBIND MAY NOT STEAL A KEY SOMETHING ELSE ANSWERS TO. Rebinding "use" to
+	# W silently left W on "walk forward" too, so one press did both — and the
+	# Controls screen went on showing W beside two rows, which reads as a
+	# display bug rather than as the thing the player just did.
+	var w := InputEventKey.new()
+	w.physical_keycode = KEY_W
+	_ok(Settings.conflicting_action("interact", w) == "move_forward",
+		"W is spoken for (%s)" % Settings.conflicting_action("interact", w))
+	var before := Settings.binding_label("interact")
+	_ok(not Settings.rebind("interact", w), "so it cannot be taken for something else")
+	_ok(Settings.binding_label("interact") == before,
+		"and the binding it would have taken is untouched (%s)" % Settings.binding_label("interact"))
+
+	# ONE WRITE, NOT FORTY. `set_value` wrote the whole config file
+	# synchronously on every frame of a drag.
+	var writes := int(Settings.saves_written)
+	for i in 5:
+		Settings.set_value("brightness", 1.0 + float(i) * 0.01)
+	_ok(int(Settings.saves_written) == writes,
+		"five settings changes in one frame are not five writes to disk (%d)"
+			% (int(Settings.saves_written) - writes))
+	Settings.set_value("brightness", 1.0)
+
+	# ...AND THE THINGS THAT HAVE TO BE ON A SCREEN. Built rather than grepped,
+	# because a row that is built and never parented would pass a grep and is
+	# gotcha 53.
+	var ui = game.get("ui")
+	if ui == null or not ui.has_method("_build_simple"):
+		_fail("no UI to build the pause and licence screens")
+		return
+	var paused = ui.call("_build_simple", "pause", {})
+	_ok(_find_button(paused, "Quit to Desktop") != null,
+		"there is a way out of the game that is not through the title screen")
+	if paused != null:
+		paused.free()
+	var lic = ui.call("_build_simple", "licences", {})
+	var text := ""
+	if lic != null:
+		for n in _all_nodes(lic):
+			if n is Label:
+				text += String(n.text) + "\n"
+	_ok(text.findn("SIL OPEN FONT LICENSE") >= 0,
+		"and the font licence the OFL asks you to show is in the game (%d chars)" % text.length())
+	_ok(text.findn("Godot Engine contributors") >= 0 or text.findn("MIT") >= 0,
+		"along with the engine's own, which did not ship at all")
+	if lic != null:
+		lic.free()
 
 ## EVERY SETTING A PLAYER OWNS HAS A ROW ON THE SCREEN.
 ##

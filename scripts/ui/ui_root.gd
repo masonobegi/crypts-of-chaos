@@ -68,6 +68,14 @@ func _ready() -> void:
 const UNDISMISSABLE := ["review", "day_over"]
 
 func _unhandled_input(event: InputEvent) -> void:
+	# ...AND FULLSCREEN, WHICH WORKS WHEREVER YOU ARE. Deliberately above the
+	# screen handling: it is not "get me out of this", it is a display setting,
+	# and there is no state in which a player pressing it wants something else
+	# to happen first.
+	if event.is_action_pressed("toggle_fullscreen"):
+		_fullscreen_pressed()
+		get_viewport().set_input_as_handled()
+		return
 	# `ui_cancel` is B on a pad and Escape on a keyboard; `pause` is Escape and
 	# Start. Only "get me out of this screen" is shared — B ALSO CROUCHES, so
 	# `ui_cancel` deliberately does not open the pause menu when nothing is
@@ -271,6 +279,7 @@ func _build_simple(id: String, _ctx: Dictionary) -> Control:
 		"settings": return _settings_screen()
 		"controls": return _controls_screen()
 		"credits": return _credits_screen()
+		"licences": return _licences_screen()
 	Log.w("unknown screen '%s'" % id, "UI")
 	return null
 
@@ -299,6 +308,18 @@ func _notification(what: int) -> void:
 
 ## Split out so the smoke run can press it without an exported build and a
 ## window manager. A guard that cannot be tested is a guard nobody knows about.
+## F11, AND IT IS A REAL ACTION RATHER THAN A KEYCODE IN A BRANCH.
+##
+## There is a Fullscreen toggle on the Settings screen and no way to reach it
+## without stopping the game — which is the one thing a player wants to do in
+## the first ten seconds, before they have found the settings screen at all.
+## Bound as `toggle_fullscreen` so it appears on the Controls screen and can be
+## rebound like everything else: an undiscoverable shortcut is only half a
+## feature, and a game whose own design rule is that nothing tells you to press
+## a key by name has to be able to tell you what this one is.
+func _fullscreen_pressed() -> void:
+	Settings.set_value("fullscreen", not bool(Settings.get_value("fullscreen")))
+
 func pause_for_focus_loss() -> void:
 	if current != null or menu_mode:
 		return
@@ -433,6 +454,19 @@ func _settings_screen() -> Control:
 		func(b): Settings.set_value("fullscreen", b)))
 	v.add_child(UIKit.toggle("V-Sync", Settings.get_value("vsync"),
 		func(b): Settings.set_value("vsync", b)))
+	# NO GRAPHICS OPTIONS AT ALL, and both of the compulsory ones cost. 4x MSAA
+	# is the single most expensive thing this renderer does on an integrated
+	# GPU, and an uncapped frame rate means a menu with three buttons on it runs
+	# a laptop's fan flat out. Sliders rather than toggles because there are
+	# three settings and two, and a formatter says what the number means.
+	v.add_child(UIKit.slider("Anti-aliasing", Settings.get_value("msaa"),
+		0.0, 2.0, 1.0, func(x): Settings.set_value("msaa", int(x)),
+		func(x: float) -> String:
+			return ["off", "2x", "4x"][clampi(int(x), 0, 2)]))
+	v.add_child(UIKit.slider("Frame rate cap", Settings.get_value("fps_cap"),
+		0.0, 240.0, 30.0, func(x): Settings.set_value("fps_cap", int(x)),
+		func(x: float) -> String:
+			return "uncapped" if int(x) <= 0 else "%d fps" % int(x)))
 
 	outer.add_child(UIKit.spacer(6))
 	var row := UIKit.hbox(10)
@@ -594,7 +628,51 @@ func _credits_screen() -> Control:
 		box.add_child(bv)
 		v.add_child(box)
 	v.add_child(UIKit.spacer(6))
+	v.add_child(UIKit.button("Licences", func(): open("licences", {})))
 	v.add_child(UIKit.button("Back", _back))
+	return parts[0]
+
+## THE LICENCE TEXT, IN THE GAME, WHICH IS WHERE IT HAS TO BE.
+##
+## Three OFL families ship with their notices beside them and the SIL Open Font
+## License asks for the notice to travel with the software — and "travel with"
+## has always meant a .txt in the archive, which a player never opens and which
+## a store page never shows. Godot's own MIT notice was not in the build at all,
+## and it is required by the engine's licence.
+##
+## Nothing new ships for this: `Engine.get_license_text()` and
+## `get_copyright_info()` are compiled in, and the three OFL files are already
+## carried by `include_filter`. It is a screen that reads what is there.
+func _licences_screen() -> Control:
+	var parts := _shell(760, 700, "Licences")
+	var v: VBoxContainer = parts[1]
+	var body := UIKit.vbox(10)
+	for f in ["OFL-InstrumentSans.txt", "OFL-IBMPlex.txt", "OFL-NothingYouCouldDo.txt"]:
+		var txt := FileAccess.get_file_as_string("res://assets/fonts/" + f)
+		if txt.strip_edges() == "":
+			continue
+		body.add_child(UIKit.label(f, 13, UIKit.ACCENT, HORIZONTAL_ALIGNMENT_LEFT))
+		body.add_child(UIKit.label(txt, 11, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true, Typeface.mono()))
+	body.add_child(UIKit.label("Godot Engine", 13, UIKit.ACCENT, HORIZONTAL_ALIGNMENT_LEFT))
+	body.add_child(UIKit.label(Engine.get_license_text(), 11, UIKit.INK_DIM,
+		HORIZONTAL_ALIGNMENT_LEFT, true, Typeface.mono()))
+	# ...AND EVERYTHING THE ENGINE ITSELF DEPENDS ON. Two hundred-odd entries,
+	# every one of them a notice somebody is owed, and all of it already in the
+	# binary.
+	for entry in Engine.get_copyright_info():
+		var name := String(entry.get("name", ""))
+		var lines: Array = []
+		for part in entry.get("parts", []):
+			for c in Array(part.get("copyright", [])):
+				lines.append(String(c))
+		if name == "" or lines.is_empty():
+			continue
+		body.add_child(UIKit.label("%s — %s" % [name,
+			", ".join(PackedStringArray(lines))], 10, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true, Typeface.mono()))
+	v.add_child(UIKit.scroll(body))
+	v.add_child(UIKit.button("Back", func(): open("credits", {})))
 	return parts[0]
 
 # ---- pause
@@ -640,4 +718,18 @@ func _pause_screen() -> Control:
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		get_tree().change_scene_to_file("res://scenes/MainMenu.tscn"))
 	v.add_child(quit_btn)
+	# AND OUT OF THE GAME ENTIRELY, which was only possible from the title
+	# screen — so a player who wanted to stop had to lose the shift to the menu
+	# first and then quit from there, which is two confirmations for one
+	# decision and looks like the game arguing with them. Same two-press arm as
+	# its neighbour, because it throws away the same day.
+	var bye := {"armed": false}
+	var desk_btn := UIKit.button("Quit to Desktop", Callable(), Color(0.3, 0.16, 0.16))
+	desk_btn.pressed.connect(func():
+		if not bye["armed"]:
+			bye["armed"] = true
+			desk_btn.text = "Lose today's shift and quit — press again"
+			return
+		get_tree().quit())
+	v.add_child(desk_btn)
 	return parts[0]

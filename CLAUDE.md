@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 343 assertions, a 228-check smoke run through the real tree
+`run_tests.sh` is 343 assertions, a 240-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by

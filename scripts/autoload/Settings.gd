@@ -55,6 +55,13 @@ const DEFAULTS := {
 	"ui_scale": 1.0,
 	"pad_look_sensitivity": 1.0,
 	"pad_vibration": true,
+	## GRAPHICS OPTIONS, WHICH THERE WERE NONE OF. 4x MSAA and an uncapped
+	## frame rate were both compulsory: the first is the single most expensive
+	## thing this renderer does on an integrated GPU, and the second means a
+	## menu with three buttons on it runs a laptop's fan at full speed. 0/1/2 →
+	## disabled/2x/4x, and 0 fps means uncapped.
+	"msaa": 2,
+	"fps_cap": 0,
 	## AND HOW BRIGHT IT IS. The game shipped with no brightness control on a
 	## picture that is dark type over a pale ward, which on a laptop in a lit
 	## room is a refund rather than an adjustment. Applied through
@@ -85,6 +92,7 @@ const BINDABLE := [
 	["grab", "Pick up"],
 	["throw", "Throw"],
 	["pause", "Pause"],
+	["toggle_fullscreen", "Fullscreen"],
 ]
 
 ## A pad, out of the box.
@@ -159,6 +167,41 @@ func _ready() -> void:
 	_add_pad_defaults()
 	apply_bindings()
 	_apply_typeface()
+	_fit_to_the_screen()
+
+## THE WINDOW OPENS AT 1600x900 WHATEVER IT IS OPENING ONTO.
+##
+## `project.godot` asks for 1600x900 windowed, and nothing ever looked at the
+## display. On a 1366x768 laptop — which is still a large slice of what Steam
+## runs on — the game opens larger than the screen, with its title bar off the
+## top and its footer buttons off the bottom, and the first thing the buyer does
+## is not find the Continue button. The arithmetic is separated out and pure so
+## it can be asserted headless, because the branch that matters is the one no
+## machine in this repo has.
+func _fit_to_the_screen() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var screen := DisplayServer.window_get_current_screen()
+	var usable := DisplayServer.screen_get_usable_rect(screen)
+	var want := DisplayServer.window_get_size()
+	var fitted := fitted_window_size(want, usable.size)
+	if fitted == want:
+		return
+	DisplayServer.window_set_size(fitted)
+	DisplayServer.window_set_position(
+		usable.position + (usable.size - fitted) / 2)
+
+## Pure, so it is testable without a monitor. Eighty pixels of margin because a
+## window that exactly fills the usable rect still has a title bar on most
+## desktops, and the aspect is kept because this game's layout is pinned to it.
+static func fitted_window_size(want: Vector2i, usable: Vector2i) -> Vector2i:
+	var maxw: int = usable.x - 80
+	var maxh: int = usable.y - 80
+	if want.x <= maxw and want.y <= maxh:
+		return want
+	var scale: float = minf(float(maxw) / float(maxi(1, want.x)),
+		float(maxh) / float(maxi(1, want.y)))
+	return Vector2i(maxi(640, int(want.x * scale)), maxi(360, int(want.y * scale)))
 
 ## THE ROOT THEME, AND WHY IT LIVES IN AN AUTOLOAD RATHER THAN IN Boot.
 ##
@@ -233,13 +276,48 @@ const PAD_LABELS := {
 	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
 }
 
+## AND THE SAME BUTTONS ON A PLAYSTATION PAD, WHICH DOES NOT HAVE THEM.
+##
+## Godot reports joypad buttons by INDEX, and index 0 is A on an Xbox pad and
+## Cross on a DualSense. The whole prompt layer said "A" and "B" and "right
+## bumper" to somebody holding a controller with none of those written on it —
+## and this is a game whose own design rule is that nothing tells the player to
+## press a key by name, precisely so that the prompt is always the truth.
+##
+## Same keys in both tables on purpose: `Settings.PAD_LABELS.size()` is asserted
+## equal in the smoke run, so the two cannot drift the way two copies of a tuned
+## number always eventually do.
+const PAD_LABELS_PS := {
+	JOY_BUTTON_A: "Cross", JOY_BUTTON_B: "Circle",
+	JOY_BUTTON_X: "Square", JOY_BUTTON_Y: "Triangle",
+	JOY_BUTTON_LEFT_SHOULDER: "L1", JOY_BUTTON_RIGHT_SHOULDER: "R1",
+	JOY_BUTTON_START: "Options", JOY_BUTTON_BACK: "Share",
+	JOY_BUTTON_LEFT_STICK: "L3", JOY_BUTTON_RIGHT_STICK: "R3",
+}
+
+## Which family of glyphs the pad in the port actually has written on it. Godot
+## gives us the device name and nothing else, so it is a substring match — and
+## "Wireless Controller" is in there because that is what a DualShock 4 reports
+## itself as over Bluetooth on Linux.
+static func pad_family() -> String:
+	var n := Input.get_joy_name(0).to_lower()
+	for k in ["dualsense", "dualshock", "ps3", "ps4", "ps5", "sony",
+			"wireless controller", "playstation"]:
+		if n.find(k) >= 0:
+			return "ps"
+	return "xbox"
+
+static func pad_label(idx: int) -> String:
+	var table: Dictionary = PAD_LABELS_PS if pad_family() == "ps" else PAD_LABELS
+	return String(table.get(idx, ""))
+
 func prompt_label(action: String) -> String:
 	if not InputMap.has_action(action):
 		return "?"
 	if not Input.get_connected_joypads().is_empty():
 		for ev in InputMap.action_get_events(action):
 			if ev is InputEventJoypadButton and PAD_LABELS.has(ev.button_index):
-				return String(PAD_LABELS[ev.button_index])
+				return pad_label(ev.button_index)
 	return binding_label(action)
 
 ## What this action is currently bound to, as something a person can read.
@@ -267,6 +345,15 @@ func rebind(action: String, event: InputEvent) -> bool:
 		return false
 	if event is InputEventKey and event.keycode == KEY_ESCAPE:
 		return false
+	# ...AND NOT A KEY SOMETHING ELSE ALREADY HAS.
+	#
+	# Rebinding "use" to W silently left W on "walk forward" as well, so one
+	# press did both — and the Controls screen went on showing W beside two
+	# rows, which reads as a display bug rather than as the thing the player
+	# just did. Refused rather than stolen: taking it off the other action is a
+	# second surprise, and the player who wanted that can clear it themselves.
+	if conflicting_action(action, event) != "":
+		return false
 	for e in InputMap.action_get_events(action):
 		if e is InputEventKey or e is InputEventMouseButton:
 			InputMap.action_erase_event(action, e)
@@ -279,6 +366,28 @@ func rebind(action: String, event: InputEvent) -> bool:
 	save_to_disk()
 	changed.emit("bindings")
 	return true
+
+## Which OTHER bindable action already answers to this event, or "" if none.
+static func conflicting_action(action: String, event: InputEvent) -> String:
+	for other in BINDABLE:
+		# BINDABLE is a list of PAIRS — [action, label] — so `String(other)`
+		# stringifies the whole array and matches no action at all. The first
+		# version of this check returned "" for every event and refused nothing,
+		# which is exactly what it looked like before it existed.
+		var a := String(other[0])
+		if a == action or not InputMap.has_action(a):
+			continue
+		for e in InputMap.action_get_events(a):
+			if event is InputEventKey and e is InputEventKey:
+				var want: int = event.physical_keycode if event.physical_keycode != 0 \
+					else event.keycode
+				var have: int = e.physical_keycode if e.physical_keycode != 0 else e.keycode
+				if want != 0 and want == have:
+					return a
+			elif event is InputEventMouseButton and e is InputEventMouseButton:
+				if event.button_index == e.button_index:
+					return a
+	return ""
 
 func apply_bindings() -> void:
 	for action in bindings:
@@ -318,7 +427,7 @@ func set_value(key: String, v: Variant, persist := true) -> void:
 	_apply(key)
 	changed.emit(key)
 	if persist:
-		save_to_disk()
+		_queue_save()
 
 func reset_to_defaults() -> void:
 	values = DEFAULTS.duplicate(true)
@@ -361,6 +470,20 @@ func _apply(key: String) -> void:
 			var p = _player()
 			if p != null and p.camera != null:
 				p.camera.fov = float(get_value("fov"))
+		"msaa":
+			if DisplayServer.get_name() == "headless":
+				return
+			var loop_m := Engine.get_main_loop()
+			if loop_m is SceneTree and (loop_m as SceneTree).root != null:
+				(loop_m as SceneTree).root.msaa_3d = \
+					clampi(int(get_value("msaa")), 0, 2) as Viewport.MSAA
+		"fps_cap":
+			# Engine.max_fps is 0 for uncapped, which is also this setting's
+			# "off", so the two happen to agree and the guard is only about not
+			# pinning a headless run to sixty frames it is not drawing.
+			if DisplayServer.get_name() == "headless":
+				return
+			Engine.max_fps = maxi(0, int(get_value("fps_cap")))
 		"brightness":
 			# Straight onto the live environment. `Grade.apply` is where the
 			# value comes FROM, so re-applying the whole grade would work and
@@ -405,7 +528,42 @@ func _player():
 	return (loop as SceneTree).get_first_node_in_group("player")
 
 # ------------------------------------------------------------------ disk
+## SAVING ON EVERY NOTCH OF EVERY SLIDER.
+##
+## `set_value` wrote the whole config file, synchronously, on each frame of a
+## drag — so moving one slider from end to end was forty file writes, and moving
+## it back was forty more. It is not a correctness problem and it is exactly the
+## kind of thing that makes a settings screen feel cheap on a slow disk, which
+## is the screen a buyer opens first.
+##
+## Half a second, `process_always` so it survives the paused tree a pause-menu
+## settings screen sits in, and flushed unconditionally on the way out of the
+## tree so nothing is lost if the game is closed mid-drag.
+var _save_pending := false
+## Counted so the smoke run can assert that five writes in a frame are one write.
+var saves_written := 0
+
+func _queue_save() -> void:
+	if _save_pending:
+		return
+	_save_pending = true
+	var tree := get_tree()
+	if tree == null:
+		_save_pending = false
+		save_to_disk()
+		return
+	var t := tree.create_timer(0.5, true, false, true)
+	t.timeout.connect(func():
+		_save_pending = false
+		save_to_disk())
+
+func _exit_tree() -> void:
+	if _save_pending:
+		_save_pending = false
+		save_to_disk()
+
 func save_to_disk() -> void:
+	saves_written += 1
 	var cfg := ConfigFile.new()
 	for k in values:
 		cfg.set_value("options", k, values[k])

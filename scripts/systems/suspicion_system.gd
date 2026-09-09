@@ -355,9 +355,33 @@ static func witness_line(tier: int) -> String:
 	var pool: Array = WITNESS_LINES.get(clampi(tier, 1, 3), [])
 	return String(RNG.pick("witness_line", pool)) if not pool.is_empty() else ""
 
+## SOMEBODY ON THIS WARD WAS UPSET ENOUGH TO PUT IT IN WRITING, AND UNTIL NOW
+## THAT WAS THE END OF IT.
+##
+## This is the far end of the belief layer — evidence, weighted by personality
+## and trust, accumulated by people who watched you work — and everything it
+## produced was a toast and a record in an institutional mind that nothing has
+## ever read. `EventBus.complaint_filed` has no listeners anywhere in the
+## project. So the one system in this game that models being SEEN could reach
+## the audit through exactly one channel (`seen_by` on a note), and the moment a
+## human being was angry enough to complain about you, the game shrugged.
+##
+## It does not need a new mechanism, because the game already has the one that
+## fits: `watched`. A FLAGGED verdict sets it and tomorrow you get eight rounds
+## instead of four and somebody from Coding in your office. A complaint filed
+## today is the same fact arriving by a different route — Adeyemi does not need
+## the ward sister's permission to start writing her rounds up twice — so it
+## sets `complained_about`, which `screen_day_over._carry` folds into `watched`
+## rather than overwriting.
+##
+## It is deliberately not a severity multiplier on the review. That would need a
+## threshold nobody in this repo can calibrate, because no human being has
+## played this game yet; this needs none, because the complaint has already
+## cleared its own bar by being filed at all.
 func file_complaint(from_id: String, severity: float) -> void:
 	var m: Mind = minds.get(from_id, null)
 	var who: String = m.display_name if m else from_id
+	GameState.set_flag("complained_about", true)
 
 	# A reporter in the lobby does not make the ward any more watchful. What it
 	# changes is where a complaint ENDS UP: on a press day the same grumble from

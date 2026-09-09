@@ -107,6 +107,24 @@ const ENDING_PAID := "paid"
 const ENDING_STRUCK_OFF := "struck_off"
 
 ## What is left of what Vinnie is owed. Counts down; at zero you are out.
+## IS TOMORROW A WATCHED DAY?
+##
+## Two things make Adeyemi write her rounds up twice, and they arrive by
+## different routes: the ward sister did not like last night's paperwork, or
+## somebody on the ward was upset enough about YOU to put a complaint in
+## writing. The second used to reach nothing at all —
+## `EventBus.complaint_filed` has no listeners anywhere in this project — and
+## folding it in at the carry meant a clean handover silently unmade it.
+##
+## Lives here rather than inside `screen_day_over._carry` so it can be asserted
+## without driving a card through a real UI: the first version of that check
+## opened the End of Shift screen and pressed "Work tomorrow", which advanced
+## the game a day underneath the eleven checks that ran after it.
+func watched_tomorrow(verdict: String) -> bool:
+	return verdict == ReviewSystem.OUTCOME_FLAGGED \
+		or verdict == ReviewSystem.OUTCOME_ESCALATED \
+		or bool(flag("complained_about", false))
+
 func debt_remaining() -> int:
 	var d = flag("debt_remaining", null)
 	return Cases.DEBT_TOTAL if d == null else int(d)

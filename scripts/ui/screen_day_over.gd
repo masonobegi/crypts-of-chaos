@@ -195,6 +195,10 @@ func _consequences(verdict: String, short: bool) -> Array:
 			% Cases.name_of(String(pid)))
 	# THE ONE THAT IS NOT ABOUT PAPERWORK. Somebody is coming back, and it is
 	# nothing to do with what the reviewer thought of your notes.
+	if bool(GameState.flag("complained_about", false)):
+		out.append("Somebody put a complaint in writing today. Adeyemi will be "
+			+ "writing her rounds up twice tomorrow whatever anybody says about "
+			+ "your notes.")
 	for pid in PackedStringArray(GameState.flag(Cases.READMIT_PENDING, [])):
 		out.append("%s is back on the ward in the morning — they did not make it through the night at home."
 			% Cases.name_of(String(pid)))
@@ -205,8 +209,13 @@ func _consequences(verdict: String, short: bool) -> Array:
 ## The one place a verdict becomes state. Read by WardDay when the next day
 ## starts, so a bad night is a harder ward rather than a paragraph.
 func _carry(verdict: String, short: bool) -> void:
-	GameState.set_flag("watched", verdict == ReviewSystem.OUTCOME_FLAGGED
-		or verdict == ReviewSystem.OUTCOME_ESCALATED)
+	# ...OR SOMEBODY COMPLAINED ABOUT YOU TODAY. The verdict is what the ward
+	# sister thought of the paperwork; a complaint is what somebody on the ward
+	# thought of YOU, and it arrives by a different route and means the same
+	# thing tomorrow — she writes her rounds up twice. Folded in rather than
+	# overwriting, because a clean handover does not unmake a complaint.
+	GameState.set_flag("watched", GameState.watched_tomorrow(verdict))
+	GameState.set_flag("complained_about", false)
 	# GATED ON FLAGGED, NOT REFERRED, AND IT LASTS. Coding is the state the
 	# money-optimal play never once reached, so the auditor — a whole person,
 	# and the answer to the promise this screen prints — was expensive content

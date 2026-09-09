@@ -286,6 +286,7 @@ func _check_the_verbs_work() -> void:
 	_check_deciding_a_bed_moves_the_money()
 	_check_alt_tab_stops_the_shift()
 	_check_the_ward_goes_quiet_in_the_evening()
+	_check_a_complaint_reaches_tomorrow()
 	_check_every_setting_has_a_row()
 	_check_the_build_is_polite_to_the_machine()
 	_check_the_day_gives_you_warning()
@@ -1052,6 +1053,43 @@ func _check_the_ward_goes_quiet_in_the_evening() -> void:
 			"a clatter in the bay wakes the ward you were relying on being asleep (%d of %d still under)"
 				% [still, dozing.size()])
 	GameState.minute_of_day = was_minute
+
+## SOMEBODY WAS UPSET ENOUGH TO PUT IT IN WRITING, AND THE GAME SHRUGGED.
+##
+## `file_complaint` is the far end of a nine-hundred-line belief layer — minds,
+## evidence weighted by personality and trust, accumulated by people who watched
+## you work — and everything it produced was a toast and a record in an
+## institutional mind that nothing has ever read. `EventBus.complaint_filed` has
+## no listeners anywhere in this project.
+##
+## It reaches tomorrow now, through the mechanism the game already has:
+## `watched` is what a FLAGGED verdict sets, and it means eight rounds instead
+## of four and somebody from Coding in your office. Folded into the carry rather
+## than overwriting it, because a clean handover does not unmake a complaint.
+func _check_a_complaint_reaches_tomorrow() -> void:
+	var sus = tree.get_first_node_in_group("suspicion_system")
+	if sus == null or not sus.has_method("file_complaint"):
+		_fail("no suspicion system to complain to")
+		return
+	GameState.set_flag("complained_about", false)
+	GameState.set_flag("watched", false)
+	sus.call("file_complaint", "adeyemi", 0.6)
+	_ok(bool(GameState.flag("complained_about", false)),
+		"a complaint filed today is remembered at the handover")
+	# ...and the carry turns it into tomorrow, even on a night she signed off.
+	#
+	# Asserted through `GameState.watched_tomorrow` rather than by opening the
+	# End of Shift card and pressing "Work tomorrow": the first version did
+	# exactly that, and advanced the game a day underneath the eleven checks
+	# that run after this one. Gotcha 68, self-inflicted.
+	_ok(GameState.watched_tomorrow(ReviewSystem.OUTCOME_CLEAR),
+		"and a clean handover does not unmake it — tomorrow is a watched day")
+	GameState.set_flag("complained_about", false)
+	_ok(not GameState.watched_tomorrow(ReviewSystem.OUTCOME_CLEAR),
+		"...and a night nobody complained about is not one")
+	_ok(GameState.watched_tomorrow(ReviewSystem.OUTCOME_FLAGGED),
+		"while a flagged night still is, which is where this mechanism came from")
+	GameState.set_flag("watched", false)
 
 ## ALT-TAB STOPS THE SHIFT.
 ##

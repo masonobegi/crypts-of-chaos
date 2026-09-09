@@ -475,21 +475,41 @@ func _build_body() -> void:
 	# BEHIND the bar in z and BELOW it in y, both by a couple of millimetres, so
 	# it never fights the bar for a pixel and never pokes through when the bar
 	# scales open for a grimace.
-	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.054, 0.017, 0.020), 0.008),
-		Build.unshaded(skin.lerp(Color(0.62, 0.34, 0.34), 0.38).lightened(0.05)),
-		Vector3(0, -0.072, 0.192)))
+	# ...AND ONLY A SLIVER OF IT. At 0.017 tall and 0.054 wide it was very
+	# nearly the same rectangle as the bar, sitting directly under it — so the
+	# two together were a three-centimetre two-tone stripe with parallel edges,
+	# which is a letterbox with a highlight rather than a mouth. A closed mouth
+	# is a LINE, and the lower lip's job is to be the thing the line is the top
+	# edge of: narrower than the bar, so the bar's ends overhang it and the
+	# corners read as lips meeting, and short enough that most of it is hidden
+	# behind the bar.
+	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.040, 0.011, 0.020), 0.005),
+		Build.unshaded(skin.lerp(Color(0.62, 0.34, 0.34), 0.32).lightened(0.04)),
+		Vector3(0, -0.0685, 0.192)))
 	# NARROWER THAN THE EYES ARE APART. The bar was 0.086 half-width against an
 	# eye span of 0.105, so the mouth was 82% as wide as the whole face — which
 	# on a stylised head is a letterbox, and it is what kept these reading as
 	# blocky once the eyes had stopped. A mouth is about as wide as the gap
 	# between the pupils, and no wider.
-	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.062, 0.013, 0.022), 0.006),
-		Build.unshaded(Color(0.30, 0.15, 0.16)), Vector3(0, -0.062, 0.196))
+	# THINNER AND LESS RED. 0.013 of a head that is 0.43 across is a three
+	# millimetre band at life size and it photographed as a slot; and
+	# (0.30, 0.15, 0.16) is a saturated maroon, which on a face lit flat and
+	# unshaded is the most colourful thing above the collar. A closed mouth is
+	# darker and quieter than that — it is a shadow between two lips, not a
+	# painted line.
+	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.062, 0.0095, 0.022), 0.0045),
+		Build.unshaded(Color(0.235, 0.135, 0.135)), Vector3(0, -0.061, 0.196))
 	_head.add_child(_mouth)
 	for sx in [-1.0, 1.0]:
-		var corner := Build.mi(Build.rbox_mesh(Vector3(0.020, 0.013, 0.022), 0.006),
-			Build.unshaded(Color(0.30, 0.15, 0.16)),
-			Vector3(sx * 0.038, -0.062, 0.194))
+		# HALF THE HEIGHT OF THE BAR, so the line TAPERS to the corners. With the
+		# corners the same height as the middle the mouth is a band of constant
+		# width — a letterbox — however thin you make it. A closed mouth is
+		# thickest between the lips and vanishes where they meet, and that is
+		# the difference between a line and a slot: two blocks, four
+		# millimetres, and the shape stops being rectangular.
+		var corner := Build.mi(Build.rbox_mesh(Vector3(0.020, 0.005, 0.022), 0.0025),
+			Build.unshaded(Color(0.235, 0.135, 0.135)),
+			Vector3(sx * 0.038, -0.0605, 0.194))
 		_head.add_child(corner)
 		_mouth_corners.append(corner)
 

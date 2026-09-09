@@ -284,6 +284,8 @@ func _check_the_verbs_work() -> void:
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
 	_check_deciding_a_bed_moves_the_money()
+	_check_alt_tab_stops_the_shift()
+	_check_every_setting_has_a_row()
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
 	_check_the_money_on_the_hud_is_the_money_you_get()
@@ -909,6 +911,55 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 ## Two halves, because the first version of this check asserted against Dot
 ## Kerrigan by name and the smoke run's ward does not have her on it — so it
 ## passed by doing nothing, which is how a check that cannot fail gets written.
+## ALT-TAB STOPS THE SHIFT.
+##
+## The ward clock is the only currency in this game and it ran while the window
+## was behind something else. Driven through `UIRoot.pause_for_focus_loss`
+## rather than by dispatching the notification, because the handler is gated on
+## `OS.has_feature("template")` — an exported build, which is the only place it
+## matters and the only place no harness of this project runs. A guard that
+## cannot be tested is a guard nobody knows about.
+func _check_alt_tab_stops_the_shift() -> void:
+	var ui = game.get("ui")
+	if ui == null or not ui.has_method("pause_for_focus_loss"):
+		_fail("no UI to lose focus")
+		return
+	if ui.has_method("close"):
+		ui.call("close")
+	GameState.clock_running = true
+	ui.call("pause_for_focus_loss")
+	_ok(String(ui.get("current_id")) == "pause",
+		"losing focus puts the shift down (screen '%s')" % String(ui.get("current_id")))
+	# THE TREE, NOT `clock_running`. A pausing screen leaves that flag alone on
+	# purpose — `_set_modal` only freezes it for screens that do NOT pause,
+	# because a paused tree runs no `_process` and the clock cannot advance
+	# whatever the flag says. Asserting the flag here passed nothing and looked
+	# like it was asserting the thing that matters.
+	_ok(tree.paused, "and the world is stopped, so the clock cannot advance")
+	if ui.has_method("close"):
+		ui.call("close")
+	GameState.clock_running = true
+
+## EVERY SETTING A PLAYER OWNS HAS A ROW ON THE SCREEN.
+##
+## The other half of gotcha 15. That one is about a constant nothing reads; this
+## is about a value that IS read, IS saved, and has no way to be changed —
+## `pad_vibration` had a default, a reader before every rumble, and no control
+## anywhere, so the only way to turn it off was to edit settings.cfg by hand.
+## Greps the source rather than walking the built screen, because a row that is
+## built and never parented would pass a walk and is gotcha 53.
+func _check_every_setting_has_a_row() -> void:
+	var src := FileAccess.get_file_as_string("res://scripts/ui/ui_root.gd")
+	if src == "":
+		_fail("cannot read ui_root.gd to check the settings screen")
+		return
+	var missing: Array = []
+	for key in Settings.DEFAULTS:
+		if src.find('"%s"' % String(key)) < 0:
+			missing.append(String(key))
+	_ok(missing.is_empty(),
+		"every saved setting has a control on a screen (missing %s)" % str(missing))
+
 ## DECIDING A BED MOVES THE NUMBER THE DECISION IS ABOUT.
 ##
 ## The projection in the corner of the screen is refreshed by `money_changed`

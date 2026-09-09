@@ -37,6 +37,13 @@ const DEFAULTS := {
 	"ui_scale": 1.0,
 	"pad_look_sensitivity": 1.0,
 	"pad_vibration": true,
+	## AND HOW BRIGHT IT IS. The game shipped with no brightness control on a
+	## picture that is dark type over a pale ward, which on a laptop in a lit
+	## room is a refund rather than an adjustment. Applied through
+	## `Grade.apply`, not through a branch of its own, because the title screen
+	## and the ward have to agree about the look and they only do if there is
+	## one place that says what it is.
+	"brightness": 1.0,
 }
 
 var values: Dictionary = {}
@@ -332,6 +339,14 @@ func _apply(key: String) -> void:
 			var p = _player()
 			if p != null and p.camera != null:
 				p.camera.fov = float(get_value("fov"))
+		"brightness":
+			# Straight onto the live environment. `Grade.apply` is where the
+			# value comes FROM, so re-applying the whole grade would work and
+			# would also re-do a dozen writes for one number.
+			var e := _environment()
+			if e != null:
+				e.adjustment_brightness = \
+					clampf(float(get_value("brightness")), 0.7, 1.3)
 		"ui_scale":
 			if DisplayServer.get_name() == "headless":
 				return
@@ -339,6 +354,27 @@ func _apply(key: String) -> void:
 			if loop is SceneTree and (loop as SceneTree).root != null:
 				(loop as SceneTree).root.content_scale_factor = \
 					clampf(float(get_value("ui_scale")), 0.75, 1.5)
+
+## THE LIVE ENVIRONMENT, whichever scene is up. Found by walking rather than by
+## a path or an exported field, because there are two scenes with one each — the
+## ward and the title vignette — and the whole point of `Grade` is that they are
+## the same look. Called once per notch of a slider a player moves twice a
+## career, so a walk of a few dozen nodes is the cheap answer.
+func _environment() -> Environment:
+	var loop := Engine.get_main_loop()
+	if loop == null or not (loop is SceneTree):
+		return null
+	var root: Node = (loop as SceneTree).root
+	if root == null:
+		return null
+	var stack: Array = [root]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n is WorldEnvironment and (n as WorldEnvironment).environment != null:
+			return (n as WorldEnvironment).environment
+		for c in n.get_children():
+			stack.append(c)
+	return null
 
 func _player():
 	var loop := Engine.get_main_loop()

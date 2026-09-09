@@ -16,6 +16,18 @@ func _build() -> void:
 	v.add_child(UIKit.label(
 		"Adeyemi has been on since six. She has written her morning round already.",
 		14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	# THE SHAPE OF A DAY, BEFORE ANY OF IT IS SPENT. Every verb costs minutes off
+	# one clock and the whole design rests on the day not being long enough — and
+	# the player was never told there was a budget until they were already inside
+	# it, watching a number in the corner move for reasons nobody had named.
+	# States the budget and its unit and not what to spend it on, which is what
+	# this card is careful about everywhere else. Built from the constants,
+	# because a second copy of a tuned number is how this project loses
+	# afternoons.
+	v.add_child(UIKit.label(
+		"You are on until %s. Reading one chart is %d minutes of it."
+			% [ChartEntry._hhmm(Cases.DEBT_DUE_MINUTE), WardDay.READ_COST],
+		14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.rule())
 
 	var box := UIKit.vbox(4)

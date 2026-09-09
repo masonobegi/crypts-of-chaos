@@ -451,6 +451,16 @@ func set_modal(on: bool) -> void:
 	# while a form is up.
 	if _help != null and is_instance_valid(_help):
 		_help.visible = not on
+	# AND SO DO THE TOASTS, for the same reason and one more. A toast is a
+	# four-second panel in the bottom-left corner; its timer runs off the ward
+	# clock, and every screen that matters stops the ward clock — so the three
+	# most photographed frames in the game (the handover, the End of Shift card,
+	# both endings) each have two or three frozen grey boxes sitting under them
+	# that will never expire while the card is up. Visibility rather than
+	# `free()`: the smoke run counts these children, the queue already promises
+	# they come back, and an orphaned Control is gotcha 53.
+	if _toasts != null and is_instance_valid(_toasts):
+		_toasts.visible = not on
 	if on and _prompt_panel != null:
 		_prompt_panel.visible = false
 	if on:

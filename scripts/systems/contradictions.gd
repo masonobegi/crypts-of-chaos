@@ -377,7 +377,13 @@ static func _backdating(pid: String, list: Array) -> Array:
 		f.kind = "backdated"
 		f.patient_id = pid
 		f.entries = PackedStringArray([e.id])
-		f.axis = "entry metadata"
+		# NOT "entry metadata". Every other axis in this file is a sentence a
+		# ward sister would say — "who else saw it", "why they were still here",
+		# "what the patient says" — and this one was the schema's name for the
+		# field, printed at the player on the game's most important screen. It
+		# is a display string; `ReviewSystem` branches on `f.kind`, never on
+		# this.
+		f.axis = "when the note was typed"
 		# Twenty minutes late is a busy shift. Two hours late is a document
 		# written about a moment nobody was present for, and the clamp at 0.45
 		# meant those were very nearly the same number.

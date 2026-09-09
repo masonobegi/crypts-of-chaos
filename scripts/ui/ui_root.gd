@@ -222,10 +222,51 @@ func _build_simple(id: String, _ctx: Dictionary) -> Control:
 	Log.w("unknown screen '%s'" % id, "UI")
 	return null
 
+## ALT-TAB STOPS THE SHIFT.
+##
+## The ward clock is the only currency in this game and it ran while the window
+## was behind a browser: a player who looked something up lost minutes off a
+## twelve-hour budget for it. Opening the pause screen rather than setting
+## `GameState.clock_running = false` directly, because a bare clock stop leaves
+## somebody walking round a ward with a frozen clock and no way to tell why —
+## the pause screen already stops the tree, releases the cursor and offers a
+## visible Resume.
+##
+## GUARDED ON `template`, WHICH IS THE BUILD AND NOT THE DISPLAY. The obvious
+## guard is `DisplayServer.get_name() != "headless"` and it is wrong: `./play.sh
+## keys` runs under Xvfb — it has to, because mouse capture is not real without
+## a display (gotcha 23) — where the name is "x11" and focus notifications do
+## arrive. That harness drives a whole shift through the input layer, and a
+## pause screen appearing mid-run breaks it intermittently rather than
+## reproducibly. `OS.has_feature("template")` is true only in an exported
+## build, which is the only place this matters and the only place no harness
+## runs.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and OS.has_feature("template"):
+		pause_for_focus_loss()
+
+## Split out so the smoke run can press it without an exported build and a
+## window manager. A guard that cannot be tested is a guard nobody knows about.
+func pause_for_focus_loss() -> void:
+	if current != null or menu_mode:
+		return
+	open("pause", {})
+
 func _shell(width: float, height: float, heading: String) -> Array:
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(UIKit.dim_background())
+	# CAP IT AGAINST THE WINDOW, the way `ScreenBase.card_shell` has since a
+	# patient card ran off the bottom of the screen and took its last button
+	# with it. This one never did, and the reason it matters is the setting two
+	# rows below it: "Interface size" sets `content_scale_factor`, which divides
+	# the visible canvas rect — at 1.4 the 900-unit viewport is 643 units tall,
+	# and a Settings screen asking for 830 put its own footer, and the Controls
+	# screen's, off the bottom of the monitor. So the one control a player
+	# reaches for when the text is too small was the control that hid the button
+	# they needed to press next. `get_visible_rect()` is the scaled number,
+	# which is why it is read from the root rather than from the window.
+	height = minf(height, get_tree().root.get_visible_rect().size.y - 48.0)
 	var panel := UIKit.center_panel(width, height)
 	root.add_child(panel)
 	var v := UIKit.vbox(12)
@@ -283,6 +324,12 @@ func _settings_screen() -> Control:
 	v.add_child(UIKit.slider("Mouse sensitivity", Settings.get_value("mouse_sensitivity"),
 		0.2, 3.0, 0.05, func(x): Settings.set_value("mouse_sensitivity", x),
 		func(x: float) -> String: return "%.2fx" % x))
+	# NEXT TO THE MOUSE ONE, because it is the same question asked of the other
+	# hand. It sat under "Subtitles" in the COMFORT block, which reads as a
+	# grouping error in the shipped settings screenshot.
+	v.add_child(UIKit.slider("Stick sensitivity", Settings.get_value("pad_look_sensitivity"),
+		0.2, 3.0, 0.05, func(x): Settings.set_value("pad_look_sensitivity", x),
+		func(x: float) -> String: return "%.2fx" % x))
 	v.add_child(UIKit.toggle("Invert look", Settings.get_value("invert_y"),
 		func(b): Settings.set_value("invert_y", b)))
 	v.add_child(UIKit.slider("Field of view", Settings.get_value("fov"),
@@ -297,10 +344,13 @@ func _settings_screen() -> Control:
 		0.0, 1.0, 0.1, func(x): Settings.set_value("head_bob", x), pct))
 	v.add_child(UIKit.toggle("Subtitles", Settings.get_value("subtitles"),
 		func(b): Settings.set_value("subtitles", b)))
-
-	v.add_child(UIKit.slider("Stick sensitivity", Settings.get_value("pad_look_sensitivity"),
-		0.2, 3.0, 0.05, func(x): Settings.set_value("pad_look_sensitivity", x),
-		func(x: float) -> String: return "%.2fx" % x))
+	# A SAVED, DEFAULTED, READ SETTING WITH NO ROW ON THE SCREEN is a setting
+	# that does not exist. `pad_vibration` has a default, is persisted, and is
+	# checked before every rumble — and the only way to turn it off was to edit
+	# settings.cfg by hand. It is also the one comfort setting a player looks
+	# for first if they have a reason to.
+	v.add_child(UIKit.toggle("Controller vibration", Settings.get_value("pad_vibration"),
+		func(b): Settings.set_value("pad_vibration", b)))
 	v.add_child(UIKit.button("Key bindings…", func(): open("controls", {})))
 
 	v.add_child(UIKit.rule())
@@ -313,6 +363,12 @@ func _settings_screen() -> Control:
 	# they stay on the screen as it does.
 	v.add_child(UIKit.slider("Interface size", Settings.get_value("ui_scale"),
 		0.8, 1.4, 0.05, func(x): Settings.set_value("ui_scale", x), pct))
+	# THE KNOB A PLAYER LOOKS FOR IN A DARK ROOM AND A BRIGHT ONE. Dark type on
+	# a pale ward, on somebody's laptop, in the afternoon — and there was no way
+	# to change it. It goes through `Grade`, so the ward and the title screen
+	# stay one definition of the look.
+	v.add_child(UIKit.slider("Brightness", Settings.get_value("brightness"),
+		0.7, 1.3, 0.05, func(x): Settings.set_value("brightness", x), pct))
 	v.add_child(UIKit.toggle("Fullscreen", Settings.get_value("fullscreen"),
 		func(b): Settings.set_value("fullscreen", b)))
 	v.add_child(UIKit.toggle("V-Sync", Settings.get_value("vsync"),

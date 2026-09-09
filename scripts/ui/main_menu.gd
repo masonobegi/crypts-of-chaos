@@ -41,8 +41,9 @@ func _ready() -> void:
 	# be read there is nothing to continue and no button is the honest answer.
 	var saved := SaveSystem.readable_save(SaveSystem.AUTOSAVE)
 	if not saved.is_empty():
-		v.add_child(UIKit.button("Continue — Day %d, %s"
-			% [int(saved["day"]), UIKit.money_str(int(saved["money"]))], _continue))
+		v.add_child(UIKit.button("Continue — Day %d  ·  %s still owed"
+			% [int(saved["day"]),
+				UIKit.money_str(int(saved.get("owed", Cases.DEBT_TOTAL)))], _continue))
 
 	# A career tally, a list of endings found and a rack of unlockable starting
 	# perks used to sit here. They were all reads over Meta, which was the save

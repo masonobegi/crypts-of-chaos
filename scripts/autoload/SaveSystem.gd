@@ -193,6 +193,15 @@ func list_saves() -> Array[Dictionary]:
 			# on every save that has ever existed, which looks exactly like a
 			# corrupt save.
 			"money": int(gs.get("cash", 0)),
+			# ...AND WHAT IS STILL OWED, which is the figure a returning player
+			# is actually holding in their head. `cash` is correct and useless
+			# on a saved career: Vinnie takes everything at eight, so a save
+			# written after a completed shift has zero in the account by
+			# construction, and "Continue — Day 9, $0" reads as a broken save
+			# whichever field it comes from. The debt is the only number in this
+			# game that both moves and persists.
+			"owed": int(Dictionary(gs.get("flags", {}))
+				.get("debt_remaining", Cases.DEBT_TOTAL)),
 			"saved_at": parsed.get("saved_at", "?"),
 		})
 	return out

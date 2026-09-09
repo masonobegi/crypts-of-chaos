@@ -27,7 +27,12 @@ func _build() -> void:
 	# The world keeps running while you read at a terminal, exactly as it does
 	# at a bedside. Standing here IS the exposure.
 	pauses_world = false
-	var v := card_shell(720, 660, "WARD RECORDS", _where())
+	# ...AND THE HEADING SAYS WHICH OF THE TWO THINGS THIS SCREEN IS. From the
+	# nurses' station it is the ward's notes; from your own office at the end of
+	# the shift it is where the day ends, and calling it WARD RECORDS there sent
+	# the player looking for a different screen.
+	var v := card_shell(720, 660,
+		"SIGN OFF" if _in_office() else "WARD RECORDS", _where())
 	var watchers := _who_can_see()
 	var seen_by_someone: bool = not watchers.is_empty()
 	var note := UIKit.panel(UIKit.NOTE, 4, 1,

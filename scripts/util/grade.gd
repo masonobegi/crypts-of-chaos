@@ -63,7 +63,14 @@ static func apply(env: Environment) -> void:
 	env.adjustment_enabled = true
 	env.adjustment_saturation = SATURATION
 	env.adjustment_contrast = CONTRAST
-	env.adjustment_brightness = 1.0
+	# THE ONE KNOB A PLAYER LOOKS FOR AND COULD NOT FIND. This game is dark HUD
+	# type over a bright ward and it ships with no brightness control at all,
+	# which on a laptop screen in a lit room is a refund. It lives HERE rather
+	# than in a `_apply` branch of its own, because `Grade` is the single
+	# definition of the look and two copies of a tuned number is gotcha 55 — the
+	# title screen and the ward have to agree, and they only do if there is one
+	# place that says so.
+	env.adjustment_brightness = float(Settings.get_value("brightness"))
 	env.glow_enabled = true
 	env.glow_intensity = 0.30
 	env.glow_bloom = 0.04

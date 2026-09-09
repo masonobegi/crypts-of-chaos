@@ -40,7 +40,12 @@ func prompt(_player) -> Array:
 	var w = get_tree().get_first_node_in_group("ward_day")
 	if _is_the_office() and w != null and not w.ended:
 		var p: Dictionary = w.projected()
-		return ["Go home", "%s against %s owed  ·  she still rounds till eight" % [
+		# THE SAME FOUR WORDS EVERYWHERE. The crosshair said "Go home", the
+		# objective banner says "Sign off in your office before eight", and the
+		# screen it opens is headed WARD RECORDS with a "Sign off" button
+		# somewhere down it — three names for one act, on the one act a player
+		# has to find without being told where it is.
+		return ["Sign off for the night", "%s against %s owed  ·  she still rounds till eight" % [
 			UIKit.money_str(int(p["total"])), UIKit.money_str(w.debt_tonight)]]
 	var sub := "in full view of the ward" if not is_private \
 		else "door's shut. nobody's looking."

@@ -2667,3 +2667,148 @@ are the one definition and both places read them. Same class as the ceiling's
 by looking at a picture, because a face at neutral and a face at build are
 rarely in the same frame.
 
+
+---
+
+## The audit pass
+
+Eight readers went over the game against a "ship it and charge money for it"
+bar — content, economy, sound, environment art, onboarding, writing, release
+hygiene, replayability — and a ninth read all eight and asked what they had
+missed. What came back was better than the sum of it, because the thing that
+mattered most lived between two of the areas and none of them owned it.
+
+### A day was never a budget
+
+CLAUDE.md has stated it as a design rule since the redesign: "the day is not
+long enough to do all six on all five beds, so a day is a budget rather than a
+checklist." It was not true and had never been true. Six verbs at
+12/8/10/15/5/15/25 is ninety minutes a bed and 450 on a five-bed ward against a
+720-minute shift, so the correct play was to do everything to everybody and then
+decide, with two hundred and seventy minutes spare. The frontier probe's own
+honest day worked 333 minutes of the twelve hours. Forty-six per cent.
+
+Nothing caught it because nothing was looking. Every probe in the repo drives
+the ward with `advance_to(15 * 60)` and reads the money at the end, so the clock
+was an output nobody asserted on — the same shape as the ceiling `self_lit` that
+was 0.22 in a comment and 0.85 in the code, and as the shift `scrutiny` that was
+printed at the player and read by nothing.
+
+`WardDay._spend` accumulates `minutes_worked` now, which is deliberately not
+`minute` — that also moves when a probe skips an hour, when a round walks
+forward and when the shift is forced to close. The frontier probe reports it and
+fails three ways: a checklist that fits in a shift, an honest day that does not,
+and the top of the money curve being reachable clean. That last property is the
+probe's headline and it had been PRINTED and never asserted for as long as the
+probe had existed.
+
+The shape mattered more than the scale, and a uniform multiplier could not have
+produced it: the honest day was already 74% of the exhaustive one, so anything
+that made the checklist impossible made honesty impossible with it. So finding
+out stays cheap — reading is 15 and the lab is 10 — because the career rework
+exists to stop information ever having negative expected value. Looking costs
+25. Corroboration is the scarce thing, because a name that is not yours behind a
+bed is what the audit is actually asking for: Adeyemi has four bays and the
+registrar covers two wards, and between them they are two thirds of the
+checklist. 160 a bed, 800 a ward, 720 in a shift. The honest day now works 510
+and finishes at half past five.
+
+### Twenty people with nothing written about them
+
+The prior-entry lists covered only the FIRST candidate in each slot, and every
+ward is a draw from a pool of ten — so on any career seed but zero, up to four
+of the five beds opened with a completely blank chart. No handover, nothing to
+write against, nothing for the audit to read.
+
+Not a flavour problem. Four of the ten genuinely ill people in this game are
+alternates, and with nothing written about them at all `_sent_home_unwell` had
+nothing to point at and did not fire: coasting through the first ward on seed
+31337 was SIGNED OFF because the man with the rising troponin could be
+discharged blind and the record was silent about him.
+
+Seventeen of the notes that did exist were stamped in the future. The chart
+prints `stated_minute` verbatim, so the first record a player ever opens carried
+a nurse's observation timed 09:20 while the clock in the corner said 08:00.
+
+### The second ward has never had a clean day
+
+Celia Ibarra's examination line reads "the numbers on the chart were all taken
+sitting down" and the chart could see her perfectly. Rubén Castellanos's note
+has said "only an examination finds it" since he was written, and he carried no
+flags at all. Both are the ill end of their ward's PAIR, so on half of every
+career's nights the two wards built on "a body the chart cannot describe" and
+"somebody else's decision" played as ordinary read-the-chart wards.
+
+The data check now asserts that both ends of a pair are found the SAME WAY, and
+it went red on a third asymmetry nobody had noticed — which then exposed the
+real hole. With its premise switched on, the second ward could not be signed off
+on ANY of its twelve boards: nobody in the building is capable of corroborating
+Peter Lomax, one bed on your word alone is `noted`, and a doctor who works that
+ward honestly often enough crosses `uncorroborated_rate` and it becomes flagged.
+Playing it correctly was a slow accumulating penalty with no way off it.
+
+So a DIRECTED nurse check is a different request from an undirected one. A
+routine review is a score and cannot find a man whose tremor is at four in the
+afternoon; but if you have laid hands on him yourself and written down what you
+found, Adeyemi reads it and goes and checks THAT. Seventy minutes on one bed out
+of seven hundred and twenty, and it teaches a sequence rather than a verb.
+
+Three audit rules were punishing the doctor for doing the right thing, and all
+three only became visible once an honest day was played on every board rather
+than on the one the seed dealt. A normal result no longer refutes a doctor who
+examined the patient and found something — on those two wards the bloods come
+back normal BECAUSE the bloods cannot see it. `patient_no_recall` no longer
+fires on a woman for not remembering a note she wrote herself. And
+`invited_contradiction` can now tell corroboration from contradiction, which it
+could not: it fired on the pair and printed whichever half you had asked for.
+
+`_honest_on_every_board` plays a straight day on all 52 reachable boards now. It
+costs about a second and a half. There is no reason for the strongest property a
+probe has to be sampled.
+
+### Which ward you walk onto is drawn
+
+`DAYS[(day - 1) % DAYS.size()]` was the largest single piece of transferable
+knowledge in the game. The four wards are the four lessons, so a returning
+player walked onto every one already knowing which verb it was about, on every
+career, forever. `Cases.pool_index` draws the order from the career seed with a
+fresh permutation every cycle; every ward is still visited exactly once per
+cycle, so the pressure curve and the debt arithmetic are unchanged. All 24
+permutations appear over 2,000 seeds, every career visits all four wards in its
+first four nights, and distinct careers went to 1,992 of 2,000.
+
+The interesting half is that "night three" stopped being a ward, so `draws_impl`
+was counting each ward's distinct deals against another ward's possible total.
+
+### The answer key
+
+`truly_well` is the hidden boolean the whole investigation layer exists to
+deduce, and the game had never once said what it was. Over a nine-night career a
+player received fewer than nine pieces of evidence about a question they were
+asked forty times, and never saw the answer — which is why a second career was
+execution rather than deduction. The End of Shift card reads all five beds back
+now: what you did, and what they were, flat, with no score attached.
+
+And the third number the economy turns on was invisible. An empty bed does not
+merely pay a $150 discharge, it takes the next admission at $500 — the
+inequality `ADMISSION_FEE`'s own comment calls "what stops hold-everybody from
+being the answer" — and the word "admission" appeared nowhere a player could
+read it. The patient card offered $150 against $180 for a state bed and made
+holding look like the better night by thirty pounds.
+
+### The build, the noise and the rest
+
+Two implementation passes ran in isolated worktrees. One found that props have
+not broken since the stats dictionary was deleted, that a loaded career ran on
+randomness that was not its own, that the `records` save provider had been bound
+to a dead object since the first frame of every career, and that the button a
+player presses first had never been executed by anything. The other found that
+every one of thirty sounds ended on a hard cut above -40 dBFS, that eleven of
+them were the same undifferentiated white noise because there was no filter
+anywhere in the synthesiser, and that the music duck's release path had been
+dead for the entire end of every night.
+
+Then eight strategies on the two wards nobody had ever played, `FRONTIER_SEED`
+to go with the other three overrides, and nine things a stranger would have hit
+in the first ten minutes — including that the control a player reaches for when
+the text is too small was the control that hid the button they needed next.

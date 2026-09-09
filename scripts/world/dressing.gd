@@ -342,6 +342,52 @@ static func floor_line(h: Node3D, x0: float, x1: float, z: float, tint: Color,
 		Vector3.ZERO, 0.6, 0.0))
 	return _add(h, root, Vector3((x0 + x1) * 0.5, 0.008, z))
 
+## A DOWNSTAND BEAM, because a twenty-metre ceiling with nothing on it is a
+## twenty-metre ceiling.
+##
+## The ward reads as one flat plane from the door to the far wall — a third of
+## the frame in the widest shot the game has, uniform, with the tile grid running
+## uninterrupted to the vanishing point and nothing to say how far away anything
+## is. Every real ward of this size has the ceiling broken across it: a bulkhead
+## where the services run, and the head of a curtain track hung off it.
+##
+## In the CEILING_GROUP with the vents and the sprinklers, so the ceiling-height
+## audit walks it too, and found by GROUP rather than by name (gotcha 17).
+static func bulkhead(h: Node3D, x0: float, x1: float, z: float, drop := 0.40,
+		tint := Color(0.90, 0.90, 0.88), depth := 0.55) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Bulkhead"
+	root.add_to_group(CEILING_GROUP)
+	var span: float = absf(x1 - x0)
+	root.add_child(Build.box_mi(Vector3(span, drop, depth), tint,
+		Vector3(0, -drop * 0.5, 0), 0.85, 0.010))
+	# A shadow line where it meets the ceiling, so the beam is a solid hanging
+	# off the plane rather than a lighter rectangle painted on it.
+	root.add_child(Build.box_mi(Vector3(span, 0.03, depth + 0.06),
+		tint.darkened(0.34), Vector3(0, -0.015, 0), 0.9, 0.0))
+	return _add(h, root, Vector3((x0 + x1) * 0.5, Hospital.WALL_H, z))
+
+## The head of a curtain track: one thin rail across the bay at head height.
+## Every bed already has a curtain gathered against its divider and not one of
+## them has anything to hang from, which reads exactly as it sounds.
+static func curtain_track(h: Node3D, x0: float, x1: float, z: float,
+		y := 2.36) -> Node3D:
+	var root := Node3D.new()
+	root.name = "CurtainTrack"
+	root.add_to_group(CEILING_GROUP)
+	var span: float = absf(x1 - x0)
+	root.add_child(Build.box_mi(Vector3(span, 0.05, 0.045), Color(0.80, 0.82, 0.83),
+		Vector3.ZERO, 0.35, 0.006))
+	# Drops to the ceiling, because a rail hanging from nothing is the fault
+	# `ceiling_sign` already had once.
+	var n: int = maxi(2, int(span / 2.4))
+	for i in n + 1:
+		var t: float = float(i) / float(n)
+		root.add_child(Build.mi(Build.cyl_mesh(0.010, Hospital.WALL_H - y, 6),
+			Build.mat(STEEL, 0.4, 0.6),
+			Vector3(-span * 0.5 + span * t, (Hospital.WALL_H - y) * 0.5, 0)))
+	return _add(h, root, Vector3((x0 + x1) * 0.5, y, z))
+
 ## A hanging sign, the kind every hospital corridor has too many of.
 static func ceiling_sign(h: Node3D, pos: Vector3, text: String, rot_y := 0.0,
 		tint := Color(0.16, 0.42, 0.52)) -> Node3D:

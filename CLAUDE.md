@@ -771,6 +771,21 @@ with it because a lost afternoon does not care which.
     knuckles — with a comment on the line below reading "the hand is WIDER than
     the wrist" about a hand 1.4cm narrower than the arm it is on. Write the
     chain of widths down and check it is monotonic before rendering anything.
+83. **A DEPTH CUE HAS TO BE AT A DEPTH, and the ward is not deep.** The
+    ceiling and the floor are two thirds of the widest frame in the game and
+    had nothing on either, so two downstand beams and a pair of floor lines
+    went in — correct reasoning, and both were worse than the empty planes they
+    were meant to fix. The ward is twenty metres wide and about six deep with
+    the camera standing in its doorway, so a beam anywhere in the near two
+    thirds is not a beam crossing a room, it is a cream slab across the top of
+    the frame; moving it from two metres in to a third of the way in changed
+    nothing, because the camera has not moved. The floor lines landed as two
+    stripes directly under the beds. What DID land was the thing that was
+    missing rather than the thing that was empty: five gathered curtains with no
+    track over any of them (`Dressing.curtain_track`), which is the
+    `ceiling_sign` fault again on the most looked-at object in the room. Ninety
+    seconds a look with `SHOT_ONLY=ward_from_door ./screenshots.sh`, and both
+    bad versions looked perfectly sensible in the source.
 
 ## Design rules that are load-bearing
 

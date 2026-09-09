@@ -157,6 +157,7 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	var into := _toward(r)
 	var dz := _door_wall_z(r)
+	var far_z := _far_wall_z(r)
 	var lx: float = r.rect.position.x
 	var rx: float = r.rect.end.x
 
@@ -186,6 +187,34 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	# Trays stack ON something. Parked in open floor they read as a thing
 	# somebody dropped in the middle of the room, which is exactly how they
 	# looked in the first screenshot after this went in.
+	# THE CEILING AND THE FLOOR, which between them are two thirds of the widest
+	# frame in the game and had nothing on either of them.
+	#
+	# From the door the ward is a flat grey plane above and a flat green one
+	# below with a band of people in between, and the tile grid runs
+	# uninterrupted to the vanishing point in both — so there is nothing in the
+	# picture that says how deep the room is. Two downstand beams and the head of
+	# a curtain track break the ceiling at known distances, and the ward gets the
+	# floor lines the corridor has had all along.
+	# THE CURTAINS HAD NOTHING TO HANG FROM. Five bays, five gathered curtains,
+	# and no track over any of them — which is the `ceiling_sign` fault again
+	# (rods that ended eleven centimetres short of the ceiling), on the most
+	# looked-at object in the room.
+	#
+	# AND NOTHING ELSE, WHICH IS THE FINDING. Two downstand beams and a pair of
+	# floor lines went in first, on the argument that the ceiling and the floor
+	# are two thirds of the widest frame in the game and have nothing on either.
+	# Photographed from the door — `SHOT_ONLY=ward_from_door ./screenshots.sh`,
+	# ninety seconds — a beam anywhere in the near two thirds of a room this
+	# shallow is not a beam crossing a room, it is a cream slab across the top of
+	# the frame with a hard edge under it, and moving it from two metres in to a
+	# third of the way in changed nothing because the camera stands at the door.
+	# The floor lines landed as two stripes directly under the beds. Both were
+	# worse than the empty planes they were added to fix, and both looked
+	# perfectly sensible in the source. `Dressing.bulkhead` is kept because it
+	# is correct and cheap, and is used by nothing: a room with a deep axis and a
+	# camera that is not standing in the doorway of it is where it belongs.
+	Dressing.curtain_track(h, lx + 1.2, rx - 1.2, far_z - into * 1.35)
 	Dressing.trays(h, Vector3(lx + 4.5, 0, dz - into * 1.35), _door_rot(r))
 	Dressing.screen_partition(h, Vector3(r.rect.get_center().x - 2.6, 0,
 		dz - into * 3.2), LEFT_ROT)

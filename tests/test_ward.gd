@@ -1311,11 +1311,24 @@ func test_holding_the_man_you_got_wrong_is_defensible() -> void:
 ## That is what this measures, because it is the part a later edit would
 ## silently undo while the length went on looking right.
 func test_the_score_is_longer_than_the_thing_it_plays_under() -> void:
-	var st: AudioStreamWAV = AudioMgr._build_music()
-	t.ok(st != null, "there is a score")
-	if st == null:
+	# THE SCORE IS THREE STEMS PLAYED AS ONE STREAM. It was a single mixed
+	# buffer, and a level change is not an arrangement change — so the last
+	# forty minutes of a shift left the kit ticking under the heartbeat, just
+	# quieter. This has to read all three and add them up, which is also what
+	# the mix does.
+	var sync := AudioMgr._build_music() as AudioStreamSynchronized
+	t.ok(sync != null, "there is a score")
+	if sync == null:
 		return
-	var samples: int = st.data.size() / 2
+	var wavs: Array = []
+	for i in sync.get_stream_count():
+		var w := sync.get_sync_stream(i) as AudioStreamWAV
+		if w != null:
+			wavs.append(w)
+	t.ok(wavs.size() == 3, "and it is in three stems (%d)" % wavs.size())
+	if wavs.is_empty():
+		return
+	var samples: int = int((wavs[0] as AudioStreamWAV).data.size() / 2)
 	var seconds: float = float(samples) / float(AudioMgr.SR)
 	t.ok(seconds > 60.0, "and the loop is over a minute long (%.1f s)" % seconds)
 
@@ -1329,10 +1342,14 @@ func test_the_score_is_longer_than_the_thing_it_plays_under() -> void:
 		# than the rest of this file put together, and the shape is the same.
 		var i: int = pass_i * span
 		while i < (pass_i + 1) * span:
-			var v: int = st.data[i * 2] | (st.data[i * 2 + 1] << 8)
-			if v > 32767:
-				v -= 65536
-			sum += absf(float(v))
+			var mix := 0.0
+			for w in wavs:
+				var d: PackedByteArray = (w as AudioStreamWAV).data
+				var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+				if v > 32767:
+					v -= 65536
+				mix += float(v)
+			sum += absf(mix)
 			i += 64
 		per_pass.append(sum / float(span / 64))
 	var quietest: float = per_pass[0]

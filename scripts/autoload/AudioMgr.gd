@@ -1088,7 +1088,29 @@ func _r_rim(buf: PackedFloat32Array, start: int, count: int, gain: float,
 ## `kind` is ignored. It is still in the signature because both call sites pass
 ## a shift name, and there being one piece of music is a fact about the score
 ## rather than about them.
-func _build_music(_kind := "") -> AudioStreamWAV:
+## THREE STEMS, PLAYED AS ONE STREAM.
+##
+## The score was rendered as a single mixed buffer, so the only thing anybody
+## could do to it was turn it down — and the last forty minutes of a shift do
+## exactly that, nine decibels and a low-pass (gotcha 58). A level change is not
+## an arrangement change: the kit is still ticking away under the heartbeat at
+## five to eight, just quieter, which is the one part of the mix that should not
+## be there at all when the room is supposed to be coming forward.
+##
+## `AudioStreamSynchronized` is the whole answer and it is native: up to
+## thirty-two sub-streams played in lock-step from one player, with a volume per
+## stream. No second `AudioStreamPlayer`, no start-time skew, nothing to drift —
+## which is what makes this safe to do at all, because three players started on
+## three consecutive frames are three players that will never be in phase again.
+##
+## The normalisation is taken off the SUM and applied to all three equally, so
+## with every stem at 0 dB the mix is sample-for-sample what it was. Gotcha 75:
+## a level at a call site has to keep meaning what it meant.
+const STEM_DRUMS := 0
+const STEM_COMP := 1
+const STEM_LEAD := 2
+
+func _build_music(_kind := "") -> AudioStream:
 	var key := "__score"
 	if _cache.has(key):
 		return _cache[key]
@@ -1100,8 +1122,14 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 	var swing: float = float(mood["swing"])
 	var total: float = beat * float(BEATS_PER_BAR * MUSIC_BARS)
 	var n_samples := int(total * float(SR))
-	var buf := PackedFloat32Array()
-	buf.resize(n_samples)
+	var stems: Array[PackedFloat32Array] = []
+	for i in 3:
+		var b := PackedFloat32Array()
+		b.resize(n_samples)
+		stems.append(b)
+	var buf_drums: PackedFloat32Array = stems[STEM_DRUMS]
+	var buf_comp: PackedFloat32Array = stems[STEM_COMP]
+	var buf_lead: PackedFloat32Array = stems[STEM_LEAD]
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(mood["seed"])
 
@@ -1133,7 +1161,7 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 				var voicing: Array = [b0 - 12.0]
 				voicing.append_array(chord)
 				for n in voicing:
-					_render(buf, "keys", bar_t + float(h) * beat, beat * 1.6,
+					_render(buf_comp, "keys", bar_t + float(h) * beat, beat * 1.6,
 						_semitone(root, float(n) - 12.0), comp * 0.20, rng)
 
 		# THE ARRANGEMENT CHANGES ACROSS THE FOUR PASSES, or the form is just
@@ -1161,7 +1189,7 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 					continue
 				var pick: int = int(chord[i % chord.size()]) if i % 2 == 0 \
 					else int(scale[rng.randi() % scale.size()])
-				_render(buf, "vibe", bar_t + float(figure[i]) * beat, beat * 2.2,
+				_render(buf_lead, "vibe", bar_t + float(figure[i]) * beat, beat * 2.2,
 					_semitone(root, float(pick) + 12.0), lead * 0.13, rng)
 
 		# Kit, brushes only. No kick: that and the bass were the DUH DUH DUH.
@@ -1172,41 +1200,48 @@ func _build_music(_kind := "") -> AudioStreamWAV:
 		# and it makes the bridge arriving with the hats back an event.
 		if drums > 0.0:
 			for b in [1.0, 3.0]:
-				_render(buf, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.26, rng)
+				_render(buf_drums, "rim", bar_t + b * beat, 0.14, 0.0, drums * 0.26, rng)
 			if section != 1:
 				for i in 8:
 					var pos: float = float(i) * 0.5
 					if i % 2 == 1:
 						pos += swing * 0.5
-					_render(buf, "hat", bar_t + pos * beat, 0.10,
+					_render(buf_drums, "hat", bar_t + pos * beat, 0.10,
 						0.0, drums * (0.13 if i % 2 == 0 else 0.08), rng)
 
 	# Normalise to a known peak. The previous score was mixed by eye and landed
 	# thirteen decibels quieter than anybody could hear; measuring it is one
 	# pass over a buffer that already exists.
+	# Off the SUM, so all three stems keep their balance and the mix at 0 dB is
+	# the one that was tuned.
 	var peak := 0.0
 	for i in n_samples:
-		peak = maxf(peak, absf(buf[i]))
+		peak = maxf(peak, absf(buf_drums[i] + buf_comp[i] + buf_lead[i]))
 	var norm: float = (0.74 * float(mood["gain"])) / maxf(peak, 0.0001)
 
-	var data := PackedByteArray()
-	data.resize(n_samples * 2)
-	for i in n_samples:
-		var v := int(clampf(buf[i] * norm * 32767.0, -32768.0, 32767.0))
-		var uv := v & 0xFFFF
-		data[i * 2] = uv & 0xFF
-		data[i * 2 + 1] = (uv >> 8) & 0xFF
-
-	var st := AudioStreamWAV.new()
-	st.format = AudioStreamWAV.FORMAT_16_BITS
-	st.mix_rate = SR
-	st.stereo = false
-	st.data = data
-	st.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	st.loop_begin = 0
-	st.loop_end = n_samples
-	_cache[key] = st
-	return st
+	var sync := AudioStreamSynchronized.new()
+	sync.set_stream_count(stems.size())
+	for si in stems.size():
+		var src: PackedFloat32Array = stems[si]
+		var data := PackedByteArray()
+		data.resize(n_samples * 2)
+		for i in n_samples:
+			var v := int(clampf(src[i] * norm * 32767.0, -32768.0, 32767.0))
+			var uv := v & 0xFFFF
+			data[i * 2] = uv & 0xFF
+			data[i * 2 + 1] = (uv >> 8) & 0xFF
+		var st := AudioStreamWAV.new()
+		st.format = AudioStreamWAV.FORMAT_16_BITS
+		st.mix_rate = SR
+		st.stereo = false
+		st.data = data
+		st.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		st.loop_begin = 0
+		st.loop_end = n_samples
+		sync.set_sync_stream(si, st)
+		sync.set_sync_stream_volume(si, 0.0)
+	_cache[key] = sync
+	return sync
 
 ## Start the score. There is only one, so this is idempotent from anywhere:
 ## whoever gets there first starts the loop and nobody else interrupts it
@@ -1274,7 +1309,51 @@ func duck_music(amount: float) -> void:
 		return
 	music_duck = to
 	_set_music_filter(a)
+	_set_stem_mix(a)
 	refresh_music_volume()
+
+## THE THIRD HALF OF IT, AND THE ONLY ONE THAT IS AN ARRANGEMENT.
+##
+## A level is not a decision. Turning the whole score down nine decibels leaves
+## the kit ticking away underneath the heartbeat at five to eight — quieter, but
+## still the busiest thing in a mix that is supposed to be emptying out. What
+## the last forty minutes wants is FEWER INSTRUMENTS, and the score is rendered
+## as three stems so it can have that for nothing.
+##
+## Brushes go first and go furthest, because a hat on every quaver is what a
+## room sounds like when nothing is wrong. The comping comes back a little. The
+## vibraphone does not move at all: it is the line the one note about this music
+## was about ("I like the melody"), and the point is that you are left with it.
+##
+## Both halves of gotcha 58 apply here as much as to the level — the release is
+## the half that fails silently, so `duck_music(0.0)` puts all three back and
+## the smoke run reads them.
+const STEM_DUCK_DB := [-15.0, -5.5, 0.0]
+
+## THE STREAM, NOT THE PLAYER. There is no music player under `--headless` —
+## `play_music` returns on the first line — so reaching through the player put
+## the whole arrangement out of reach of the only harness that could check it,
+## and the check passed by doing nothing. The score is one cached resource and
+## the player holds a reference to it, so writing to the resource is the same
+## write and works whether anybody is playing it or not.
+func _score_stream() -> AudioStreamSynchronized:
+	return _cache.get("__score", null) as AudioStreamSynchronized
+
+func _set_stem_mix(amount: float) -> void:
+	var sync := _score_stream()
+	if sync == null:
+		return
+	var a: float = clampf(amount, 0.0, 1.0)
+	for i in mini(sync.get_stream_count(), STEM_DUCK_DB.size()):
+		sync.set_sync_stream_volume(i, STEM_DUCK_DB[i] * a)
+
+## What each stem is currently sitting at, so a harness can read the arrangement
+## rather than trusting that a setter was called.
+func stem_volume(i: int) -> float:
+	var sync := _score_stream()
+	if sync == null or i < 0 or i >= sync.get_stream_count():
+		return 0.0
+	return sync.get_sync_stream_volume(i)
 
 ## The other half of the step-back, and the half that is a change rather than a
 ## level. Nothing else writes this filter, so the duck amount is the only thing

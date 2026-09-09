@@ -2369,6 +2369,50 @@ func _check_the_four_wards_are_four_rooms() -> void:
 	# ends repainted the office's.
 	_ok(not seen_dado.is_empty(), "and there is a dado to repaint at all")
 
+
+## AND THE SCORE LOSES INSTRUMENTS, NOT JUST DECIBELS.
+##
+## The last forty minutes of a shift pull the music back nine decibels and put a
+## low-pass on it (gotcha 58), and for a long time that was the whole of it — so
+## the kit went on ticking away underneath the heartbeat at five to eight,
+## quieter, in a mix that is supposed to be emptying out. The score renders as
+## three stems now and plays through one `AudioStreamSynchronized`, which is
+## what makes this safe: three separate players started on three consecutive
+## frames are three players that never come back into phase.
+##
+## Both halves, because the RELEASE is the one that fails silently and nothing
+## on screen says what the music is doing.
+func _check_the_score_thins_out_rather_than_only_getting_quieter() -> void:
+	var stream = AudioMgr._build_music()
+	_ok(stream is AudioStreamSynchronized,
+		"the score is stems rather than one mixed buffer")
+	if not (stream is AudioStreamSynchronized):
+		return
+	var sync: AudioStreamSynchronized = stream
+	_ok(sync.get_stream_count() == 3,
+		"three of them: brushes, comping, and the line people liked (%d)"
+			% sync.get_stream_count())
+	# Every stem is the same length, or they are not stems, they are three
+	# pieces of music that happen to start together.
+	var lens := {}
+	for i in sync.get_stream_count():
+		var w := sync.get_sync_stream(i) as AudioStreamWAV
+		if w != null:
+			lens[w.data.size()] = true
+	_ok(lens.size() == 1, "and all three are the same length (%d distinct)" % lens.size())
+
+	AudioMgr.duck_music(0.0)
+	var open_mix := [AudioMgr.stem_volume(0), AudioMgr.stem_volume(1), AudioMgr.stem_volume(2)]
+	AudioMgr.duck_music(1.0)
+	var shut_mix := [AudioMgr.stem_volume(0), AudioMgr.stem_volume(1), AudioMgr.stem_volume(2)]
+	AudioMgr.duck_music(0.0)
+	var back_mix := [AudioMgr.stem_volume(0), AudioMgr.stem_volume(1), AudioMgr.stem_volume(2)]
+	_ok(float(shut_mix[0]) < float(shut_mix[2]) - 6.0,
+		"the brushes go further than the vibraphone does (%.1f vs %.1f dB)"
+			% [float(shut_mix[0]), float(shut_mix[2])])
+	_ok(is_zero_approx(float(open_mix[0])) and is_zero_approx(float(back_mix[0])),
+		"and the kit comes back — the release is the half that fails silently")
+
 ## Evidence somebody SAW, as opposed to evidence that reached them.
 func _witnessed(sus) -> int:
 	var n := 0
@@ -3770,6 +3814,7 @@ func _check_the_sound_design() -> void:
 	_check_a_footstep_is_not_always_the_same_footstep()
 	_check_the_mix_has_a_shape()
 	_check_the_score_can_be_put_in_the_next_room()
+	_check_the_score_thins_out_rather_than_only_getting_quieter()
 	# The CALL SITES, which is where all of the above could be perfect and the
 	# game still make one beep for everything. These need the live tree and
 	# they leave `AudioMgr.heard` in whatever state they finish in, which

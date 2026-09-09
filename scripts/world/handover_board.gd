@@ -16,6 +16,18 @@ extends Fixture
 ## rounds, because those are a rota. It is only as right about the patients as
 ## she is.
 
+## Every morning is a different ward, and the board is rewritten with it.
+const BOARD_GROUP := "handover_board"
+var _head: Label3D = null
+
+## Called from `Hospital.reskin`. The board is a Fixture with collision and a
+## navigation footprint, so unlike the dressing it cannot be thrown away and
+## rebuilt between wards — the one thing on it that names the ward is a label,
+## and a label can simply be rewritten.
+func rename_for_ward() -> void:
+	if _head != null:
+		_head.text = "%s — TODAY" % Cases.ward_name().to_upper()
+
 func build() -> void:
 	fixture_name = "Handover Board"
 	var frame := Build.mat(Color(0.62, 0.64, 0.66))
@@ -25,9 +37,14 @@ func build() -> void:
 		{"mesh": Build.box_mesh(Vector3(1.80, 1.00, 0.02)), "mat": face, "pos": Vector3(0, 0, 0.032)},
 		{"mesh": Build.box_mesh(Vector3(1.70, 0.02, 0.01)), "mat": frame, "pos": Vector3(0, 0.36, 0.043)},
 	], Vector3(0, 0, 0))
-	var head := Build.label3d("WARD C — TODAY", 0.075, Color(0.15, 0.19, 0.24), false)
-	head.position = Vector3(0, 0.44, 0.05)
-	add_child(head)
+	# WHICHEVER WARD IT IS. This said WARD C in marker on the station's own
+	# whiteboard on every night of every career, and the smoke run's sign check
+	# could not see it because the check matched "Ward" and the board shouts.
+	_head = Build.label3d("%s — TODAY" % Cases.ward_name().to_upper(), 0.075,
+		Color(0.15, 0.19, 0.24), false)
+	_head.position = Vector3(0, 0.44, 0.05)
+	add_child(_head)
+	add_to_group(BOARD_GROUP)
 	# The rounds are a rota and they are written up here in marker, which is the
 	# only place in the game they are stated rather than inferred from the chart.
 	var times := PackedStringArray()

@@ -131,6 +131,9 @@ func reskin() -> void:
 			var cr = rooms.get(String(entry["key"]), null)
 			if cr != null:
 				cr.display = "%s Corridor" % Cases.ward_name()
+	for n in get_children():
+		if n.is_in_group(HandoverBoard.BOARD_GROUP) and n.has_method("rename_for_ward"):
+			n.call("rename_for_ward")
 	Furniture.rename_ward(self)
 	Furniture.redress_ward(self)
 
@@ -218,7 +221,19 @@ func _build_outside() -> void:
 
 		# The boundary of the grounds, low and close: it sits along the bottom
 		# of the glass and is what gives the view a near edge to measure from.
-		var rb: float = 12.5 + w * 1.5
+		#
+		# AND IT FOLLOWS THE BUILDING RATHER THAN A CIRCLE ROUND IT. This was a
+		# ring of radius 12.5 to 14 about the centre of a building whose
+		# CORNERS are 14.5 from that centre, so the hedge passed straight
+		# through all four of them: two of these blocks stood inside the office,
+		# half sunk in the floor, and photographed as a pair of flat pale-green
+		# slabs with none of the tooth every surface indoors has. It read as an
+		# unfinished piece of furniture rather than as a hedge, which is why
+		# nobody had ever recognised it. `_outside_radius` is the distance to
+		# the building's own wall along this bearing, so the boundary is a
+		# rounded rectangle at a fixed standoff and every window sees it at the
+		# same height.
+		var rb: float = _outside_radius(a) + 2.6 + w * 1.5
 		_outside(Build.outside_mi(Vector3(3.4, 1.0 + w * 0.5, 1.0), boundary,
 			Vector3(10.0 + cos(a) * rb, 0.1, 2.5 + sin(a) * rb)))
 
@@ -260,6 +275,20 @@ func _build_outside() -> void:
 		# as standing on the ground rather than floating in front of it.
 		_outside(Build.outside_mi(Vector3(21.0 + w * 18.0, 1.8, 19.0),
 			far_block.darkened(0.20), at - Vector3(0, hh * 0.5 - 0.9, 0)))
+
+## HOW FAR THE BUILDING REACHES ALONG ONE BEARING, from its own centre.
+##
+## The floor plan is a 20 x 21 rectangle, so a circle drawn round it is either
+## clear of the long sides and inside the corners or clear of the corners and
+## halfway to the horizon on the sides. Anything meant to sit just outside the
+## walls has to take the distance to the WALL, which for a rectangle is the
+## nearer of the two axis intersections.
+func _outside_radius(bearing: float) -> float:
+	var hx := 10.0                      ## half the plan's width  (x 0..20)
+	var hz := 10.5                      ## half its depth         (z -8..13)
+	var cx: float = maxf(absf(cos(bearing)), 0.0001)
+	var cz: float = maxf(absf(sin(bearing)), 0.0001)
+	return minf(hx / cx, hz / cz)
 
 ## Every distinct material the view outside is built from, so the haze and the
 ## gain can be re-tinted as the shift runs without walking the scene tree every

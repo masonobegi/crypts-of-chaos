@@ -189,6 +189,18 @@ static func rename_ward(h: Hospital) -> void:
 				WARD_NAME_SIGN)
 	_wall_sign(h, "%s  ▲" % Cases.ward_name(), Vector3(6.8, 2.6, 3.85), PI, 0.16,
 		true, WARD_NAME_SIGN)
+	# ...AND THE ONE HANGING FROM THE CORRIDOR CEILING, which is the sign a
+	# player reads walking in and said WARD C on every night of every career.
+	# It is built here rather than in `_dress_corridor` because the corridor's
+	# dressing is laid once and this is the only piece of it that changes.
+	for r in h.room_list():
+		if r.kind != "corridor":
+			continue
+		Dressing.tag = WARD_NAME_SIGN
+		Dressing.ceiling_sign(h, Vector3(5.0, Hospital.WALL_H,
+			r.rect.position.y + r.rect.size.y * 0.5),
+			"%s  ▲      ◀  STATION" % Cases.ward_name().to_upper())
+		Dressing.tag = ""
 
 static func _dress_ward(h: Hospital, r: Room) -> void:
 	# ...and everything below is tagged, so tomorrow can throw it away. The
@@ -390,9 +402,9 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88))
 	Dressing.floor_line(h, x0, x1, z0 + 0.95, Color(0.94, 0.72, 0.24))
 	Dressing.floor_line(h, x0, x1, z1 - 0.80, Color(0.42, 0.76, 0.52))
-	# Hung between the ceiling lamps rather than on top of them.
-	Dressing.ceiling_sign(h, Vector3(5.0, Hospital.WALL_H, (z0 + z1) * 0.5),
-		"WARD C  ▲      ◀  STATION")
+	# Hung between the ceiling lamps rather than on top of them. The one that
+	# names the ward is built by `rename_ward` instead, because it is rewritten
+	# every morning along with the plate above the beds.
 	Dressing.ceiling_sign(h, Vector3(15.0, Hospital.WALL_H, (z0 + z1) * 0.5),
 		"YOUR OFFICE  ▶")
 	Dressing.noticeboard(h, Vector3(9.0, 1.65, z0 + 0.10), 0.0, 1.8, 1.1)

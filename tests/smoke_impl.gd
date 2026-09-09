@@ -282,6 +282,7 @@ func _check_the_verbs_work() -> void:
 	_check_nothing_floats_or_sinks()
 	_check_nobody_has_their_eyes_inside_their_head()
 	_check_every_ward_is_its_own_room()
+	_check_nothing_outside_is_inside()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -2337,6 +2338,51 @@ func _check_nobody_has_their_eyes_inside_their_head() -> void:
 ## changed on the nodes — the floor's material, the dado's, and the text of the
 ## sign above the beds. Not by reading `Cases.WARDS`, which would only prove the
 ## table has four rows in it.
+## NOTHING IN THE GROUNDS IS STANDING IN A ROOM.
+##
+## The view through the windows is three rings of blocks drawn about the centre
+## of the floor plan, and the plan is a 20 x 21 rectangle — so a circle of
+## radius 12.5 to 14 clears the long sides and cuts straight through all four
+## CORNERS, which are 14.5 out. Two boundary hedges stood inside the office,
+## half sunk in the floor, and photographed as a pair of flat pale-green slabs
+## with none of the tooth every indoor surface has: it read as an unfinished
+## piece of furniture, which is why nobody recognised it in three sessions of
+## looking at that frame. Nothing else could see it — the blocks are correct,
+## the ring is correct, and the building is simply not a circle.
+func _check_nothing_outside_is_inside() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital")
+		return
+	# The whole footprint, grown by nothing: a hedge touching the outside face
+	# of a wall is fine, a hedge past it is not.
+	var plan := Rect2()
+	var first := true
+	for r in h.room_list():
+		if first:
+			plan = r.rect
+			first = false
+		else:
+			plan = plan.merge(r.rect)
+	var indoors: Array = []
+	for n in tree.get_nodes_in_group("outside"):
+		if not (n is MeshInstance3D) or (n as MeshInstance3D).mesh == null:
+			continue
+		var m := n as MeshInstance3D
+		var a: AABB = m.global_transform * m.mesh.get_aabb()
+		# The ground and the apron are enormous slabs UNDER the building and
+		# are meant to be: they live below the floor slabs, which span -0.2..0.
+		if a.end.y <= 0.0:
+			continue
+		var foot := Rect2(a.position.x, a.position.z, a.size.x, a.size.z)
+		if plan.intersects(foot):
+			indoors.append("%.1f,%.1f %.1fx%.1f" % [foot.position.x, foot.position.y,
+				foot.size.x, foot.size.y])
+	_ok(indoors.is_empty(),
+		"nothing in the grounds is standing inside the building (%d of %d)%s"
+			% [indoors.size(), tree.get_nodes_in_group("outside").size(),
+				"" if indoors.is_empty() else " — " + String(indoors[0])])
+
 func _check_every_ward_is_its_own_room() -> void:
 	var h = tree.get_first_node_in_group("hospital")
 	if h == null:
@@ -2355,16 +2401,27 @@ func _check_every_ward_is_its_own_room() -> void:
 	# signs, and wrong on the one a player navigates by. Found by looking at a
 	# frame of the fifth ward, which is not a way of finding things.
 	var stale: Array = []
+	var names := {}
+	for row in Cases.WARDS:
+		names[String(row.get("name", "")).to_lower()] = true
 	for i in Cases.DAYS.size():
 		GameState.day = i + 1
 		h.reskin()
 		seen_name[Cases.ward_name()] = true
 		var want := Cases.ward_name()
 		for lbl in _labels_under(h):
-			var txt := String(lbl.text).strip_edges().trim_suffix(" ▲").strip_edges()
-			if not txt.ends_with("Ward") and not txt.begins_with("Ward"):
+			# CASE-INSENSITIVELY, AND ALLOWING A TAIL. The first version matched
+			# "Ward" exactly and compared the whole string, so the station's own
+			# whiteboard — "WARD C — TODAY", in marker, on every night of every
+			# career — was invisible to it twice over.
+			# THE PRECISE QUESTION IS "does any sign name a DIFFERENT ward",
+			# so the set to test against is the ward TABLE. Matching anything
+			# beginning with "ward" swept up "WARD RECORDS", which is a door.
+			var txt := String(lbl.text).strip_edges()
+			var head := txt.split("  ")[0].split(" — ")[0].strip_edges().to_lower()
+			if not names.has(head):
 				continue
-			if txt != want:
+			if head != want.to_lower():
 				stale.append("%s says %s" % [want, txt])
 		for r in h.room_list():
 			if r.kind != "ward":

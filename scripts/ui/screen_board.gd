@@ -18,7 +18,7 @@ func _build() -> void:
 	if w == null:
 		close()
 		return
-	var v := card_shell(700, 640, "WARD C — TODAY",
+	var v := card_shell(700, 640, "%s — TODAY" % Cases.ward_name().to_upper(),
 		"Nurse Adeyemi's board. In marker, at the station.")
 
 	# The rounds, stated rather than inferred. A player can work these out by

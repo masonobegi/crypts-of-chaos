@@ -1030,6 +1030,30 @@ with it because a lost afternoon does not care which.
     time. Gotcha 48's fault with the number in the right place and the wrong
     ward's value in it; it now reads `Cases.ward_look()["floor"]`.
 
+101. **FIFTEEN HEDGES WERE STANDING INSIDE THE BUILDING.** The view through
+    the windows is three rings of blocks drawn about the centre of the floor
+    plan, and the plan is a 20 x 21 rectangle: a boundary ring of radius 12.5
+    to 14 clears the long sides and passes straight through all four CORNERS,
+    which are 14.5 out. Two of them stood in the office, half sunk in the
+    floor, and photographed as a pair of flat pale-green slabs with none of the
+    tooth every indoor surface has — so they read as an unfinished piece of
+    FURNITURE rather than as shrubbery, which is why three sessions of looking
+    at that frame never recognised them. `_outside_radius(bearing)` returns the
+    distance to the building's own wall along a bearing, so the boundary is a
+    rounded rectangle at a fixed standoff. The smoke run intersects every
+    `outside` mesh's footprint with the plan now; it was proven red at fifteen.
+102. **A CHECK THAT MATCHES A NAME HAS TO MATCH THE NAME, not a word in it.**
+    The first version of the ward-sign check compared anything beginning or
+    ending with "Ward", case-sensitively, against the whole label. It missed
+    the station's own whiteboard — "WARD C — TODAY", in marker, on every night
+    of every career — because the board SHOUTS, and it missed the corridor's
+    hanging sign because that one has a tail. Widened to be case-insensitive
+    and it then swept up "WARD RECORDS", which is a door. The precise question
+    is "does any sign name a DIFFERENT ward", so the set to test against is
+    `Cases.WARDS` itself. **And prove the red on the right line**: breaking the
+    board's build-time literal proved nothing, because `rename_for_ward` runs
+    on every reskin and put it back.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

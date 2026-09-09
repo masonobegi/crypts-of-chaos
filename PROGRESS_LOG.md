@@ -3120,3 +3120,30 @@ And the bay strip on the floor, which the comment beside it has always described
 as "mixed toward the floor's own colour", was mixed toward a literal sage green
 chosen when there was one ward. On the slate-blue ward that is a green rug on
 lino. It reads `Cases.ward_look()["floor"]` now.
+
+### Fifteen hedges were standing inside the building
+
+The office had two flat pale-green slabs behind the desk with no tooth, no
+shading and no detail — they read as an unfinished piece of furniture, which is
+why three sessions of looking at that frame never recognised them. They are the
+boundary hedge.
+
+The view through the windows is three rings of blocks drawn about the centre of
+the floor plan, and the plan is a 20 x 21 rectangle, so a ring of radius 12.5 to
+14 clears the long sides and passes straight through all four corners, which are
+14.5 out. `_outside_radius(bearing)` returns the distance to the building's own
+wall along a bearing now, so the boundary is a rounded rectangle at a fixed
+standoff and every window sees it at the same height. The smoke run intersects
+every `outside` mesh's footprint with the plan; proven red at fifteen blocks.
+
+Two more signs were still saying Ward C: the station's own whiteboard, in marker,
+and the sign hanging from the corridor ceiling — the one a player reads walking
+in. The check written last commit could not see either. It matched anything
+beginning with "Ward", case-sensitively, against the whole label, so a board that
+SHOUTS and a sign with a tail both slipped through; widened, it then swept up
+"WARD RECORDS", which is a door. The precise question is "does any sign name a
+DIFFERENT ward", so it tests against `Cases.WARDS` itself.
+
+And the red has to be proven on the right line. Breaking the board's build-time
+literal proved nothing, because `rename_for_ward` runs on every reskin and put it
+straight back.

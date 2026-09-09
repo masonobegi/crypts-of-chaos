@@ -257,7 +257,19 @@ func _answer_policy(name: String) -> Callable:
 var _honest_failed := false
 
 func run() -> bool:
-	GameState.start_new_career(31337)
+	# OVERRIDABLE, LIKE THE OTHER THREE. 31337 was a magic number chosen once,
+	# and `_search` explores whatever ward that seed happens to deal — which on
+	# the second ward was the one board out of twelve where the ward's premise
+	# was switched off, so the probe reported a ward as fine that could not be
+	# signed off on any of its other eleven. `_honest_on_every_board` closes
+	# that for the honest day; the 2,601-strategy SEARCH is still one board a
+	# ward, and sweeping this is the cheapest way to find out what it is missing.
+	var seed_v := 31337
+	var env := OS.get_environment("FRONTIER_SEED")
+	if env != "" and env.is_valid_int():
+		seed_v = int(env)
+		print("  (seed %d)" % seed_v)
+	GameState.start_new_career(seed_v)
 	for day in range(1, Cases.DAYS.size() + 1):
 		_search(day)
 	_honest_on_every_board()

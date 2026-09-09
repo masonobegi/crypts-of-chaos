@@ -271,6 +271,70 @@ func run() -> void:
 			w.set_disposition("lomax","hold"); w.set_disposition("voss","hold")
 			w.advance_to(17*60)
 			_discharge_rest(w,["lomax","voss"]), stand, 2],
+		# ------------------------------------------------- THE THIRD WARD
+		#
+		# Twenty-three strategies on the first ward, eight on the second, and
+		# NOTHING on the third or the fourth — so the two wards added last were
+		# checked by the data probe (are they well formed?) and the frontier
+		# probe (is there a clean day?) and by nothing that asks what a PERSON
+		# would actually do on them. The third ward's honest hold is in a life
+		# rather than a diagnosis and the fourth's is in somebody else's
+		# decision, and neither of those propositions had a single authored day
+		# behind it.
+		["31 ward three: the one who is genuinely ill", func(w):
+			w.examine("okwuosa")
+			w.advance_to(11*60)
+			w.write_entry("okwuosa",C.UNWELL,"Still tender. Not tolerating diet.",11*60)
+			w.nurse_check("okwuosa")
+			w.set_disposition("okwuosa","hold"); _discharge_rest(w,["okwuosa"]), stand, 3],
+		["32 ward three: and the boy nobody has assessed", func(w):
+			w.examine("okwuosa"); w.examine("aldridge")
+			w.advance_to(11*60)
+			w.write_entry("okwuosa",C.UNWELL,"Still tender. Not tolerating diet.",11*60)
+			w.write_entry("aldridge",C.SOCIAL,"Not assessed. No liaison response since 22:40.",11*60+10)
+			for id in ["okwuosa","aldridge"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["okwuosa","aldridge"]), stand, 3],
+		["33 ward three: keep the premium woman who asked", func(w):
+			w.examine("okwuosa")
+			w.advance_to(17*60)
+			w.write_entry("okwuosa",C.UNWELL,"Still tender.",17*60)
+			w.write_entry("fry",C.UNWELL,"Unsteady this evening.",16*60+55)
+			for id in ["okwuosa","fry"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["okwuosa","fry"]), stand, 3],
+		["34 ward three: lead the premium woman into it", func(w):
+			w.examine("okwuosa")
+			w.advance_to(15*60)
+			w.write_entry("okwuosa",C.UNWELL,"Still tender.",15*60)
+			w.ask_patient("fry","dizzy spells on standing")
+			for id in ["okwuosa","fry"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["okwuosa","fry"]), smart, 3],
+		# ------------------------------------------------- THE FOURTH WARD
+		["35 ward four: examine both, then write", func(w):
+			w.examine("ashworth"); w.examine("vane")
+			w.advance_to(11*60)
+			for id in ["ashworth","vane"]:
+				w.write_entry(id,C.UNWELL,"Examined at the bedside. Not fit for discharge today.",11*60)
+			for id in ["ashworth","vane"]: w.nurse_check(id)
+			for id in ["ashworth","vane"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["ashworth","vane"]), stand, 4],
+		["36 ward four: overturn the registrar without looking", func(w):
+			w.advance_to(11*60)
+			w.write_entry("ashworth",C.UNWELL,"Not fit for discharge today.",11*60)
+			w.set_disposition("ashworth","hold"); _discharge_rest(w,["ashworth"]), stand, 4],
+		["37 ward four: ask him again about the one he cleared", func(w):
+			w.examine("ashworth")
+			w.advance_to(11*60+10)
+			w.ask_colleague("ashworth")
+			w.write_entry("ashworth",C.UNWELL,"Reviewed at the bedside. Not fit for home.",11*60+40)
+			w.set_disposition("ashworth","hold"); _discharge_rest(w,["ashworth"]), stand, 4],
+		["38 ward four: and the man who reads his own chart", func(w):
+			w.examine("ashworth"); w.examine("vane")
+			w.advance_to(11*60)
+			for id in ["ashworth","vane"]:
+				w.write_entry(id,C.UNWELL,"Examined at the bedside. Not fit for discharge today.",11*60)
+			w.write_entry("pyne",C.UNWELL,"Ongoing chest discomfort reported.",11*60+20)
+			for id in ["ashworth","vane","pyne"]: w.set_disposition(id,"hold")
+			_discharge_rest(w,["ashworth","vane","pyne"]), stand, 4],
 		["20 fold under questioning", func(w):
 			w.set_disposition("marchetti","hold"); w.advance_to(19*60+5)
 			w.write_entry("oduya",C.UNWELL,"Reports dizziness.",19*60)

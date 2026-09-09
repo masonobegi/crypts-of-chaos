@@ -22,7 +22,7 @@ GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, u
 ```
 
 `run_tests.sh` is 301 assertions, a 210-check smoke run through the real tree
-on three different wards, 31 playtests against seven success criteria, the
+on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
 the input actions a controller sends — the first two minutes, and a whole shift
@@ -30,13 +30,14 @@ from the briefing to the next morning — a check that the game prints nothing i
 should not while being played, and a boot through the real main menu. Every
 phase exits non-zero on its own and the runner reports which.
 
-Two seeds are overridable, and it is the cheapest way to catch a harness that
+Three seeds are overridable, and it is the cheapest way to catch a harness that
 only works on the board it happens to have been written against:
 
 ```bash
-SMOKE_SEED=99  godot --headless --path . --script res://tests/smoke_run.gd
-CAREER_SEED=99 godot --headless --path . --script res://tests/probe/career_run.gd
-PLAY_SEED=99   godot --headless --fixed-fps 60 --path . --script res://tests/play_run.gd -- day
+SMOKE_SEED=99    godot --headless --path . --script res://tests/smoke_run.gd
+CAREER_SEED=99   godot --headless --path . --script res://tests/probe/career_run.gd
+FRONTIER_SEED=99 godot --headless --path . --script res://tests/probe/frontier_run.gd
+PLAY_SEED=99     godot --headless --fixed-fps 60 --path . --script res://tests/play_run.gd -- day
 ```
 
 Sweeping those found four things in one session that three fixed seeds had not:
@@ -828,7 +829,7 @@ with it because a lost afternoon does not care which.
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 298 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
 | `smoke_run.gd` | "everything compiles and nothing works" — 172 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
-| `playtest_run.gd` | design inversions, over 31 authored strategies — twenty-three on the first ward and eight on the second. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
+| `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | nothing on its own either, and it is the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |

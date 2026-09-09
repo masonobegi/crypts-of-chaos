@@ -735,6 +735,42 @@ with it because a lost afternoon does not care which.
     away — the rule WORKING. Assert on the people who can hear it
     (`perception.can_hear`), and report the ones who cannot. Found by sweeping
     seeds, which is the fourth time.
+80. **A THIRD OF THE CAST HAD NO FACE, AND NOTHING ANYWHERE SAID SO.**
+    `Appearance.skull` is independent per axis and its z runs 0.90 to 1.09, so
+    the front of a head moves nearly four centimetres across the cast — while
+    the eyes, the catchlights, the brows, the sockets and the mouth were all
+    placed at LITERAL depths tuned against an average head. Above about
+    skull.z = 1.05 the skull is in front of them: those people have no eyes and
+    no mouth, and what you read as eyes in the frame is the head sphere's own
+    shading. Nothing errors, nothing is missing from the scene, the head renders
+    correctly, and the pieces are simply behind it. Measured after the fix, 8 of
+    72 features across 24 generated faces had been buried, worst by a
+    centimetre. Every note in `npc_body.gd` about the face reading flat —
+    including gotcha 44's measured argument that lighting is not the lever — was
+    written about a model on which part of the cast had no features at all.
+    `NPCBody._face_z(x, y, proud)` asks the ellipsoid where its own surface is;
+    the smoke run measures the built pieces against the SKULL MESH's own scale,
+    not against `_face_z`, which would only ever agree with itself.
+81. **AN UNSHADED FEATURE ON A LIT FACE CANNOT PROMISE TO BE DARKER THAN IT.**
+    The eye was `unshaded(0.10, 0.09, 0.11)` — a fixed emissive value — and read
+    off a real frame, the darkest skin in `Appearance.SKIN` renders at
+    (56, 33, 16) while that eye renders at (68, 45, 37): the eye was LIGHTER
+    than the face, so on the dark end of the palette these people had eyes and
+    a mouth made of slightly-brighter nothing. A LIT material is albedo times
+    the same illumination the skin gets, so an eye at 0.03 against skin at 0.29
+    is ten times darker on every face, in every room, at every hour, and the
+    ratio cannot come apart the way two absolute numbers did. `EYE_INK` and
+    `MOUTH_INK`; the catchlight stays unshaded, because a catchlight is a light.
+    Gotcha 40 exactly: take the reading off the HARDEST case, not the average.
+82. **A JOINT IS NOT WIDER THAN THE LIMB IT JOINS, AND A WRIST IS NOT WIDER
+    THAN A SLEEVE.** The shoulder sphere was 0.105 — a 21cm ball on a 20cm
+    sleeve, so it was the widest thing on the body and photographed as shoulder
+    pads on everybody in the ward, which is the SECOND time this piece has read
+    as an epaulette. And the forearm was a capsule 16.4cm across coming out of a
+    sleeve that ends at 15, so the whole arm was one tube from shoulder to
+    knuckles — with a comment on the line below reading "the hand is WIDER than
+    the wrist" about a hand 1.4cm narrower than the arm it is on. Write the
+    chain of widths down and check it is monotonic before rendering anything.
 
 ## Design rules that are load-bearing
 
@@ -966,7 +1002,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 358 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 250 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 251 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | nothing on its own either, and it is the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

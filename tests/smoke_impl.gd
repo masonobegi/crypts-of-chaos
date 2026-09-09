@@ -280,6 +280,7 @@ func _check_the_verbs_work() -> void:
 	_check_a_readmission_waits_for_the_morning()
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
+	_check_nobody_has_their_eyes_inside_their_head()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -2106,6 +2107,62 @@ func _check_what_she_saw_gets_to_the_folder(w, sus, pid: String) -> void:
 	# question.
 	_ok("she_was_standing_there" in ReviewSystem.NURSE_IS_THE_ACCUSATION,
 		"and you cannot answer a witness by citing a witness")
+
+
+## NOBODY HAS THEIR EYES INSIDE THEIR OWN HEAD.
+##
+## `Appearance.skull` is independent per axis and its z runs 0.90 to 1.09, so
+## the front of the head moves nearly four centimetres across the cast — and
+## every feature on the face was placed at a literal depth tuned on an average
+## one. Above about skull.z = 1.05 the skull is in FRONT of the eyes, the mouth
+## and the catchlights, and those people simply have no face: nothing errors,
+## nothing is missing from the scene, the head renders exactly as it should, and
+## the pieces are behind it. It was found by photographing six people and
+## counting white pixels — 108 where one catchlight should be and 0 where the
+## other should be — and every note in `npc_body.gd` about the face reading flat
+## was written about a model where some of the cast had no features at all.
+##
+## Measured against the SKULL MESH's own scale rather than against `_face_z`,
+## which would only ever agree with itself: if somebody changes how the head is
+## built and not how the face is placed, this is what says so.
+func _check_nobody_has_their_eyes_inside_their_head() -> void:
+	var worst := 0.0
+	var worst_who := ""
+	var buried := 0
+	var tried := 0
+	for i in 24:
+		var look: Dictionary = Appearance.of({"id": "smoke_face_%d" % i, "age": 40 + i})
+		var b := NPCBody.new()
+		b.set_look(look)
+		tree.root.add_child(b)
+		if b._skull_mi == null or b._eyes_open.is_empty() or b._mouth == null:
+			b.queue_free()
+			continue
+		# The head as BUILT: a sphere of a known radius, scaled per axis.
+		var sc: Vector3 = b._skull_mi.scale
+		var a: float = 0.215 * sc.x
+		var bb: float = 0.215 * sc.y
+		var c: float = 0.215 * sc.z
+		var oy: float = b._skull_mi.position.y
+		for piece in [b._eyes_open[0], b._eyes_open[1], b._mouth]:
+			tried += 1
+			var px: float = piece.position.x
+			var py: float = piece.position.y - oy
+			var t: float = 1.0 - (px / a) * (px / a) - (py / bb) * (py / bb)
+			var surface: float = c * sqrt(maxf(t, 0.0))
+			# The piece's own front face: half its mesh depth in front of it.
+			var aabb: AABB = piece.mesh.get_aabb()
+			var front: float = piece.position.z + aabb.size.z * 0.5 * piece.scale.z
+			var clear: float = front - surface
+			if clear <= 0.0:
+				buried += 1
+				if clear < worst:
+					worst = clear
+					worst_who = "skull %s" % str(look.get("skull", Vector3.ONE))
+		b.queue_free()
+	_ok(buried == 0,
+		"nobody in %d faces has an eye or a mouth inside their own skull (%d of %d buried%s)"
+			% [24, buried, tried, (", worst %.1fcm on %s" % [worst * 100.0, worst_who]) if buried > 0 else ""])
 
 ## Evidence somebody SAW, as opposed to evidence that reached them.
 func _witnessed(sus) -> int:

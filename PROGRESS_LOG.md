@@ -2861,3 +2861,36 @@ built from a different ward (gotcha 30, in a new place — it only showed on
 patient more than twelve metres away.
 
 358 assertions, 250 smoke checks on three seeds, every probe green.
+
+## A third of the cast had no face
+
+`./faces.sh` photographs six people close up, and the darkest-skinned of the six
+had no eyes and no mouth — two brows, a nose, and one white dot where two
+catchlights should have been. Counting pixels: 108 on the left eye, 0 on the
+right.
+
+Two causes, both invisible from the code.
+
+`Appearance.skull` is independent per axis and its z runs 0.90 to 1.09, so the
+front of a head moves nearly four centimetres across the cast — and the eyes,
+catchlights, brows, sockets and mouth were all placed at literal depths tuned on
+an average one. Above about skull.z = 1.05 the skull is in front of them.
+Nothing errors, nothing is missing, the head renders exactly as it should, and
+the face is behind it. Measured after the fix: 8 of 72 features across 24
+generated faces had been buried, worst by a centimetre. `NPCBody._face_z` asks
+the ellipsoid where its own surface is, and the smoke run measures the built
+pieces against the skull MESH's scale rather than against `_face_z`, which would
+only ever agree with itself. Proven red by putting two of the literals back.
+
+And the eye was `unshaded(0.10, 0.09, 0.11)`, a fixed emissive value, against a
+lit face: read off a real frame, the darkest skin renders at (56, 33, 16) and
+that eye at (68, 45, 37). The eye was lighter than the face. Lit near-black now,
+so the ratio to skin is constant under any light.
+
+While the pictures were up: the shoulder sphere was a 21cm ball on a 20cm
+sleeve — shoulder pads on everybody, the second time that piece has read as an
+epaulette — and the forearm was 16.4cm coming out of a sleeve that ends at 15,
+with a comment on the next line about the hand being wider than the wrist, about
+a hand 1.4cm narrower than the arm it is on.
+
+351 assertions... 358, and 251 smoke checks on three seeds. Everything green.

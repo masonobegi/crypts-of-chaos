@@ -83,11 +83,31 @@ const ARM_REST_Z := 0.055
 ## Where a brow sits when nothing is happening. Written in TWO places — once
 ## when the head is built and once every time `set_mood` runs — so they have to
 ## be the same number or a neutral mood is a different face to a fresh one.
+## AN EYE HAS TO BE DARKER THAN ANY FACE IT IS ON, AND UNSHADED CANNOT PROMISE
+## THAT. The eye was `unshaded(0.10, 0.09, 0.11)` — a fixed emissive value — and
+## measured off a real frame, the darkest skin in `Appearance.SKIN` renders at
+## (56, 33, 16) while that eye renders at (68, 45, 37). The eye was LIGHTER than
+## the face. On the four darkest of twelve skins these people had no eyes and no
+## mouth, only brows and a nose, and the "eyes" in the picture were the head
+## sphere's own shading.
+##
+## Lit, not unshaded, and that is the whole fix: a lit material is albedo times
+## the same illumination the skin gets, so an eye at 0.03 against skin at 0.29 is
+## ten times darker on every face in every room at every hour of the shift, and
+## the ratio cannot come apart the way two absolute numbers did. Same for the
+## mouth. The catchlight stays unshaded, because a catchlight IS a light.
+## Gotcha 40's lesson exactly: take a reading off a render before choosing a
+## colour, and take it off the hardest case rather than the average one.
+const EYE_INK := Color(0.030, 0.028, 0.034)
+const MOUTH_INK := Color(0.080, 0.045, 0.048)
+
 const BROW_REST_Y := 0.052
 const BROW_REST_Z := 0.09
 var _eyes_open: Array[MeshInstance3D] = []
 var _eyes_shut: Array[MeshInstance3D] = []
 var _brows: Array[MeshInstance3D] = []
+## The head sphere itself, so a test can measure the face against the real mesh.
+var _skull_mi: MeshInstance3D = null
 var _mouth: MeshInstance3D = null
 var _mouth_corners: Array[MeshInstance3D] = []
 ## -1 is "you have made this worse", +1 is "that is much better". Sticky: it is
@@ -139,6 +159,38 @@ var _yield_dir := Vector3.ZERO
 ## Set while standing still writing something down. See make_a_note().
 var _note_time := 0.0
 var _note_pad: Node3D = null
+
+
+## WHERE THE FRONT OF THIS PARTICULAR HEAD IS.
+##
+## THE FACES WERE WELDED TO A FIXED z AND THE HEAD WAS NOT. `skull` is
+## independent per axis and its z runs 0.90 to 1.09, so the head's own front
+## surface moves by nearly four centimetres across the cast — and the eyes, the
+## catchlight, the brows, the mouth and the sockets were all placed at literal
+## depths tuned against an average head. Above about skull.z = 1.05 the front of
+## the skull is IN FRONT OF THEM, so on those people the eyes, the mouth and one
+## or both catchlights are inside their own head and simply do not exist.
+##
+## Photographed, measured and then found: on the darkest-skinned of the six
+## `./faces.sh` subjects there was exactly ONE white pixel cluster where two
+## catchlights should be (108 pixels on the left eye, 0 on the right), and the
+## "eyes" reading in the frame were the shading of the head sphere. Every note in
+## this file about the face being flat — and gotcha 44's whole measured argument
+## that lighting is not the lever — was written about a model where some of the
+## cast had no features at all. Nothing errors, nothing is missing from the
+## scene, and the head still renders: the pieces are simply behind it.
+##
+## So the ellipsoid gets asked. `proud` is how far in front of its own surface
+## the piece sits, in metres, and the numbers below are exactly the offsets the
+## old literals had on an average head — so nobody who looked right changes, and
+## everybody who did not is fixed.
+func _face_z(x: float, y: float, proud: float) -> float:
+	var a: float = 0.215 * 0.98 * skull.x
+	var b: float = 0.215 * 1.14 * skull.y
+	var c: float = 0.215 * 0.92 * skull.z
+	var t: float = 1.0 - (x / a) * (x / a) - (y / b) * (y / b)
+	return c * sqrt(maxf(t, 0.0)) + proud
+
 
 func _ready() -> void:
 	add_to_group("npc")
@@ -267,10 +319,14 @@ func _build_body() -> void:
 	# makes the OUTLINE takes it; the eyes, brows and mouth do not, because
 	# interpupillary distance varies far less than a skull does and a face
 	# stretched with its own head reads as a smear.
-	_head.add_child(Build.mi(Build.sphere_mesh(0.215),
+	# KEPT, so a harness can ask the SKULL where its own surface is rather than
+	# asking `_face_z`, which would only ever agree with itself. See
+	# `smoke_impl._check_nobody_has_their_eyes_inside_their_head`.
+	_skull_mi = Build.mi(Build.sphere_mesh(0.215),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.01, 0), Vector3.ZERO,
-		Vector3(0.98 * skull.x, 1.14 * skull.y, 0.92 * skull.z)))
+		Vector3(0.98 * skull.x, 1.14 * skull.y, 0.92 * skull.z))
+	_head.add_child(_skull_mi)
 	# Ears and a nose. Four centimetres of geometry each, and between them the
 	# difference between a face and a balloon with eyes drawn on it. Lined,
 	# because both of them break the head's silhouette.
@@ -283,7 +339,7 @@ func _build_body() -> void:
 	# The nose is the most identifying thing on a face and the cheapest to vary.
 	# It also has to move FORWARD on a deeper skull, for the same reason as the
 	# ears — the head is an ellipsoid and its front moves when its depth does.
-	var nose_z: float = 0.180 * skull.z + 0.010
+	var nose_z: float = _face_z(0.0, -0.022, -0.006)
 	_head.add_child(Build.mi(Build.sphere_mesh(0.035 * nose_size),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.022, nose_z), Vector3.ZERO,
@@ -299,7 +355,7 @@ func _build_body() -> void:
 	# a scar.
 	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.030, 0.078, 0.030), 0.014),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, 0.018, nose_z - 0.016), Vector3.ZERO,
+		Vector3(0, 0.018, _face_z(0.0, 0.018, -0.0233)), Vector3.ZERO,
 		Vector3(0.78, 1.0, 0.82)))
 	# AND A SOCKET UNDER EACH EYE. The whites are unshaded ovals sitting proud
 	# of an ellipsoid, which is why they read as stickers: a real eye sits IN
@@ -309,7 +365,7 @@ func _build_body() -> void:
 	for ex2 in [-1.0, 1.0]:
 		_head.add_child(Build.mi(Build.sphere_mesh(0.050),
 			Build.mat(skin.darkened(0.10), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(ex2 * 0.072, 0.012, 0.170 * skull.z), Vector3.ZERO,
+			Vector3(ex2 * 0.072, 0.012, _face_z(0.072, 0.012, -0.0156)), Vector3.ZERO,
 			Vector3(1.08, 0.90, 0.26)))
 	# The mouth is built further down, in three pieces that move. There WAS a
 	# static bar here as well — the original single-piece mouth — and adding the
@@ -335,7 +391,8 @@ func _build_body() -> void:
 			Vector3(0, -0.105, 0.055), Vector3.ZERO, Vector3(1.03, 0.86, 1.02)))
 		_head.add_child(Build.mi(Build.sphere_mesh(0.072),
 			Build.mat(hair.darkened(0.05), 0.92, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(0, -0.058, 0.170), Vector3.ZERO, Vector3(1.25, 0.42, 0.70)))
+			Vector3(0, -0.058, _face_z(0.0, -0.058, -0.0222)), Vector3.ZERO,
+			Vector3(1.25, 0.42, 0.70)))
 
 	# A cap on the crown, set BACK from the face and narrower than the skull.
 	# The first pass made it 0.37 wide on a 0.40 head and centred it, which is
@@ -403,8 +460,9 @@ func _build_body() -> void:
 	for sx in [-1.0, 1.0]:
 		# The opening: about two to one, and wider than the old white was tall.
 		# Near-black rather than black, so it sits in the palette with the ink.
-		var eye := Build.mi(Build.sphere_mesh(0.030), Build.unshaded(Color(0.10, 0.09, 0.11)),
-			Vector3(sx * 0.070, 0.008, 0.184), Vector3.ZERO, Vector3(1.15, 0.62, 0.30))
+		var eye := Build.mi(Build.sphere_mesh(0.030), Build.mat(EYE_INK, 0.35, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.070, 0.008, _face_z(0.070, 0.008, -0.0025)), Vector3.ZERO,
+			Vector3(1.15, 0.62, 0.30))
 		# A CATCHLIGHT, AND IT IS NOT MIRRORED. One small bright dot is what
 		# stops a dark eye reading as a hole, and it is the only thing keeping
 		# an eye legible on the darkest skin in `Appearance.SKIN` — where a dark
@@ -416,7 +474,8 @@ func _build_body() -> void:
 		# exactly the same.
 		var glint := Build.mi(Build.sphere_mesh(0.0085),
 			Build.unshaded(Color(0.97, 0.98, 1.0)),
-			Vector3(sx * 0.070 - 0.010, 0.017, 0.196), Vector3.ZERO,
+			Vector3(sx * 0.070 - 0.010, 0.017, _face_z(sx * 0.070 - 0.010, 0.017, 0.0062)),
+			Vector3.ZERO,
 			Vector3(1.0, 1.0, 0.30))
 		_head.add_child(eye)
 		_head.add_child(glint)
@@ -434,7 +493,7 @@ func _build_body() -> void:
 		var brow_col: Color = hair.darkened(0.25).lerp(Color(0.16, 0.13, 0.12), 0.55)
 		var brow := Build.mi(Build.rbox_mesh(Vector3(0.066, 0.014, 0.020), 0.007),
 			Build.mat(brow_col, 0.9, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.072, BROW_REST_Y, 0.192))
+			Vector3(sx * 0.072, BROW_REST_Y, _face_z(0.072, BROW_REST_Y, 0.0109)))
 		# Angled out and down a little at rest, which is a face at ease rather
 		# than a face at attention. `set_mood` rotates FROM here — see
 		# BROW_REST_Z, which is why that is a constant and not a literal: the
@@ -452,8 +511,8 @@ func _build_body() -> void:
 		# colour as the eye and a third of its height, which is what a shut eye
 		# looks like from any distance.
 		var lid := Build.mi(Build.rbox_mesh(Vector3(0.068, 0.011, 0.018), 0.005),
-			Build.unshaded(Color(0.10, 0.09, 0.11)),
-			Vector3(sx * 0.070, 0.010, 0.190))
+			Build.mat(EYE_INK, 0.35, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.070, 0.010, _face_z(0.070, 0.010, 0.0036)))
 		lid.visible = false
 		_head.add_child(lid)
 		_eyes_shut.append(lid)
@@ -484,8 +543,9 @@ func _build_body() -> void:
 	# corners read as lips meeting, and short enough that most of it is hidden
 	# behind the bar.
 	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.040, 0.011, 0.020), 0.005),
-		Build.unshaded(skin.lerp(Color(0.62, 0.34, 0.34), 0.32).lightened(0.04)),
-		Vector3(0, -0.0685, 0.192)))
+		Build.mat(skin.lerp(Color(0.62, 0.34, 0.34), 0.32).lightened(0.10),
+			SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, -0.0685, _face_z(0.0, -0.0685, 0.0021))))
 	# NARROWER THAN THE EYES ARE APART. The bar was 0.086 half-width against an
 	# eye span of 0.105, so the mouth was 82% as wide as the whole face — which
 	# on a stylised head is a letterbox, and it is what kept these reading as
@@ -498,7 +558,8 @@ func _build_body() -> void:
 	# darker and quieter than that — it is a shadow between two lips, not a
 	# painted line.
 	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.062, 0.0095, 0.022), 0.0045),
-		Build.unshaded(Color(0.235, 0.135, 0.135)), Vector3(0, -0.061, 0.196))
+		Build.mat(MOUTH_INK, 0.75, 0.0, Color(0, 0, 0), 0.0),
+		Vector3(0, -0.061, _face_z(0.0, -0.061, 0.0044)))
 	_head.add_child(_mouth)
 	for sx in [-1.0, 1.0]:
 		# HALF THE HEIGHT OF THE BAR, so the line TAPERS to the corners. With the
@@ -508,8 +569,8 @@ func _build_body() -> void:
 		# the difference between a line and a slot: two blocks, four
 		# millimetres, and the shape stops being rectangular.
 		var corner := Build.mi(Build.rbox_mesh(Vector3(0.020, 0.005, 0.022), 0.0025),
-			Build.unshaded(Color(0.235, 0.135, 0.135)),
-			Vector3(sx * 0.038, -0.0605, 0.194))
+			Build.mat(MOUTH_INK, 0.75, 0.0, Color(0, 0, 0), 0.0),
+			Vector3(sx * 0.038, -0.0605, _face_z(0.038, -0.0605, 0.0057)))
 		_head.add_child(corner)
 		_mouth_corners.append(corner)
 
@@ -517,7 +578,7 @@ func _build_body() -> void:
 		var arm := Node3D.new()
 		# Shoulders move out with the trunk. Left at a fixed 0.395 the arms of a
 		# broad person hang inside their own chest.
-		arm.position = Vector3(sx * 0.395 * girth, 1.18, 0)
+		arm.position = Vector3(sx * 0.382 * girth, 1.18, 0)
 		# ...AND THEY HANG, they do not stand to attention. Six characters with
 		# both arms at exactly vertical is six mannequins; three degrees out and
 		# four forward is what an arm resting at somebody's side actually does,
@@ -537,12 +598,25 @@ func _build_body() -> void:
 		# separate solids — from three metres the arms read as sausages laid
 		# against a slab, which is most of what made the cast look assembled.
 		# One sphere in the gown's own colour, at the joint, closes it.
-		arm.add_child(Build.mi(Build.sphere_mesh(0.105 * limb),
-			Build.cloth_mat(outfit, LINE), Vector3(sx * -0.035, -0.03, 0)))
-		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15 * limb, 0.15 * limb),
-			Vector2(0.20 * limb, 0.20 * limb), 0.56, 0.075),
+		# SMALLER THAN THE SLEEVE IT JOINS, AND SUNK INTO IT. The first attempt
+		# at this capped the shoulder and read as an epaulette; the second was
+		# 0.105 — a twenty-one centimetre ball on a twenty centimetre sleeve, so
+		# it was still the widest thing on the body and photographed as shoulder
+		# pads on every character in the ward. A joint is not wider than the
+		# limb it joins: 17.6cm, tucked five centimetres in and five down, where
+		# the seam actually is.
+		arm.add_child(Build.mi(Build.sphere_mesh(0.088 * limb),
+			Build.cloth_mat(outfit, LINE), Vector3(sx * -0.052, -0.050, 0)))
+		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.135 * limb, 0.135 * limb),
+			Vector2(0.190 * limb, 0.190 * limb), 0.56, 0.070),
 			Build.cloth_mat(outfit, LINE), Vector3(0, -0.26, 0)))
-		arm.add_child(Build.mi(Build.capsule_mesh(0.082, 0.13),
+		# A WRIST IS THINNER THAN A SLEEVE, and this one was not: a capsule
+		# 16.4cm across poking out of a sleeve that ends at 15 made the whole
+		# arm one tube from shoulder to knuckles, and the comment two lines down
+		# — "the hand is WIDER than the wrist" — was describing a hand 1.4cm
+		# narrower than the arm it is on. Eleven centimetres is a wrist, and it
+		# is what makes the hand read as a hand rather than as the end of a pipe.
+		arm.add_child(Build.mi(Build.capsule_mesh(0.056, 0.15),
 			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
 		arm.add_child(Build.mi(Build.rbox_mesh(Vector3(0.15, 0.17, 0.10), 0.048),
 			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))

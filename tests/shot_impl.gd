@@ -20,6 +20,22 @@ var out_dir := ""
 const SHOTS := [
 	["01_corridor", Vector3(1.5, 1.7, 2.0), Vector3(18.0, 1.5, 2.0)],
 	["02_ward_from_door", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
+	# THE SAME FRAME WITH EVERY CEILING FITTING IN THE BUILDING SWITCHED OFF.
+	#
+	# It is here because for the whole life of this project they may as well
+	# have been. The floors, walls and ceilings were `rbox_mesh` slabs, which
+	# have no vertex anywhere except on their own edges, so a lamp three metres
+	# above the middle of a twenty-metre floor had nothing to light — and
+	# turning all thirty-four of them off moved the ward floor by exactly zero
+	# levels across 225,000 pixels. Every other layer in this repo passed:
+	# nothing errors, nothing is missing, the fittings are all there, their
+	# emissive panels still glow, and the room is lit by ambient. The ONLY way
+	# to see it is to take the light away and measure whether anything changed.
+	#
+	# Cheap, because it is one extra frame from a camera that is already set up
+	# — and it fails loudly, which is the difference between a check and a
+	# screenshot.
+	["02b_fittings_off", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],
@@ -28,6 +44,17 @@ const SHOTS := [
 	["06_station", Vector3(6.0, 1.7, -1.0), Vector3(6.0, 1.3, -7.0)],
 	["07_office", Vector3(16.0, 1.7, -2.0), Vector3(16.0, 1.3, -7.0)],
 	["08_ward_wide", Vector3(2.0, 2.6, 6.0), Vector3(14.0, 1.0, 11.5)],
+	# THE SAME WARD, TWELVE HOURS LATER, FROM THE SAME SPOT AS 02.
+	#
+	# A FOURTH ELEMENT IS A CLOCK. There was no frame anywhere in this set that
+	# showed the building in the evening without a UI card over two thirds of
+	# it, so "the evening never arrives" — the walls moved three and a half
+	# levels of 255 between eight in the morning and half past seven — survived
+	# every screenshot run this project has ever done. It is a controlled pair
+	# with `02_ward_from_door` on purpose: same camera, same ward, same seed,
+	# so the difference between the two frames is the light and nothing else,
+	# and `_evening_reading` prints it.
+	["09_ward_evening", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), 19 * 60 + 25],
 	["10_morning", "ui:morning"],
 	["11_patient", "ui:patient"],
 	["12_chart", "ui:chart"],
@@ -105,6 +132,15 @@ func tick() -> bool:
 
 	if index >= SHOTS.size():
 		print("captured %d frames to %s" % [_wanted, ProjectSettings.globalize_path(out_dir)])
+		# LAST, AND LOUD. Two of the frames above are not photographs, they are
+		# measurements, and a measurement that prints a number nobody reads is
+		# the same as no measurement. `screenshots.sh` exits on this line.
+		if _visual_failures.is_empty():
+			print("SHOT CHECKS PASSED")
+		else:
+			for why in _visual_failures:
+				print("  not ok: %s" % why)
+			print("SHOT CHECK FAILED — %d" % _visual_failures.size())
 		return true
 	var shot: Array = SHOTS[index]
 	# ONE FRAME, WHEN ONE FRAME IS WHAT YOU ARE LOOKING AT.
@@ -153,6 +189,9 @@ func tick() -> bool:
 
 	if game.ui and game.ui.has_method("close"):
 		game.ui.close()
+	_set_clock(shot[3] if shot.size() > 3 else _clock_override())
+	if String(shot[0]) == "02b_fittings_off":
+		_fittings(false)
 	if typeof(shot[1]) == TYPE_STRING:
 		_frame_a_person(cam, String(shot[1]))
 	else:
@@ -163,8 +202,169 @@ func tick() -> bool:
 		return false
 	settle = 0
 	_save(String(shot[0]))
+	if String(shot[0]) == "02b_fittings_off":
+		_fittings(true)
+		_fittings_reading()
+	if String(shot[0]) == "09_ward_evening":
+		_evening_reading()
+	# BACK TO THE MORNING BEFORE THE NEXT FRAME. The clock is set here for the
+	# LIGHT and nothing else — no verb has been performed and no minute has
+	# really passed — so leaving it forward would hand every later stage a ward
+	# that is somehow at half past seven with a full day's work still in it.
+	_set_clock(_clock_override())
 	index += 1
 	return false
+
+## Photograph the building at a stated minute of the day.
+##
+## `GameState.minute_of_day` is written directly rather than through `skip_to`,
+## because `skip_to` emits `minute_passed` and is one-way — the ward's rounds,
+## the ambience pulse and the force-end all hang off that signal, and a
+## harness that wants a picture of half past seven does not want a ward that
+## believes half past seven has HAPPENED. `apply_shift_look` is then called by
+## hand, which is the one thing that actually reads the clock for the look.
+##
+## -1 means "leave it alone", which is what every frame but `09_ward_evening`
+## gets unless SHOT_CLOCK says otherwise.
+func _set_clock(minute) -> void:
+	var m := int(minute)
+	if m < 0 or game == null or not game.has_method("apply_shift_look"):
+		return
+	GameState.minute_of_day = m
+	game.apply_shift_look()
+	# AND THE CORNER OF THE SCREEN. The clock label only repaints on
+	# `minute_passed`, which is deliberately not emitted here — so the first
+	# evening frame this harness took was a ward at dusk with "8:03 AM" over
+	# it, which is the same self-contradicting marketing shot as the ending
+	# card that once read "Day 1" over "4 SHIFTS". Poked directly rather than
+	# through the signal, because the signal is what the rounds, the ambience
+	# pulse and the force-end all hang off.
+	var hud = tree.get_first_node_in_group("hud")
+	if hud != null and hud.has_method("_on_clock"):
+		hud._on_clock(m)
+
+## SHOT_CLOCK=1165 photographs the whole world set at 19:25.
+##
+## Sweeping a light means rendering the same room at the same minute twice with
+## one number changed, and there was no way to ask for a minute at all: the
+## only evening frames in the set were UI stages that had walked the clock
+## there as a side effect of writing a note. As a fragment of a name in
+## SHOT_ONLY costs one stage, the two together are the loop this file exists to
+## be — `SHOT_ONLY=01_corridor SHOT_CLOCK=1165 ./screenshots.sh` is one frame
+## of the corridor at half past seven, in about ninety seconds.
+var _clock := -2
+
+func _clock_override() -> int:
+	if _clock == -2:
+		var raw := OS.get_environment("SHOT_CLOCK").strip_edges()
+		_clock = int(raw) if raw.is_valid_int() else -1
+	return _clock
+
+## The one measurement this pair exists for, printed beside the frames so it is
+## in the run's own output rather than in somebody's head. Reads the same box
+## out of `02_ward_from_door` and `09_ward_evening` — the middle band, which is
+## wall, beds and floor and no HUD — and prints the difference. A build where
+## the evening does not arrive prints a single-figure number here.
+## Every ceiling fitting in the building, off and on again. `set_lamp_look` is
+## the one place that knows how a fitting's single energy is split between its
+## shadowed spot and its fill (`Build.SPOT_GAIN` / `FILL_GAIN`), so zeroing it
+## there switches both halves of all of them; `apply_shift_look` puts back
+## whatever the clock says they should be, which is also how the game itself
+## sets them every minute.
+func _fittings(on: bool) -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null or not h.has_method("set_lamp_look"):
+		return
+	if on:
+		if game != null and game.has_method("apply_shift_look"):
+			game.apply_shift_look()
+	else:
+		h.set_lamp_look(Color(1, 1, 1), 0.0)
+
+## THE CHECK THAT WOULD HAVE CAUGHT IT. Compares the ward floor — the bottom
+## band of the frame, which is nothing but floor from this camera — with the
+## fittings on and with them off, and fails if the difference is under ten
+## levels of 255. A building whose lamps are decorative prints zero here.
+func _fittings_reading() -> void:
+	if not (_saved.has("02_ward_from_door") and _saved.has("02b_fittings_off")):
+		return
+	var lit := _band_luma("%s/02_ward_from_door.png" % out_dir, 640, 860)
+	var dark := _band_luma("%s/02b_fittings_off.png" % out_dir, 640, 860)
+	if lit < 0.0 or dark < 0.0:
+		return
+	var delta := lit - dark
+	print("  fittings: ward floor reads %.1f lit and %.1f with every fitting off (%.1f levels)"
+		% [lit, dark, delta])
+	if delta < 10.0:
+		_visual_fail("the ceiling fittings light nothing: the ward floor moves %.1f levels between all of them on and all of them off" % delta)
+
+func _evening_reading() -> void:
+	# ONLY IF BOTH HALVES WERE TAKEN THIS RUN. `SHOT_ONLY=09` leaves a
+	# `02_ward_from_door.png` on disk from whatever the last full run rendered,
+	# and comparing a fresh evening against a stale morning is how a sweep
+	# reports a gain it did not make.
+	if not (_saved.has("02_ward_from_door") and _saved.has("09_ward_evening")):
+		return
+	var morning := _mean_luma("%s/02_ward_from_door.png" % out_dir)
+	var evening := _mean_luma("%s/09_ward_evening.png" % out_dir)
+	if morning < 0.0 or evening < 0.0:
+		return
+	print("  evening: ward reads %.1f at 08:00 and %.1f at 19:25 (%.1f levels)"
+		% [morning, evening, evening - morning])
+	if morning - evening < 20.0:
+		_visual_fail("the evening does not arrive: the ward moves %.1f levels between 08:00 and 19:25" % (morning - evening))
+
+## What this run measured and failed. Printed as one block at the end and read
+## by `screenshots.sh`, which exits on it — a harness that prints a fault and
+## returns 0 cannot fail (gotcha 21), and these two measurements are the only
+## things in this repo that can see a lighting rig that is not connected.
+var _visual_failures: Array = []
+
+func _visual_fail(why: String) -> void:
+	_visual_failures.append(why)
+
+## Mean luminance of a horizontal band of a saved frame, or -1 if it is not
+## there. Used for the floor, where the band is the whole width.
+func _band_luma(path: String, y0: int, y1: int) -> float:
+	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	if img == null:
+		return -1.0
+	var total := 0.0
+	var n := 0
+	var y := maxi(0, y0)
+	var y_end := mini(img.get_height(), y1)
+	while y < y_end:
+		var x := 0
+		while x < img.get_width():
+			var c := img.get_pixel(x, y)
+			total += 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+			n += 1
+			x += 4
+		y += 4
+	return (total / float(n)) * 255.0 if n > 0 else -1.0
+
+## Mean luminance of the middle band of a saved frame, or -1 if it is not there.
+## The band skips the top 130 and bottom 120 pixels because that is where the
+## HUD lives, and a clock reading "8:00 AM" in white type is a bright rectangle
+## that has nothing to do with how lit the room is.
+func _mean_luma(path: String) -> float:
+	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	if img == null:
+		return -1.0
+	var h := img.get_height()
+	var w := img.get_width()
+	var total := 0.0
+	var n := 0
+	var y := 130
+	while y < h - 120:
+		var x := 0
+		while x < w:
+			var c := img.get_pixel(x, y)
+			total += 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+			n += 1
+			x += 4
+		y += 4
+	return (total / float(n)) * 255.0 if n > 0 else -1.0
 
 ## From the ward door, along the row of beds. The one view that shows the game
 ## is a place and not a spreadsheet.
@@ -408,6 +608,7 @@ var _only_read := false
 var _skip_only := false
 var _wanted := 0
 var _counted := -1
+var _saved := {}
 
 func _shot_wanted(name: String) -> bool:
 	if not _only_read:
@@ -426,6 +627,7 @@ func _shot_wanted(name: String) -> bool:
 func _save(name: String) -> void:
 	if _skip_only:
 		return
+	_saved[name] = true
 	var img := tree.root.get_texture().get_image()
 	var path := "%s/%s.png" % [out_dir, name]
 	img.save_png(path)

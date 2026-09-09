@@ -97,25 +97,35 @@ func build() -> void:
 const OUTSIDE_GROUP := "outside"
 
 func _build_outside() -> void:
-	var ground := Color(0.47, 0.58, 0.42)
-	var apron := Color(0.60, 0.61, 0.58)
-	var boundary := Color(0.38, 0.47, 0.36)
+	# ALBEDOS FOR AN UNSHADED MATERIAL WITH A GAIN ON IT, which is a different
+	# job from albedos for a lit one: `Surfaces.outside_mat` multiplies these by
+	# about two, so anything that was chosen to look right under a dim key now
+	# clips. The first pass at this put the grass at (0.96, 1.19, 0.86) and the
+	# whole view came back as pale mint — a window that is too bright is as
+	# unreadable as one that is too dark, it just fails in the other direction.
+	var ground := Color(0.34, 0.50, 0.28)
+	var apron := Color(0.34, 0.35, 0.34)
+	var boundary := Color(0.28, 0.36, 0.27)
 	# THREE PLANES HAVE TO SEPARATE IN VALUE, or the view is one green field
 	# whatever is actually out there. Measured off a render: with the treeline
 	# at the grass's own lightness the whole upper window sampled (116,166,139)
 	# against grass at (156,196,139) — a hundred and fifty pixels of flat
 	# green. Each ring is now darker and bluer than the one in front of it,
 	# which is what distance does.
-	var trees := Color(0.30, 0.42, 0.38)
-	var far_block := Color(0.71, 0.75, 0.80)
+	# The treeline has to stay the DARKEST band in the window. Aerial
+	# perspective lifts a distant dark thing toward the haze, and the haze is
+	# now a daylight sky over one — so the canopies were coming back lighter
+	# than the grass in front of them, which reads as fog rather than as trees.
+	var trees := Color(0.18, 0.29, 0.26)
+	var far_block := Color(0.44, 0.48, 0.56)
 
 	# The ground, well below the floor slabs (which span -0.2..0.0) so the two
 	# never fight for the same pixel. Big enough that its own edge is past the
 	# horizon from any window.
-	_outside(Build.box_mi(Vector3(400, 0.6, 400), ground,
-		Vector3(10.0, -0.75, 2.5), 0.95, 0.0))
-	_outside(Build.box_mi(Vector3(50, 0.5, 50), apron,
-		Vector3(10.0, -0.62, 2.5), 0.9, 0.0))
+	_outside(Build.outside_mi(Vector3(400, 0.6, 400), ground,
+		Vector3(10.0, -0.75, 2.5)))
+	_outside(Build.outside_mi(Vector3(50, 0.5, 50), apron,
+		Vector3(10.0, -0.62, 2.5)))
 
 	# A WINDOW SHOWS A NARROW SLICE OF THE WORLD, and everything below is
 	# placed to land inside it. From an eye at 1.7m the aperture spans roughly
@@ -137,19 +147,33 @@ func _build_outside() -> void:
 		# The boundary of the grounds, low and close: it sits along the bottom
 		# of the glass and is what gives the view a near edge to measure from.
 		var rb: float = 12.5 + w * 1.5
-		_outside(Build.box_mi(Vector3(3.4, 1.0 + w * 0.5, 1.0), boundary,
-			Vector3(10.0 + cos(a) * rb, 0.1, 2.5 + sin(a) * rb), 0.95, 0.0))
+		_outside(Build.outside_mi(Vector3(3.4, 1.0 + w * 0.5, 1.0), boundary,
+			Vector3(10.0 + cos(a) * rb, 0.1, 2.5 + sin(a) * rb)))
 
 		# The treeline. LOW for its distance, and that is the whole trick: at
 		# 45m the window's upper edge is eight metres off the ground, so a
 		# nine-metre tree fills the aperture and hides both the sky and the
 		# town behind it. Four metres of tree at forty-five leaves two thirds
 		# of the upper band for everything further away.
+		#
+		# ...AND WITH DAYLIGHT BETWEEN THEM. Nine-to-fourteen metres wide on a
+		# ring whose circumference gives each of the forty-four about six and a
+		# half metres is not a treeline, it is a fence: every block overlapped
+		# its neighbours and the result was one continuous dark green band with
+		# no silhouette anywhere in it. Four to seven metres wide leaves a real
+		# gap, and the gap is where the town and the sky behind show through —
+		# which is the only thing that makes the ring read as depth rather than
+		# as a wall painted on the glass.
+		#
+		# The corner radius is nearly half the depth on purpose. Gotcha 63 is
+		# about a torso and the arithmetic is general: a wide box with a small
+		# radius is a board with a bevel, and a canopy has to turn.
 		var rt: float = 41.0 + w2 * 9.0
 		var ht: float = 3.0 + w * 1.6
-		_outside(Build.box_mi(Vector3(9.0 + w * 5.0, ht, 7.0 + w2 * 4.0), trees,
+		var td: float = 5.0 + w2 * 3.0
+		_outside(Build.outside_mi(Vector3(4.0 + w * 3.0, ht, td), trees,
 			Vector3(10.0 + cos(a + 0.07) * rt, ht * 0.5 - 0.6,
-				2.5 + sin(a + 0.07) * rt), 0.95, 0.0))
+				2.5 + sin(a + 0.07) * rt), minf(ht, td) * 0.42))
 
 	# And the town behind it: a ring of pale slabs at a distance where a
 	# fifteen-metre building fits inside the nine degrees a window gives you.
@@ -159,15 +183,35 @@ func _build_outside() -> void:
 		var rr: float = 88.0 + w * 26.0
 		var hh: float = 7.0 + w * 5.0
 		var at := Vector3(10.0 + cos(a) * rr, hh * 0.5 - 0.5, 2.5 + sin(a) * rr)
-		_outside(Build.box_mi(Vector3(20.0 + w * 18.0, hh, 18.0), far_block, at, 0.9, 0.0))
+		_outside(Build.outside_mi(Vector3(20.0 + w * 18.0, hh, 18.0), far_block, at))
 		# A darker band at the base, which is all it takes for a slab to read
 		# as standing on the ground rather than floating in front of it.
-		_outside(Build.box_mi(Vector3(21.0 + w * 18.0, 1.8, 19.0),
-			far_block.darkened(0.20), at - Vector3(0, hh * 0.5 - 0.9, 0), 0.9, 0.0))
+		_outside(Build.outside_mi(Vector3(21.0 + w * 18.0, 1.8, 19.0),
+			far_block.darkened(0.20), at - Vector3(0, hh * 0.5 - 0.9, 0)))
+
+## Every distinct material the view outside is built from, so the haze and the
+## gain can be re-tinted as the shift runs without walking the scene tree every
+## minute. `Surfaces` caches by base colour, so this is five entries however
+## many hundred blocks are out there.
+var _outside_mats: Array = []
+
+## Re-tint the world outside the windows. The haze is the sky's own horizon
+## colour, so the two agree at the join, and the gain is how much brighter than
+## the interior the daylight is — at 08:00 the window is the brightest thing in
+## the frame and by 19:25 it is the darkest, which is the whole of what a
+## window is for in a game about a clock.
+func set_outside_look(haze: Color, gain: float) -> void:
+	for m in _outside_mats:
+		(m as ShaderMaterial).set_shader_parameter("haze", Vector3(haze.r, haze.g, haze.b))
+		(m as ShaderMaterial).set_shader_parameter("gain", gain)
 
 ## Scenery, and answering to one name so a test can find all of it.
 func _outside(n: Node3D) -> Node3D:
 	n.add_to_group(OUTSIDE_GROUP)
+	if n is MeshInstance3D:
+		var mo = (n as MeshInstance3D).material_override
+		if mo is ShaderMaterial and not _outside_mats.has(mo):
+			_outside_mats.append(mo)
 	add_child(n)
 	return n
 
@@ -203,13 +247,13 @@ func _build_floor_and_ceiling(r: Room) -> void:
 	# each wall — the other half of the contact shading the wall already has on
 	# its own side, and the thing that stops a room reading as a coloured plane
 	# with walls standing on it.
-	var f := Build.surfaced_wall(size,
+	var f := Build.surfaced_slab(size,
 		Surfaces.floor_mat(tint, 2.0, r.rect.position, r.rect.end), Vector3(0, -0.1, 0))
 	f.name = "Floor"
 	r.add_child(f)
 	# Ceiling is visual only — no collision, so thrown objects leave the room and
 	# the player can never get stuck against it.
-	var c := Build.mi(Build.rbox_mesh(Vector3(r.rect.size.x, 0.1, r.rect.size.y), 0.02),
+	var c := Build.mi(Build.slab_mesh(Vector3(r.rect.size.x, 0.1, r.rect.size.y)),
 		Surfaces.ceiling_mat(Build.CEILING), Vector3(0, WALL_H, 0))
 	# Tagged, because "the only bare MeshInstance3D parented to a Room" stopped
 	# being a safe way to find a ceiling the moment floor borders were added.
@@ -253,24 +297,46 @@ func _build_floor_and_ceiling(r: Room) -> void:
 ## three planes, not the brightest: props read against them, characters cast
 ## onto them, and the walls above them get to be the bright thing.
 func _floor_colour(kind: String) -> Color:
+	# ...AND THEN THE LIGHTS STARTED WORKING AND IT HAPPENED AGAIN. Every one of
+	# these was about forty per cent brighter than it is now, chosen against a
+	# floor that received ambient, a fraction of a key it could not properly see
+	# through wandering normals, and nothing whatever from the thirty-four
+	# fittings over it. With the slabs tessellated (`Build.slab_mesh`) the ward
+	# floor came back at 207.1 against an upper wall at 207.0 — the largest
+	# surface in the frame exactly as bright as the wall behind it, which is the
+	# same complaint the paragraph above records, one lighting rig later. It
+	# reads 161.7 now against a wall at 199.6 and a ceiling at 155.6.
 	match kind:
-		"corridor": return Color(0.52, 0.62, 0.68)
-		"ward": return Color(0.56, 0.66, 0.57)
-		"station": return Color(0.44, 0.60, 0.68)
-		"office": return Color(0.56, 0.41, 0.31)
+		"corridor": return Color(0.37, 0.44, 0.48)
+		"ward": return Color(0.40, 0.47, 0.41)
+		"station": return Color(0.31, 0.42, 0.48)
+		"office": return Color(0.40, 0.29, 0.22)
 	return Build.FLOOR_A
 
-## ONE FITTING EVERY THREE AND A HALF METRES, not every five.
+## ONE FITTING EVERY FIVE METRES, AND IT IS A POOL SPACING, NOT A LUX FIGURE.
 ##
-## A twenty-by-nine ward got four fittings, all of them on its centre line, and
-## that was survivable only while every surface in the building was shaded with
-## sphere normals — geometry whose normal wanders catches light from everywhere
-## and hides how little of it there is. With the normals corrected the ward went
-## honest and showed what it had: two bright pools and a lot of dark floor.
-## Five by two is what a real bay of this size carries.
+## The divisor was 3.6, which on these four rooms is thirty-four fittings — one
+## every 3.3m in the corridor and the ward, under a 3.2m ceiling. That is a
+## spacing at which no cone can produce a rhythm: work it out and a floor point
+## midway between two fittings collects almost exactly what a point directly
+## under one does, whatever the cone angle. The measured corridor floor was a
+## four-level ramp over sixty-two metres and eleven fittings, which is what
+## "evenly lit" means when it is a fault rather than a choice.
+##
+## It did not matter at the time, because none of those thirty-four fittings
+## was lighting the floor at all (`Build.slab_mesh`). Now that they are, the
+## spacing is the thing that decides whether the corridor reads as a corridor.
+## Five metres against a 3.2m ceiling gives a pool at 46 degrees of about 3.2m
+## radius and a genuinely darker metre and a half between one and the next.
+##
+## It is also half the light nodes. This renderer caps how many positional
+## lights it will handle at once, and thirty-four fittings is sixty-eight of
+## them — a cap that had never been felt for the same reason nothing else about
+## the lighting had.
+const FITTING_PITCH := 5.0
 func _build_room_lights(r: Room) -> void:
-	var cols := maxi(1, int(round(r.rect.size.x / 3.6)))
-	var rows := maxi(1, int(round(r.rect.size.y / 3.6)))
+	var cols := maxi(1, int(round(r.rect.size.x / FITTING_PITCH)))
+	var rows := maxi(1, int(round(r.rect.size.y / FITTING_PITCH)))
 	for i in cols:
 		for j in rows:
 			var x := r.rect.position.x + r.rect.size.x * (float(i) + 0.5) / float(cols)
@@ -399,10 +465,14 @@ func _wall_segment(a: Vector3, b: Vector3, exterior := false) -> void:
 	# darkening in the last half metre before the floor. That gradient is doing
 	# the job SSAO would if this renderer had it, and it is what stops a room
 	# reading as a set of disconnected planes.
-	add_child(Build.surfaced_opaque_wall(lower, Surfaces.wall_mat(Build.WALL_LOWER),
-		mid + Vector3(0, lower_h * 0.5, 0)))
-	add_child(Build.surfaced_opaque_wall(upper, Surfaces.wall_mat(Build.WALL_UPPER),
-		mid + Vector3(0, lower_h + upper.y * 0.5, 0)))
+	# TESSELLATED, and it is not decoration — see `Build.slab_mesh`. A wall run
+	# is up to twenty metres of one quad, and on this backend a fitting three
+	# metres away from the middle of it contributes nothing at all, because
+	# there is no vertex there to contribute to.
+	add_child(Build.surfaced_slab(lower, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, lower_h * 0.5, 0), 0.0, 1.1, true))
+	add_child(Build.surfaced_slab(upper, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, lower_h + upper.y * 0.5, 0), 0.0, 1.1, true))
 
 	# A skirting board and a dado rail, both proud of the wall by three
 	# centimetres and both outlined.
@@ -458,10 +528,10 @@ func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> voi
 	var t := WALL_T
 	var below := Vector3(size.x, WIN_SILL, size.z)
 	var above := Vector3(size.x, WALL_H - WIN_HEAD, size.z)
-	add_child(Build.surfaced_opaque_wall(below, Surfaces.wall_mat(Build.WALL_LOWER),
-		mid + Vector3(0, WIN_SILL * 0.5, 0)))
-	add_child(Build.surfaced_opaque_wall(above, Surfaces.wall_mat(Build.WALL_UPPER),
-		mid + Vector3(0, WIN_HEAD + above.y * 0.5, 0)))
+	add_child(Build.surfaced_slab(below, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, WIN_SILL * 0.5, 0), 0.0, 1.1, true))
+	add_child(Build.surfaced_slab(above, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, WIN_HEAD + above.y * 0.5, 0), 0.0, 1.1, true))
 
 	# The pane: thin, collidable, and it does not cast — a transparent shadow
 	# caster on this renderer is an opaque black rectangle on the floor.
@@ -481,8 +551,19 @@ func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> voi
 	var frame := Color(0.95, 0.94, 0.90)
 	var band := Vector3(size.x, 0.09, t + 0.05) if horizontal \
 		else Vector3(t + 0.05, 0.09, size.z)
-	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_SILL - 0.02, 0), 0.6, 0.010))
-	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_HEAD + 0.02, 0), 0.6, 0.010))
+	# NO LINE ON THE FRAME, and it is a consistency fix rather than a taste one.
+	# `_build_floor_and_ceiling` says out loud that floors, ceilings and wall
+	# runs get no outline — they are the biggest surfaces on screen and the room
+	# already has an edge where its own walls meet. The window frame was the one
+	# architectural element that kept one, so a hard three-pixel black line ran
+	# four hundred pixels along the sill of every exterior run with nothing else
+	# inked anywhere near it, breaking at each mullion. In `07_office` and
+	# `01_corridor` it is the single thing in the frame that reads as a
+	# rendering fault rather than as a drawn edge. The frame still reads as a
+	# frame: it is proud of the plaster on both faces and it is a different
+	# colour from both the wall and the glass.
+	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_SILL - 0.02, 0), 0.6, 0.0))
+	add_child(Build.box_mi(band, frame, mid + Vector3(0, WIN_HEAD + 0.02, 0), 0.6, 0.0))
 	var bays := maxi(1, int(round(length / WIN_BAY)))
 	for i in range(1, bays):
 		var off: float = -length * 0.5 + length * float(i) / float(bays)
@@ -490,7 +571,7 @@ func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> voi
 			else Vector3(t + 0.04, pane_h, 0.07)
 		var at := Vector3(off, 0, 0) if horizontal else Vector3(0, 0, off)
 		add_child(Build.box_mi(mull, frame,
-			mid + at + Vector3(0, WIN_SILL + pane_h * 0.5, 0), 0.6, 0.008))
+			mid + at + Vector3(0, WIN_SILL + pane_h * 0.5, 0), 0.6, 0.0))
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)
@@ -500,8 +581,8 @@ func _lintel(a: Vector3, b: Vector3) -> void:
 	var horizontal := absf(b.x - a.x) > absf(b.z - a.z)
 	var h := WALL_H - 2.1
 	var size := Vector3(length, h, WALL_T) if horizontal else Vector3(WALL_T, h, length)
-	add_child(Build.surfaced_opaque_wall(size, Surfaces.wall_mat(Build.WALL_UPPER),
-		mid + Vector3(0, 2.1 + h * 0.5, 0)))
+	add_child(Build.surfaced_slab(size, Surfaces.wall_mat(Build.WALL_UPPER),
+		mid + Vector3(0, 2.1 + h * 0.5, 0), 0.0, 1.1, true))
 
 # ------------------------------------------------------------------ doors
 func _build_doors() -> void:

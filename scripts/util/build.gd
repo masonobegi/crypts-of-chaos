@@ -367,6 +367,60 @@ static func rbox_mesh(size: Vector3, radius := 0.05, segments := 14) -> ArrayMes
 	_mesh_thin[am.get_instance_id()] = minf(size.x, minf(size.y, size.z))
 	return am
 
+## A BOX WITH VERTICES IN THE MIDDLE OF IT, and it is the reason this building
+## has thirty-four ceiling fittings and no light on any surface.
+##
+## `rbox_mesh` is a Minkowski-summed sphere, so every one of its vertices sits
+## on a corner or an edge: the top face of a twenty-by-nine floor slab is a
+## handful of enormous triangles with nothing between their corners. Ambient
+## and a directional key are constant across a face and do not care. A lamp
+## three metres above the MIDDLE of that face has nothing near it to light, and
+## on this backend the room-sized surfaces behaved exactly as though the
+## positional term were being evaluated per vertex and interpolated — which is
+## the mechanism this is written against, and which is offered as the
+## explanation rather than as a verified fact. What IS verified is the
+## behaviour, below, and the fix.
+##
+## MEASURED, because it looks exactly like a light that is merely too weak.
+## Setting `SPOT_GAIN` and `FILL_GAIN` to zero — every ceiling fitting in the
+## building switched off — and re-rendering `02_ward_from_door` moved the ward
+## floor by ZERO over a 900x250 box (225,000 pixels, worst channel delta 0),
+## the upper wall by 0.5 levels and the ceiling by 0.1. The only part of the
+## frame that changed at all was the privacy screen a metre and a half from the
+## camera, which is a small mesh whose vertices are close enough to a fitting
+## to catch it. Halving the fitting count first, on the theory that the
+## renderer's light cap was dropping them, changed the floor by 0.01 levels and
+## proved it was not that either.
+##
+## So: floors, ceilings and wall runs are built out of this instead. `cell` is
+## the target edge length in metres; a 20x9 floor at 1.2 is 17 by 8 quads,
+## which is about a hundred and forty vertices on the largest surface in the
+## game and buys every light in the building an effect on it. Turning the
+## fittings off now moves that floor by 17.8 levels, and `shot_impl` measures
+## exactly that, every screenshot run, and fails under ten.
+static func slab_mesh(size: Vector3, cell := 1.2) -> ArrayMesh:
+	var key := "slab%s_%.2f" % [size, cell]
+	if _mesh_cache.has(key):
+		return _mesh_cache[key]
+	var bm := BoxMesh.new()
+	bm.size = size
+	# `subdivide_*` is the number of extra loops, so one less than the number of
+	# cells. Capped at 32 because the cost is quadratic and the point is to have
+	# a vertex within a metre or so of a lamp, not to tessellate a floor.
+	bm.subdivide_width = clampi(int(round(size.x / cell)) - 1, 0, 32)
+	bm.subdivide_height = clampi(int(round(size.y / cell)) - 1, 0, 32)
+	bm.subdivide_depth = clampi(int(round(size.z / cell)) - 1, 0, 32)
+	var arr: Array = bm.get_mesh_arrays()
+	# Same reason as `rbox_mesh`: nothing here textures through UVs, and leaving
+	# them in costs a tangent-space warning per surface.
+	arr[Mesh.ARRAY_TEX_UV] = null
+	arr[Mesh.ARRAY_TANGENT] = null
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	_mesh_cache[key] = am
+	_mesh_thin[am.get_instance_id()] = minf(size.x, minf(size.y, size.z))
+	return am
+
 ## A rounded box that is a different width at the top than at the bottom.
 ##
 ## Same Minkowski trick as rbox_mesh, but the core half-extents are interpolated
@@ -719,6 +773,25 @@ static func corner_for(size: Vector3) -> float:
 	var smallest: float = minf(size.x, minf(size.y, size.z))
 	return clampf(smallest * 0.28, 0.006, 0.16)
 
+## A PIECE OF THE VIEW OUT OF THE WINDOW. Unshaded, hazed by distance, no
+## outline and no collision — see `Surfaces.outside_mat` for why the outdoors
+## cannot be built out of the same lit material as the indoors. `radius` below
+## zero means the usual corner treatment; passing a real one is how a canopy
+## stops being a board (gotcha 63: it is the ratio of radius to half-depth that
+## decides whether a shape reads as a solid).
+static func outside_mi(size: Vector3, color: Color, pos := Vector3.ZERO,
+		radius := -1.0) -> MeshInstance3D:
+	var r: float = corner_for(size) if radius < 0.0 else radius
+	var m := MeshInstance3D.new()
+	m.mesh = rbox_mesh(size, r)
+	m.material_override = Surfaces.outside_mat(color)
+	m.position = pos
+	# Nothing outdoors casts into the building — there is no light out there to
+	# cast from, the sun has no shadow map, and forty-four canopies in a shadow
+	# pass is the most expensive thing this building could be asked to do.
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return m
+
 static func cyl_mi(radius: float, height: float, color: Color, pos := Vector3.ZERO, sides := 24) -> MeshInstance3D:
 	var thin: float = minf(radius * 2.0, height)
 	return mi(cyl_mesh(radius, height, sides),
@@ -774,6 +847,26 @@ static func surfaced_opaque_wall(size: Vector3, mat_override: Material, pos: Vec
 	var w := surfaced_wall(size, mat_override, pos, rot_y)
 	w.collision_layer = 1 | 32
 	return w
+
+## THE SAME AGAIN, ON A MESH A LAMP CAN REACH. See `slab_mesh`: the room-sized
+## surfaces are the ones with no vertex anywhere near a fitting, so they are the
+## ones that have to be tessellated. Everything else about the node — collision,
+## layers, the material — is identical to `surfaced_wall`, so nothing that
+## walks, sees or raycasts through the building can tell the difference.
+static func surfaced_slab(size: Vector3, mat_override: Material, pos: Vector3,
+		rot_y := 0.0, cell := 1.2, opaque := false) -> StaticBody3D:
+	var b := StaticBody3D.new()
+	b.position = pos
+	b.rotation.y = rot_y
+	b.collision_layer = (1 | 32) if opaque else 1
+	b.collision_mask = 0
+	var cs := CollisionShape3D.new()
+	var shape := BoxShape3D.new()
+	shape.size = size
+	cs.shape = shape
+	b.add_child(cs)
+	b.add_child(mi(slab_mesh(size, cell), mat_override))
+	return b
 
 static func _repaint(n: Node, m: Material) -> void:
 	for c in n.get_children():
@@ -856,12 +949,26 @@ static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard 
 ## are a lighting RATIO, and the fifteen call sites should not each have an
 ## opinion about it.
 ## The spot points DOWN, so everything the old single omni used to put on the
-## WALLS now has to come from the fill — which is why this is well above the
-## energy the one light used to carry. Tuned against the ward: at 1.3 the upper
-## walls went olive and the room read as underlit, which is a worse failure than
-## the flat lighting it replaced.
-const SPOT_GAIN := 4.4
-const FILL_GAIN := 3.1
+## WALLS now has to come from the fill.
+##
+## BOTH NUMBERS WERE TUNED AGAINST A BUILDING WHERE NEITHER LIGHT REACHED
+## ANYTHING. 4.4 and 3.1 were chosen when the floors, walls and ceilings were
+## `rbox_mesh` slabs with no vertex within ten metres of a fitting, so the only
+## things any lamp in this building actually lit were the small props standing
+## right under it (see `slab_mesh` for the measurement — every fitting switched
+## off moved the ward floor by exactly zero levels). The stated symptom of that
+## era — "at 1.3 the upper walls went olive and the room read as underlit" — was
+## a wall being lit by ambient alone and nothing else, which no fill energy
+## could ever have fixed.
+##
+## With the slabs tessellated the same two numbers put the ward floor at 254.5
+## of 255 and the corridor at 251.8 — a white-out, because ambient at 1.15 was
+## itself set to carry a room the lamps were not lighting. Re-swept from
+## scratch against the corridor scan, and they are now roughly a quarter of what
+## they were: the ambient is still the base and the fittings are the shaping on
+## top of it, which is the arrangement that produces a pool.
+const SPOT_GAIN := 1.50
+const FILL_GAIN := 0.50
 
 static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97, 0.9), range_m := 9.0) -> Node3D:
 	var root := Node3D.new()
@@ -889,9 +996,22 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 	lamp.light_energy = energy * SPOT_GAIN
 	lamp.light_color = color
 	lamp.spot_range = range_m
-	lamp.spot_angle = 82.0
-	lamp.spot_angle_attenuation = 0.35
-	lamp.spot_attenuation = 1.0
+	# A CONE THE SIZE OF A ROOM IS NOT A CONE. At 82 degrees from 3.1 metres up
+	# this covered a radius of twenty-two metres, so every "pool" was the whole
+	# building and the fittings could not have made a rhythm even once they were
+	# reaching the floor. 46 degrees is a pool of about 3.2m radius against a
+	# 5m fitting pitch, which is the ratio that leaves a darker interval between
+	# one fitting and the next.
+	#
+	# The angular attenuation went the other way for the same reason. It is the
+	# exponent in `1 - pow(rim, k)` where rim runs 0 at the axis to 1 at the
+	# cone edge, so a SMALL k throws most of the falloff into the first few
+	# degrees — 0.35 gave a tiny hot core and a long flat skirt, which is a
+	# blurred spot, not a pool. A k above one gives a broad even middle and a
+	# defined edge, which is what a recessed troffer with a diffuser does.
+	lamp.spot_angle = 46.0
+	lamp.spot_angle_attenuation = 1.5
+	lamp.spot_attenuation = 1.2
 	lamp.shadow_enabled = true
 	lamp.shadow_bias = 0.035
 	lamp.shadow_normal_bias = 1.2
@@ -901,8 +1021,8 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 	var fill := OmniLight3D.new()
 	fill.light_energy = energy * FILL_GAIN
 	fill.light_color = color
-	fill.omni_range = range_m * 0.85
-	fill.omni_attenuation = 1.6
+	fill.omni_range = range_m * 0.95
+	fill.omni_attenuation = 1.35
 	fill.shadow_enabled = false
 	fill.light_specular = 0.0
 	root.add_child(fill)
@@ -913,14 +1033,27 @@ static func ceiling_light(pos: Vector3, energy := 1.4, color := Color(1.0, 0.97,
 	# rather than as a white rectangle somebody left up there.
 	var housing := mi(rbox_mesh(Vector3(1.26, 0.10, 0.48), 0.035),
 		mat(Color(0.86, 0.87, 0.85), 0.5, 0.0, Color(0, 0, 0), 0.012), Vector3(0, 0.055, 0))
+	# A LIGHT FITTING DOES NOT SHADOW ITS OWN ROOM, and this one did.
+	#
+	# The spot sits at the fitting's origin, y = ceiling - 0.105. The lit panel
+	# below it spans y = -0.010 to +0.040 of that origin and the housing spans
+	# +0.005 to +0.105 — so the light source is INSIDE its own diffuser, and
+	# with both meshes casting shadows at `shadow_opacity` 0.82 the cone was
+	# four-fifths blocked before it left the fitting. Every one of the reasons
+	# this project has recorded for the ward looking flat was downstream of the
+	# lamps not arriving; this was one of the two mechanisms, the other being
+	# the untessellated slabs.
+	housing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(housing)
 	# THE PANEL IS BRIGHTER THAN WHITE. Glow only picks up what is over the HDR
 	# threshold, and an unshaded material tops out at 1.0 — so the one object in
 	# an interior that should bloom never could. Dropping the threshold under 1
 	# instead was the wrong lever: it pulls the whole frame into the glow buffer
 	# and SOFTLIGHT then cools and darkens everything that was merely bright.
-	root.add_child(mi(rbox_mesh(Vector3(1.08, 0.05, 0.33), 0.02), lit_panel(color),
-		Vector3(0, 0.015, 0)))
+	var panel := mi(rbox_mesh(Vector3(1.08, 0.05, 0.33), 0.02), lit_panel(color),
+		Vector3(0, 0.015, 0))
+	panel.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(panel)
 	return root
 
 # ------------------------------------------------------------------ palette

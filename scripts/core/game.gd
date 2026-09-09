@@ -57,11 +57,22 @@ func _build_environment() -> void:
 	# A real sky rather than a dark grey void. It is only ever seen through the
 	# windows and off the ends of the corridor, and those were the two places
 	# the building looked like it had been cut out of a larger, sadder game.
+	# OVER ONE, at the horizon, and it is the difference between glazing and a
+	# painted panel. A sky rendered at 0.62-0.96 came back through the glass at
+	# 144.9 against an interior wall at 205.1 — the window was sixty levels
+	# DARKER than the plaster it was set into, which is the one thing an
+	# interior can do that no viewer will read as a stylistic choice. Daylight
+	# is a light source, so the horizon band is pushed past
+	# `Grade.GLOW_THRESHOLD` (1.05) and the window edge blooms out over the
+	# reveal the way an over-exposed window does. The zenith stays under it:
+	# the top of the sky is the one part a window at eye level barely sees
+	# (gotcha 45 — three degrees below the horizontal to nine above), and
+	# blooming it would only wash the whole aperture.
 	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.24, 0.60, 0.95)
-	sky_mat.sky_horizon_color = Color(0.62, 0.80, 0.96)
-	sky_mat.ground_bottom_color = Color(0.52, 0.72, 0.55)
-	sky_mat.ground_horizon_color = Color(0.62, 0.80, 0.96)
+	sky_mat.sky_top_color = Color(0.34, 0.72, 1.02)
+	sky_mat.sky_horizon_color = Color(0.88, 1.00, 1.14)
+	sky_mat.ground_bottom_color = Color(0.62, 0.80, 0.66)
+	sky_mat.ground_horizon_color = Color(0.88, 1.00, 1.14)
 	sky_mat.sun_angle_max = 24.0
 	sky_mat.sun_curve = 0.2
 	var sky := Sky.new()
@@ -102,6 +113,9 @@ func _build_environment() -> void:
 		env.ssao_light_affect = 0.25
 	we.environment = env
 	add_child(we)
+	# Under the HUD, over the world. `Grade` owns the shape and the strength so
+	# the title screen and the ward cannot drift apart again.
+	add_child(Grade.vignette_layer())
 	_env = env
 	_sky_mat = sky_mat
 
@@ -177,13 +191,53 @@ func apply_shift_look() -> void:
 	# Late afternoon by six, dark by eight. The evening arriving is the pressure.
 	var t: float = clampf(float(GameState.minute_of_day - 8 * 60) / float(12 * 60), 0.0, 1.0)
 	var warmth: float = smoothstep(0.55, 1.0, t)
-	_sun.light_energy = lerpf(1.05, 0.22, warmth)
+	# THE AMBIENT, WHICH IS THE ONLY ONE OF THESE THAT REACHES A WALL.
+	#
+	# Everything below this line was already here and the evening still did not
+	# arrive, because the sun has no shadow and reaches the interior from one
+	# direction, the fill is a fifth of it, and the lamps point at the floor —
+	# so the surface that fills most of every frame, the cream wall, is lit
+	# almost entirely by the ambient term, and the ambient term was a constant
+	# written once by `Grade.apply` at build time. The sun coming down and the
+	# fittings coming up then cancelled each other to within three and a half
+	# levels of 255 over twelve hours. The numbers and the sweep that chose
+	# them are in `Grade`, beside the constants, because a look in two files
+	# diverges (gotcha 55).
+	var amb := Grade.ambient_for(warmth)
+	_env.ambient_light_color = amb[0]
+	_env.ambient_light_energy = amb[1]
+	# 1.05 WAS A KEY AIMED AT NORMALS THAT DID NOT EXIST. The floors, walls and
+	# ceilings were `rbox_mesh` slabs whose normals were area-weighted onto
+	# vertices at the corners, so a twenty-metre floor faced the sun at an angle
+	# that wandered across it and swallowed most of the key. Tessellating them
+	# (`Build.slab_mesh`) gave every up-facing surface in the building its full
+	# 0.85 of NdotL at once and put the ward floor at 207 of 255. The key is
+	# still the only directional light with any shape to it and still what reads
+	# on a face (gotcha 44), so it is trimmed rather than cut.
+	_sun.light_energy = lerpf(0.70, 0.22, warmth)
 	_sun.light_color = Color(1.0, 0.97, 0.92).lerp(Color(1.0, 0.72, 0.48), warmth)
 	_sun.rotation_degrees = Vector3(lerpf(-58.0, -12.0, warmth), -38, 0)
 	if _fill:
 		_fill.light_energy = lerpf(0.35, 0.16, warmth)
 	if _sky_mat:
-		_sky_mat.sky_horizon_color = Color(0.72, 0.80, 0.86).lerp(Color(0.30, 0.28, 0.40), warmth)
+		# ALL FOUR BANDS, not just the horizon. The zenith and the ground
+		# hemisphere were fixed for the whole shift, so a sky that was supposed
+		# to be going down at half past seven kept a bright blue top and a
+		# daylight green ground under a dusk-coloured horizon — visible in
+		# every window on the north and east runs at once.
+		var horizon := Color(0.88, 1.00, 1.14).lerp(Color(0.42, 0.31, 0.36), warmth)
+		_sky_mat.sky_horizon_color = horizon
+		_sky_mat.ground_horizon_color = horizon
+		_sky_mat.sky_top_color = Color(0.34, 0.72, 1.02).lerp(Color(0.07, 0.09, 0.20), warmth)
+		_sky_mat.ground_bottom_color = Color(0.62, 0.80, 0.66).lerp(
+			Color(0.13, 0.15, 0.17), warmth)
+		# ...AND THE VIEW OUT OF THE WINDOW, which is not lit by anything in
+		# this scene and so cannot follow on its own. The gain is what makes the
+		# glazing the brightest thing in the room at eight in the morning and
+		# the darkest at half past seven, and it is the only place in the game
+		# where the player can look at the time rather than read it.
+		if hospital:
+			hospital.set_outside_look(horizon, lerpf(2.05, 0.62, warmth))
 	# AND THE FITTINGS INSIDE. `Hospital.set_lamp_look` existed, worked, and had
 	# no caller anywhere in the project — the ward sister's eight o'clock and
 	# the last hour of a shift were lit by identical bulbs, in a game whose

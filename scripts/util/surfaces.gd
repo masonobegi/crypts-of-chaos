@@ -174,6 +174,31 @@ static func _shader(key: String, body: String, modes := "cull_back") -> Shader:
 ## file. If it is ever turned back on, the lights are what has to give first.
 const RIM_EDGE := 0.0
 
+## HOW MUCH DARKER A DOWNWARD-FACING SURFACE IS THAN AN UPWARD-FACING ONE.
+##
+## The walls and the floor each carry a hand-painted contact gradient — that is
+## the whole job of `wall_mat`'s `ao_height` and `floor_mat`'s `room_min` — and
+## the two hundred solid objects standing on them carried none at all. A bed's
+## underside, the recess between a cabinet's drawers, the inside of the nurses'
+## station counter and the underside of a chin all rendered at exactly the
+## value of the face pointing at the light, which is why the beds read as
+## featureless white slabs and the counter as a grey plane. This is the
+## cheapest form the missing SSAO can take on a backend that has none (gotcha
+## 39): the surface normal is already a varying in the preamble, so it is one
+## multiply.
+##
+## It is a WEDGE, not a switch. `smoothstep(-0.75, 0.30, world_normal.y)` puts
+## the full darkening on a face pointing straight down, none on anything
+## pointing up or level, and a gradient across the rounded turn between them —
+## which on `rbox_mesh` geometry is exactly where a real object's form reads.
+## Past about 0.30 it stops looking like occlusion and starts looking like
+## dirt under the chin, which is the failure to watch for on the characters.
+## Cloth gets less of it (`FABRIC_UNDER`) because bedding and curtains hang in
+## folds rather than turning a hard corner, and the same number on both made
+## every gown look grubby.
+const PROP_UNDER := 0.22
+const FABRIC_UNDER := 0.13
+
 ## ------------------------------------------------------------------ floor
 ##
 ## Hospital vinyl: two-metre welded sheets, a fine speckle through the body of
@@ -306,6 +331,66 @@ void fragment() {
 	_cache[key] = m
 	return m
 
+## ------------------------------------------------------------------ outside
+##
+## EVERY WINDOW IN THIS BUILDING WAS SIXTY LEVELS DARKER THAN THE PLASTER IT WAS
+## SET INTO, so the glazing read as four horizontal stripes of painted-on green.
+## Measured off `04c_visitor`: interior upper wall 205.1, the sky band through
+## the glass 144.9, the town 134.0, the ground 147.7 and the teal dado BELOW the
+## window 154.2. In any real interior the window is the blown-out brightest
+## thing in the frame, and it is how a room reads as being inside a building on
+## a day rather than inside a box.
+##
+## The cause is not the colours out there; it is that `_build_outside` used
+## `Build.box_mi`, which is a lit material. So the grounds, the treeline and the
+## town were being lit by ambient plus one directional key — while the room
+## looking at them got that PLUS the ceiling fittings, and their albedos are
+## half the wall's on top of it. Outdoors was receiving a fraction of what
+## indoors was, which is exactly backwards.
+##
+## UNSHADED, therefore, with a gain: a daylit exterior seen from inside is not
+## a surface being lit, it is a light source. `gain` is what puts it over the
+## interior, and the sky band is pushed past `Grade.GLOW_THRESHOLD` so the
+## window edge blooms the way an over-exposed window does.
+##
+## AERIAL PERSPECTIVE IN THE SHADER, replacing the three hand-tinted ring
+## colours the previous version needed. `haze` is the sky's own horizon colour
+## and `haze_far` the distance at which a surface has gone entirely to it, so
+## the boundary wall, the treeline and the town separate in value by being
+## further away rather than by being authored darker — and re-tinting the haze
+## as the shift runs (`Hospital.set_outside_look`) carries the evening out
+## through the glass, which is the one place in this game where the player can
+## actually see that it is getting late.
+static func outside_mat(base: Color) -> ShaderMaterial:
+	var key := "outside|%s" % base.to_html()
+	if _cache.has(key):
+		return _cache[key]
+	var sh := _shader("outside_sh", """
+uniform vec3 base_col : source_color = vec3(0.47, 0.58, 0.42);
+uniform float gain = 2.05;
+uniform vec3 haze : source_color = vec3(0.72, 0.82, 0.94);
+uniform float haze_far = 150.0;
+uniform float haze_max = 0.50;
+
+void fragment() {
+	// A little variation so a forty-metre slab of treeline is not one value.
+	// `drift` is per-vertex and already in the preamble, so it costs nothing
+	// here and it is the only thing standing between these and flat cardboard.
+	vec3 col = base_col * gain * (0.90 + drift * 0.20);
+	// Distance from the eye, in metres, taken in the fragment stage: the
+	// preamble owns `vertex()` and a shader may only have one, so this is
+	// reconstructed from the world position rather than from MODELVIEW.
+	float d = length(world_pos - CAMERA_POSITION_WORLD);
+	col = mix(col, haze, clamp(d / haze_far, 0.0, 1.0) * haze_max);
+	ALBEDO = col;
+}
+""", "cull_back, unshaded, shadows_disabled")
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("base_col", Vector3(base.r, base.g, base.b))
+	_cache[key] = m
+	return m
+
 ## ------------------------------------------------------------------ ceiling
 ##
 ## Suspended acoustic tile: a 0.6m grid of fissured mineral board in a T-bar
@@ -317,7 +402,15 @@ void fragment() {
 ## quoted in the shader's own default, so the two cannot say different things
 ## again. Chosen by rendering the ward at three values and reading the ceiling
 ## off the frame — see the note in `ceiling_mat`.
-const CEIL_SELF_LIT := 0.30
+## 0.30 was measured against a ceiling whose normals wandered — `rbox_mesh`
+## slabs, area-weighted onto shared vertices, so the underside caught a share
+## of a directional key that a correct -1 normal cannot see at all. With the
+## room slabs tessellated (`Build.slab_mesh`) the ceiling is lit by ambient and
+## its own emission and nothing else, and it fell from 198 to 150 against an
+## upper wall at 207. 0.44 puts it back to about 170: still the darkest of the
+## three planes at eight in the morning, which is what the note below asks for,
+## without being the grey lid it became.
+const CEIL_SELF_LIT := 0.44
 
 static func ceiling_mat(base: Color, tile := 0.6) -> ShaderMaterial:
 	var key := "ceil|%s|%.2f" % [base.to_html(), tile]
@@ -366,8 +459,18 @@ void fragment() {
 	// The runner between tiles, and a slight dish across each tile so a flat
 	// plane stops being flat.
 	float runner = grid_line(p, tile, 0.014);
+	// GUARDED LIKE EVERYTHING ELSE IN THIS FILE, and it was the last term that
+	// was not. `fissure`, `pits` and `runner` all go through `detail_fade` or
+	// `grid_line`; `dish` sampled a 0.6m period raw, so once a pixel spanned
+	// several tiles it beat against its own period and drew long diagonals at
+	// whatever angle the two frequencies made — which is precisely the fault
+	// gotcha 50 is written about, on the one surface that fills the top third
+	// of every frame. It only became visible when the ceiling stopped being
+	// washed out: with the slabs tessellated the underside gets no directional
+	// light at all (both key and fill point down) and drops from 198 to 150,
+	// and a 2.5% term is legible at 150 in a way it is not at 198.
 	vec2 within = abs(fract(p / tile) - 0.5) * 2.0;
-	float dish = max(within.x, within.y);
+	float dish = mix(0.5, max(within.x, within.y), detail_fade(p / tile));
 	col *= mix(0.997, 0.972, dish * dish);
 	// The runner reads as the SHADOW GAP between tiles, not as a highlight. A
 	// bright line on a bright ceiling is the one thing that survives being
@@ -415,6 +518,7 @@ static func fabric_mat(base: Color, weave := WEAVE, shared := true) -> ShaderMat
 uniform vec3 base_col : source_color = vec3(0.8, 0.8, 0.85);
 uniform float rim_edge = 0.0;
 uniform float weave = 180.0;   // see WEAVE above; this is only the fallback
+uniform float under_dark = 0.13;
 
 void fragment() {
 	vec3 p = world_pos;
@@ -445,7 +549,11 @@ void fragment() {
 	// a pattern you can name from two metres; cloth is a texture you notice
 	// the absence of, so the irregular half now carries as much as the regular
 	// half does.
-	ALBEDO = base_col * (0.955 + cloth * 0.055 + (slub - 0.5) * 0.055);
+	// See `FABRIC_UNDER`. Less than the props get: cloth hangs in folds rather
+	// than turning a hard corner, and the prop strength on a gown reads as a
+	// grubby hem rather than as shading.
+	ALBEDO = base_col * (0.955 + cloth * 0.055 + (slub - 0.5) * 0.055)
+		* mix(1.0 - under_dark, 1.0, smoothstep(-0.75, 0.30, world_normal.y));
 	ROUGHNESS = 0.94 - cloth * 0.08;
 	SPECULAR = 0.16;
 	// See `RIM_EDGE`. Set from GDScript, and this default only applies if
@@ -459,6 +567,7 @@ void fragment() {
 	m.set_shader_parameter("base_col", Vector3(base.r, base.g, base.b))
 	m.set_shader_parameter("weave", weave)
 	m.set_shader_parameter("rim_edge", RIM_EDGE)
+	m.set_shader_parameter("under_dark", FABRIC_UNDER)
 	if shared:
 		_cache[key] = m
 	return m
@@ -501,6 +610,7 @@ uniform float metal = 0.0;
 uniform vec3 emis : source_color = vec3(0.0);
 uniform float emis_energy = 0.0;
 uniform float grain = 0.05;
+uniform float under_dark = 0.22;
 
 void fragment() {
 	// Drift comes off the vertex stage; only the grain is per-pixel, because
@@ -509,6 +619,9 @@ void fragment() {
 	float fine = mix(0.5, vnoise(fine_q), detail_fade(fine_q));
 	vec3 col = base_col * (1.0 + (drift - 0.5) * grain * 1.6
 		+ (fine - 0.5) * grain * 0.7);
+	// See `PROP_UNDER`. There is no ambient occlusion on this renderer, so the
+	// only thing that can tell an underside from a top is the normal.
+	col *= mix(1.0 - under_dark, 1.0, smoothstep(-0.75, 0.30, world_normal.y));
 	ALBEDO = col;
 	ROUGHNESS = rough;
 	METALLIC = metal;
@@ -527,6 +640,7 @@ void fragment() {
 	m.set_shader_parameter("emis_energy", 1.6 if (emission.r + emission.g + emission.b) > 0.0 else 0.0)
 	m.set_shader_parameter("grain", grain)
 	m.set_shader_parameter("rim_edge", RIM_EDGE)
+	m.set_shader_parameter("under_dark", PROP_UNDER)
 	if shared:
 		_cache[key] = m
 	return m

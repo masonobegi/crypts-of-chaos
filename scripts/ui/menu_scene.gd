@@ -40,11 +40,18 @@ func _room() -> void:
 	# none of the tile, speckle, paint tooth or contact shading that every room
 	# behind it has. It did not look like the game; it looked like a mock-up of
 	# the game, which is a strange first impression to make.
-	add_child(Build.surfaced_wall(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0),
+	# ...AND THE SAME MESHES, which is a second instance of the same fault.
+	# `Build.slab_mesh` exists because a room-sized `rbox_mesh` has no vertex
+	# anywhere except on its own edges, so the one lamp in this vignette lit
+	# nothing but the two figures standing under it — the floor, the walls and
+	# the ceiling of the first screen of the game were rendered by ambient
+	# alone. Gotcha 55 is about the title screen and the ward diverging; the
+	# geometry counts as much as the grade does.
+	add_child(Build.surfaced_slab(Vector3(HALF_X * 2.0, 0.2, HALF_Z * 2.0),
 		Surfaces.floor_mat(Build.FLOOR_A, 2.0,
 			Vector2(-HALF_X, -HALF_Z), Vector2(HALF_X, HALF_Z)),
 		Vector3(0, -0.1, 0)))
-	add_child(Build.mi(Build.rbox_mesh(Vector3(HALF_X * 2.0, 0.14, HALF_Z * 2.0), 0.02),
+	add_child(Build.mi(Build.slab_mesh(Vector3(HALF_X * 2.0, 0.14, HALF_Z * 2.0), 0.8),
 		Surfaces.ceiling_mat(Build.CEILING), Vector3(0, WALL_H + 0.07, 0)))
 	_wall(Vector3(HALF_X * 2.0, WALL_H, 0.2), Vector3(0, 0, -HALF_Z), true)
 	_wall(Vector3(0.2, WALL_H, HALF_Z * 2.0), Vector3(-HALF_X, 0, 0), false)
@@ -54,10 +61,10 @@ func _room() -> void:
 ## are most of why its rooms read as built rather than generated.
 func _wall(size: Vector3, at: Vector3, horizontal: bool) -> void:
 	var lower := 1.1
-	add_child(Build.mi(Build.rbox_mesh(Vector3(size.x, lower, size.z), 0.02),
+	add_child(Build.mi(Build.slab_mesh(Vector3(size.x, lower, size.z), 0.8),
 		Surfaces.wall_mat(Build.WALL_LOWER, 0.0),
 		at + Vector3(0, lower * 0.5, 0)))
-	add_child(Build.mi(Build.rbox_mesh(Vector3(size.x, WALL_H - lower, size.z), 0.02),
+	add_child(Build.mi(Build.slab_mesh(Vector3(size.x, WALL_H - lower, size.z), 0.8),
 		Surfaces.wall_mat(Build.WALL_UPPER, lower),
 		at + Vector3(0, lower + (WALL_H - lower) * 0.5, 0)))
 	var out := Vector3(0, 0, 0.1) if horizontal else Vector3(0.1, 0, 0)
@@ -191,6 +198,10 @@ func _light() -> void:
 	Grade.apply(env)
 	we.environment = env
 	add_child(we)
+	# ...and the same vignette the ward gets. The title screen is the first
+	# frame anybody sees of this game; anything the ward has that this does not
+	# is a difference a stranger meets before they meet the game.
+	add_child(Grade.vignette_layer())
 
 	var key := DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-48, -34, 0)

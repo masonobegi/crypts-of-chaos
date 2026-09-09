@@ -289,6 +289,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
 	_check_the_money_on_the_hud_is_the_money_you_get()
+	_check_the_sound_design()
 
 ## A WATCHED DAY IS HARDER, NOT AIRLESS.
 ##
@@ -2524,3 +2525,428 @@ func _check_a_career_survives_a_save() -> void:
 	# run was pointed at, which is invisible until the run is pointed anywhere.
 	GameState.start_new_career(seed)
 	GameState.set_flag("tutorial_done", true)
+
+# ---------------------------------------------------------------------- audio
+## Three-band energy split of a built stream, as fractions of the total: below
+## 200 Hz, 200 Hz to 2 kHz, and above. Two one-pole filters over the buffer,
+## which is a crude split and exactly good enough to answer the two questions
+## below — "is this all rumble" and "are these eleven sounds the same sound".
+##
+## Reads the stream's OWN mix_rate rather than a constant, because the one-shots
+## run at 44100 and the two long beds at 22050.
+func _bands(st: AudioStreamWAV) -> Array:
+	var d: PackedByteArray = st.data
+	var n := d.size() / 2
+	if n < 8:
+		return [0.0, 0.0, 0.0]
+	var sr := float(st.mix_rate)
+	var a1: float = 1.0 - exp(-TAU * 200.0 / sr)
+	var a2: float = 1.0 - exp(-TAU * 2000.0 / sr)
+	var l1 := 0.0
+	var l2 := 0.0
+	var e_low := 0.0
+	var e_mid := 0.0
+	var e_high := 0.0
+	for i in n:
+		var v: int = d[i * 2] | (d[i * 2 + 1] << 8)
+		if v >= 32768:
+			v -= 65536
+		var x := float(v) / 32768.0
+		l1 += a1 * (x - l1)
+		l2 += a2 * (x - l2)
+		e_low += l1 * l1
+		var m: float = l2 - l1
+		e_mid += m * m
+		var h: float = x - l2
+		e_high += h * h
+	var tot: float = maxf(e_low + e_mid + e_high, 1e-12)
+	return [e_low / tot, e_mid / tot, e_high / tot]
+
+## EVERY SOUND USED TO END ON A HARD CUT.
+##
+## `_build` had a four-millisecond attack and nothing at all at the other end,
+## so every stream stopped mid-decay and the mixer dropped straight to DC.
+## Measured off the built buffers before the fix: `alarm` ended at -7.8 dBFS,
+## `beep` — the UI button, the terminal and the test order — at -9.7, `monitor`,
+## which fires every 0.92 s for a whole shift, at -12.5, and `tick`, the hover
+## sound, at -13.9. That is a small click at the end of nearly every sound the
+## game makes, all day, and it is the loudest "synthesised in an afternoon" tell
+## in the mix.
+##
+## Nothing else can see it: the peak check samples every 32nd byte and a
+## six-millisecond release cannot move a peak. This reads the LAST sample, which
+## is the only place the fault lives.
+func _check_every_sound_stops_before_it_is_cut() -> void:
+	var clicky: Array = []
+	for name in AudioMgr.RECIPES:
+		var st: AudioStreamWAV = AudioMgr._build(String(name))
+		if st == null or st.data.size() < 4:
+			continue
+		var d: PackedByteArray = st.data
+		var last: int = d[d.size() - 2] | (d[d.size() - 1] << 8)
+		if last >= 32768:
+			last -= 65536
+		# 400 of 32768 is about -38 dBFS: below the level at which a
+		# discontinuity is audible against anything else in the mix.
+		if absi(last) >= 400:
+			clicky.append("%s (%d)" % [name, absi(last)])
+	_ok(clicky.is_empty(), "every one of the %d sounds fades out before it stops%s"
+		% [AudioMgr.RECIPES.size(), "" if clicky.is_empty()
+			else " — cut off: " + ", ".join(PackedStringArray(clicky))])
+
+## ELEVEN SOUNDS THAT WERE ONE SOUND.
+##
+## The noise recipes carried a frequency, a sweep and a vibrato that the
+## synthesiser computed and then threw away, so a footstep, a page turn, a
+## cough, breaking glass, a rubber stamp and a trolley differed only in length
+## and decay rate: measured, all eleven sat inside a three-point spread of the
+## same three-band split. Two assertions, because either one alone can be
+## satisfied while the fault is still there — a `filt` key that no code reads
+## would pass the first, and one filtered recipe among ten unfiltered ones
+## would pass the second.
+func _check_the_noises_are_not_all_the_same_noise() -> void:
+	var unfiltered: Array = []
+	var highs: Array = []
+	for name in AudioMgr.RECIPES:
+		var r: Dictionary = AudioMgr.RECIPES[name]
+		if String(r["w"]) != "noise":
+			continue
+		if not r.has("filt") or String(r["filt"]) == "off":
+			unfiltered.append(String(name))
+			continue
+		highs.append(float(_bands(AudioMgr._build(String(name)))[2]))
+	_ok(unfiltered.is_empty(), "every noise recipe is shaped into something%s"
+		% ("" if unfiltered.is_empty()
+			else " — pure hiss: " + ", ".join(PackedStringArray(unfiltered))))
+	var lo := 1.0
+	var hi := 0.0
+	for h in highs:
+		lo = minf(lo, float(h))
+		hi = maxf(hi, float(h))
+	_ok(highs.size() >= 8 and hi - lo > 0.5,
+		"and they do not all land in the same band (%d of them, %.0f%% to %.0f%% above 2 kHz)"
+			% [highs.size(), lo * 100.0, hi * 100.0])
+
+## THE ROOM TONE HAS TO BE THERE ON THE SPEAKERS PEOPLE ACTUALLY HAVE.
+##
+## It was two sines at 50 and 74 Hz and a one-pole noise floor at about 71 Hz —
+## 94% of its energy below 200 Hz, measured. Laptop and television speakers roll
+## off hard below 200, so the game's only continuous ambience was not there at
+## all on the hardware most of Steam plays on, and the slider it is levelled by
+## turned down nothing anybody could hear. Gotcha 59 fixed the LENGTH of this
+## loop; nothing had ever looked at its spectrum, and no arithmetic can.
+##
+## Proven red by setting `HUM_HISS_LEVEL` to zero, which is very nearly the bed
+## this replaced.
+func _check_the_room_tone_is_not_all_rumble() -> void:
+	var b: Array = _bands(AudioMgr._build_hum())
+	var above: float = float(b[1]) + float(b[2])
+	_ok(above > 0.4, "the room tone is a room and not a rumble (%.0f%% of it is above 200 Hz)"
+		% (above * 100.0))
+	# ...and the two slow swells close the loop for the same reason the partials
+	# do. A modulation left mid-cycle steps at the loop point exactly like a
+	# partial does, and it is a NEW way to break the seamlessness `HUM_PARTIALS`
+	# is checked for — the check above it iterates frequencies and would not
+	# notice.
+	_ok(float(AudioMgr.HUM_BREATH_CYCLES) == roundf(float(AudioMgr.HUM_BREATH_CYCLES))
+		and float(AudioMgr.HUM_DRAUGHT_CYCLES) == roundf(float(AudioMgr.HUM_DRAUGHT_CYCLES)),
+		"and both of its slow swells fit the loop a whole number of times")
+
+## FOUR NOISES PER RECIPE, BECAUSE THE SAME CRUNCH AT A NEW PITCH IS THE SAME
+## CRUNCH. The synthesis RNG is seeded from the sound's name, so every play was
+## bit-for-bit identical and `play_var` only resampled it. `step` fires from the
+## player continuously and from every NPC within twenty metres — it is by a wide
+## margin the most repeated sound in the game.
+func _check_a_footstep_is_not_always_the_same_footstep() -> void:
+	var v0: AudioStreamWAV = AudioMgr._build("step", 0)
+	var v1: AudioStreamWAV = AudioMgr._build("step", 1)
+	var same := 0
+	var looked := 0
+	var n: int = mini(v0.data.size(), v1.data.size())
+	for i in range(0, n, 8):
+		looked += 1
+		if v0.data[i] == v1.data[i]:
+			same += 1
+	_ok(looked > 0 and float(same) / float(looked) < 0.25,
+		"a footstep is four different footsteps, not one at four pitches")
+	# ...and variant 0 is still the canonical build, because the recipe scan,
+	# the peak check and everything that asks for a sound by name alone gets it.
+	_ok(AudioMgr._build("step") == v0, "and asking for it by name gets the same one every time")
+
+## THE MIX HAS A SHAPE, AND EVERY PART OF IT EXISTS FOR A REASON.
+##
+## A bus is invisible to every other check in the repo: the sounds still play,
+## the count is the same, nothing errors. So is a missing limiter, a Voice bus
+## that sends to the wrong place, and a sidechain that names a bus nothing plays
+## into — which is the failure mode of the whole idea, because a compressor
+## whose key never fires is a compressor that does nothing at all.
+func _check_the_mix_has_a_shape() -> void:
+	AudioMgr._ensure_voices()
+	var master := AudioServer.get_bus_index("Master")
+	var limited := false
+	for fx_i in AudioServer.get_bus_effect_count(master):
+		if AudioServer.get_bus_effect(master, fx_i) is AudioEffectLimiter:
+			limited = true
+	_ok(limited, "something is catching the sum before it clips")
+
+	var voice := AudioServer.get_bus_index(AudioMgr.BUS_VOICE)
+	_ok(voice > 0, "speech has a bus of its own")
+	_ok(voice > 0 and AudioServer.get_bus_send(voice) == AudioMgr.BUS_WORLD,
+		"and it still goes through the room rather than round it")
+	var dry_voices := 0
+	for p in AudioMgr._voices3d:
+		if p.bus != AudioMgr.BUS_VOICE:
+			dry_voices += 1
+	for p in AudioMgr._voices:
+		if p.bus != AudioMgr.BUS_VOICE:
+			dry_voices += 1
+	_ok(dry_voices == 0, "and every voice in the speech pools is on it")
+	# The key has to be something the game actually plays. `grunt` is what
+	# `NPCBody.say` puts under every spoken line; if that ever stops being a
+	# voice sound the compressor quietly becomes decoration.
+	_ok(AudioMgr.VOICE_SOUNDS.has("grunt"),
+		"and the sound under every line of dialogue is routed to it")
+
+	var music := AudioServer.get_bus_index(AudioMgr.BUS_MUSIC)
+	_ok(music > 0, "the score has a bus of its own")
+	var keyed := false
+	var filtered := false
+	for fx_i in AudioServer.get_bus_effect_count(music):
+		var fx := AudioServer.get_bus_effect(music, fx_i)
+		if fx is AudioEffectCompressor:
+			keyed = (fx as AudioEffectCompressor).sidechain == AudioMgr.BUS_VOICE
+		if fx is AudioEffectLowPassFilter:
+			filtered = true
+	_ok(keyed, "and it steps back on its own whenever somebody speaks")
+	_ok(filtered, "and there is something on it the evening can close")
+
+	# THE THREE DEFAULT VOLUMES LIVE IN `Settings` AND ARE COPIED HERE.
+	# `AudioMgr.music_volume` said 0.55 and `Settings.DEFAULTS` said 0.75 for as
+	# long as both existed — harmless, because Settings overwrites it on every
+	# path into the tree, except that the gain-staging comment reasoned about the
+	# chain using the dead one. Gotcha 48 with nothing to catch it.
+	var disagree: Array = []
+	for k in AudioMgr.VOLUME_FALLBACK:
+		if not is_equal_approx(float(AudioMgr.VOLUME_FALLBACK[k]), float(Settings.DEFAULTS[k])):
+			disagree.append(String(k))
+	_ok(disagree.is_empty(), "and the volume defaults agree with the settings screen%s"
+		% ("" if disagree.is_empty() else " — " + ", ".join(PackedStringArray(disagree))))
+
+## THE EVENING IS A CHANGE AND NOT ONLY A LEVEL.
+##
+## The whole dynamic range of this game's music was a blanket nine decibels
+## down, which the ear reads as somebody nudging the volume knob rather than as
+## the day ending. A low-pass closing over the same window is what moves it into
+## the next room — and, exactly like the level, it has to come back.
+func _check_the_score_can_be_put_in_the_next_room() -> void:
+	var at := AudioServer.get_bus_index(AudioMgr.BUS_MUSIC)
+	if at < 0:
+		_ok(false, "there is a music bus to filter")
+		return
+	var lpf: AudioEffectLowPassFilter = null
+	for fx_i in AudioServer.get_bus_effect_count(at):
+		var fx := AudioServer.get_bus_effect(at, fx_i)
+		if fx is AudioEffectLowPassFilter:
+			lpf = fx
+	if lpf == null:
+		_ok(false, "there is a filter on the music bus")
+		return
+	var was: float = AudioMgr.music_duck
+	AudioMgr.duck_music(1.0)
+	var closed: float = lpf.cutoff_hz
+	AudioMgr.duck_music(0.0)
+	var open: float = lpf.cutoff_hz
+	AudioMgr.duck_music(clampf(was / AudioMgr.MUSIC_DUCK_DB, 0.0, 1.0))
+	_ok(closed < AudioMgr.MUSIC_LP_OPEN * 0.25,
+		"the score goes behind a door as eight o'clock arrives (%.0f Hz)" % closed)
+	_ok(is_equal_approx(open, AudioMgr.MUSIC_LP_OPEN),
+		"and comes back out of it (%.0f Hz)" % open)
+
+## TIME IS THE ONLY THING THE PLAYER SPENDS AND IT MADE NO SOUND.
+##
+## The wiring and the arithmetic are asserted separately on purpose. Emitting
+## `minute_passed` for real would advance the live ward this run has already
+## walked to gone five — one clock, one ward, and every listener hears it — so
+## the handler is called directly and the CONNECTION is asserted beside it.
+## Between them they cover the whole path; either one alone would pass on a
+## build where the sound cannot happen.
+func _check_time_makes_a_sound(amb) -> void:
+	if amb == null:
+		return
+	_ok(GameState.minute_passed.is_connected(amb._on_minute_passed),
+		"the ward hears the clock being spent")
+	var was_last: int = amb._last_minute
+	var now: int = GameState.minute_of_day
+	amb._ticks_left = 0
+	amb._last_minute = now
+	amb._on_minute_passed(now + 15)
+	_ok(amb._ticks_left == 3, "a quarter of an hour spent is three ticks (%d)" % amb._ticks_left)
+	amb._ticks_left = 0
+	amb._on_minute_passed(now + 16)
+	_ok(amb._ticks_left == 0, "and a minute going by on its own is not a verb")
+	amb._ticks_left = 0
+	amb._last_minute = was_last
+
+## A WARD THAT IS VISIBLE IS A WARD THAT IS AUDIBLE.
+##
+## `AmbienceSystem._process` returned on `not GameState.clock_running`, and
+## `UIRoot._set_modal` clears that flag for every screen that does NOT pause the
+## world — which is exactly the patient card, the chart and the records screen,
+## the three the player lives in. So the NPCs kept walking and talking while
+## every machine in the building stopped dead the moment a card opened.
+##
+## This does not open a card: it sets the flag the card sets, which is the
+## actual condition, and then asks whether the two timers moved. Proven red by
+## putting the single guard back — with it, both stay exactly where they were
+## put, because the function returns before either is touched.
+##
+## SYNCHRONOUS, AND THE FIRST VERSION WAS NOT. Setting the flag and asserting
+## three frames later reads green whatever the guard says, because half the
+## checks in this file open and close a screen and `UIRoot._set_modal(false)`
+## puts `clock_running` back on the way out — so the frames being waited for
+## are frames in which the condition under test has quietly stopped holding.
+## It passed with the old guard restored, which is how it was caught.
+func _check_the_ward_is_audible_behind_a_card(amb) -> void:
+	if amb == null:
+		return
+	var was_running: bool = GameState.clock_running
+	GameState.clock_running = false
+	amb._mon_timer = 0.0
+	amb._timer = 0.0
+	amb._process(0.016)
+	var monitors_ran: bool = amb._mon_timer > 0.0
+	var sparse_ran: bool = amb._timer > 0.0
+	GameState.clock_running = was_running
+	_ok(monitors_ran, "the monitors keep beeping while a card is open")
+	_ok(sparse_ran, "and the building carries on behind it")
+
+## THE SCORE COMES BACK UP FROM EVERY WAY OUT, AND THE WARD'S AIR GOES WITH IT.
+##
+## Gotcha 58's release was reachable only from `_pulse_pass`, which needs this
+## node alive, the tree unpaused and the clock running — three conditions, each
+## independently sufficient to strand it. So the music sat nine decibels down
+## through the force-end, the handover, the verdict, both ending cards and the
+## next morning's briefing, and quitting to the menu after twenty past seven
+## left the title screen ducked for the rest of the process.
+##
+## The check that existed could not see any of that: it set the clock by hand
+## and called `_pulse_pass` directly, which is the one path that was never
+## broken. This drives the real thing — a frame with the clock inside the
+## window, then the node leaving the tree, which is what every way out of a
+## shift does to it. Proven red by deleting `AmbienceSystem._exit_tree`.
+func _check_the_score_comes_back_from_every_way_out(amb) -> void:
+	if amb == null:
+		return
+	var parent: Node = amb.get_parent()
+	if parent == null:
+		return
+	var was_min: int = GameState.minute_of_day
+	var was_running: bool = GameState.clock_running
+	GameState.minute_of_day = Cases.DEBT_DUE_MINUTE - 10
+	GameState.clock_running = true
+	_defer(2, func():
+		var ducked: float = AudioMgr.music_duck
+		var humming: bool = AudioMgr._hum_player != null and AudioMgr._hum_player.playing
+		parent.remove_child(amb)
+		var released: float = AudioMgr.music_duck
+		var quiet: bool = AudioMgr._hum_player == null or not AudioMgr._hum_player.playing
+		parent.add_child(amb)
+		GameState.minute_of_day = was_min
+		GameState.clock_running = was_running
+		_ok(ducked < -4.0, "the score steps back on its own as the shift closes (%.1f dB)" % ducked)
+		_ok(is_equal_approx(released, 0.0),
+			"and comes back up when the ward goes away (%.1f dB)" % released)
+		_ok(humming and quiet, "and the ward's air handling does not follow you to the menu"))
+
+## The audio block, run together because several of them need the live
+## AmbienceSystem and finding it is the fiddly part.
+func _check_the_sound_design() -> void:
+	_check_every_sound_stops_before_it_is_cut()
+	_check_the_noises_are_not_all_the_same_noise()
+	_check_the_room_tone_is_not_all_rumble()
+	_check_a_footstep_is_not_always_the_same_footstep()
+	_check_the_mix_has_a_shape()
+	_check_the_score_can_be_put_in_the_next_room()
+	var amb = tree.get_first_node_in_group("ambience")
+	if amb == null:
+		for n in _all_nodes(game):
+			if n.get_script() != null and String(n.get_script().resource_path).ends_with("ambience.gd"):
+				amb = n
+				break
+	_ok(amb != null, "the ward has an ambience system on it")
+	_check_time_makes_a_sound(amb)
+	_check_the_windows_have_something_behind_them(amb)
+	_check_the_ward_is_audible_behind_a_card(amb)
+	# LAST, because it takes the ambience system out of the tree and puts it
+	# back — which respawns the outside emitters the check above counts.
+	_check_the_score_comes_back_from_every_way_out(amb)
+
+## THE WINDOWS THE PROJECT FOUGHT TO BUILD WERE SILENT.
+##
+## Gotcha 47 is a whole session spent on a world outside — three rings of trees,
+## a town, a sky re-tinted every minute — so the glazing would have something
+## behind it. It made no sound at all, and the only time-driven audio in the
+## game was the heartbeat in the last forty minutes.
+##
+## Three things can each silently undo this and none of them shows up anywhere
+## else: emitters that never spawn, emitters that end up INSIDE the building
+## (where they would read as somebody running a tap in the ward), and a curve
+## that is computed and never applied — which is gotcha 15's shape and is the
+## most likely of the three, because nothing on screen says what the outside is
+## doing.
+func _check_the_windows_have_something_behind_them(amb) -> void:
+	if amb == null:
+		return
+	var outs: Array = amb._outside
+	_ok(outs.size() == 4, "there is a world outside each wall of the building (%d)" % outs.size())
+	if outs.is_empty():
+		return
+	var shell := Rect2()
+	for i in Hospital.LAYOUT.size():
+		var r: Rect2 = Hospital.LAYOUT[i]["rect"]
+		shell = r if i == 0 else shell.merge(r)
+	# A PASS FIRST. `_outside_pass` runs on a half-second cadence off the real
+	# clock, and a headless smoke run reaches this check in less real time than
+	# that — so asserting on the state before one has happened is asserting on
+	# the frame the emitters were built in.
+	amb._outside_timer = 0.0
+	amb._outside_pass(1.0)
+	var indoors := 0
+	var stopped := 0
+	for v in outs:
+		if shell.has_point(Vector2(v.global_position.x, v.global_position.z)):
+			indoors += 1
+		# NOT `v.playing`, AND THAT COST AN HOUR. `AudioStreamPlayer3D.playing`
+		# asks the audio server whether the playback is ACTIVE, and a playback
+		# belonging to a node in a PAUSED tree is not active — so a looping
+		# emitter that is running perfectly reads `playing == false` for as long
+		# as any screen that pauses the world is open, which in this file is
+		# most of the time. Chasing that reading produced a "fix" that re-played
+		# the loop whenever it read false: i.e. every outside loop restarting
+		# from the top a moment after the player closed the pause menu, which is
+		# an audible click in exchange for a green check. The playback POSITION
+		# is the honest question — non-zero if and only if the stream has ever
+		# run, and pausing does not move it.
+		if v.get_playback_position() <= 0.0:
+			stopped += 1
+	_ok(indoors == 0, "and it is outside rather than in the ward (%d indoors)" % indoors)
+	_ok(stopped == 0, "and it is running (%d never started)" % stopped)
+
+	var was: int = GameState.minute_of_day
+	GameState.minute_of_day = 14 * 60
+	amb._outside_timer = 0.0
+	amb._outside_pass(1.0)
+	var afternoon: float = outs[0].volume_db
+	var bright: float = outs[0].pitch_scale
+	GameState.minute_of_day = Cases.DEBT_DUE_MINUTE - 5
+	amb._outside_timer = 0.0
+	amb._outside_pass(1.0)
+	var evening: float = outs[0].volume_db
+	var dark: float = outs[0].pitch_scale
+	GameState.minute_of_day = was
+	amb._outside_timer = 0.0
+	amb._outside_pass(1.0)
+	_ok(afternoon - evening > 4.0,
+		"and the afternoon out there is busier than the evening (%.1f dB against %.1f)"
+			% [afternoon, evening])
+	_ok(bright - dark > 0.1, "and closer (%.2f against %.2f)" % [bright, dark])

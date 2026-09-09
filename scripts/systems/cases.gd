@@ -685,6 +685,25 @@ const DAY_TWO := [
 		"on_discharge": "Right. Well. I'll take it slowly.",
 		"exam_unwell": "Fine at rest and drops eight points walking four metres. The numbers on the chart were all taken sitting down.",
 		"note": "Confirmed PE, still desaturating on exertion. Every observation on her chart was taken at rest.",
+		## SHE WAS DOCUMENTED AS THIS AND NOT BUILT AS IT. Her own examination
+		## line says the numbers on the chart were all taken sitting down, and
+		## for as long as she has existed the chart could see her perfectly:
+		## the round wrote her up as unwell, the nurse agreed, the lab agreed.
+		## She is the OTHER END OF THE SECOND WARD'S PAIR — Peter Lomax on flip
+		## 0, Celia Ibarra on flip 1 — so on half of every career's second-ward
+		## nights, the ward whose whole thesis is "a body the chart cannot
+		## describe" was an ordinary read-the-chart ward. The data check now
+		## asserts that both ends of a pair are found the SAME WAY.
+		"only_visible_in_person": true,
+		## AND NO `test_reveals`, BECAUSE PETER LOMAX HAS NONE EITHER — which is
+		## what the parity check was for. The obvious move was to mirror Gwen
+		## Ashworth, who is `only_visible_in_person` AND `test_reveals`; that
+		## would have made the second ward and the fourth the same ward. What
+		## the second ward is FOR is a body no document can describe: a tremor
+		## at four in the afternoon and eight points off walking four metres are
+		## not numbers anybody sent off at eleven. Here the lab cannot help
+		## either, and the only verb that finds her is the one that writes
+		## nothing.
 		"readmit_summary": "Collapsed at home at 02:30. Brought in by ambulance.",
 		"readmit_opening": "I only went to the kitchen.",
 		"readmit_hold": "Yes please. Yes.",
@@ -1317,6 +1336,19 @@ const DAY_FOUR := [
 		"on_discharge": "But I've told you. I've told all of you.",
 		"exam_unwell": "Drowsy, slow to answer, and his pupils are not the same size. He was discharged at five this morning.",
 		"note": "Discharged overnight by a colleague and quietly deteriorating. Only an examination finds it.",
+		## AND IT DID NOT. That note has been on him since he was written and it
+		## was false in code: he carried no flags at all, so the rounds saw him,
+		## the nurse saw him and the lab saw him. He is bed three's ill
+		## candidate and Gwen Ashworth is bed one's, and the ward flips between
+		## them — so on half of every fourth-ward night the ward built entirely
+		## around a colleague's confident overnight opinion had no colleague
+		## trap in it, and `test_reveals`, which SPOILERS.md describes as that
+		## ward's one corroboration route, was authored on a single patient in
+		## the whole game who appears on one side of one coin.
+		"only_visible_in_person": true,
+		"test_reveals": true,
+		"colleague_wrong": true,
+		"colleague_seen": "05:00",
 		"readmit_summary": "Blue-lighted back at 21:30 with a subdural. Straight to CT.",
 		"readmit_opening": "I said about my head. I did say.",
 		"readmit_hold": "...Yes.",

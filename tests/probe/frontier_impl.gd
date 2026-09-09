@@ -168,26 +168,38 @@ func _honest_day(day: int) -> Dictionary:
 			continue
 		w.write_entry(pid, ChartEntry.Claim.UNWELL,
 			"Examined at the bedside. Not fit for discharge today.", w.minute)
-	# AND CORROBORATE WITH SOMETHING THAT CAN ACTUALLY SEE IT.
+	# AND CORROBORATE, IN THE ORDER THAT WORKS.
 	#
-	# The version before this sent the nurse to everybody, which sounds like
-	# thoroughness and is not. Gwen Ashworth is only visible in person: the
-	# nurse goes, finds nothing, and writes that down — so asking her AFTER you
-	# have committed to a note is `invited_contradiction`, at 0.95, on the bed
-	# you were right about. The ward is built to teach exactly that, and her own
-	# record says so in as many words: the lab is the one route that corroborates
-	# her, which is why the cheapest verb in the game is the important one here.
+	# The version before this sent the nurse only to the people being sent HOME,
+	# and ordered bloods on the ones being kept. The reasoning was sound at the
+	# time and it was about Gwen Ashworth: she is `only_visible_in_person`, so
+	# an undirected nurse review found nothing and wrote that down, and asking
+	# for one AFTER committing to a note was `invited_contradiction` at 0.95 on
+	# the bed you were right about.
 	#
-	# So: bloods on the beds being kept, ordered early enough to land, and the
-	# nurse sent to the ones being sent HOME, where a second pair of eyes on an
-	# empty bed is exactly what makes a discharge defensible.
+	# What that reasoning could not do was defend Peter Lomax. The lab cannot
+	# see him either — a tremor at four in the afternoon is not a number anybody
+	# sends off at eleven — so on the second ward this day produced a bed held
+	# on the doctor's word and nothing else on all twelve of its boards, which
+	# is `noted` at best and `flagged for audit` for anybody who works that ward
+	# honestly often enough to have a rate. `nurse_check` distinguishes a
+	# directed check from a routine one now: examine, write down what you found,
+	# and then she goes and checks THAT rather than taking a set of
+	# observations. So the order here is the lesson — look at everybody, write
+	# up what you found, and only then send her.
+	#
+	# She goes to everybody, kept and discharged alike: a second pair of eyes on
+	# an empty bed is what makes a discharge defensible, and a second pair of
+	# eyes on a full one is what makes a hold defensible. Bloods on the beds
+	# being kept as well, early enough to land, because a result that agrees
+	# with you is the one document nobody can argue with.
 	w.advance_to(11 * 60 + 40)
 	for c in Cases.roster():
 		var pid := String(c["id"])
-		if bool(Cases.by_id(pid).get("truly_well", true)):
-			w.nurse_check(pid)
-		else:
+		if not bool(Cases.by_id(pid).get("truly_well", true)):
 			w.order_test(pid, "Repeat bloods")
+	for c in Cases.roster():
+		w.nurse_check(String(c["id"]))
 	# ...AND DO NOT ASK A MAN WHO HAS ALREADY TOLD YOU.
 	#
 	# The registrar's opinion of Gwen Ashworth is on her chart before the shift
@@ -209,6 +221,9 @@ func _honest_day(day: int) -> Dictionary:
 			"discharge" if bool(Cases.by_id(pid).get("truly_well", true)) else "hold")
 	var done := w.minute
 	var res := w.end_day()
+	if OS.has_environment("FRONTIER_DEBUG"):
+		for fd in res["findings"]:
+			print("    FINDING %-26s %-13s sev=%.2f  %s" % [fd.kind, fd.patient_id, fd.severity, fd.question])
 	var rv := ReviewSystem.new()
 	rv.begin(res["findings"], w.records.entries, w.review_truth())
 	while not rv.finished():
@@ -245,12 +260,93 @@ func run() -> bool:
 	GameState.start_new_career(31337)
 	for day in range(1, Cases.DAYS.size() + 1):
 		_search(day)
+	_honest_on_every_board()
 	print("")
 	if _honest_failed:
 		print("FRONTIER PROBE FAILED — a ward where playing it straight cannot sign off")
 	else:
 		print("FRONTIER PROBE PASSED — every ward can be signed off by playing it straight")
 	return not _honest_failed
+
+## THE PROPERTY, ON EVERY BOARD THE GAME CAN DEAL — not on the one this probe's
+## seed happens to draw.
+##
+## "Every ward must have an honest day that signs off" was checked against a
+## single roster per ward, because 31337 was a magic number chosen once and
+## `_search` walks whatever it deals. That is a claim about four boards out of
+## fifty-two, and the four it picked were the ones where the property held.
+##
+## The second ward could not be signed off on ANY of its twelve boards, and had
+## not been able to for as long as it has existed: its honest hold is a body no
+## document can describe, so it rested on the doctor's word alone forever, which
+## is `noted` on the night and `flagged for audit` for anybody who works that
+## ward honestly often enough to have a rate. Seed 31337 deals Celia Ibarra, and
+## Ibarra was authored without the flag her own examination line describes — so
+## the one board the probe looked at was the one where the ward's premise was
+## switched off, and it reported the ward as fine.
+##
+## Fifty-two honest days is about a second and a half. There is no reason for
+## the strongest property this probe has to be sampled.
+func _honest_on_every_board() -> void:
+	print("\n=== IS THERE AN HONEST DAY ON EVERY BOARD? ===")
+	var saved := GameState.day
+	for day in range(1, Cases.DAYS.size() + 1):
+		var reachable := {}
+		for deal in Cases.enumerate_draws(day):
+			var key: Array = []
+			for c in deal:
+				key.append(String(c["id"]))
+			key.sort()
+			reachable[",".join(PackedStringArray(key))] = true
+		var by_bed := {}
+		for c in Cases.DAYS[day - 1]:
+			var b := int(c["bed"])
+			if not by_bed.has(b):
+				by_bed[b] = []
+			by_bed[b].append(c)
+		var beds: Array = by_bed.keys()
+		beds.sort()
+		var sizes: Array = []
+		var total := 1
+		for b in beds:
+			sizes.append(Array(by_bed[b]).size())
+			total *= Array(by_bed[b]).size()
+		var clean := 0
+		var seen := 0
+		# The cartesian product of the slots, filtered down to the boards the
+		# DRAW can actually produce — `enumerate_draws` exists because half the
+		# product deals two ill patients or none, and no honest day survives a
+		# ward with nothing to hold.
+		for n in total:
+			var picks: Array = []
+			var x := n
+			for sz in sizes:
+				picks.append(x % int(sz))
+				x /= int(sz)
+			GameState.day = day
+			GameState.set_flag(Cases.READMIT_FLAG, [])
+			Cases.forced_picks = picks
+			var ids: Array = []
+			for c in Cases.roster(day):
+				ids.append(String(c["id"]))
+			var sorted_ids: Array = ids.duplicate()
+			sorted_ids.sort()
+			if not reachable.has(",".join(PackedStringArray(sorted_ids))):
+				continue
+			seen += 1
+			var row: Dictionary = _honest_day(day)
+			# `_honest_day` clears the forced picks by rebuilding the ward, so
+			# put them back before the next roster read.
+			Cases.forced_picks = picks
+			if String(row["verdict"]) == ReviewSystem.OUTCOME_CLEAR:
+				clean += 1
+			else:
+				print("  ward %d: %s is %s played straight"
+					% [day, ",".join(PackedStringArray(ids)), String(row["verdict"])])
+				_honest_failed = true
+		print("  ward %d: %d of %d reachable boards sign off" % [day, clean, seen])
+	Cases.forced_picks = []
+	GameState.day = saved
 
 func _search(day: int) -> void:
 	GameState.day = day

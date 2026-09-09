@@ -428,6 +428,14 @@ func ask_patient(pid: String, symptom: String) -> ChartEntry:
 	e.written_minute = minute
 	e.author = ChartEntry.Author.PATIENT
 	e.author_id = String(c.get("name", pid))
+	# YOU TOOK THIS DOWN. Both this entry and the one Tallulah Ferreira leaves
+	# when she signs herself out are `Author.PATIENT`, and only one of them is a
+	# note somebody else wrote for her — so `_patient_no_recall`, which asks
+	# whether the patient remembers giving you the line you attributed to them,
+	# fired on a woman who had written her own discharge and walked out. On the
+	# second ward's honest day that was 0.45 of severity for the one thing on
+	# the chart the doctor had nothing to do with.
+	e.at_your_request = true
 	e.terminal_id = TERMINAL_WARD
 	records.add(e)
 	# Whether they will still stand behind it in the morning is a different
@@ -637,13 +645,45 @@ func ask_colleague(pid: String) -> ChartEntry:
 
 ## 3. ASK A NURSE TO CHECK. Independently authored, which is the strongest kind
 ## of record there is — and she writes WHAT SHE FINDS, not what you wanted.
+##
+## TELLING HER WHAT TO LOOK FOR IS A DIFFERENT REQUEST FROM ASKING HER TO LOOK,
+## and until it was, the second ward had no clean day on any of its twelve
+## boards. Peter Lomax and Celia Ibarra are `only_visible_in_person`: the round
+## cannot see them, the lab cannot see them, and the registrar repeats what the
+## chart says. So the honest hold on that ward — the correct one, the one the
+## ward exists to teach — rested on the doctor's word and nothing else, forever,
+## and `_uncorroborated_stay` asked "did you ask anyone to confirm it?" about a
+## bed nobody in the building was capable of confirming. One SOLO bed is
+## `noted`; a doctor who works that ward honestly every time it comes round
+## crosses `uncorroborated_rate` and it becomes `flagged for audit`. Playing it
+## right was a slow accumulating penalty and there was no way off it.
+##
+## It was invisible because the frontier probe runs one seed, and that seed
+## deals Ibarra, who until this week was authored without the flag at all.
+##
+## The distinction is the fix and it is also the lesson. A routine review is a
+## SCORE — obs, a chart, a number at the end — and a score cannot find a man
+## whose tremor is at four in the afternoon or a woman who is fine until she
+## stands up. But Adeyemi has been on this ward since six and she is not a
+## machine: if you have laid hands on somebody yourself AND written down what
+## you found, she reads it and goes and checks THAT, and then she can find it.
+## Which means the second ward teaches a sequence rather than a verb — look,
+## write, and only then send her — and it costs seventy minutes on one bed out
+## of a seven-hundred-and-twenty-minute day.
+##
+## It cannot be used to manufacture anything. She still reports what is true, so
+## a directed check on somebody who is well comes back settled, exactly as an
+## undirected one does, and the liar is no better off than before.
 func nurse_check(pid: String) -> ChartEntry:
 	var c := Cases.by_id(pid)
 	var st: Dictionary = state[pid]
 	st["nurse_checked"] = int(st["nurse_checked"]) + 1
+	var directed: bool = bool(st.get("examined", false)) and _told_her_what_to_look_for(pid)
 	# She scores him. That is what a nurse review IS, and it is why it cannot
-	# find the man whose problem does not show up in a score.
-	var well: bool = reads_as_well(pid)
+	# find the man whose problem does not show up in a score — unless you have
+	# already found it and put it in writing, and then she is checking your
+	# finding rather than taking a set of observations.
+	var well: bool = bool(c.get("truly_well", true)) if directed else reads_as_well(pid)
 	var e := ChartEntry.new()
 	e.patient_id = pid
 	e.author = ChartEntry.Author.NURSE
@@ -655,6 +695,9 @@ func nurse_check(pid: String) -> ChartEntry:
 	if well:
 		e.claim = ChartEntry.Claim.SETTLED
 		e.text = "Reviewed at doctor's request. Settled, no complaints."
+	elif directed:
+		e.claim = ChartEntry.Claim.UNWELL
+		e.text = "Checked as per your note. Agree — I can see it too."
 	else:
 		e.claim = ChartEntry.Claim.UNWELL
 		e.text = "Reviewed at doctor's request. Agree, not right yet."
@@ -670,6 +713,18 @@ func nurse_check(pid: String) -> ChartEntry:
 	AudioMgr.play("paper", -13.0, 1.15)
 	_spend(NURSE_COST)
 	return e
+
+## IS THERE A NOTE OF YOUR OWN FOR HER TO CHECK? Only your own, and only one
+## that argues the patient should still be here — a note saying they are fine is
+## not something to go and confirm, and a colleague's note is not yours to send
+## somebody to verify.
+func _told_her_what_to_look_for(pid: String) -> bool:
+	for e in records.entries:
+		if e.patient_id != pid or e.author != ChartEntry.Author.YOU:
+			continue
+		if e.supports_stay():
+			return true
+	return false
 
 ## What she says when you send her to look at somebody. Never a mechanic and
 ## never a warning — she is not the game's conscience, she is a colleague who

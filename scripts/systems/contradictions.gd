@@ -61,7 +61,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		var list: Array = by_patient[pid]
 		list.sort_custom(func(a, b): return a.stated_minute < b.stated_minute)
 		var t: Dictionary = truth.get(pid, {})
-		out.append_array(_conflicting_observations(pid, list))
+		out.append_array(_conflicting_observations(pid, list, t))
 		out.append_array(_backdating(pid, list))
 		out.append_array(_author_elsewhere(pid, list, placements))
 		out.append_array(_patient_no_recall(pid, list, t))
@@ -70,7 +70,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 		out.append_array(_family_read_it(pid, list, t))
 		out.append_array(_social_hold_is_a_lie(pid, list, t))
 		out.append_array(_unfulfilled_orders(pid, list))
-		out.append_array(_objective_refutes(pid, list))
+		out.append_array(_objective_refutes(pid, list, t))
 		if bool(t.get("held", false)):
 			# NOT for somebody you are keeping BECAUSE they bounced. Their file
 			# is flagged by construction, which made `already_being_looked_at`
@@ -82,7 +82,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary) 
 			if not bool(t.get("bounced_back", false)):
 				out.append_array(_already_being_looked_at(pid, t))
 			out.append_array(_no_reason_recorded(pid, list))
-			out.append_array(_justification_undermined(pid, list))
+			out.append_array(_justification_undermined(pid, list, t))
 			out.append_array(_uncorroborated_stay(pid, list, t))
 		out.append_array(_reversed_a_colleague(pid, list, t))
 		out.append_array(_written_in_front_of_them(pid, list, t))
@@ -302,8 +302,9 @@ static func _who(t: Dictionary) -> String:
 ## rounds are three hours apart and the handover is before eight, so the only
 ## entries that can land inside the same forty-five minutes as each other are
 ## yours, the nurse's when you sent her, and the round you chose to write beside.
-static func _conflicting_observations(pid: String, list: Array) -> Array:
+static func _conflicting_observations(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
+	var held: bool = bool(t.get("held", false))
 	for i in list.size():
 		for j in range(i + 1, list.size()):
 			var a = list[i]
@@ -316,6 +317,26 @@ static func _conflicting_observations(pid: String, list: Array) -> Array:
 					or (a.supports_discharge() and b.supports_stay())):
 				continue
 			var invited: bool = a.at_your_request or b.at_your_request
+			if invited:
+				# ASKING AND BEING AGREED WITH IS CORROBORATION, NOT A
+				# CONTRADICTION, and this rule could not tell the difference —
+				# it fired on the PAIR and then printed whichever half you had
+				# asked for, so a nurse who went and looked at Gwen Ashworth
+				# because you told her what to look for, and came back with "I
+				# can see it too", was read out at the review as the second
+				# opinion that disagreed with you. At 0.60. On the fourth ward's
+				# whole clean line. The other half of the pair is the automatic
+				# one o'clock round, which is exactly the thing you sent her to
+				# go past.
+				#
+				# So: look at what you ASKED FOR and which way it points. If it
+				# argues for the bed you kept, or against the bed you emptied,
+				# you asked and you were backed, and there is nothing here. If
+				# it points the other way, it is `invited_contradiction` and it
+				# is one of the sharpest findings in the game.
+				var req = a if a.at_your_request else b
+				if req.supports_stay() if held else req.supports_discharge():
+					continue
 			var f := Finding.new()
 			f.kind = "invited_contradiction" if invited else "conflicting_observations"
 			f.patient_id = pid
@@ -402,6 +423,14 @@ static func _patient_no_recall(pid: String, list: Array, t: Dictionary) -> Array
 	for e in list:
 		if e.author != ChartEntry.Author.PATIENT:
 			continue
+		# ...AND ONLY THE ONES YOU TOOK DOWN. A patient who signs herself out
+		# writes her own note, in her own name, and it is `Author.PATIENT` like
+		# everything the ask verb produces — so this rule asked whether Tallulah
+		# Ferreira remembered telling you something she had written on a form
+		# and handed in on her way to a shift. It is the one document on the
+		# ward the doctor had nothing to do with.
+		if not e.at_your_request:
+			continue
 		if recalls.has(e.id):
 			continue
 		var f := Finding.new()
@@ -410,7 +439,10 @@ static func _patient_no_recall(pid: String, list: Array, t: Dictionary) -> Array
 		f.entries = PackedStringArray([e.id])
 		f.axis = "what the patient says"
 		f.severity = 0.45
-		f.question = "The note says the patient reported this. He doesn't remember saying it."
+		# ...and not "He". A ward of five is drawn from forty, and this line is
+		# read out loud at the review.
+		f.question = Cases.about(pid,
+			"The note says the patient reported this. {They} {do}n't remember saying it.")
 		f.because = "%s is attributed to the patient and the patient has no memory of it." % _short(e)
 		out.append(f)
 	return out
@@ -636,10 +668,46 @@ static func _unfulfilled_orders(pid: String, list: Array) -> Array:
 	return out
 
 ## A machine found nothing, and you had written that something was there.
-static func _objective_refutes(pid: String, list: Array) -> Array:
+## DID THE DOCTOR GO AND LOOK, AND WAS THERE SOMETHING TO FIND?
+##
+## The one place that decides whether a laboratory's silence means anything.
+## Two rules ask the same question of a normal result and both were getting it
+## wrong in the same direction, and a concept with two definitions is how this
+## project has lost most of its afternoons — see gotchas 48, 55 and 56.
+static func _first_hand(t: Dictionary) -> bool:
+	return bool(t.get("examined", false)) and not bool(t.get("well", true))
+
+static func _objective_refutes(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
+	# A RESULT CANNOT REFUTE A DOCTOR WHO WENT AND LOOKED.
+	#
+	# Two of the four wards are built on a body no document can describe. Peter
+	# Lomax has a tremor at four in the afternoon and Celia Ibarra drops eight
+	# points walking four metres, and neither of those is a number anybody sends
+	# off at eleven — both are `only_visible_in_person` with no `test_reveals`,
+	# so a repeat blood test on either of them comes back NORMAL and is correct
+	# to. Left to fire, this rule then asked the doctor who had put curtains
+	# round, laid hands on the patient, found what was actually wrong and kept
+	# the bed to explain why the bloods disagreed. Ordering a test had a price
+	# and no upside, which is the one inversion this project has a written rule
+	# against — and the whole second ward was standing on it.
+	#
+	# It was invisible because of the draw. The frontier probe runs at seed
+	# 31337, which deals Ibarra rather than Lomax, and Ibarra was the one
+	# authored without the flag at all — so the ward signed off honestly for as
+	# long as its own thesis was switched off, and giving her the flag her
+	# examination line has always described is what made the probe say so.
+	#
+	# So: if the doctor examined them and they are genuinely unwell, a normal
+	# result is a fact about the laboratory, not about the doctor. If they did
+	# NOT examine them, it stands — a note against a clear result with nothing
+	# behind it is exactly what this rule is for. And if they examined them and
+	# the patient is WELL, it stands and it should: they looked, found nothing,
+	# and wrote it up as unwell anyway.
 	for r in list:
 		if r.claim != ChartEntry.Claim.RESULT_NORMAL:
+			continue
+		if _first_hand(t):
 			continue
 		for e in list:
 			if not e.supports_stay() or e.author == ChartEntry.Author.MACHINE:
@@ -662,13 +730,22 @@ static func _objective_refutes(pid: String, list: Array) -> Array:
 ## that they were fine, then the record no longer explains why they were still in
 ## the bed when the night was billed. Patching a hole at nine o'clock removes the
 ## reason for the bed at ten.
-static func _justification_undermined(pid: String, list: Array) -> Array:
+static func _justification_undermined(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
 	var last_support = null
 	var later_clear = null
 	for e in list:
 		if e.supports_stay():
 			last_support = e
+		# A CLEAR RESULT ON SOMEBODY YOU EXAMINED AND FOUND UNWELL IS NOT YOU
+		# UNDERMINING YOURSELF. Same carve-out and same reason as
+		# `_objective_refutes` above: on the two wards built around a body no
+		# document can describe, the bloods come back normal because the bloods
+		# cannot see it, and the doctor who ordered them is the one who went and
+		# looked. Your own later SETTLED note still counts — that IS you
+		# undermining yourself, and it is the compounding mechanic the design
+		# rests on. Only the machine gets the benefit of the doubt, and only
+		# when there was something at the bedside to find.
 		# YOUR OWN later note, or a result you ordered — not a nurse's. Being
 		# contradicted by a colleague is `conflicting_observations` and counting
 		# it here as well was double jeopardy: a single fabricated line produced
@@ -678,7 +755,7 @@ static func _justification_undermined(pid: String, list: Array) -> Array:
 		elif e.supports_discharge() and last_support != null \
 				and e.stated_minute > last_support.stated_minute \
 				and (e.author == ChartEntry.Author.YOU
-					or e.author == ChartEntry.Author.MACHINE):
+					or (e.author == ChartEntry.Author.MACHINE and not _first_hand(t))):
 			later_clear = e
 	if last_support == null or later_clear == null:
 		return out

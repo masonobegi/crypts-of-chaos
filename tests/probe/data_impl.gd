@@ -7,6 +7,15 @@ extends RefCounted
 var tree: SceneTree = null
 var bad := 0
 
+## THE THREE FLAGS THAT DECIDE HOW A TRUTH IS REACHED, and therefore what a ward
+## IS. `only_visible_in_person` takes the patient away from the rounds, the
+## nurse and the lab; `test_reveals` hands the lab back; `colleague_wrong` makes
+## the registrar repeat his morning opinion in his own name instead of going to
+## look. A ward's thesis is which of these its ill patient carries, so the two
+## ends of a ward's ill-pair must carry the same ones or the thesis is a coin
+## flip the player cannot see.
+const DISCOVERY := ["only_visible_in_person", "test_reveals", "colleague_wrong"]
+
 func _fail(m: String) -> void:
 	bad += 1
 	print("  MISSING: " + m)
@@ -29,6 +38,7 @@ func run() -> void:
 		var beds := {}
 		var unwell := 0
 		var premium := 0
+		var pair_discovery: Array = []
 		for c in roster:
 			var id := String(c.get("id", "?"))
 			for k in required:
@@ -146,6 +156,32 @@ func run() -> void:
 				if not (has_ill and has_well):
 					_fail("ward %d slot %d is paired but cannot go both ways"
 						% [day + 1, int(b)])
+				# AND BOTH ENDS OF THE PAIR MUST BE FOUND THE SAME WAY.
+				#
+				# Tier keeps the money the same and truth keeps the honest hold where
+				# the ward says it is; neither says anything about HOW that truth is
+				# reached, and that is the whole thesis of a ward. The second ward is
+				# "a body the chart cannot describe" and the fourth is "somebody
+				# else's decision", and each of them had its mechanic on exactly ONE
+				# end of its pair: Lomax was `only_visible_in_person` and Ibarra was
+				# not; Ashworth carried all three discovery flags and Castellanos
+				# carried none. So on half of every career's nights on those two
+				# wards — decided by a coin flip nobody can see — the ward played as
+				# an ordinary read-the-chart ward with its premise switched off, and
+				# `test_reveals` was authored on ONE person in the whole game who
+				# appears on one side of one coin. Nothing could catch it: both ends
+				# were the same tier, both could go both ways, and every authored
+				# measurement in this repo plays seed 0.
+				var ill_flags: Array = []
+				for alt in cands:
+					if bool(alt.get("truly_well", true)):
+						continue
+					var found: Array = []
+					for k in DISCOVERY:
+						if bool(alt.get(k, false)):
+							found.append(k)
+					ill_flags.append([String(alt["id"]), found])
+				pair_discovery.append(ill_flags)
 				# Exactly one of the pair is ill on any draw, so the ward's count
 				# of genuinely ill people is unchanged by the flip. Counted once,
 				# on the lower-numbered bed of the pair.
@@ -155,6 +191,17 @@ func run() -> void:
 				unwell += 1
 			if t0 == Cases.Tier.PREMIUM:
 				premium += 1
+		# ...compared across the two beds, now that both have been walked.
+		for i in pair_discovery.size():
+			for j in range(i + 1, pair_discovery.size()):
+				for a in pair_discovery[i]:
+					for b2 in pair_discovery[j]:
+						if Array(a[1]) == Array(b2[1]):
+							continue
+						_fail("ward %d: %s is found by [%s] and %s by [%s] — the two "
+							% [day + 1, String(a[0]), ", ".join(PackedStringArray(a[1])),
+								String(b2[0]), ", ".join(PackedStringArray(b2[1]))]
+							+ "ends of a ward's pair must be found the same way")
 		if unwell < 1:
 			_fail("ward %d has nobody who genuinely needs a bed" % (day + 1))
 		var combos := 1

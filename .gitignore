@@ -29,3 +29,6 @@ Thumbs.db
 tests/_*.gd
 tests/tmpcheck/
 tests/scratch/
+
+# Agent worktrees, created by the Workflow tool.
+.claude/worktrees/

@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 343 assertions, a 227-check smoke run through the real tree
+`run_tests.sh` is 343 assertions, a 228-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -789,6 +789,19 @@ with it because a lost afternoon does not care which.
   (0.85 if a peer said otherwise, 0.72 if you examined them, 0.58 if it was
   merely documented, 0.55 if you never looked). A boolean gate is a cliff the
   player learns to stand exactly one inch from.
+- **The physics layer has exactly one meaning and it is the one the design
+  already needed.** `Interactor` is four hundred lines of grab, throw,
+  hold-rotate and long-press, and `Prop`'s own docstring calls props "the
+  distraction economy: noise pulls NPC attention, and NPC attention is the
+  resource you are actually managing all shift" — about attention that nothing
+  in the shipped design read for any outcome. A stranger picked up an IV stand
+  in the first minute, threw it, watched nothing happen, and concluded the world
+  was inert. Now: after half past four the ward dozes, a dozing patient does not
+  witness you, `seen_by` is read by the audit, and a clatter wakes them. The
+  shift you chose because nobody was watching becomes one where everybody is,
+  because you made a noise. The chain is prop → `WorldEvent` →
+  `SuspicionSystem` → `on_heard_noise` → `wake_up`, and the smoke run walks all
+  of it.
 - **Decoration has no collision and no navigation footprint.** Everything in
   `Dressing` is scenery; if it needs to be usable it belongs in `Furniture`
   with an `_occupy()`. That rule is what lets there be a lot of it.

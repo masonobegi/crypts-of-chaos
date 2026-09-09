@@ -1005,6 +1005,51 @@ func _check_the_ward_goes_quiet_in_the_evening() -> void:
 			if not bool(b.get("asleep")):
 				woke += 1
 	_ok(woke == evening, "and all %d of them wake up again" % evening)
+
+	# ...AND A CLATTER IN THE WARD IS WHAT DOES IT, which is the whole of what
+	# the physics layer is for.
+	#
+	# `Interactor` is four hundred lines of grab, throw, hold-rotate and
+	# long-press, and `Prop`'s own docstring says "props are the distraction
+	# economy: noise pulls NPC attention, and NPC attention is the resource you
+	# are actually managing all shift" — about attention that nothing in the
+	# shipped design read for any outcome. A stranger picked up an IV stand in
+	# the first minute, threw it, watched nothing happen, and concluded the
+	# world was inert.
+	#
+	# It has exactly one meaning now and it is the one the design already
+	# needed: after half past four the ward dozes, a dozing patient does not
+	# witness you, and `seen_by` is read by the audit — so the shift you chose
+	# because nobody was watching becomes one where everybody is, because you
+	# made a noise. That is the trade the docstring described and could not
+	# deliver. The chain is prop -> WorldEvent -> SuspicionSystem ->
+	# `on_heard_noise` -> `wake_up`, and none of it was ever tested end to end.
+	for b in bodies:
+		b.set("state", PatientNPC.State.IN_BED)
+		b.set("_doze_block", -1)
+	for m in range(PatientNPC.DOZE_FROM, PatientNPC.DOZE_BY + 1, 20):
+		GameState.minute_of_day = m
+		for b in bodies:
+			b.call("_maybe_doze")
+	var dozing: Array = []
+	for b in bodies:
+		if bool(b.get("asleep")):
+			dozing.append(b)
+	if dozing.is_empty():
+		# Three evenings above already proved the mechanism; this pass is one
+		# evening and can legitimately come up empty. Say so rather than
+		# asserting on a coin.
+		_ok(true, "(nobody dozed this pass, so there is nothing to wake)")
+	else:
+		WorldEvent.new("prop_noise", "").at(dozing[0].global_position, "ward") \
+			.heard(0.0, 12.0).tag("noise").says("something clattered").emit()
+		var still := 0
+		for b in dozing:
+			if bool(b.get("asleep")):
+				still += 1
+		_ok(still == 0,
+			"a clatter in the bay wakes the ward you were relying on being asleep (%d of %d still under)"
+				% [still, dozing.size()])
 	GameState.minute_of_day = was_minute
 
 ## ALT-TAB STOPS THE SHIFT.

@@ -21,10 +21,11 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 349 assertions, a 244-check smoke run through the real tree
+`run_tests.sh` is 363 assertions, a 263-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
-2,601-strategy adversarial search per ward, two playthroughs driven entirely by
+2,601-strategy adversarial search per ward plus an honest day on all 128 boards
+the game can deal, two playthroughs driven entirely by
 the input actions a controller sends — the first two minutes, and a whole shift
 from the briefing to the next morning — a check that the game prints nothing it
 should not while being played, and a boot through the real main menu. Every
@@ -935,6 +936,53 @@ with it because a lost afternoon does not care which.
     to add the stems up now — `test_ward.gd`'s four-passes-are-not-one-pass
     measurement broke on exactly that, which is the hazard the handoff flagged.
 
+93. **A VERB THAT WRITES IN SOMEBODY ELSE'S NAME IS INVISIBLE TO EVERY RULE
+    THAT READS `Author.YOU`.** `ask_patient` is the one verb in the game that
+    manufactures a reason out of nothing, and it signs the entry
+    `Author.PATIENT` — so `_reads_own_chart`, which existed precisely to punish
+    writing on the chart of somebody who reads it, could not see the one line
+    on that chart the patient had most reason to object to. On two dice going
+    your way (they agree, and they do not remember whose idea it was) leading a
+    perfectly well premium patient was eight hundred and fifty pounds with no
+    trace at all. It survived four shipped wards because on every one of them
+    the premium well bed happened to carry something ELSE — Sam Oduya tells
+    everybody, Douglas Pyne was admitted overnight by a colleague — and the
+    sixth ward, whose premium bed carries neither, went dominant on three
+    adversarial seeds out of four: the most profitable night on it was also a
+    clean one, which is the single property the whole economy stands on. The
+    rule reads the attributed line now, gated on BOTH dice having gone your way
+    so it cannot double up with `_patient_no_recall` or
+    `_symptom_was_suggested`. **Grep any rule that names an `Author` for the
+    verbs that write under the other ones.**
+94. **A HANDOVER NOTE THAT SUPPORTS THE STAY IS DATED BEFORE THE MORNING'S
+    BLOODS COME BACK.** `_objective_refutes` fires when a normal result post-
+    dates an entry supporting the hold, and the night staff write at seven —
+    so a `SOCIAL` claim in the handover meant every honest day on that board
+    came out FLAGGED for ordering a blood test. Every other social bed in the
+    game is handed over as `MOBILISING` or `SETTLED` and nobody had ever
+    written down why: the night staff record what they SAW, and the reason a
+    bed is held for a broken stairlift is the day doctor's to write. It cost
+    eight of the sixteen boards on a new ward and looked exactly like an
+    economy fault.
+95. **A COUPON-COLLECTOR CHECK HAS TO BE SIZED FROM THE NUMBER OF COUPONS.**
+    `draws_impl` swept a fixed two thousand seeds and demanded every ward
+    ORDER appear. That is true of four wards — 24 permutations — and
+    arithmetically impossible for six: 720 permutations over 2,000 uniform
+    draws covers about 675 of them, so a perfectly uniform rotation failed the
+    moment a fifth ward existed. Collecting n coupons takes about n·ln(n)
+    draws; size the sweep from n. **And the line that reports it printed "takes
+    all %d permutations" with the count it had just failed on**, so the sweep
+    announced itself as complete two lines under its own failure.
+96. **TWO FINDINGS DECIDED THE PATIENT'S GENDER FOR THEM, AND THE GREP COULD
+    NOT SEE EITHER.** `_check_nobody_is_misgendered` only inspects quoted
+    strings that also contain a `%s` — a name substituted into a sentence that
+    has already decided who the person is — and `_grateful_witness` ("He was
+    very complimentary about you") and `_symptom_was_suggested` ("He says you
+    asked him about it") have no `%s` in them at all. Both are read out loud at
+    the review, and between them the four people carrying those flags include
+    two women. `Cases.about` templates both now. A grep that requires a second
+    marker misses every line that simply hardcodes one person.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -1100,7 +1148,7 @@ with it because a lost afternoon does not care which.
   strike total that never reset. There are no achievements and no stats
   dictionary — both existed, both were read by nothing, and both were cut.
 - **Content lives in `Cases`, and adding a patient must not require touching a
-  system.** Forty-three people across four wards, each a dictionary of authored
+  system.** Sixty-four people across six wards, each a dictionary of authored
   strings; `tests/probe/data_run.gd` walks every one and fails on any field a
   system would otherwise silently default. If a new kind of patient needs a new
   `if` in `WardDay`, the data model is wrong, not the patient.
@@ -1138,15 +1186,18 @@ with it because a lost afternoon does not care which.
   plays — `setup()` pins it.
 - **The ORDER of the wards is drawn too, and seed 0 is the old order.** Night
   one was always the Marchetti ward and night four always the one Dr Costa
-  covered, and because the four wards are the four LESSONS, that single `%`
+  covered, and because each ward is a LESSON, that single `%`
   was the largest piece of transferable knowledge in the game: a returning
   player walked onto every ward already knowing which verb it was about.
   `Cases.pool_index(day)` is a per-career permutation with a fresh one every
-  cycle, so every ward is still visited exactly once per four nights — the
+  cycle, so every ward is still visited exactly once per cycle — the
   pressure curve and the debt arithmetic are unchanged — but which one is
-  something you find out by reading the handover. Anything that pairs a night
+  something you find out by reading the handover. There are SIX wards now, so a
+  nine-night career visits all six before it repeats anything, and the cycle
+  length is `DAYS.size()` everywhere rather than a four written down. Anything
+  that pairs a night
   with a ward-indexed table (`PRIOR_BY_DAY`, `ILL_PAIR_BY_DAY`, `DAYS`) must go
-  through it, and anything that GROUPS results by night is averaging four
+  through it, and anything that GROUPS results by night is averaging several
   different wards together — `draws_impl` counts deals per WARD, and
   `enumerate_pool(index)` is the ward-space form of `enumerate_draws(day)`.
 - **Anything seeded gets its distribution counted, not eyeballed.** The draw has
@@ -1164,14 +1215,14 @@ with it because a lost afternoon does not care which.
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 359 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 363 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
 | `smoke_run.gd` | "everything compiles and nothing works" — 263 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | the one thing that can see a face: it MEASURES how much room each subject has left below its own skin for the four features that are all darker than it, and exits non-zero when a face runs out. It is also the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |
 | the fixture audit (in `smoke_run.gd`) | anything standing on nothing. Every `Fixture`'s footprint is tested against everything underneath it and reported as "chair floats by 4cm" or "bin is sunk by 11cm" — the failure two pieces of code that do not know about each other produce when they furnish the same square metre. |
-| `tests/probe/data_run.gd` | the authored content itself — forty people across four wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
+| `tests/probe/data_run.gd` | the authored content itself — sixty-four people across six wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
 | `tests/probe/econ_run.gd` | FOUR WAYS TO PLAY WITHOUT LOOKING AT ANYBODY. The career probe asserts "never looking NEVER pays it off" about exactly one blind policy — discharge all five, every night — which is the laziest blind play there is. The interesting one READS THE HANDOVER: keep whoever the night staff already wrote up as unwell, look at nobody, write nothing. It used to clear the whole debt in eleven nights and never be struck off. The file that found that printed four tables, asserted nothing and was not in `run_tests.sh`, so the largest design inversion in the game was discovered and reported to nobody — the same shape as a harness whose last pipeline stage is `head`. It fails on a blind career that PAYS and on one that neither pays nor is struck off in twenty-five nights, because a career that never ends is the loop the debt rework exists to stop. |
 | `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays twenty nights eight ways (coast, honest, honest+corroborated, restrained, skilled, one lie, greedy, adaptive). It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. Run on three seeds, because nine wards drawn from four pools is not the same nine wards twice; `CAREER_SEED` overrides. |
 | `tests/probe/frontier_run.gd` | dominant strategies, and whether a day is a BUDGET. It fails on a checklist that fits in a shift, on an honest day that does not, and on a top-of-the-money night that is also a clean one — that last property had been PRINTED and never asserted for as long as the probe existed. It also plays an honest day on all 52 reachable boards rather than on the one its seed deals: "every ward has an honest day that signs off" was a claim about four boards out of fifty-two, and the four it happened to pick were the four where it was true. The second ward could not be signed off on ANY of its twelve. 2,601 plays a ward — every subset of beds up to three, crossed with thirteen ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with whether the day was played DILIGENTLY, crossed with how you answer in the room — reported as the most money made at each verdict. Two properties: **the top figure must not be reachable signed off**, and **every ward must have an honest day that signs off**. The second is why the 2,601st play is not a strategy at all but the day a careful person plays, written out by hand: the search alone reported ward four as having no clean day, and that was a claim about the search. In `run_tests.sh`; re-run it after touching the economy, the contradiction rules, the bed audit or a roster. |

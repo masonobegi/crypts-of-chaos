@@ -2961,3 +2961,102 @@ The README had drifted into the same fault as a constant nothing reads, in the
 file a buyer reads first: forty patients where there are 43, 52 deals where a
 career reaches 88, and one shipping item described as still open that had been
 done for a day. The three computable numbers are asserted by the data probe now.
+
+---
+
+## Two more wards, and the three rules they broke
+
+Sixty-four authored people across six wards now, 128 boards a career can reach.
+The two new ones are prose rather than engineering — every field a system would
+otherwise silently default, one handover note each, and a palette apiece — but
+between them they broke three rules that four wards had never touched, and all
+three had been wrong for a long time.
+
+**Ward five, "the family reads the chart."** Tiers mirror ward one exactly, so
+the money is a shape the frontier probe has already searched two and a half
+thousand ways. What is new is who else is in the building: four of the ten have
+somebody who reads the notes — a son who photographs the drug chart, a daughter
+who is a nurse, a wife with a ring binder, a retired ward sister who ran a ward
+like this one for twenty-two years. `family_read_it` is harsher when there was
+nothing written down before they arrived, so the ward teaches writing the reason
+BEFORE the visiting hour, which none of the first four is about.
+
+**Ward six, "the patient is the witness."** The other five hide the truth in a
+document, a body, a colleague or a household. This one puts it in the mouths of
+people who are awake, articulate and comparing notes with each other across the
+bay. Cyril Mott spikes a temperature between two sets of observations and tells
+everybody except the person holding the pen. Ivy Driscoll was sick twice in the
+night and is charted as settled. Aurelia Arbuthnot reads her own file the way
+she read files for nineteen years on the bench. `reads_own_chart` and
+`tells_everyone` are on both ends of the ward's pair and on both candidates at
+bed four, so no draw of it deals with its premise switched off.
+
+### The verb that wrote in somebody else's name
+
+`ask_patient` is the one verb in the game that manufactures a reason out of
+nothing, and it signs the entry `Author.PATIENT`. `_reads_own_chart` read
+`Author.YOU` entries only — so the rule that exists to punish writing on the
+chart of somebody who reads it could not see the one line on that chart the
+patient had most reason to object to. On two dice going your way (they agree,
+and they do not remember whose idea it was) leading a perfectly well premium
+patient was eight hundred and fifty pounds with no trace at all.
+
+It survived four shipped wards because on each of them the premium well bed
+happened to carry something else: Sam Oduya tells everybody, Douglas Pyne was
+admitted overnight by a colleague who wrote it down. Ward six's premium bed
+carries neither, and the adversarial search went dominant on three seeds out of
+four — the most profitable night on that ward was also a clean one, which is the
+single property the whole economy stands on. The rule reads the attributed line
+now, gated on both dice having gone your way so it cannot double up with
+`_patient_no_recall` or `_symptom_was_suggested`. What it says is the thing
+neither of those can: she agreed, she remembers agreeing, and she still read the
+sentence you wrote it up as and wanted to know who had chosen the words.
+
+### And the doctor who went and looked
+
+The same rule then convicted the opposite person. Ward six has two patients who
+are genuinely, expensively ill and read the microbiology every morning, and
+against them `_reads_own_chart` fired at 0.66 on a doctor who had drawn the
+curtains, examined them, found what was wrong and written it up in her own name
+— on every one of the twenty-four boards that ward can deal. Its own question
+says "nobody had been near {them}", about somebody who had been. It takes the
+same carve-out `_objective_refutes` and `_justification_undermined` already had,
+and the same design rule is underneath all three: nothing may fire on "wrote it
+down" and not on "went and looked first", or the game pays you to decide blind.
+
+### Three harnesses that were asserting a number rather than a property
+
+- `draws_impl` swept a fixed two thousand seeds and demanded every ward ORDER
+  appear. True of four wards — 24 permutations — and arithmetically impossible
+  for six: 720 permutations over 2,000 uniform draws covers about 675, so a
+  perfectly uniform rotation failed the moment a fifth ward existed. And the
+  line reporting it printed "takes all %d permutations" with the count it had
+  just failed on, two lines under its own failure.
+- `test_ward.gd` asserted that "day five comes round to the first ward again",
+  which was a claim about the number four rather than about the rotation.
+- The crosshair check strips a patient's own condition words out of the bedside
+  prompt before comparing what an ill patient's prompt says against a well one's
+  — with a bare `replace(word, "")`. Ward six is the first to author a condition
+  containing a standalone "a", so stripping that token removed every letter a in
+  the string and left "ntibiotics," behind as a word no other patient has.
+
+### Two findings that decided the patient's gender for them
+
+`_grateful_witness` said "He was very complimentary about you" and
+`_symptom_was_suggested` said "He says you asked him about it". Both are read
+out loud at the review, and between them the people carrying those flags include
+three women. The misgendering grep only inspects quoted strings that also
+contain a `%s` — a name substituted into a sentence that has already decided who
+the person is — and neither of these has a `%s` in it at all. A grep that
+requires a second marker misses every line that simply hardcodes one person.
+
+### A handover note that supports the stay
+
+Ward five's social bed was handed over as a `SOCIAL` claim, which is what it is
+in prose and the wrong thing on a chart. `_objective_refutes` fires when a
+normal result post-dates an entry supporting the hold, and the night staff write
+at seven — so ordering a blood test on that bed flagged eight of the ward's
+sixteen boards. Every other social bed in the game is handed over as
+`MOBILISING` or `SETTLED` and nobody had ever written down why: the night staff
+record what they SAW, and the reason a bed is held for a broken stairlift is the
+day doctor's to write, which is the verb the ward is about.

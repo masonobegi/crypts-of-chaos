@@ -43,6 +43,12 @@ const SHOTS := [
 	# invisible to twenty-one frames of one morning, because every one of them
 	# was night one.
 	["02d_ward_another", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 3],
+	# ...AND ONE FROM EACH HALF OF THE TABLE. Six wards is six palettes, and a
+	# palette is the one thing in `Cases.WARDS` that no assertion can see: the
+	# repaint either happened or the room is still the colour it was built in,
+	# and both look like a decision in the source.
+	["02e_ward_beech", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 5],
+	["02f_ward_2a", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 6],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],

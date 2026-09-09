@@ -645,7 +645,12 @@ func test_the_second_ward_is_a_different_problem() -> void:
 	for id in ids3:
 		t.ok(not ids.has(id) and not ids2.has(id),
 			"%s is on neither of the first two wards" % id)
-	t.ok(Cases.roster(5) == Cases.roster(1), "and day five comes round to the first ward again")
+	# ...AND THE CYCLE IS AS LONG AS THE WARD LIST, not four. This said "day
+	# five" for as long as there were four wards, and a fifth and sixth made it
+	# a claim about a number rather than about the rotation.
+	t.ok(Cases.roster(1 + Cases.DAYS.size()) == Cases.roster(1),
+		"and the cycle comes round to the first ward again after %d nights"
+			% Cases.DAYS.size())
 
 	# The money. Honesty must clear the debt on BOTH wards or the second one is
 	# a difficulty spike rather than a different problem.

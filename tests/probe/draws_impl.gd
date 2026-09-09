@@ -241,7 +241,20 @@ func _check_the_draw_is_actually_random() -> void:
 	# above — which is exactly how the slot draw failed twice.
 	var orders := {}
 	var first_cycle_complete := true
-	for s2 in range(1, 2001):
+	# COUPON COLLECTOR, AND THE SAMPLE HAS TO KNOW HOW MANY COUPONS THERE ARE.
+	#
+	# This swept a fixed two thousand seeds and demanded every permutation, which
+	# was true of four wards (24 of them, and 2000 draws sees all 24 with room to
+	# spare) and is arithmetically impossible for six: 720 permutations over 2000
+	# uniform draws covers about 675 of them, so a PERFECTLY uniform rotation
+	# failed the check the moment a fifth ward existed. Collecting n coupons
+	# takes about n·ln(n) draws, so the sweep is sized from n with a margin
+	# rather than pinned to the number that happened to work once.
+	var want_orders := 1
+	for i in range(2, Cases.DAYS.size() + 1):
+		want_orders *= i
+	var order_seeds: int = maxi(2000, int(want_orders * (log(float(want_orders)) + 5.0)))
+	for s2 in range(1, order_seeds + 1):
 		GameState.seed_value = s2
 		var o: Array = []
 		for d in range(1, Cases.DAYS.size() + 1):
@@ -253,15 +266,16 @@ func _check_the_draw_is_actually_random() -> void:
 		if seen.size() != Cases.DAYS.size():
 			first_cycle_complete = false
 	GameState.seed_value = was
-	var want_orders := 1
-	for i in range(2, Cases.DAYS.size() + 1):
-		want_orders *= i
 	if orders.size() < want_orders:
-		_fail("the ward order takes only %d of its %d permutations over 2000 seeds"
-			% [orders.size(), want_orders])
+		_fail("the ward order takes only %d of its %d permutations over %d seeds"
+			% [orders.size(), want_orders, order_seeds])
 	if not first_cycle_complete:
 		_fail("a career's first %d nights do not visit every ward" % Cases.DAYS.size())
-	print("  the ward order takes all %d permutations, every career visiting all %d wards"
-		% [orders.size(), Cases.DAYS.size()])
+	# AND THE LINE THAT REPORTS IT SAYS WHAT WAS ACTUALLY COUNTED. It used to
+	# print "takes all %d permutations" with `orders.size()` in it, so a sweep
+	# that had just failed announced itself as complete two lines later.
+	print("  the ward order takes %d of its %d permutations over %d seeds, "
+		% [orders.size(), want_orders, order_seeds]
+		+ "every career visiting all %d wards" % Cases.DAYS.size())
 	print("  %d distinct careers over 2000 seeds, every combination reachable"
 		% careers.size())

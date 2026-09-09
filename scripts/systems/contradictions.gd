@@ -556,10 +556,12 @@ static func _symptom_was_suggested(pid: String, list: Array, t: Dictionary) -> A
 		f.entries = PackedStringArray([e.id])
 		f.axis = "where the symptom came from"
 		f.severity = 0.55
-		f.question = ("He says you asked him about it. Several times. Did he "
+		f.question = Cases.about(pid,
+			"{They} {v:say} you asked about it. Several times. Did {they} "
 			+ "volunteer this, or did you go looking for it?")
-		f.because = ("The patient remembers being asked about the symptom before "
-			+ "he ever reported it.")
+		f.because = Cases.about(pid,
+			"The patient remembers being asked about the symptom before "
+			+ "{they} ever reported it.")
 		out.append(f)
 	return out
 
@@ -582,10 +584,15 @@ static func _grateful_witness(pid: String, list: Array, t: Dictionary) -> Array:
 	f.patient_id = pid
 	f.axis = "what the patient told me himself"
 	f.severity = 0.50
-	f.question = ("He was very complimentary about you. He also told me, without "
-		+ "my asking, how many times you brought up feeling faint.")
-	f.because = ("The patient volunteered a detailed account of the conversation, "
-		+ "because he was grateful.")
+	# WHOEVER IS IN THE BED. Written about Sam Oduya and welded to him: the
+	# other three people who carry this flag include two women, so on three
+	# wards out of six the ward sister quoted a man who was not there.
+	f.question = Cases.about(pid,
+		"{They} {were} very complimentary about you. {They} also told me, "
+		+ "without my asking, how many times you brought up feeling faint.")
+	f.because = Cases.about(pid,
+		"The patient volunteered a detailed account of the conversation, "
+		+ "because {they} {were} grateful.")
 	out.append(f)
 	return out
 
@@ -679,10 +686,70 @@ static func _reads_own_chart(pid: String, list: Array, t: Dictionary) -> Array:
 	var out: Array = []
 	if not bool(t.get("reads_own_chart", false)):
 		return out
+	# ...UNLESS SOMEBODY HAD BEEN NEAR THEM, which is what this finding says in
+	# so many words: "nobody had been near {them}". The four people who carried
+	# this flag until the sixth ward existed were all WELL, so holding any of
+	# them was a lie however carefully it was documented and the rule was right
+	# every time it fired. Ward six has two who are genuinely, expensively ill
+	# and read the microbiology every morning — and against them the rule
+	# convicted a doctor who had drawn the curtains, examined them, found what
+	# was wrong and written it up in her own name, at 0.66, on every one of the
+	# twenty-four boards that ward can deal. Same carve-out and same reason as
+	# `_objective_refutes` and `_justification_undermined`, and the same design
+	# rule underneath all three: nothing may fire on "wrote it down" and not on
+	# "went and looked first", or the game pays you to decide blind.
+	if _first_hand(t):
+		return out
 	var yours = null
 	for e in list:
 		if e.author == ChartEntry.Author.YOU and e.supports_stay():
 			yours = e
+	# ...AND A LINE WITH THEIR OWN NAME ON IT THAT YOU PUT THERE.
+	#
+	# THE HOLE THIS RULE HAD FROM THE DAY IT WAS WRITTEN. It read `Author.YOU`
+	# entries only, and `ask_patient` writes `Author.PATIENT` — so the one verb
+	# in the game that manufactures a reason out of nothing was the one verb a
+	# woman who reads her own chart every evening could not see. Leading a
+	# premium patient who is perfectly well was, on two rolls of the dice going
+	# your way, a free eight hundred and fifty pounds with no trace on the
+	# record, and on the sixth ward the adversarial search found it on three
+	# seeds out of four: the most profitable night on that ward was also a clean
+	# one, which is the single property the whole economy rests on.
+	#
+	# The two dice are `recalls` (they will stand behind it) and `suggested`
+	# (they remember whose idea it was), and the finding is gated on BOTH going
+	# your way, because when either does not there is already a finding for it
+	# and this project has a written rule against double jeopardy. What it says
+	# is the thing those other two cannot: she agreed, she remembers agreeing,
+	# and she still read the sentence you wrote it up as and wanted to know who
+	# had chosen the words.
+	if yours == null:
+		var recalls: Array = t.get("patient_recalls", [])
+		var suggested: Array = t.get("patient_suggested", [])
+		for e in list:
+			if e.author != ChartEntry.Author.PATIENT or not e.at_your_request:
+				continue
+			if not e.supports_stay():
+				continue
+			if not recalls.has(e.id) or suggested.has(e.id):
+				continue
+			yours = e
+		if yours != null:
+			var fa := Finding.new()
+			fa.kind = "reads_own_chart"
+			fa.patient_id = pid
+			fa.entries = PackedStringArray([yours.id])
+			fa.axis = "what the patient read"
+			fa.severity = 0.80 if not yours.seen_by.is_empty() else 0.66
+			fa.question = Cases.about(pid,
+				"%s showed me the line with {their} own name on it. {They} "
+				+ "{do}n't dispute saying it. {They} {do} dispute who wrote it "
+				+ "down like that.") % _who(t)
+			fa.because = Cases.about(pid,
+				"You took a symptom down in the patient's name, and {they} "
+				+ "{v:read} {their} own chart.")
+			out.append(fa)
+			return out
 	if yours == null:
 		return out
 	var f := Finding.new()

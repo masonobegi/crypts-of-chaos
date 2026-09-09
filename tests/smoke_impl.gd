@@ -281,7 +281,7 @@ func _check_the_verbs_work() -> void:
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
 	_check_nobody_has_their_eyes_inside_their_head()
-	_check_the_four_wards_are_four_rooms()
+	_check_every_ward_is_its_own_room()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -1990,9 +1990,18 @@ func _check_the_crosshair_keeps_the_secret(w) -> void:
 		var ill: bool = not bool(Cases.by_id(p.id).get("truly_well", true))
 		# Drop the words that are legitimately theirs: their name and the
 		# condition the chart already prints in the morning briefing.
-		var text := String(pr[1])
+		# WHOLE WORDS, PADDED. This was a bare `replace(own, "")`, and the
+		# sixth ward is the first to author a condition containing a standalone
+		# "a" — "Rash after a course of antibiotics, resolving" — so stripping
+		# that one token removed EVERY letter a in the string and left
+		# "ntibiotics," behind as a word no other patient has. The check went
+		# red on one seed in three for a phrase that was perfectly correct.
+		var text := " %s " % String(pr[1])
 		for own in String(Cases.by_id(p.id).get("condition", "")).split(" "):
-			text = text.replace(String(own), "")
+			var tok := String(own).strip_edges()
+			if tok == "":
+				continue
+			text = text.replace(" %s " % tok, " ")
 		for word in text.split("·"):
 			var k := String(word).strip_edges()
 			if k == "":
@@ -2328,7 +2337,7 @@ func _check_nobody_has_their_eyes_inside_their_head() -> void:
 ## changed on the nodes — the floor's material, the dado's, and the text of the
 ## sign above the beds. Not by reading `Cases.WARDS`, which would only prove the
 ## table has four rows in it.
-func _check_the_four_wards_are_four_rooms() -> void:
+func _check_every_ward_is_its_own_room() -> void:
 	var h = tree.get_first_node_in_group("hospital")
 	if h == null:
 		_fail("no hospital to repaint")
@@ -2357,12 +2366,13 @@ func _check_the_four_wards_are_four_rooms() -> void:
 	GameState.day = was
 	h.reskin()
 	_ok(seen_name.size() == Cases.DAYS.size(),
-		"the four wards have four names (%s)" % ", ".join(PackedStringArray(seen_name.keys())))
+		"the %d wards have %d names (%s)" % [Cases.DAYS.size(), seen_name.size(),
+			", ".join(PackedStringArray(seen_name.keys()))])
 	_ok(seen_floor.size() == Cases.DAYS.size(),
-		"and four floors — the repaint reaches the mesh, not just the table (%d)"
+		"and a floor each — the repaint reaches the mesh, not just the table (%d)"
 			% seen_floor.size())
 	_ok(seen_dado.size() == Cases.DAYS.size(),
-		"and four dados, which is the colour field the eye actually reads (%d)"
+		"and a dado each, which is the colour field the eye actually reads (%d)"
 			% seen_dado.size())
 	# ...and the dado belongs to the WARD. The exterior runs used to span the
 	# whole depth of the building as one slab each, so repainting the ward's

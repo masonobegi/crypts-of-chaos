@@ -127,8 +127,8 @@ than printing them.
 
 One hospital floor built from a single layout table: a corridor, a five-bed
 ward, a nurses' station and your office. Hinged doors that block line of sight.
-**43 authored patients across 4 wards**, of whom five are dealt each morning —
-**88 boards** a career can reach, the order of the wards drawn per career as
+**64 authored patients across 6 wards**, of whom five are dealt each morning —
+**128 boards** a career can reach, the order of the wards drawn per career as
 well, and every one of those people written rather than generated.
 
 There are no art or audio assets. Every mesh is built from primitives at
@@ -176,15 +176,15 @@ If it ever goes wrong, that is the file to send.
 ## Tests
 
 ```
-358 assertions   — units, integration, save round-trips, floor connectivity
-254 smoke checks — boots the real scene and plays a whole shift, on three seeds
+363 assertions   — units, integration, save round-trips, floor connectivity
+263 smoke checks — boots the real scene and plays a whole shift, on three seeds
  32 ship checks  — is it a BUILD: identity, corrupt saves, RNG across a load
  39 playtests    — day-level, against 7 criteria: does the risk actually cost
                    anything, and is the biggest night on the board a dirty one
   6 properties   — career-level: does honest play pay it off, does greed not,
                    and can a career that never looks at anybody ever pay
-  4 wards        — 2,601 strategies searched per ward, adversarially
- 88 deals        — every board a career can reach, played honestly
+  6 wards        — 2,601 strategies searched per ward, adversarially
+128 deals        — every board a career can reach, played honestly
   2 play runs    — the buttons actually pressed, pad and keyboard
  25 screenshots  — rendered offscreen, because the count of bugs found only by
                    looking is now in double figures

@@ -163,3 +163,34 @@ of the comedy is in the gaps.
 
 The player finds out by being asked at eight o'clock, and every question names
 the two documents that produced it.
+
+---
+
+## What comes back from a previous night
+
+For a long time the answer was *only your mistakes*. `end_day` builds the
+readmission list out of "discharged and not fit to go", and that person is in a
+bed tomorrow with a new summary, a fresh opening line, an `audit_flag` and a line
+on the tannoy. A bed you KEPT — the one the whole investigation layer exists to
+find — vanished into the roster rotation and was never mentioned by anybody
+again, because three of the audit rules go out of their way to exempt an honest
+hold. So the reward for getting it right was that Sister Nkemelu did not ask a
+question about it.
+
+| Field / read | Where it lands | What it says |
+|---|---|---|
+| `overnight`, one per authored patient | the next morning's card, under **LAST NIGHT** | What the night was, for a bed you held. `Cases.overnight_notes` resolves it to finished sentences in `screen_day_over._carry` — before `GameState.day` moves, because a bed resolved after that is resolved against a different ward. |
+| `readmit_later` / `readmit_evening` / `readmit_pressed` / `readmit_on_your_note` | `WardDay.what_they_say`, via `readmission_of` | The rest of the conversation, the second time round. These four used to be ERASED and `pressed` restored from a `readmit_pressed` authored on nobody, so every readmission in the game had two things to say all day and shared one of them with thirty-nine other people. |
+| `Cases.debt_thread(remaining, behind)` | the morning card, above the money | Five bands of the balance times two registers — ahead of it, or behind it after a short night. Nothing else in `scripts/` was keyed on how long the career had run. |
+| `DoctorRecord.greeting()` | the handover, above the folder | The other half of `opening_line()`. That one needs three findings of a kind or a referral, so an honest player reached none of its branches and sat down opposite the same woman nine times in silence. |
+
+**Every held bed gets an overnight line, not only the ones that needed holding.**
+Prose for the right decisions and silence for the rest is a score wearing a
+fact's clothes, and nothing in this game grades the player's choice for them — so
+a well patient's night says what it was (nothing happened; she was dressed by
+six and asked which form she needed) and the reader draws their own conclusion.
+It is the same contract the End of Shift readback signed.
+
+A readmission is only ever somebody whose `truly_well` was false, so their
+`overnight` reads correctly the second time round: it was written for the night
+they should have been given the first time.

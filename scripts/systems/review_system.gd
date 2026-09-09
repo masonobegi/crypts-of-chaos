@@ -191,6 +191,209 @@ func _has_nurse_support(f, records: Records) -> bool:
 			return true
 	return false
 
+## WHAT SHE SAYS BACK, AND WHY THERE USED TO BE FOURTEEN OF THEM.
+##
+## One string was hard-coded per (Answer, outcome) pair — "She writes one word
+## and moves on.", "That isn't what I asked you.", and about a dozen others. A
+## career is nine handovers of up to five questions, so the player reads those
+## fourteen sentences something like forty-five times. Every other speaking part
+## in this game has variant sets: Adeyemi has three buckets of three, the
+## patients have five conversational states each and a different line for every
+## one of forty people. The one character the player is guaranteed to sit
+## opposite on every night of the career had none — and she is the character the
+## tone document specifically names, because "the ward sister's courtesy" is
+## where the comedy is supposed to live. Fourteen strings cannot carry withering
+## courtesy across nine mornings.
+##
+## TWO REGISTERS, AND THE SECOND ONE IS THE CAREER. `warm` is a reviewer doing
+## her job; `cold` is the same woman who has raised this exact kind of finding
+## about you twice already, or who has had to refer you. That escalation is what
+## `opening_line()` has always narrated and what the effects never once
+## reflected.
+##
+## CHOSEN BY INDEX, NOT BY `RNG.pick`. Three reasons, and the last one decided
+## it. A pick advances a named stream, and streams are saved and restored by
+## position (gotcha 70), so a screen that rebuilds on every answer would write
+## randomness into the save on a path nothing else touches. A pick can hand the
+## same sentence out three times in one conversation, which is the fault this
+## exists to fix. And an index on `record.nights` plus the question number walks
+## the list — so a career sees a different one every night by construction
+## rather than by luck, and the same review never repeats itself.
+const EFFECTS := {
+	"stand_by_ok": {
+		"warm": [
+			"She writes one word and moves on.",
+			"\"Fine.\" She turns the page before you have finished saying it.",
+			"She underlines something small and carries on down the list.",
+		],
+		"cold": [
+			"She writes one word. She has written that word about you before.",
+			"\"Observed.\" She says it the way you would read out a postcode.",
+		],
+	},
+	"stand_by_hardens": {
+		"warm": [
+			"She reads it again, and then reads it a third time.",
+			"\"Mm.\" She does not write anything, which is worse than if she had.",
+			"She holds the page nearer the light and says nothing for a while.",
+		],
+		"cold": [
+			"She does not read it again. She has read it enough times to know what it says.",
+			"\"You've said that before, doctor. It didn't cover it then either.\"",
+		],
+	},
+	"late_ok": {
+		"warm": [
+			"\"Everybody does. Try not to.\"",
+			"\"Half this ward writes at twenty to eight. I'd rather you didn't join them.\"",
+			"\"Late is not the same as wrong. It is not the same as right, either.\"",
+		],
+		"cold": [
+			"\"Everybody does. You do it more than everybody.\"",
+			"\"I'll take that. I am not going to keep taking it.\"",
+		],
+	},
+	"late_wrong": {
+		"warm": [
+			"\"That isn't what I asked you.\"",
+			"\"I know when you wrote it. I asked you what it says.\"",
+			"\"The time is not the difficulty here.\"",
+		],
+		"cold": [
+			"\"That isn't what I asked you. It wasn't last time either.\"",
+			"\"You do reach for that one, don't you.\"",
+		],
+	},
+	"defer_refused": {
+		"warm": [
+			"\"That isn't an answer to what I asked.\"",
+			"\"You can defer to her about a temperature. You cannot defer to her about a bed.\"",
+			"\"That is her opinion about one patient. I asked you about a pattern.\"",
+		],
+		"cold": [
+			"\"No. We have been round this one.\"",
+			"\"That isn't an answer, and you know by now that it isn't.\"",
+		],
+	},
+	"defer_ok": {
+		"warm": [
+			"She accepts it, and writes that down.",
+			"\"Right. Her observation over yours. I'll put that.\"",
+			"She writes 'defers to nursing' and does not look up while she does it.",
+		],
+		"cold": [
+			"She writes it down, and then writes something after it you cannot read upside down.",
+			"\"Her observation over yours. Again.\"",
+		],
+	},
+	"defer_looks_up": {
+		"warm": [
+			"Then she looks up.",
+			"Then she stops, and looks at you rather than at the folder.",
+			"Then she puts the pen down.",
+		],
+		"cold": [
+			"Then she looks up, and she does not look back down.",
+			"Then she closes the folder over her finger and waits.",
+		],
+	},
+	"nurse_wrong_scope": {
+		"warm": [
+			"\"She reviewed one of them. I'm asking about all of them.\"",
+			"\"Adeyemi is not a defence to a pattern, doctor. She's a nurse.\"",
+			"\"One bed. I have five of them here.\"",
+		],
+		"cold": [
+			"\"One bed, and you have offered me her for all five before.\"",
+			"\"She reviewed one of them. You know that isn't the question.\"",
+		],
+	},
+	"nurse_ok": {
+		"warm": [
+			"\"I'll ask her.\" She does, later, and it holds.",
+			"\"Then she'll say so.\" She asks Adeyemi on the way out, and Adeyemi does.",
+			"She writes Adeyemi's name beside yours, which is what you wanted.",
+		],
+		"cold": [
+			"\"I'll ask her.\" She does. It holds, and she notes that you sent her to ask.",
+			"She writes Adeyemi's name beside yours again. She has stopped writing it neatly.",
+		],
+	},
+	"reconcile_ok": {
+		"warm": [
+			"\"...All right. Yes. That happens.\"",
+			"\"Hm. That does hang together, actually.\"",
+			"She reads the two times, then reads them the other way round. \"Yes.\"",
+		],
+		"cold": [
+			"\"...All right. That one hangs together.\" She does not say which one didn't.",
+			"\"Yes. That happens.\" She writes the time down anyway.",
+		],
+	},
+	"clocks_ok": {
+		"warm": [
+			"\"Hm. I'll raise it with IT.\"",
+			"\"They have been out. I'll put it in the book with the others.\"",
+			"\"That would explain the stamp. It doesn't explain a great deal else.\"",
+		],
+		"cold": [
+			"\"I'll raise it with IT.\" She does not write anything down.",
+			"\"The clocks. Right.\" She writes the word 'clocks' and rings it.",
+		],
+	},
+	"clocks_wrong": {
+		"warm": [
+			"\"The clocks have nothing to do with this one.\"",
+			"\"There is no timestamp in this question, doctor.\"",
+			"\"That is an answer to a different folder.\"",
+		],
+		"cold": [
+			"\"The clocks. Again. No.\"",
+			"\"We are not going to do the clocks.\"",
+		],
+	},
+	"clocks_pattern": {
+		"warm": [
+			"She stops writing.",
+			"She stops writing, and puts the pen down flat on the page.",
+			"She stops writing and looks at you until you stop talking.",
+		],
+		"cold": [
+			"She stops writing. She was expecting that one.",
+			"She does not stop writing. She writes it down as the second time.",
+		],
+	},
+}
+
+## HAS SHE HEARD THIS FROM YOU BEFORE. `weight_for` is 1.0 + 0.28 per previous
+## finding of the kind, so two of them is 1.56 — compared against 1.5 rather than
+## 1.56 because that arithmetic is a float and a literal equal to it is the kind
+## of comparison that works everywhere except on the machine that matters.
+func _colder(f) -> bool:
+	if record == null:
+		return false
+	if record.referrals >= 1:
+		return true
+	return f != null and record.weight_for(String(f.kind)) >= 1.5
+
+## THE PICK HAPPENS AFTER `cleared` IS DECIDED, ALWAYS, and never feeds back into
+## it — the verdict has to stay a pure function of the answer, because
+## `playtest_impl` and `frontier_impl` between them drive this several thousand
+## times and read the outcome. Nothing in here reads or writes anything but text.
+func _effect(key: String, f) -> String:
+	var bank: Dictionary = EFFECTS.get(key, {})
+	var list: Array = Array(bank.get("cold" if _colder(f) else "warm", []))
+	if list.is_empty():
+		list = Array(bank.get("warm", []))
+	if list.is_empty():
+		return ""
+	# `transcript.size()` is how many questions she has already put to you
+	# tonight, and it is stable for a given question because the chosen string
+	# is stored in the transcript rather than re-derived. `nights` moves the
+	# whole conversation along one every morning.
+	var nights: int = record.nights if record != null else 0
+	return String(list[(nights + transcript.size()) % list.size()])
+
 ## Answer the question in front of you. Returns what it did, in plain words.
 func answer(choice: int, held_ids: Array) -> Dictionary:
 	var f = current()
@@ -207,16 +410,16 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 			# Insisting works on a small discrepancy and hardens a large one.
 			if f.severity < 0.5:
 				cleared = true
-				effect = "She writes one word and moves on."
+				effect = _effect("stand_by_ok", f)
 			else:
-				effect = "She reads it again, and then reads it a third time."
+				effect = _effect("stand_by_hardens", f)
 
 		Answer.WROTE_IT_LATE:
 			if f.kind == "backdated" or f.kind == "addendum_cascade":
 				cleared = true
-				effect = "\"Everybody does. Try not to.\""
+				effect = _effect("late_ok", f)
 			else:
-				effect = "\"That isn't what I asked you.\""
+				effect = _effect("late_wrong", f)
 
 		Answer.DEFER:
 			# YOU CANNOT DEFER TO A NURSING NOTE ABOUT A PATTERN. Deferring is
@@ -226,7 +429,7 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 			# used to clear for free, which is why five findings totalling 2.69
 			# could be talked to zero.
 			if f.patient_id == "" or f.kind == "no_reason_recorded":
-				effect = "\"That isn't an answer to what I asked.\""
+				effect = _effect("defer_refused", f)
 				transcript.append({
 					"kind": f.kind, "question": f.question, "answer": choice,
 					"effect": effect, "cleared": false, "because": f.because,
@@ -234,7 +437,7 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				})
 				return {"cleared": false, "effect": effect}
 			cleared = true
-			effect = "She accepts it, and writes that down."
+			effect = _effect("defer_ok", f)
 			_abandoned[f.patient_id] = true
 			# ...and if the bed was billed, you have just removed its reason.
 			if f.patient_id != "" and held_ids.has(f.patient_id):
@@ -247,7 +450,7 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				g.because = ("You told the reviewer, out loud, that the note keeping "
 					+ "this patient in was wrong. The night was billed on that note.")
 				extra.append(g)
-				effect += " Then she looks up."
+				effect += " " + _effect("defer_looks_up", f)
 
 		Answer.POINT_AT_NURSE:
 			# Only about the patient she actually reviewed. Pointing at Adeyemi
@@ -255,15 +458,15 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 			# stay" — and the option is only on the menu when a supporting
 			# nursing note exists for that patient in the first place.
 			if f.patient_id == "":
-				effect = "\"She reviewed one of them. I'm asking about all of them.\""
+				effect = _effect("nurse_wrong_scope", f)
 			else:
 				cleared = true
-				effect = "\"I'll ask her.\" She does, later, and it holds."
+				effect = _effect("nurse_ok", f)
 				_upgraded[f.patient_id] = true
 
 		Answer.RECONCILE:
 			cleared = true
-			effect = "\"...All right. Yes. That happens.\""
+			effect = _effect("reconcile_ok", f)
 			_upgraded[f.patient_id] = true
 
 		Answer.BLAME_SYSTEM:
@@ -273,9 +476,9 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 			# worst question in the folder.
 			if times == 0 and (f.kind == "backdated" or f.kind == "addendum_cascade"):
 				cleared = true
-				effect = "\"Hm. I'll raise it with IT.\""
+				effect = _effect("clocks_ok", f)
 			elif times == 0:
-				effect = "\"The clocks have nothing to do with this one.\""
+				effect = _effect("clocks_wrong", f)
 			else:
 				# The same excuse twice is not an excuse, it is a pattern.
 				var g := Contradictions.Finding.new()
@@ -285,7 +488,7 @@ func answer(choice: int, held_ids: Array) -> Dictionary:
 				g.question = "That is the second time you've blamed the clocks."
 				g.because = "The same excuse was used %d times in one conversation." % (times + 1)
 				extra.append(g)
-				effect = "She stops writing."
+				effect = _effect("clocks_pattern", f)
 
 	if cleared:
 		resolved.append(f)
@@ -420,14 +623,39 @@ func commit(findings_raised: Array) -> void:
 	record.record_night(findings_raised, String(outcome()["verdict"]))
 
 ## Her closing line. Written to tell the player what happened, not to score them.
+##
+## Four verdicts and, until this session, four strings — so the last thing she
+## said to you was identical on every night of a nine-night career. Three each
+## now, walked by `GameState.day` rather than picked: `screen_review._closing`
+## is reached through `rebuild()`, so a random pick would hand out a different
+## sentence every time the card redrew, and the day number is both stable inside
+## a night (it does not move until "Work tomorrow" is pressed on the NEXT
+## screen) and different on the next one, which is exactly what was wanted.
+const CLOSINGS := {
+	OUTCOME_CLEAR: [
+		"\"Fine. Go home, you look dreadful.\"",
+		"\"Nothing here. Go on, before somebody finds you something.\"",
+		"\"That's all of it. Go home and eat something.\"",
+	],
+	OUTCOME_QUESTIONS: [
+		"\"I've made a note. It's probably nothing.\"",
+		"\"I'll put a note on. That's all it is at the minute.\"",
+		"\"One note. I'd rather not write a second one about the same thing.\"",
+	],
+	OUTCOME_FLAGGED: [
+		"\"I'm going to have coding look at this one. Nothing personal.\"",
+		"\"This goes to Coding. It isn't me you'll be explaining it to.\"",
+		"\"Coding can have this one. I'd tidy the rest of the week, if I were you.\"",
+	],
+	OUTCOME_ESCALATED: [
+		"\"I'd like you to put all of that in writing, please. Today.\"",
+		"\"All of it, in writing, before you leave the building. Today.\"",
+		"\"Write it down. All of it, in your own words. Somebody upstairs reads it.\"",
+	],
+}
+
 static func closing(verdict: String) -> String:
-	match verdict:
-		OUTCOME_CLEAR:
-			return "\"Fine. Go home, you look dreadful.\""
-		OUTCOME_QUESTIONS:
-			return "\"I've made a note. It's probably nothing.\""
-		OUTCOME_FLAGGED:
-			return "\"I'm going to have coding look at this one. Nothing personal.\""
-		OUTCOME_ESCALATED:
-			return "\"I'd like you to put all of that in writing, please. Today.\""
-	return ""
+	var list: Array = Array(CLOSINGS.get(verdict, []))
+	if list.is_empty():
+		return ""
+	return String(list[maxi(GameState.day - 1, 0) % list.size()])

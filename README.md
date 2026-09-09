@@ -1,6 +1,6 @@
 # Chronic Care
 
-**A broke doctor. A struggling hospital. Patients who really should have gone home by now.**
+**A doctor in debt. Five beds. You are paid by the night, and nobody is getting better.**
 
 A first-person dark-comedy hospital sim about paperwork. You owe $15,500. Vinnie
 wants $2,200 of it at eight o'clock tonight, and everything still owed at the end
@@ -69,6 +69,18 @@ registrar has an opinion and two hours a day in which to give it. A daughter who
 used to be a ward sister arrives at seven and reads her mother's notes. None of
 them is investigating you. They are just there, and they write things down.
 
+### The morning after
+
+Every bed you kept gets a line on the next morning's card saying what its night
+was — the second line that went in at three, the neighbour who rang at seven to
+say she still had the key, the woman who was dressed by six and asked which form
+she needed. Not only the beds that needed keeping: prose for the right decisions
+and silence for the rest would be a score, and this game does not keep one.
+
+Somebody you sent home who should not have gone is in a bed the next morning
+instead, worse, taking an admission's place — with a new note on the chart, an
+audit flag, and a different thing to say to you every time you go back.
+
 ### What it costs
 
 A night in a bed pays $850, $450 or $180, depending on who is paying. A
@@ -78,9 +90,7 @@ than a discharge — is what stops "hold everybody" being the answer.
 
 Getting it wrong is not a game over. `CLEAR −1 · QUESTIONS 0 · FLAGGED +1 ·
 REFERRED +3`, and five ends the career. A clean night pays a strike back, which
-is why one bad night is survivable and four are not. Somebody you sent home who
-should not have gone is in a bed the next morning, worse, taking an admission's
-place.
+is why one bad night is survivable and four are not.
 
 ## Running it
 
@@ -161,11 +171,12 @@ If it ever goes wrong, that is the file to send.
 ## Tests
 
 ```
-301 assertions   — units, integration, save round-trips, floor connectivity
-172 smoke checks — boots the real scene and plays a whole shift, on three seeds
+341 assertions   — units, integration, save round-trips, floor connectivity
+210 smoke checks — boots the real scene and plays a whole shift, on three seeds
  32 ship checks  — is it a BUILD: identity, corrupt saves, RNG across a load
   7 criteria     — day-level: does the risk actually cost anything
-  6 criteria     — career-level: does honest play pay it off, and does greed not
+  8 criteria     — career-level: does honest play pay it off, does greed not,
+                   and does a night you got right leave a trace in the morning
   4 wards        — every one signs off on the day a careful person plays
  52 deals        — every ward a career can deal, played honestly
   2 play runs    — the buttons actually pressed, pad and keyboard

@@ -170,9 +170,23 @@ func _consequences(verdict: String, short: bool) -> Array:
 			out.append("Coding are looking at last night. Adeyemi has started writing her rounds up twice.")
 			out.append("Ms Ferrand from Coding is on the ward for the next two shifts. She is not there to help.")
 			out.append("Your office has somebody in it. Anything you write, you write in front of her.")
+		# AND THE ONE ABOVE IT HAD LESS WRITING ON IT THAN THE ONE BELOW.
+		#
+		# A referral is worth three strikes of five and a flag is worth one, and
+		# for as long as this screen has existed the referral printed TWO lines
+		# — one of them word for word identical to a flagged line, the other a
+		# compression of the flagged card's first two. So the top of the whole
+		# punishment curve, the thing the entire risk side of the frontier
+		# points at, landed as a shorter and vaguer version of the tier beneath
+		# it. The shared MECHANICAL consequence is correct and stays: the
+		# auditor is gated on FLAGGED, so a referral gets everything a flag gets.
+		# What a referral additionally IS, and a flag is not, is that it leaves
+		# the ward — and that had never been said anywhere.
 		ReviewSystem.OUTCOME_ESCALATED:
 			out.append("This is going upstairs. Adeyemi is writing her rounds up twice and Coding are here for two shifts.")
 			out.append("Your office has somebody in it. Anything you write, you write in front of her.")
+			out.append("It leaves the ward tonight. A copy of the folder, a covering letter, and a date for a panel that has not been set yet.")
+			out.append("Sister Nkemelu wrote the letter. She is also on at eight tomorrow, and so are you, and neither of you is going to mention it.")
 	# The beds she could not stand up, by name. This is the part that carries
 	# regardless of the stamp: a "noted" day still puts somebody on a list.
 	var remembered := PackedStringArray(ctx.get("remembered", PackedStringArray()))
@@ -213,6 +227,18 @@ func _carry(verdict: String, short: bool) -> void:
 	# not be back before it was overwritten; and a short night now compounds the
 	# total rather than inflating tomorrow. What carries is the doctor's record,
 	# which `ReviewSystem.commit` writes at the handover.
+
+	# WHAT THE NIGHT WAS, FOR THE BEDS YOU KEPT. Resolved to finished sentences
+	# HERE, before the day moves, and for the same reason the readmission list
+	# is parked rather than applied: two lines below, `GameState.day += 1` makes
+	# `Cases.roster()` return a different ward, and an id looked up against that
+	# one finds nothing. `overnight_notes` reads through `Cases.anyone`, so it
+	# does not care which ward is live — but the ORDER it is called in still
+	# does, because `w.held_ids()` is tonight's ward and `w.start()` below
+	# rebuilds the whole thing from tomorrow's roster.
+	var w0 = ward()
+	GameState.set_flag(Cases.OVERNIGHT_FLAG,
+		Cases.overnight_notes(w0.held_ids() if w0 != null else []))
 	# THE DAY TURNS OVER, AND ONLY NOW DO THEY COME BACK. `end_day()` parks the
 	# list in READMIT_PENDING because `Cases.roster()` reads the live flag on
 	# every call, and until this line the live ward is still tonight's.

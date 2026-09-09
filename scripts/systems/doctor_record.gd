@@ -171,6 +171,66 @@ func habit_warning() -> String:
 			+ "Keep this up and it stops being a question, too."
 	return ""
 
+## WHAT SHE SAYS TO SOMEBODY SHE HAS NOTHING ON, and the reason a career had no
+## shape.
+##
+## `opening_line()` below is the escalation, and every one of its four branches
+## needs `counts[kind] >= 3` or a referral. An honest player never reaches any of
+## them — so the player who does the thing the whole design is built to reward
+## sat down opposite the same woman nine times and she never once acknowledged
+## that they had met. Nine identical wordless handovers and a stat card at the
+## end of it. Nothing else anywhere in `scripts/` is keyed on how long the career
+## has run: grepping `GameState.day` finds the HUD label, a save log line and the
+## ward rotation, and that is the whole of it.
+##
+## So this is the other half of the same ladder, in the same voice, off the same
+## counters — a pure read over `nights`, `flagged_nights` and `referrals`, with
+## no new state and nothing stored. It is not praise and it is not a score: she
+## is a colleague who has read your paperwork four times and has formed a view,
+## which is exactly what she does in the other direction already. The rule that
+## nothing grades the player's choice for them is about the INTERFACE putting a
+## number on a decision, not about a person in the room having an opinion.
+##
+## Rendered as plain text and not in the warning panel `opening_line()` gets,
+## because the panel is what makes that line land and a courtesy printed on
+## amber paper reads as a threat.
+func greeting() -> String:
+	if nights <= 0:
+		return "You're the new one. Sit down — it takes twenty minutes and " \
+			+ "then we both go home."
+	# CLEAN MEANS SHE NEVER HAD TO SEND IT ANYWHERE, not that she never asked a
+	# question. A "noted" night is a ward running normally; a flag is a night
+	# that left the room.
+	var spotless: bool = flagged_nights == 0 and referrals == 0
+	if nights == 1:
+		if spotless:
+			return "Second one. The first is always tidy. It's the fourth I read properly."
+		return "Second one. I've still got the first here, if that's any use to you."
+	if nights <= 3:
+		if spotless:
+			return "That's the %s of yours I've read and there's been nothing in " \
+				% _ordinal(nights) + "any of them. I'm not congratulating you. " \
+				+ "I'm telling you where you are."
+		return "That's the %s of yours. I've started being able to tell which " \
+			% _ordinal(nights) + "entries you did at the end of the shift."
+	if nights <= 5:
+		if spotless:
+			return "This is your %s handover and I've not had to write anything " \
+				% _ordinal(nights + 1) + "down about you. Do you know how many " \
+				+ "people manage that? Neither do I. I've never had to count."
+		return "Your %s. You've settled into a way of doing this and I can see " \
+			% _ordinal(nights + 1) + "the shape of it from here."
+	if nights <= 7:
+		if spotless:
+			return "You look worse than your paperwork does. That's usually the " \
+				+ "way round I prefer it, so I'll not say anything."
+		return "We're both still here, which surprises one of us. Sit down."
+	if spotless:
+		return "Whatever it is you're carrying about with you, you've kept it " \
+			+ "off the charts. I'll give you that and nothing else."
+	return "You've been at this long enough now that I'd know your hand anywhere. " \
+		+ "I'm not sure that's the compliment it sounds like."
+
 ## What she says before she says anything else. Empty on a clean record, which
 ## is the point — the first few days she has no reason to open with anything.
 func opening_line() -> String:

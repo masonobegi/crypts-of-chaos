@@ -25,7 +25,20 @@ func run() -> void:
 		"suggestible", "recall", "summary", "opening", "later", "evening",
 		"pressed", "on_your_note", "on_hold", "on_discharge", "note",
 		"readmit_summary", "readmit_opening", "readmit_hold", "readmit_discharge",
-		"readmit_exam"]
+		"readmit_exam",
+		# WHAT THE NIGHT WAS, if you kept them in it. Read by
+		# `Cases.overnight_notes` onto the next morning's card. A patient without
+		# one is a bed that goes silent the morning after — which is the whole
+		# fault this field exists to fix, so it is required rather than defaulted.
+		"overnight",
+		# THE REST OF THE CONVERSATION, THE SECOND TIME ROUND. `readmission_of`
+		# swaps these four in under the keys `WardDay.what_they_say` reads. It
+		# used to ERASE them and restore `pressed` alone from `readmit_pressed`,
+		# which was authored on nobody at all — so every readmitted patient in
+		# the game, on every ward, had two things to say all day and shared one
+		# of them with thirty-nine other people.
+		"readmit_later", "readmit_evening", "readmit_pressed",
+		"readmit_on_your_note"]
 	var seen_ids := {}
 	# SEED 0 IS THE CANONICAL GAME, and this file walks WARDS rather than
 	# nights. The ward rotation is a per-career permutation now, so on any other
@@ -67,6 +80,25 @@ func run() -> void:
 			if not beds.has(int(c["bed"])):
 				beds[int(c["bed"])] = []
 			beds[int(c["bed"])].append(c)
+
+			# AND THE READMISSION HAS TO BE A DIFFERENT CONVERSATION.
+			#
+			# Requiring the four keys above only proves they were typed. What
+			# makes a readmission the strongest reversal in the game is that the
+			# person in front of you has been through this once already, so a
+			# `readmit_later` identical to `later` is the same silence with an
+			# extra field in front of it. Checked through `readmission_of`
+			# itself rather than against the raw dictionary, because that is the
+			# function that decides which key wins and it is the one that used
+			# to erase all four.
+			var back := Cases.readmission_of(c)
+			for k in ["later", "evening", "pressed", "on_your_note"]:
+				if String(back.get(k, "")).strip_edges() == "":
+					_fail("ward %d / %s / readmission says nothing when %s"
+						% [day + 1, id, k])
+				elif String(back.get(k, "")) == String(c.get(k, "")):
+					_fail("ward %d / %s / readmitted %s is word for word the "
+						% [day + 1, id, k] + "same as the first admission's")
 
 			# A family rule that fires needs somebody to name.
 			if bool(c.get("family_reads_charts", false)) and not c.has("family"):
@@ -241,9 +273,70 @@ func run() -> void:
 			_fail("ward %d: holding five earns %d, three earns %d" % [day + 1, five, best_three])
 		else:
 			print("      five beds %d < best three %d" % [five, best_three])
+		# AND EVERY BED CAN ACCOUNT FOR ITS OWN NIGHT. `overnight_notes` is what
+		# the next morning's card renders, and it SKIPS anybody whose line is
+		# missing or blank — so a patient with no `overnight` produces no error,
+		# no warning and no row, and the bed you kept simply is not mentioned.
+		# That silence is exactly the fault the field exists to end, which is why
+		# it is counted here rather than trusted.
+		var everyone_tonight := PackedStringArray()
+		for c in tonight:
+			everyone_tonight.append(String(c["id"]))
+		var notes: Array = Cases.overnight_notes(Array(everyone_tonight))
+		if notes.size() != everyone_tonight.size():
+			_fail("ward %d: five beds held, %d overnight lines"
+				% [day + 1, notes.size()])
+		for line in notes:
+			if not String(line).contains(" — "):
+				_fail("ward %d: overnight line is unattributed: %s"
+					% [day + 1, String(line)])
+
 		tree.root.remove_child(w)
 		w.free()
 	GameState.day = 1
+
+	# ---- WHO IS ALLOWED TO SOUND LIKE A NURSE.
+	#
+	# `Game._spawn_vinnie` and `_spawn_auditor` both build a `NurseNPC`, which
+	# sets `role = "nurse"`, and every bark and behaviour in `StaffNPC` gated on
+	# that string alone — so a loan shark walked to a bedside and said "Doing
+	# nicely, this one." and Ms Ferrand from Coding said "I'll write that up."
+	# Checked through the static predicate the three gates actually read, so it
+	# needs no CharacterBody3D and no tree; and checked as CONTENT, because what
+	# was wrong was never the code path, it was whose words came out of it.
+	var speaks := {"nurse_0": true, "vinnie": false, "auditor": false}
+	for who in speaks:
+		var walks: bool = StaffNPC.rounds_for("nurse", String(who))
+		if walks and not bool(speaks[who]):
+			_fail("%s does bedside rounds and should not" % String(who))
+		elif not walks and bool(speaks[who]):
+			_fail("%s does no bedside rounds and should" % String(who))
+	var wards_own: Array = []
+	wards_own.append_array(StaffNPC.ROUND_OK)
+	wards_own.append_array(StaffNPC.NOISE_BARK)
+	for who in ["vinnie", "auditor"]:
+		var bank: Dictionary = StaffNPC.VISITOR_BARKS.get(who, {})
+		if bank.is_empty():
+			_fail("%s has no voice of their own" % who)
+			continue
+		for kind in ["remark", "noise", "found"]:
+			var lines: Array = Array(bank.get(kind, []))
+			if lines.is_empty():
+				_fail("%s has nothing to say when it is time to %s" % [who, kind])
+			for l in lines:
+				if String(l).strip_edges() == "":
+					_fail("%s / %s / an empty line" % [who, kind])
+				if wards_own.has(String(l)):
+					_fail("%s says the ward's own line: %s" % [who, String(l)])
+	# ...AND NOBODY NAMES A ROOM THAT DOES NOT EXIST. There are four rooms in
+	# this building and none of them is numbered; `NurseNPC._ready` documents
+	# that six were demolished. "Was that in 103?" sent players looking for a
+	# wall.
+	for l in wards_own:
+		if String(l).contains("103"):
+			_fail("a ward bark still names Room 103: %s" % String(l))
+	print("  voices: Adeyemi does rounds, Vinnie and Ms Ferrand do not")
+
 	print("")
 	if bad == 0:
 		print("DATA CHECK PASSED — %d authored people, all complete" % seen_ids.size())

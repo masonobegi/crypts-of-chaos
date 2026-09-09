@@ -77,6 +77,12 @@ func _one_day(policy: String) -> Dictionary:
 		"strikes": DoctorRecord.load_from_state().strikes,
 		"ending": GameState.ending(),
 		"readmits": Array(res.get("readmitted", [])).size(),
+		# WHAT TOMORROW MORNING WILL SAY ABOUT TONIGHT. Read HERE, in the same
+		# place and the same order `screen_day_over._carry` reads it — before
+		# `GameState.day` moves, because `Cases.roster()` is a function of the
+		# day and a bed resolved after it has turned over is resolved against a
+		# ward that person is not on (gotcha 30).
+		"overnight": Cases.overnight_notes(Array(res.get("held", []))).size(),
 	}
 	# THE CARRY, as the game does it.
 	GameState.set_flag("watched", row["verdict"] == ReviewSystem.OUTCOME_FLAGGED
@@ -240,6 +246,9 @@ func run() -> bool:
 		var shorts := 0
 		var nights_played := 0
 		var seen: Array = []
+		# HOW MANY MORNINGS SAID NOTHING ABOUT LAST NIGHT.
+		var silent_mornings := 0
+		var spoken_mornings := 0
 		for i in DAYS:
 			if GameState.ending() != "":
 				break
@@ -250,6 +259,10 @@ func run() -> bool:
 				survived += 1
 			else:
 				shorts += 1
+			if int(r["overnight"]) > 0:
+				spoken_mornings += 1
+			else:
+				silent_mornings += 1
 			print("  %3d %7d %8d %-18s %5d %3d %s" % [r["day"], int(r["owed"]) - 0,
 				int(r["left"]), r["verdict"], r["rounds"], int(r["strikes"]),
 				(String(r["ending"]).to_upper() if String(r["ending"]) != ""
@@ -257,7 +270,8 @@ func run() -> bool:
 			if String(r["ending"]) != "":
 				break
 		verdicts[policy] = {"survived": survived, "shorts": shorts, "seen": seen,
-			"ending": GameState.ending(), "nights": nights_played}
+			"ending": GameState.ending(), "nights": nights_played,
+			"silent": silent_mornings, "spoken": spoken_mornings}
 
 	print("\n=== does a career hold together? ===")
 	var ok := true
@@ -323,6 +337,85 @@ func run() -> bool:
 	print("  a bad first night is still recoverable ............ %s (%s after %d)"
 		% ["PASS" if recover_ok else "FAIL", GameState.ending(), n + 1])
 	ok = ok and recover_ok
+
+	# 7. KINDNESS LEAVES A TRACE, AND DOING NOTHING DOES NOT.
+	#
+	# For as long as the game has existed, the only thing that ever came back
+	# from a previous shift was a MISTAKE — a readmission, with a new summary, a
+	# new opening line, an audit flag and a tannoy announcement. A bed you kept
+	# because you had gone and found the one person who genuinely needed it
+	# produced nothing in anybody's voice at all: the reward for the whole
+	# investigation layer was that the ward sister did not ask a question.
+	#
+	# `overnight_notes` is what the next morning's card renders, so this counts
+	# the mornings that say something. It fails in BOTH directions on purpose:
+	# an honest night that goes silent is the fault this exists to catch, and a
+	# coasting night that says something means a discharged bed is being narrated
+	# as though it had been held.
+	var hn: Dictionary = verdicts["honest"]
+	var honest_speaks: bool = int(hn["silent"]) == 0 and int(hn["spoken"]) > 0
+	print("  every honest night is spoken for in the morning ... %s (%d of %d)"
+		% ["PASS" if honest_speaks else "FAIL", int(hn["spoken"]),
+			int(hn["spoken"]) + int(hn["silent"])])
+	ok = ok and honest_speaks
+	var cn: Dictionary = verdicts["coast"]
+	var coast_silent: bool = int(cn["spoken"]) == 0
+	print("  ...and an empty ward has nothing to say ........... %s (%d spoke)"
+		% ["PASS" if coast_silent else "FAIL", int(cn["spoken"])])
+	ok = ok and coast_silent
+
+	# 8. AND THE CAREER HAS A VOICE AT EVERY LENGTH AND EVERY BALANCE.
+	#
+	# Both of these are pure reads and neither needs a night played, which is
+	# why they are asserted directly rather than sampled from the runs above: a
+	# band nothing reaches is a band nobody would ever notice was empty, and an
+	# empty string renders as a blank row rather than as an error. This is the
+	# same fault class as a constant nothing reads — the difference is that a
+	# missing line is not merely unread, it is a silence the player is looking
+	# straight at.
+	var thread_seen := {}
+	# NOT a separate `ok = false` with its own print. A check that reports a
+	# fault above the line and PASS on it is the same shape as the playtest
+	# ranking thirty-one strategies by a constant — the summary is what anybody
+	# reads, so the summary has to carry both halves.
+	var thread_ok := true
+	for pct in [1.00, 0.90, 0.70, 0.50, 0.30, 0.20, 0.10, 0.02, 0.0]:
+		for behind in [false, true]:
+			var line := Cases.debt_thread(
+				int(round(float(Cases.DEBT_TOTAL) * pct)), behind)
+			if line.strip_edges() == "":
+				print("  DEBT THREAD IS EMPTY at %d%% behind=%s"
+					% [int(pct * 100), str(behind)])
+				thread_ok = false
+			thread_seen[line] = true
+	# Ten authored lines, five bands times two registers. Fewer distinct ones
+	# than that means a band is unreachable — the boundaries and the table have
+	# drifted apart, which is exactly what a sorted column of identical values
+	# looks like from the outside.
+	thread_ok = thread_ok and thread_seen.size() >= 10
+	print("  the debt says something different as it falls ..... %s (%d lines)"
+		% ["PASS" if thread_ok else "FAIL", thread_seen.size()])
+	ok = ok and thread_ok
+
+	var greet_seen := {}
+	var greet_ok := true
+	for nights_so_far in range(0, 12):
+		for clean in [true, false]:
+			var rec := DoctorRecord.new()
+			rec.nights = nights_so_far
+			# A night she had to send somewhere is what makes a record not clean;
+			# a queried one is a ward running normally.
+			rec.flagged_nights = 0 if clean else 1
+			var hello := rec.greeting()
+			if hello.strip_edges() == "":
+				print("  NKEMELU SAYS NOTHING at %d nights, clean=%s"
+					% [nights_so_far, str(clean)])
+				greet_ok = false
+			greet_seen[hello] = true
+	print("  ...and so does the ward sister .................... %s (%d lines)"
+		% ["PASS" if greet_ok and greet_seen.size() >= 9 else "FAIL",
+			greet_seen.size()])
+	ok = ok and greet_ok and greet_seen.size() >= 9
 
 	print("\n%s" % ("CAREER PROBE PASSED" if ok else "CAREER PROBE FAILED"))
 	return ok

@@ -27,6 +27,20 @@ func _build() -> void:
 	var v := card_shell(780, 700, "HANDOVER",
 		"Sister Nkemelu has last night's folder")
 
+	# HOW LONG YOU HAVE BEEN DOING THIS, in her voice, before the folder opens.
+	#
+	# `opening_line()` below is the escalation and every branch of it needs
+	# three findings of a kind or a referral, so an honest player never reached
+	# any of them: they sat down opposite this woman nine times and she never
+	# once acknowledged that they had met. This is the same ladder read off the
+	# same counters in the other direction, and it is deliberately NOT in the
+	# amber panel — that panel is what makes an accusation land, and a courtesy
+	# printed on warning paper reads as a threat.
+	var hello := String(_rv.record.greeting()) if _rv.record != null else ""
+	if hello != "":
+		v.add_child(UIKit.label("\"%s\"" % hello, 14, UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+
 	# WHAT SHE ALREADY KNOWS ABOUT YOU, before she opens it. Blank for the first
 	# few days, which is the point — she has no reason to open with anything
 	# until there is a shape to open with.

@@ -122,6 +122,14 @@ const DAY_ONE := [
 		"pressed": "You've asked me that three times. Is there something you're not saying?",
 		"on_your_note": "The nurse read me what you put. I didn't say it was worse. I said it was the same.",
 		"note": "Talks to everyone. Whatever you tell him, the night staff hear it too.",
+		## WHAT THE NIGHT WAS, if you kept them in it. Read on the next
+		## morning's card, one line a bed. See `overnight_notes`.
+		"overnight": "The line went back up at midnight. They marked the leg again at four and the second mark is inside the first.",
+		## And the rest of the conversation, the second time round.
+		"readmit_later": "It's the same leg. It's the same leg and it's further up it.",
+		"readmit_evening": "I keep thinking about the bus. I shouldn't have got on the bus.",
+		"readmit_pressed": "I've told you what I did. I finished them. What else do you want off me?",
+		"readmit_on_your_note": "You've written it down this time. That's something, that.",
 	},
 	{
 		"id": "kerrigan", "name": "Dot Kerrigan", "age": 81, "bed": 2,
@@ -158,6 +166,11 @@ const DAY_ONE := [
 		## paperwork rather than kindness that gets you audited.
 		"no_care_at_home": true,
 		"social_reason": "No care at home. Daughter works nights. Awaiting social work.",
+		"overnight": "She was up twice looking for the cardigan and settled both times. Ruth rang the ward at eleven to check she was still here.",
+		"readmit_later": "It was that rug. It's always been that rug.",
+		"readmit_evening": "Ruth's been. She was cross, but not with me.",
+		"readmit_pressed": "You've asked me. I know you've asked me. I don't mind being asked.",
+		"readmit_on_your_note": "Ruth's read it. She says it's the same as last time, word for word.",
 	},
 	{
 		"id": "brennan", "name": "Hal Brennan", "age": 39, "bed": 3,
@@ -185,6 +198,11 @@ const DAY_ONE := [
 		"pressed": "Right, look. Am I going home or not. It's a simple question.",
 		"on_your_note": "Warm? It's not warm. Feel it. Go on, feel it.",
 		"note": "Adeyemi documented 'for discharge today' at 09:20. It is already on the chart.",
+		"overnight": "Dressed and sitting on the edge of the bed at six. He asked twice whether the decision had been written down anywhere.",
+		"readmit_later": "It's not the pain. It's that I knew and I got on the bus anyway.",
+		"readmit_evening": "My mum's outside. She's been outside since two and she's not happy with anybody.",
+		"readmit_pressed": "You keep asking. I've told you what happened on the bus. That's all of it.",
+		"readmit_on_your_note": "You've put 'dehisced'. The nurse says that means it opened. So it opened.",
 	},
 	{
 		"id": "oduya", "name": "Sam Oduya", "age": 62, "bed": 4,
@@ -215,6 +233,11 @@ const DAY_ONE := [
 		## And "specifically" is the problem. A grateful patient who describes
 		## his care in detail is describing YOUR CONVERSATION in detail.
 		"tells_everyone": true,
+		"overnight": "He slept, which the night staff wrote down because he had not on either of the two before. He asked at six about the flat.",
+		"readmit_later": "The number was up. They keep saying the number was up this time.",
+		"readmit_evening": "I'd have been on my own in the flat. That's the bit I keep coming back to.",
+		"readmit_pressed": "You keep coming back. Is it worse than you're telling me?",
+		"readmit_on_your_note": "You've put that it went into my arm. I didn't say the arm. I'd like that right.",
 	},
 	{
 		"id": "blake", "name": "Winifred Blake", "age": 47, "bed": 5,
@@ -247,6 +270,11 @@ const DAY_ONE := [
 		## the one somebody is already looking at.
 		"audit_flag": "Readmitted within 30 days on 4 August. Coding queried by "
 			+ "Meridian Mutual. FILE MARKED FOR ROUTINE REVIEW.",
+		"overnight": "Nothing at all. Dressed by six, and she asked the night staff which form she needed for a night she had not agreed to.",
+		"readmit_later": "It isn't like the last one. This one is a different thing and nobody is listening.",
+		"readmit_evening": "I said I was fine. I want it on the record that I said I was fine.",
+		"readmit_pressed": "There'll be a form for this. There's a form for everything else in here.",
+		"readmit_on_your_note": "It says 'recurrence'. It isn't a recurrence. It's a different headache entirely.",
 	},
 	## ---- ALTERNATES. Interchangeable with the bed above by ROLE: same tier,
 	## same truth, same reason for being in that slot. What changes between
@@ -276,6 +304,11 @@ const DAY_ONE := [
 		"readmit_hold": "Thank you, love. I won't say anything else about it.",
 		"readmit_discharge": "...To the same house. Right you are.",
 		"readmit_exam": "Cold, bruised, and entirely uninjured, which is somehow worse.",
+		"overnight": "She slept straight through. At half six she asked whether anybody had rung about the stairs.",
+		"readmit_later": "It's the bottom three. It's always the bottom three.",
+		"readmit_evening": "I lay there a good while. You do lose track of it.",
+		"readmit_pressed": "I'm not poorly, love. I keep saying it and it keeps not being the point.",
+		"readmit_on_your_note": "Have you put the stairs this time? Last time it just said 'social'.",
 	},
 	{
 		"id": "whitcombe", "name": "Rory Whitcombe", "age": 31, "bed": 3,
@@ -300,6 +333,11 @@ const DAY_ONE := [
 		"readmit_hold": "Yeah. No. Fine. I'd rather be here for this bit.",
 		"readmit_discharge": "You're sending me home with this? Look at it.",
 		"readmit_exam": "Hot, red and spreading from the port site. This one is real.",
+		"overnight": "He walked the corridor twice more after the lights went off and told the night staff he had counted.",
+		"readmit_later": "It went red about eight. I nearly turned round at the bus stop and I didn't.",
+		"readmit_evening": "That's two days now. I'd stopped counting and now I've started again.",
+		"readmit_pressed": "You've asked. I've said. It went red, I came back, here we are.",
+		"readmit_on_your_note": "You've put 'port site'. That's the little one, is it. Right.",
 	},
 	{
 		"id": "nwankwo", "name": "Cordelia Nwankwo", "age": 55, "bed": 5,
@@ -325,6 +363,11 @@ const DAY_ONE := [
 		"readmit_hold": "Fine. But write down why, properly, this time.",
 		"readmit_discharge": "Again. Right. I'll be keeping my own notes.",
 		"readmit_exam": "Symptom free by the time you get to her, and unimpressed.",
+		"overnight": "No symptoms overnight. She asked the night staff for the name of whoever had authorised the bed, and wrote it down.",
+		"readmit_later": "Twice in a fortnight. Somebody in Coding is going to have a lovely time with this.",
+		"readmit_evening": "I've written down what time I came in. You may want to do the same.",
+		"readmit_pressed": "You're going round it. Ask me the question you actually want to ask.",
+		"readmit_on_your_note": "Read that entry back to me. Slowly. I want to be sure of what I heard.",
 	},
 	## ---- THE PAIR. Bed one and bed four swap which of them is genuinely ill,
 	## so the bed you have to find is not the same bed every career. Both are
@@ -352,6 +395,11 @@ const DAY_ONE := [
 		"readmit_hold": "Yes. Fine. I'm not going to argue.",
 		"readmit_discharge": "You cannot be serious. Look at it.",
 		"readmit_exam": "Hot, spreading, and nothing like the leg she showed you this morning.",
+		"overnight": "The leg was the same at midnight and the same at six. Her husband came back at eight and was told she was still here.",
+		"readmit_later": "One evening. It came back up the leg in one evening.",
+		"readmit_evening": "He's outside again. He's been outside since four, again.",
+		"readmit_pressed": "You've been at the leg three times now. Is it worse than it looks?",
+		"readmit_on_your_note": "What have you put this time? I'd like to read it myself.",
 	},
 	{
 		"id": "sarkisian", "name": "Aram Sarkisian", "age": 62, "bed": 4,
@@ -376,6 +424,11 @@ const DAY_ONE := [
 		"readmit_hold": "Aye. I'll stop where I'm put.",
 		"readmit_discharge": "No. No, not again.",
 		"readmit_exam": "Far worse, and on a monitor this time.",
+		"overnight": "The third troponin came back at two and it is higher again. Cardiology have been down and they are on tomorrow's list.",
+		"readmit_later": "I got as far as the barrier. I remember the barrier.",
+		"readmit_evening": "They tell me two minutes. Two minutes is not very long and it is not very short either.",
+		"readmit_pressed": "I have answered this. I answered it in the car park, apparently.",
+		"readmit_on_your_note": "Does that say what happened? Properly, I mean. Not the tidy version.",
 	},
 ]
 
@@ -420,6 +473,11 @@ const DAY_TWO := [
 		"pressed": "Am I all right? You'd say, wouldn't you.",
 		"on_your_note": "You've written it all down. Good. I want it written down.",
 		"note": "State funded. A night in this bed is worth almost nothing to you.",
+		"overnight": "She spiked to 39.1 at two. The second line went in at three. Her sister rang at seven to ask about the little one.",
+		"readmit_later": "It's the shivering. It came over me on the bus and I couldn't stop it.",
+		"readmit_evening": "My sister's got her again. That's twice now I've had to ask her.",
+		"readmit_pressed": "I did take them. I'm not saying it to make you feel better. I took them.",
+		"readmit_on_your_note": "You've put it down properly. Thank you. That matters to me, that.",
 	},
 	{
 		"id": "achebe_fry", "name": "Gordon Achebe-Fry", "age": 71, "bed": 2,
@@ -454,6 +512,11 @@ const DAY_TWO := [
 		## frightened, premium-funded and easy to lead — and everything written
 		## about him is read the same evening by a solicitor.
 		"family_reads_charts": true,
+		"overnight": "Rate stayed at 78 all night. Yemi rang the ward twice and asked for the overnight entry to be read out to her.",
+		"readmit_later": "Twenty-two of them. I told you about the stairs and it was the stairs.",
+		"readmit_evening": "Yemi's outside. She's brought a folder this time.",
+		"readmit_pressed": "You'll want to say all this to her, not me. I only get the words wrong.",
+		"readmit_on_your_note": "She's read it. She wants to know who was present when it was written.",
 	},
 	{
 		"id": "ferreira", "name": "Tallulah Ferreira", "age": 26, "bed": 3,
@@ -485,6 +548,11 @@ const DAY_TWO := [
 		## discharges herself, which frees the bed and pays the admission — and
 		## makes a nonsense of anything you wrote claiming she was unwell.
 		"self_discharges_at": 16 * 60,
+		"overnight": "No ketones overnight. She rang her manager at half five and most of the bay heard it.",
+		"readmit_later": "I got to the bus stop. That is as far as I got.",
+		"readmit_evening": "I've lost the shift and the week now. So that's that decided for me.",
+		"readmit_pressed": "Ask me something else. Anything else. Please.",
+		"readmit_on_your_note": "That says I discharged myself. I didn't. I was told I could go.",
 	},
 	{
 		"id": "lomax", "name": "Peter Lomax", "age": 58, "bed": 4,
@@ -530,6 +598,11 @@ const DAY_TWO := [
 		## Standing in front of him says otherwise, and the only way to stand in
 		## front of him is to go and do it.
 		"only_visible_in_person": true,
+		"overnight": "He was talking to the curtain rail at half one. Diazepam at two, and again at five, and he settled after the second one.",
+		"readmit_later": "Have they been in? There was somebody sat in that chair.",
+		"readmit_evening": "What day is it. No — don't. I'd rather not know, if it's all the same.",
+		"readmit_pressed": "You've asked me before. I can tell by your face you've asked me before.",
+		"readmit_on_your_note": "Aye. That'll be right, if you've put it. You'd know.",
 	},
 	{
 		"id": "voss", "name": "Imelda Voss", "age": 68, "bed": 5,
@@ -561,6 +634,11 @@ const DAY_TWO := [
 		## open. This one reads the file herself, every evening, and remembers
 		## exactly what was in it and what was not.
 		"reads_own_chart": true,
+		"overnight": "No further episode. She read the night nurse's entry at eleven and pointed out that 'settled' is not an observation.",
+		"readmit_later": "Twenty past eight. I wrote the time down before I rang anybody.",
+		"readmit_evening": "I've read today's. Somebody has spelled 'syncope' three ways in one page.",
+		"readmit_pressed": "You're working up to something. Say it. I have said worse to better doctors.",
+		"readmit_on_your_note": "You have written the time I gave you. Good. Now write down who you had it from.",
 	},
 	## ---- ALTERNATES.
 	{
@@ -590,6 +668,11 @@ const DAY_TWO := [
 		"readmit_hold": "Yes. He'll be happier. So will I.",
 		"readmit_discharge": "He is going to want that in writing, I'm afraid.",
 		"readmit_exam": "No deficit again, and a son in the corridor with a list.",
+		"overnight": "No further episode. Her son rang at seven and asked whether the drug chart had been altered overnight.",
+		"readmit_later": "He said we should have stopped in. He's only said it the once, to be fair to him.",
+		"readmit_evening": "He's out there with his list. He's added to it.",
+		"readmit_pressed": "I'd sooner he was here. He remembers what I say better than I do.",
+		"readmit_on_your_note": "He's read it. He wants to know whether 'transient' is your word or mine.",
 	},
 	{
 		"id": "grieve", "name": "Danny Grieve", "age": 27, "bed": 3,
@@ -615,6 +698,11 @@ const DAY_TWO := [
 		"readmit_hold": "Yeah. Yeah, all right.",
 		"readmit_discharge": "You are joking. Listen to me. Actually listen.",
 		"readmit_exam": "Tight, quiet, and working far too hard. Nothing like this morning.",
+		"overnight": "Peak flow unchanged overnight. He was on the phone at six trying to get the shift back.",
+		"readmit_later": "It went about midnight. I couldn't get a full sentence out of me.",
+		"readmit_evening": "I've lost the week's money. That's the bit I keep going round on.",
+		"readmit_pressed": "Mate. I've told you. Ask the paramedic if you're not having it from me.",
+		"readmit_on_your_note": "That says 'silent chest'. That sounds worse than it felt. Or better. I don't know.",
 	},
 	{
 		"id": "delacroix", "name": "Yves Delacroix", "age": 61, "bed": 5,
@@ -641,6 +729,11 @@ const DAY_TWO := [
 		"readmit_hold": "Very well. Dated, please.",
 		"readmit_discharge": "As you wish. I shall add it to the others.",
 		"readmit_exam": "Nothing to find, and a man writing down that you found nothing.",
+		"overnight": "Nothing overnight. He asked for a copy of the night entry and was told to ask again in the morning.",
+		"readmit_later": "Third time. I have the letters for the first two in the bag by the chair.",
+		"readmit_evening": "I have written down the time you came, and the time before that.",
+		"readmit_pressed": "That is the fourth way you have asked me. I have been counting them.",
+		"readmit_on_your_note": "You have put 'reports ongoing pain'. I reported the pain and then I reported that it stopped. Both, please.",
 	},
 	## ---- THE PAIR, both premium.
 	{
@@ -666,6 +759,11 @@ const DAY_TWO := [
 		"readmit_hold": "Fine. But somebody explain it to me this time.",
 		"readmit_discharge": "Twice. I have been sent home twice.",
 		"readmit_exam": "In real pain and still with nothing on the scan.",
+		"overnight": "He walked the corridor at four. The night staff wrote 'mobilising independently' and he asked them to read it back.",
+		"readmit_later": "Same stairs. It went on the same stairs as last time.",
+		"readmit_evening": "Somebody explain it to me this time. That's all I'm after.",
+		"readmit_pressed": "Ask me straight. I've had a bellyful of the other way.",
+		"readmit_on_your_note": "'Unable to weight-bear.' That's fair. That's the first fair thing anybody's put.",
 	},
 	{
 		"id": "ibarra", "name": "Celia Ibarra", "age": 71, "bed": 5,
@@ -709,6 +807,11 @@ const DAY_TWO := [
 		"readmit_hold": "Yes please. Yes.",
 		"readmit_discharge": "Please don't. Please.",
 		"readmit_exam": "Worse at rest now, which she was not this morning.",
+		"overnight": "She walked to the toilet at three and dropped to 86. The night staff wrote the number down with what she was doing.",
+		"readmit_later": "I only went to the kitchen. Four steps and the wall came at me.",
+		"readmit_evening": "They've had me sat up all day. Sitting up was never the difficult bit.",
+		"readmit_pressed": "I've told you. It's the moving. It was always the moving.",
+		"readmit_on_your_note": "Have you put what I was doing when they took it? That's the whole of it.",
 	},
 ]
 
@@ -751,6 +854,11 @@ const DAY_THREE := [
 		"readmit_hold": "Aye. I'll not argue this time.",
 		"readmit_discharge": "...You're joking. You are actually joking.",
 		"readmit_exam": "Tracking above the knee now, and hot to the back of your hand.",
+		"overnight": "Nothing overnight, and the line is still where somebody drew it. The site has been rung twice and has not rung back.",
+		"readmit_later": "It's above the knee now. It wasn't above the knee yesterday.",
+		"readmit_evening": "I've lost the fortnight. There isn't a version of this where I keep the fortnight.",
+		"readmit_pressed": "You've asked. I've said. It came up the leg overnight and here I am.",
+		"readmit_on_your_note": "What's that say? Only I want it saying it came back, not that it never went.",
 	},
 	{
 		"id": "doust", "name": "Maryam Doust", "age": 58, "bed": 2,
@@ -779,6 +887,11 @@ const DAY_THREE := [
 		"readmit_hold": "Thank you. I'm sorry about all this.",
 		"readmit_discharge": "...All right. If that's what it says.",
 		"readmit_exam": "Working hard to breathe, and her hands are still cold to touch.",
+		"overnight": "Sats 94 on air all night. Housing were rung at nine and the ward was told somebody would look at it in the week.",
+		"readmit_later": "I did put the coat on the bed. Two coats, in the end.",
+		"readmit_evening": "It'll still be six degrees in there. It'll be six degrees tomorrow as well.",
+		"readmit_pressed": "I'm not making anything of it. I'm answering what you asked me.",
+		"readmit_on_your_note": "You've put the temperature in the flat. Somebody's actually put the number down.",
 	},
 	{
 		"id": "aldridge", "name": "Kit Aldridge", "age": 19, "bed": 3,
@@ -808,6 +921,11 @@ const DAY_THREE := [
 		"readmit_hold": "Okay.",
 		"readmit_discharge": "Yeah. All right. I know.",
 		"readmit_exam": "Awake, quiet, and he will not look at you while you talk.",
+		"overnight": "Liaison were bleeped twice overnight and came at twenty past eight, which is the earliest they come. He is in with them now.",
+		"readmit_later": "Same room. Same chair. It's like I never went.",
+		"readmit_evening": "They said somebody would come. Somebody said that yesterday as well.",
+		"readmit_pressed": "You keep asking how I am. Ask me something you'd actually write down.",
+		"readmit_on_your_note": "That's got my name on it and it says 'not for discharge'. Right. Okay.",
 	},
 	{
 		"id": "okwuosa", "name": "Bernard Okwuosa", "age": 76, "bed": 4,
@@ -833,6 +951,11 @@ const DAY_THREE := [
 		"readmit_hold": "...Yes. All right. Yes.",
 		"readmit_discharge": "No. No, I'm not doing that again.",
 		"readmit_exam": "Worse than this morning, and this morning he was telling you he was fine.",
+		"overnight": "He dropped to 88 walking to the toilet at midnight and told the night staff not to write it down. They wrote it down.",
+		"readmit_later": "I got as far as the car. The car park's a long way, that's all that was.",
+		"readmit_evening": "My daughter's not saying much. That's how I know it was bad.",
+		"readmit_pressed": "I have told you I am fine. I appear to be saying it from a bed.",
+		"readmit_on_your_note": "Somebody's put that I was short of breath. Well. Somebody would.",
 	},
 	{
 		"id": "fry", "name": "Rosalind Fry", "age": 52, "bed": 5,
@@ -862,6 +985,11 @@ const DAY_THREE := [
 		"readmit_hold": "Thank you. I won't ask again.",
 		"readmit_discharge": "No, you're right. You were right the first time.",
 		"readmit_exam": "Nothing, again, and she knows it before you have finished.",
+		"overnight": "She slept through. She has told the woman in the next bed that she asked to stay and that you said yes.",
+		"readmit_later": "I said I was sorry and I meant it. I shouldn't have asked you.",
+		"readmit_evening": "The house is still empty. Coming back here hasn't changed that.",
+		"readmit_pressed": "You don't have to keep checking on me. I'm not going to ask you again.",
+		"readmit_on_your_note": "You've written 'patient requests admission'. That's honest of you. I did.",
 	},
 	## ---- ALTERNATES.
 	{
@@ -887,6 +1015,11 @@ const DAY_THREE := [
 		"readmit_hold": "Aye, fair enough. I'll stop.",
 		"readmit_discharge": "Not with a fever. Come on. Not with a fever.",
 		"readmit_exam": "Tender, febrile, and this one is obstructed. Nothing like this morning.",
+		"overnight": "Nothing overnight. He asked at half five whether anybody had signed anything yet.",
+		"readmit_later": "Another one. Nobody said you could get another one that fast.",
+		"readmit_evening": "I've a temperature this time. That's different, isn't it. That's different.",
+		"readmit_pressed": "There's nothing more to tell you. It hurts, and I'm hot, and that's the lot.",
+		"readmit_on_your_note": "'Obstructed.' That's the bad one, is it. Right.",
 	},
 	{
 		"id": "ferrero", "name": "Bianca Ferrero", "age": 63, "bed": 2,
@@ -913,6 +1046,11 @@ const DAY_THREE := [
 		"readmit_hold": "Thank you. Is somebody with him? Please say somebody's with him.",
 		"readmit_discharge": "No. Not tonight. Please.",
 		"readmit_exam": "Bruised and exhausted and still asking about somebody else.",
+		"overnight": "The leg was fine all night. She rang home four times and nobody picked up until half six.",
+		"readmit_later": "He got up in the night. I heard him and I went too fast.",
+		"readmit_evening": "Somebody's with him. They keep telling me somebody's with him.",
+		"readmit_pressed": "I'm quite well. Same answer as last time, and it's still not the question.",
+		"readmit_on_your_note": "Does it say who's gone round to him? That's what I want written down.",
 	},
 	{
 		"id": "quill", "name": "Tam Quill", "age": 22, "bed": 3,
@@ -939,6 +1077,11 @@ const DAY_THREE := [
 		"readmit_hold": "Fine.",
 		"readmit_discharge": "Yeah. Course.",
 		"readmit_exam": "Awake, flat, and answering in single words.",
+		"overnight": "Wounds checked at midnight and dressed again. Liaison were bleeped twice overnight and came at eight.",
+		"readmit_later": "Fourth person. You're the fourth person today.",
+		"readmit_evening": "They'll go home at five again. They always go home at five.",
+		"readmit_pressed": "I answered this at three in the morning as well. Same answer then.",
+		"readmit_on_your_note": "That says somebody's coming. People write that.",
 	},
 	## ---- THE PAIR, both standard.
 	{
@@ -964,6 +1107,11 @@ const DAY_THREE := [
 		"readmit_hold": "Aye. I'll stop.",
 		"readmit_discharge": "With this? You're having me on.",
 		"readmit_exam": "Febrile and crackly, and nothing like the man who walked the corridor.",
+		"overnight": "Apyrexial all night. His neighbour rang at seven to say she still had the key.",
+		"readmit_later": "It came back all at once. I've never had anything come back that fast.",
+		"readmit_evening": "She's still got the key. She'll have been sat waiting on me.",
+		"readmit_pressed": "There's nothing to tell. I finished the course, I went home, it came back.",
+		"readmit_on_your_note": "Thirty-nine one. Is that written down? Good.",
 	},
 	{
 		"id": "ollerenshaw", "name": "Nita Ollerenshaw", "age": 57, "bed": 1,
@@ -988,6 +1136,11 @@ const DAY_THREE := [
 		"readmit_hold": "Yes. Whatever you need to do.",
 		"readmit_discharge": "No. Please. Something's happened.",
 		"readmit_exam": "Rigid, and this is now a surgical abdomen.",
+		"overnight": "She was given morphine at one, which she had not asked for. The CRP was repeated at six and it has gone up again.",
+		"readmit_later": "It went about nine. I felt it go.",
+		"readmit_evening": "They keep saying theatre. Nobody will say when.",
+		"readmit_pressed": "I'm not exaggerating it now any more than I was yesterday.",
+		"readmit_on_your_note": "You've put that it perforated. Yes. That's what that was.",
 	},
 ]
 
@@ -1108,6 +1261,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Yes. All right, love. Whatever you think.",
 		"readmit_discharge": "...Again? You're sending me again?",
 		"readmit_exam": "Far worse than this morning, and this morning was written up as fit for home.",
+		"overnight": "Her pressure dropped at midnight. The bloods were repeated at one and they are worse than the set Dr Costa read at half six.",
+		"readmit_later": "I did say about the swimmy. I said it to the young doctor as well.",
+		"readmit_evening": "There's a lot of people round the bed. That's usually not a good sign, is it.",
+		"readmit_pressed": "You've asked me twice. I don't mind. Nobody asked me at all yesterday.",
+		"readmit_on_your_note": "Somebody's put the swimmy down. It took two of you, but somebody's put it down.",
 	},
 	{
 		"id": "pyne", "name": "Douglas Pyne", "age": 58, "bed": 2,
@@ -1134,6 +1292,11 @@ const DAY_FOUR := [
 		"readmit_hold": "No. Get me the consultant on call.",
 		"readmit_discharge": "I will be writing to somebody about all of this.",
 		"readmit_exam": "As well as he was this morning, and considerably angrier.",
+		"overnight": "Nothing. He asked for the name and grade of everybody who had entered anything on his record since two o'clock.",
+		"readmit_later": "I have written down the times. Yours, your colleague's, and the nurse's.",
+		"readmit_evening": "My insurer will be reading all of this. I want you to know I have told them.",
+		"readmit_pressed": "You are asking me leading questions again. I recognised it the first time.",
+		"readmit_on_your_note": "I have read that. Show me which observation it is based on.",
 	},
 	{
 		"id": "petrossian", "name": "Alma Petrossian", "age": 84, "bed": 3,
@@ -1158,6 +1321,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Thank you. I'll stop where I am then.",
 		"readmit_discharge": "Not again. Please. Not in the dark.",
 		"readmit_exam": "Still perfectly well, still in her coat, and now frightened.",
+		"overnight": "The car did not come. She sat in the chair in her coat until half four and then let them put her back to bed.",
+		"readmit_later": "It wasn't my road. I know my own road.",
+		"readmit_evening": "Is the car coming? Somebody said something about a car.",
+		"readmit_pressed": "You've asked me this before, haven't you. I can tell.",
+		"readmit_on_your_note": "Are you putting me back in again? I've been in and out of here twice.",
 	},
 	{
 		"id": "vane", "name": "Hollis Vane", "age": 47, "bed": 4,
@@ -1186,6 +1354,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Right. Right. Okay.",
 		"readmit_discharge": "No. No, absolutely not.",
 		"readmit_exam": "Worse than this morning, and this morning he was begging somebody to write it down.",
+		"overnight": "Amylase higher again at four. He needed a driver by six, and he has told the bay who it was that wrote it down.",
+		"readmit_later": "I told you. I told all of you, and it's in the notes now.",
+		"readmit_evening": "They've got me on a driver. I can talk again, which is worse in some ways.",
+		"readmit_pressed": "Ask away. I've had four days of practice at this.",
+		"readmit_on_your_note": "It's in there. In your handwriting. I've had somebody read it to me twice.",
 	},
 	{
 		"id": "threlfall", "name": "Ivy Threlfall", "age": 34, "bed": 5,
@@ -1214,6 +1387,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Fine. Whatever. I'm not arguing tonight.",
 		"readmit_discharge": "Right. So that's twice I've sat here for nothing.",
 		"readmit_exam": "Neurologically normal again, and thoroughly sick of the place.",
+		"overnight": "No further aura. Her sister waited in the car park until eleven and then went home.",
+		"readmit_later": "It came back on the way in the door. I hadn't got my coat off.",
+		"readmit_evening": "My sister's stopped coming. I can't say I blame her.",
+		"readmit_pressed": "Is there something on a scan? Just say if there's something on a scan.",
+		"readmit_on_your_note": "'Second episode.' Right. So it is a thing, then.",
 	},
 	## ---- ALTERNATES.
 	{
@@ -1240,6 +1418,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Yes. That is reasonable. Thank you.",
 		"readmit_discharge": "I would document that decision very carefully, if I were you.",
 		"readmit_exam": "In sinus rhythm and thoroughly fed up.",
+		"overnight": "Telemetry normal throughout. She read the trace herself at two and asked for the leads to be re-sited, correctly.",
+		"readmit_later": "In the car park. There is no better place for it, professionally speaking.",
+		"readmit_evening": "I have looked at the trace. There is something on the trace this time.",
+		"readmit_pressed": "You are working round to a question. I would rather have the question.",
+		"readmit_on_your_note": "I have read that. It is accurate, which I did not expect. Thank you.",
 	},
 	{
 		"id": "hollins", "name": "Bert Hollins", "age": 81, "bed": 3,
@@ -1265,6 +1448,11 @@ const DAY_FOUR := [
 		"readmit_hold": "That's kind of you. I'll not be any bother.",
 		"readmit_discharge": "Right you are. I'll wait outside, then.",
 		"readmit_exam": "Perfectly well, rather cold, and still entirely cheerful about it.",
+		"overnight": "He asked the night staff three times whether anybody had rung. Nobody had rung. He slept from about two.",
+		"readmit_later": "He came. Nine o'clock, he came. They'd shut the doors by then.",
+		"readmit_evening": "He'll not do it twice. He'll be here tonight.",
+		"readmit_pressed": "You've asked me that. I don't mind. It's nice to be asked.",
+		"readmit_on_your_note": "Have you put our David's number down? Somebody ought to ring him.",
 	},
 	{
 		"id": "sarraf", "name": "Yasmin Sarraf", "age": 29, "bed": 5,
@@ -1291,6 +1479,11 @@ const DAY_FOUR := [
 		"readmit_hold": "Okay. If you think so. You've actually looked this time.",
 		"readmit_discharge": "Fine. Two nights of my life for a faint.",
 		"readmit_exam": "Normal again, in every position you can put her in.",
+		"overnight": "No further episode and nothing on the monitor. She asked at six what the night doctor had been worried about.",
+		"readmit_later": "Standing up. Same as last time. In a queue, again.",
+		"readmit_evening": "Two nights of my life for a faint. I'd like somebody to say that out loud.",
+		"readmit_pressed": "Just tell me straight. I'd rather know than be handled.",
+		"readmit_on_your_note": "That's closer. That's much closer to what actually happened.",
 	},
 	## ---- THE PAIR, both standard. On this ward the pair also decides WHICH of
 	## the night registrar's two decisions was the wrong one.
@@ -1317,6 +1510,11 @@ const DAY_FOUR := [
 		"readmit_hold": "That's very kind. I'm sorry to be a nuisance.",
 		"readmit_discharge": "Right. Yes. I'll sit in the foyer, then.",
 		"readmit_exam": "Perfectly well, rather cold, and embarrassed about the whole thing.",
+		"overnight": "Nothing. Her bag was still packed on the end of the bed at six, where it had been since the morning before.",
+		"readmit_later": "Our Julie moved the key. She's moved it and not said.",
+		"readmit_evening": "I've been in and out of this bed twice now. It's the same bed.",
+		"readmit_pressed": "I feel quite well. I felt quite well yesterday as well.",
+		"readmit_on_your_note": "You've put that I couldn't get in. That's it. That's exactly it.",
 	},
 	{
 		"id": "castellanos", "name": "Rubén Castellanos", "age": 66, "bed": 3,
@@ -1354,6 +1552,11 @@ const DAY_FOUR := [
 		"readmit_hold": "...Yes.",
 		"readmit_discharge": "No. No, listen to me.",
 		"readmit_exam": "Markedly worse, and now unmistakable to anybody who looks.",
+		"overnight": "He was harder to rouse at three. The CT at four showed the bleed and he went to theatre at half five.",
+		"readmit_later": "It's still my head. It's been my head since the start of it.",
+		"readmit_evening": "They've shaved a bit of it. My wife's going to have something to say.",
+		"readmit_pressed": "I've told the nurse. I've told you. I've told everybody who's stood there.",
+		"readmit_on_your_note": "Somebody's written 'head'. That's all I wanted. Somebody to write 'head'.",
 	},
 ]
 
@@ -1501,6 +1704,109 @@ const READMIT_FLAG := "readmissions"
 ## So the list waits here until the day actually turns over.
 const READMIT_PENDING := "readmissions_tomorrow"
 
+## THE MORNING AFTER A HOLD YOU WERE RIGHT ABOUT WAS SILENT.
+##
+## The whole investigation layer — fifteen minutes a chart, twenty-five to lay
+## hands on somebody, fifty to find the registrar — exists to find the one
+## person who genuinely needs the bed. And when you found them and kept them,
+## the reward was that Sister Nkemelu did not ask a question about it. The only
+## thing that ever came back from a previous night was a MISTAKE: `end_day`
+## builds the readmission list out of "discharged and not fit to go", and that
+## person arrives tomorrow with a new summary, a new opening line, an audit flag
+## and a tannoy announcement. Somebody you held out of decency vanished into the
+## roster rotation and was never mentioned by anybody again. Three of the audit
+## rules go out of their way to EXEMPT an honest social hold, which is
+## mechanically correct and dramatically meant that the most expensive moral act
+## in the game — Maryam Doust's $450 bed instead of Rosalind Fry's $850 one —
+## produced literally nothing in anybody's voice.
+##
+## EVERY held bed gets its line, not only the ones that needed it. Writing the
+## night only for the beds you were right about is a reward signal wearing a
+## fact's clothes: prose for the good decisions and silence for the rest is a
+## score, and this game does not keep one. So a well patient's night says what
+## it was — nothing happened, she was dressed by six, she asked which form she
+## needed — and the reader draws their own conclusion, which is the same
+## contract the End of Shift readback signed.
+##
+## Parked in a flag rather than rendered on the spot for exactly the reason
+## `READMIT_PENDING` is: it belongs to the ward you are walking ONTO, and the
+## day does not turn over until "Work tomorrow" is pressed.
+const OVERNIGHT_FLAG := "overnight_notes"
+
+## One line a held bed, resolved to finished sentences at the moment the night
+## ends. FINISHED SENTENCES, not ids, because gotcha 30 says `Cases.roster()` is
+## a function of `GameState.day` and the screen that stores this increments the
+## day two lines later — a list of ids parked here would be looked up tomorrow
+## against tomorrow's ward and find nothing at all.
+##
+## Read through `anyone()` rather than `by_id()` so it does not care which ward
+## is live either. A readmitted patient resolves to their authored self, which
+## is correct: `end_day` only ever bounces somebody whose `truly_well` is false,
+## so every readmission in the game is a person whose `overnight` was written
+## for the night you should have given them the first time.
+static func overnight_notes(held: Array) -> Array:
+	var out: Array = []
+	for pid in held:
+		var c := anyone(String(pid))
+		if c.is_empty():
+			continue
+		var line := String(c.get("overnight", "")).strip_edges()
+		if line == "":
+			continue
+		out.append("%s — %s" % [String(c.get("name", pid)), line])
+	return out
+
+## NINE NIGHTS, AND NOBODY IN THE FICTION EVER REMARKED ON THE NUMBER.
+##
+## `DEBT_TOTAL` is the only thing in this game with a shape — it starts at
+## fifteen and a half thousand, it is the reason a bed is worth holding, and
+## REDESIGN.md says in as many words that it is "what makes that a decision".
+## It was rendered in three places as a figure in a money-coloured box and
+## nowhere at all as a fact about somebody's life. So night seven opened exactly
+## like night one: the same card, the same five beds, a different number in the
+## corner that nothing acknowledged.
+##
+## A pure read, banded, with two registers. `behind` is whether Vinnie went short
+## last night — the one bit of the arithmetic the player feels rather than
+## reads, because it is the night the balance goes UP after they handed over real
+## money. Deliberately free of figures: the card prints the number twice already,
+## eight lines apart, and a third copy of a tuned quantity is how this project
+## loses afternoons (gotcha 48).
+##
+## It does not score the day. It says what the number is doing to a person, which
+## is the one thing a screen full of money cannot say for itself.
+static func debt_thread(remaining: int, behind: bool) -> String:
+	var frac := float(maxi(remaining, 0)) / float(DEBT_TOTAL)
+	if frac > 0.80:
+		if behind:
+			return "It was more this morning than it was yesterday morning. " \
+				+ "That is the part nobody warns you about."
+		return "You have started doing the arithmetic in the lift, and you are " \
+			+ "not very far into it."
+	if frac > 0.60:
+		if behind:
+			return "He was pleasant about it. He is always pleasant about it, " \
+				+ "and the number went up anyway."
+		return "You know what a night is worth now, to the pound. That is not " \
+			+ "something you knew a week ago."
+	if frac > 0.40:
+		if behind:
+			return "You have started working out what a bad night costs in " \
+				+ "nights, rather than in money."
+		return "It has stopped being a number and started being a length of " \
+			+ "time. You catch yourself counting in nights."
+	if frac > 0.15:
+		if behind:
+			return "You are further from the end of it than you were on " \
+				+ "Tuesday, and you worked harder."
+		return "You could say how many are left without stopping to think. " \
+			+ "You do not say it out loud."
+	if behind:
+		return "It is close, and it is not getting closer. He asked what you " \
+			+ "would do afterwards, and you did not have an answer ready."
+	return "It is close enough now that you have started thinking about " \
+		+ "afterwards, which you had been careful not to."
+
 ## The word she uses for what happened. Written on the chart, at the top, where
 ## the first thing anybody reads about this person is what you did last time.
 static func readmission_of(c: Dictionary) -> Dictionary:
@@ -1518,11 +1824,28 @@ static func readmission_of(c: Dictionary) -> Dictionary:
 	r["on_discharge"] = String(c.get("readmit_discharge", "...Right. Again."))
 	r["exam_unwell"] = String(c.get("readmit_exam",
 		"Worse than yesterday, and yesterday you had the chance to see it."))
-	# The middle of yesterday's conversation does not survive the ambulance.
+	# THE PERSON YOU NEARLY KILLED HAD TWO THINGS TO SAY ALL DAY.
+	#
+	# This used to erase `later`, `evening`, `pressed` and `on_your_note`
+	# outright and then restore `pressed` alone from `readmit_pressed`, which
+	# was authored on NOBODY — so every readmission on every ward fell through
+	# to one shared default, "You did ask me this yesterday. I said the same
+	# thing." And with the other three gone, `WardDay.what_they_say` had nothing
+	# to return but `readmit_opening` until the third ask and that one line
+	# afterwards, for the rest of a twelve-hour shift. Ivo Marchetti back at
+	# 02:40 with the leg tracking above the pen mark said "You said finish the
+	# tablets. I finished the tablets." and then had nothing else to say to you
+	# all day. An ordinary patient has five conversational states; the game's
+	# strongest reversal had two, one of which it shared with thirty-nine other
+	# people.
+	#
+	# All four are authored per patient now, so the erase is a per-key swap
+	# rather than a deletion. The defaults stay because a key that is missing
+	# has to produce a sentence rather than an empty speech bubble — but the
+	# data check asserts all four exist on all forty, so no shipped patient
+	# reaches one.
 	for k in ["later", "evening", "pressed", "on_your_note"]:
-		r.erase(k)
-	r["pressed"] = String(c.get("readmit_pressed",
-		"You did ask me this yesterday. I said the same thing."))
+		r[k] = String(c.get("readmit_" + k, String(c.get(k, ""))))
 	r["note"] = "Discharged by you yesterday. Back within the day."
 	r["audit_flag"] = ("Readmitted within 24 hours of a discharge you authorised. "
 		+ "AUTOMATIC CODING REVIEW.")

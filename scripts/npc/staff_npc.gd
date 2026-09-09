@@ -6,6 +6,93 @@ extends NPCBody
 
 enum State { IDLE, PATROL, INVESTIGATE, WATCH, FOLLOW, TALK, TASK, APPROACH }
 
+## VINNIE AND MS FERRAND WERE SPEAKING NURSE ADEYEMI'S BEDSIDE LINES.
+##
+## `Game._spawn_vinnie` and `_spawn_auditor` both construct a `NurseNPC`, which
+## sets `role = "nurse"` in its own `_ready`, and every behaviour in this file
+## that had a personality gated on that string and nothing else. So on a TASK
+## tick a loan shark walked to a patient's bedside, looked at them, and had a
+## forty-five per cent chance of saying "Doing nicely, this one." — captioned,
+## with `display` in front of it, as *a man in the corridor: Doing nicely, this
+## one.* Ms Ferrand from Coding said "I'll write that up." and "Was that in
+## 103?" and was pulled back to the nurses' station by paperwork that is not
+## hers. Those were the ONLY lines the two most dramatic non-patient characters
+## in the game ever produced, and they were somebody else's dialogue, in the
+## wrong voice, about the wrong subject. It is the loudest writing fault a
+## player can actually hear.
+##
+## Keyed on `npc_id` rather than on a new exported flag set at the spawn site,
+## because the two spawns already name themselves and a predicate that reads the
+## name cannot be forgotten by a third one: anybody who adds a visitor adds a
+## bark set, and gets the gating for nothing.
+##
+## Neither of them does rounds, neither of them is drawn to the station, and
+## neither of them uses the ward's noise vocabulary. What they do instead is
+## stand near you and be pleasant about it, which is the whole of what these two
+## characters are.
+const VISITOR_BARKS := {
+	"vinnie": {
+		## Pleasant, patient, and entirely out of place. He never mentions
+		## money and he never threatens anybody — the joke is that he is the
+		## most courteous person in the building and he is not going anywhere.
+		"remark": [
+			"Long shift?",
+			"I'm not in a hurry. Don't rush on my account.",
+			"Which one's your office? Somebody said you had an office.",
+			"Don't let me stop you. You carry on.",
+			"There's a machine downstairs does a decent tea. Did you know that?",
+			"Nice building, this. Bigger than it looks from the road.",
+		],
+		"noise": [
+			"Someone's dropped something.",
+			"That'll be somebody's, that.",
+			"Oh, that sounded dear.",
+		],
+		"found": [
+			"Not mine, that.",
+			"I'd leave it. Somebody'll come.",
+		],
+	},
+	"auditor": {
+		## Institutional and incurious. She is not unkind and she is not
+		## interested; she is here about the paperwork and says so.
+		"remark": [
+			"Don't mind me.",
+			"Is this the only terminal on the ward?",
+			"I'll need last night's as well, when you have a minute.",
+			"Does anybody here print anything, or is it all on the system?",
+			"I'm told you write at the bedside. Is that usual?",
+			"I'm not here about you specifically.",
+		],
+		"noise": [
+			"Is something meant to be happening?",
+			"Is that normal?",
+			"I'll note the time.",
+		],
+		"found": [
+			"Somebody will want to know about that.",
+			"I'll put that down as environmental.",
+		],
+	},
+}
+
+## What Adeyemi says at a bedside. Named rather than inline so a check can assert
+## that no visitor ever emits one of them.
+const ROUND_OK := [
+	"All fine here.", "No change.", "Doing nicely, this one.",
+	"Obs are stable.", "I'll write that up.",
+]
+
+## And what the ward says when something falls over somewhere else. "Was that in
+## 103?" used to be in here: there are four rooms in this building — ward,
+## station, office, corridor — and no numbered ones, and `NurseNPC._ready`
+## documents that six were demolished. A player who heard it and went looking
+## found a wall.
+const NOISE_BARK := [
+	"What was that?", "Hello?", "Oh, for—", "Was that in the bay?",
+	"Right, I'm coming.",
+]
+
 @export var patrol_rooms: Array[String] = []
 @export var home_room := "station"
 
@@ -20,6 +107,16 @@ var _approached := false
 var _round_target := ""
 ## Set for a shadowing student: they follow you all shift and see everything.
 var shadow_player := false
+
+## DOES THIS PERSON WORK HERE. Static so it can be asserted without building a
+## CharacterBody3D in a headless probe — the three gates that read it are
+## `_begin_round`, the station pull in `_pick_patrol_target`, and the noise
+## bark, so the check covers the predicate the whole fix rests on.
+static func rounds_for(role_name: String, id: String) -> bool:
+	return role_name == "nurse" and not VISITOR_BARKS.has(id)
+
+func does_rounds() -> bool:
+	return rounds_for(role, npc_id)
 
 func _ready() -> void:
 	super._ready()
@@ -68,6 +165,13 @@ func _enter(s: State) -> void:
 			# the nurse turned around before seeing anything.
 			if _round_target != "":
 				_timer = 30.0
+			else:
+				# A VISITOR'S TASK IS STANDING ABOUT, and that is where their one
+				# line goes. Vinnie and Ms Ferrand take the same TASK ticks
+				# Adeyemi does — this is simply what happens on theirs instead of
+				# a bedside observation, so the cadence and the cooldown are the
+				# ones the ward already had rather than a new timer of their own.
+				_visitor_remark()
 		State.APPROACH:
 			_timer = 25.0
 
@@ -177,7 +281,9 @@ func _tick_state(delta: float) -> void:
 ## access killed the function before it could reach the rest.
 func _begin_round() -> void:
 	_round_target = ""
-	if role != "nurse":
+	# `role != "nurse"` was the whole of this gate, and both visitors are
+	# NurseNPCs — see VISITOR_BARKS.
+	if not does_rounds():
 		return
 	var ps = get_tree().get_first_node_in_group("patient_system")
 	if ps == null:
@@ -207,10 +313,19 @@ func _do_round() -> void:
 		return
 	look_toward(body.global_position + Vector3(0, 1.2, 0))
 	if RNG.chance("round_quiet", 0.45):
-		say(String(RNG.pick("round_ok", [
-			"All fine here.", "No change.", "Doing nicely, this one.",
-			"Obs are stable.", "I'll write that up.",
-		])), 2.4)
+		say(String(RNG.pick("round_ok", ROUND_OK)), 2.4)
+
+## The visitor's half of `_do_round`: no bed, no observation, no opinion about
+## anybody's obs. Shares `_talk_cooldown` with the ward's own barks so a man
+## standing in a corridor for twelve hours does not narrate all of them.
+func _visitor_remark() -> void:
+	var bank: Dictionary = VISITOR_BARKS.get(npc_id, {})
+	if bank.is_empty() or _talk_cooldown > 0.0:
+		return
+	if not RNG.chance("visitor_quiet", 0.45):
+		return
+	_talk_cooldown = 10.0
+	say(String(RNG.pick("visitor_remark", Array(bank.get("remark", [])))), 3.0)
 
 func _wants_a_word() -> bool:
 	if mind == null or mind.deal_state != "none":
@@ -249,7 +364,7 @@ func _deliver_proposition() -> void:
 			EventBus.toast.emit("%s is covering for you. For now." % display, "info")
 		"gossip":
 			say(String(RNG.pick("gossip_warn", [
-				"Everyone's talking about 103, by the way. Everyone.",
+				"Everyone's talking about bed four, by the way. Everyone.",
 				"You didn't hear it from me, but people have opinions.",
 				"I'd keep your head down this week if I were you.",
 			])), 4.5)
@@ -272,7 +387,9 @@ func _pick_patrol_target() -> void:
 	# station is the paperwork she has to do there, which is also what makes the
 	# ward quiet at predictable moments — and a quiet ward is when a note gets
 	# written without anybody watching.
-	elif role == "nurse" and RNG.chance("station_paperwork", 0.35):
+	# ...and it is HER paperwork. Vinnie has none and Ms Ferrand's is in the
+	# office, so neither of them is pulled to the nurses' station by it.
+	elif does_rounds() and RNG.chance("station_paperwork", 0.35):
 		pool = ["station"]
 	# A department nobody has bought is behind a shutter, and a nurse who picks
 	# one stands in the corridor waiting on a path that does not exist. Filtered
@@ -306,10 +423,11 @@ func on_heard_noise(evt: WorldEvent) -> void:
 	# read as a working feature every time anybody scrolled past them.
 	if _talk_cooldown <= 0.0:
 		_talk_cooldown = 8.0
-		say(String(RNG.pick("noise_bark", [
-			"What was that?", "Hello?", "Oh, for—", "Was that in 103?",
-			"Right, I'm coming.",
-		])), 2.4)
+		var bank: Dictionary = VISITOR_BARKS.get(npc_id, {})
+		if bank.is_empty():
+			say(String(RNG.pick("noise_bark", NOISE_BARK)), 2.4)
+		else:
+			say(String(RNG.pick("visitor_noise", Array(bank.get("noise", [])))), 2.4)
 
 ## On arrival they look at the mess and form an opinion about the state of the
 ## ward — bad for your reputation, but not evidence of fraud.
@@ -320,12 +438,32 @@ func _on_reached_investigation() -> void:
 	var r = h.room(_investigate_room)
 	if r == null:
 		return
+	# A COMPLAINT ABOUT THE STATE OF THE WARD IS A STAFF OPINION. "Must've been
+	# the pipes" and "the window is wide open" are things somebody who works
+	# here says; in a loan shark's mouth they are the same wrong-voice fault as
+	# the bedside round. The EVIDENCE below is unchanged — Ms Ferrand noticing a
+	# room that has been interfered with is exactly what she is for — but she
+	# says her own line about it.
+	var bank: Dictionary = VISITOR_BARKS.get(npc_id, {})
 	var gripes: Array = r.complaints()
 	if gripes.is_empty():
-		if RNG.chance("noise_shrug", 0.5):
-			say(String(RNG.pick("shrug", ["Nothing.", "Must've been the pipes.", "Hm."])), 2.0)
+		# THE EARLY RETURN IS LOAD-BEARING AND IT IS NOT ABOUT THE LINE. A room
+		# with the window open above eighteen degrees produces no complaint at
+		# all, and the evidence below fires on `window_open` whatever the
+		# temperature is — so returning here is what stops a nurse who walked in
+		# on a perfectly comfortable room from recording that it was tampered
+		# with. Splitting the visitor's line out of this branch nearly cost that.
+		if bank.is_empty():
+			if RNG.chance("noise_shrug", 0.5):
+				say(String(RNG.pick("shrug",
+					["Nothing.", "Must've been the pipes.", "Hm."])), 2.0)
+		elif RNG.chance("visitor_found", 0.5):
+			say(String(RNG.pick("visitor_found_line", Array(bank.get("found", [])))), 2.4)
 		return
-	say(String(RNG.pick("gripe", gripes)).capitalize() + ".", 3.0)
+	if bank.is_empty():
+		say(String(RNG.pick("gripe", gripes)).capitalize() + ".", 3.0)
+	else:
+		say(String(RNG.pick("visitor_found_line", Array(bank.get("found", [])))), 2.4)
 	# `GameState.adjust_rep()` used to be called here and it DOES NOT EXIST —
 	# the reputation tracks went with the meta layer. Calling it threw, and a
 	# throw ABORTS the function, so everything below this line was unreachable:

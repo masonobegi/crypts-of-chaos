@@ -8,9 +8,28 @@ extends ScreenBase
 
 func _build() -> void:
 	var w = get_tree().get_first_node_in_group("ward_day")
-	# Taller: the money panel gained a line when the debt got a total, and the
-	# last of the three numbers was sitting under the fold.
-	var v := card_shell(720, 700, "WARD C",
+	# TALLER, AND — ALONE AMONG THE CARDS — WIDER, AND THE WIDTH IS THE ONE THAT
+	# MATTERED.
+	#
+	# Height first: the money panel gained a line when the debt got a total, so
+	# this asks for the cap (`viewport - 136`, 764 at the pinned 1600x900)
+	# rather than a number, exactly as the End of Shift card does.
+	#
+	# Then LAST NIGHT put up to five sentences above the ward list, and at 720
+	# every one of them wrapped to two rows: measured in the real window
+	# (gotcha 28, because under `--headless` the root Window is 64 pixels tall
+	# and every layout reading off it is fiction) that is 31% of the card below
+	# the fold on a five-bed morning, with the whole money panel — the premise,
+	# and the only place the interest is stated before it is charged — under the
+	# line. Two cheaper fixes were tried and measured first and both were worth
+	# almost nothing: dropping the lines to 12pt and dim, and trimming the eight
+	# longest of them, together moved 32% to 31%, because the constraint is
+	# ROWS and a 130-character sentence is two rows at either size.
+	#
+	# 860 puts four of the five on ONE row and takes it to 24%. The other cards
+	# stay at 720 and 780 and should: this is the only one that is a LIST, and a
+	# ward list is a wider document than a verdict.
+	var v := card_shell(860, 780, "WARD C",
 		"%s  ·  five beds  ·  you are the only doctor on" % GameState.time_string())
 
 	v.add_child(UIKit.label(
@@ -28,6 +47,35 @@ func _build() -> void:
 		"You are on until %s. Reading one chart is %d minutes of it."
 			% [ChartEntry._hhmm(Cases.DEBT_DUE_MINUTE), WardDay.READ_COST],
 		14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+
+	# WHAT LAST NIGHT WAS, FOR THE BEDS YOU KEPT.
+	#
+	# Only a MISTAKE ever came back from a previous shift: somebody you sent
+	# home who was not fit to go is in a bed this morning with an audit flag on
+	# them and a line on the tannoy, and somebody you kept out of decency was
+	# never mentioned by anybody again. The whole investigation layer exists to
+	# find the one person who genuinely needs the bed, and the reward for
+	# finding them was that the ward sister did not ask a question about it.
+	#
+	# Written the night before by `screen_day_over._carry`, because the day has
+	# not turned over until "Work tomorrow" is pressed and an id resolved after
+	# that is resolved against a different ward (gotcha 30). What is stored here
+	# is finished sentences.
+	#
+	# Every held bed, not only the ones that needed holding — prose for the
+	# right decisions and silence for the rest is a score in fancy dress, and
+	# nothing in this game grades the player's choice for them.
+	#
+	# Dim and a point down on the ward list: this is what happened, and the beds
+	# below it are what you have to decide. See the width note at the top for
+	# what that costs and what it does not.
+	var last_night: Array = GameState.flag(Cases.OVERNIGHT_FLAG, [])
+	if not last_night.is_empty():
+		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label("LAST NIGHT", 11, UIKit.INK_DIM))
+		for line in last_night:
+			v.add_child(UIKit.label("· " + String(line), 12, UIKit.INK_DIM,
+				HORIZONTAL_ALIGNMENT_LEFT, true))
 	v.add_child(UIKit.rule())
 
 	var box := UIKit.vbox(4)
@@ -47,6 +95,26 @@ func _build() -> void:
 	v.add_child(box)
 
 	v.add_child(UIKit.rule())
+
+	# AND WHAT NIGHT THIS IS, in the one voice the game had never used.
+	#
+	# Nothing anywhere in `scripts/` was keyed on how long the career had run —
+	# grepping `GameState.day` finds the HUD label, a save log line and the ward
+	# rotation, and that is all of it. So night seven opened exactly like night
+	# one: the same card, five beds, and a different number in a red box that
+	# nobody in the fiction ever remarked on. One authored line, banded off the
+	# balance, in two registers depending on whether Vinnie went short last
+	# night — which is the only part of the compounding a player FEELS, because
+	# it is the morning the figure is bigger after they handed over real money.
+	#
+	# `vinnie_visits` is the existing flag for that and it is written by
+	# `_carry` from last night's `short`, so this is a pure read and adds no
+	# state. It goes above the money rather than inside it: the panel is what
+	# the ward owes, and this is what it is doing to somebody.
+	v.add_child(UIKit.label(
+		Cases.debt_thread(GameState.debt_remaining(),
+			bool(GameState.flag("vinnie_visits", false))),
+		13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 
 	# The two numbers, flat, with no advice attached and no arrow between them.
 	var m := UIKit.panel(UIKit.NOTE, 4, 1, UIKit.BAD)

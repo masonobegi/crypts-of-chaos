@@ -348,6 +348,12 @@ Specific and falsifiable. The prototype passes only if:
    the correct line unprompted.
 5. **The honest path is real and uncomfortable** — a fully honest day clears the
    debt, and ≥ 3 of 5 testers report hesitating over Dot Kerrigan.
+   *Authored on the way in and, for a long time, unanswered on the way out:*
+   holding her cost you seven hundred pounds and produced nothing in anybody's
+   voice, because the audit rules correctly exempt an honest social hold and
+   nothing else looked. Every held bed now carries its own `overnight` line onto
+   the next morning's card — see **What comes back from a previous night** in
+   `docs/SPOILERS.md`. It is a fact about her night and not a verdict on yours.
 6. **They start a second day.** Unprompted, ≥ 3 of 5.
 
 If 1, 3 and 6 fail, the concept is wrong and we stop.

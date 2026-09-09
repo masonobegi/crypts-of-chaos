@@ -2924,3 +2924,40 @@ the same person\'s gown renders at 179. The darkest face had 21 levels of
 contrast for its features where the pale ones had 91. `./faces.sh` measures that
 per subject now and exits non-zero under a floor, which is the harness that
 should have existed before any of this was authored.
+
+## The camera you play the whole game through
+
+A full screenshot pass, looking at every frame rather than assuming.
+
+The bedside view — the one the player spends twelve hours in — showed a man laid
+on a slab in his shoes. Four blue-grey tubes with peach ankles and navy shoes on
+two of them, and you could not tell the arms from the legs. `PatientBed` has had
+a blanket since it was written and it is BEDDING: flat on the mattress, two
+thirds of the way down, underneath the patient. Turning that one piece bright red
+and re-rendering the frame put no red anywhere near the occupied bed.
+
+Then measured rather than guessed. The smoke run builds real beds with real
+patients, so printing the occupant's mesh boxes through the bed's own inverted
+transform costs forty seconds: the patient occupies z -1.30 to -0.30 of a bed
+that runs -1.02 to +1.02. They sit propped in the head quarter and the rest of
+the mattress is empty — so a duvet two thirds of the way down is a duvet over
+nobody. The one that shipped is over the lap, and only while somebody is in the
+bed.
+
+A full re-pose was tried first and reverted, and the reason is the useful half:
+derived honestly from the backrest's own 29-degree ramp, hips at the crease,
+legs flat, it put the head seventy centimetres past the headboard and the
+mattress through the man's elbows. Three coupled degrees of freedom do not fall
+out of one measurement, and the pose was never the fault.
+
+On the title screen — the first frame anybody sees — every character had a black
+horseshoe on the gown at the shoulder. A seam filler tucked half inside the
+trunk still has a silhouette against the trunk, so the outline pass drew it.
+
+And a doormat at 0.22 of a value on a floor at 0.72 is not a mat, it is a
+rectangular hole in the vinyl.
+
+The README had drifted into the same fault as a constant nothing reads, in the
+file a buyer reads first: forty patients where there are 43, 52 deals where a
+career reaches 88, and one shipping item described as still open that had been
+done for a day. The three computable numbers are asserted by the data probe now.

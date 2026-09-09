@@ -132,7 +132,7 @@ static func _dress_ward(h: Hospital, r: Room) -> void:
 	# Down at the door end: at the far wall it stood in bed five's visitor chair.
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, _door_wall_z(r) - into * 3.4), 0.9)
 	Dressing.floor_mat(h, Vector3(_door_x(r), 0, _door_wall_z(r) - into * 1.05),
-		Vector2(1.5, 0.9), Color(0.22, 0.30, 0.32))
+		Vector2(1.5, 0.9), Color(0.40, 0.46, 0.47))
 	_dress_ward_top(h, r)
 
 ## THE TOP OF THE WARD, which was a hundred and twenty square metres of nothing.
@@ -314,7 +314,7 @@ static func _dress_office(h: Hospital, r: Room) -> void:
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.position.y + 1.1),
 		Color(0.46, 0.36, 0.30))
 	Dressing.floor_mat(h, Vector3(r.rect.get_center().x, 0, r.rect.get_center().y),
-		Vector2(2.6, 1.8), Color(0.42, 0.24, 0.22))
+		Vector2(2.6, 1.8), Color(0.52, 0.34, 0.30))
 	Dressing.whiteboard(h, _left_wall(r, 0.62, 1.66), LEFT_ROT, 1.1, 0.8)
 	# THE DESK HAD NOTHING ON IT. `Dressing.desk_clutter` — a stack, a mug and a
 	# tray of pens — has existed since the dressing pass and was placed nowhere,

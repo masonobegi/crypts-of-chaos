@@ -841,6 +841,37 @@ with it because a lost afternoon does not care which.
     This style does not want lid geometry; it wants a smaller, warmer, matte
     mark. Checked at the cast distance as well as at eighty centimetres, because
     the suspicion layer is built on "is this person looking at me".
+87. **A COVER UNDER THE PATIENT IS A COVER NOBODY CAN SEE, and the bedside is
+    the camera the whole game is played through.** It showed four blue-grey
+    tubes with peach ankles and navy shoes on two of them, lying on top of the
+    bedding — you could not tell the arms from the legs, and the man was in bed
+    in his shoes. `PatientBed` has had a blanket since it was written; it is
+    BEDDING, flat on the mattress two thirds of the way down, and the patient
+    is on top of it. Found by turning that one piece BRIGHT RED and
+    re-rendering the frame (`SHOT_ONLY=bedside`, ninety seconds): no red
+    anywhere near the occupied bed, and a corner of it on the empty one behind.
+    Then measured properly rather than guessed — the smoke run builds real beds
+    with real patients, so printing the occupant's mesh AABBs through the bed's
+    own INVERTED transform costs forty seconds and gives exact numbers: the
+    patient occupies z -1.30 to -0.30 of a bed that runs -1.02 to +1.02. They
+    sit propped in the head quarter and the rest of the mattress is empty. The
+    duvet is over the LAP now, and only while somebody is in the bed.
+    **A full re-pose was tried first and reverted**: derived honestly from the
+    backrest's own 29-degree ramp, hips at the crease, legs flat — and it put
+    the head seventy centimetres past the headboard and the mattress through
+    the man's elbows, because the body pivots at its own origin and three
+    coupled degrees of freedom do not fall out of one measurement. The pose was
+    never the fault; nothing covering it was.
+88. **A SEAM FILLER TUCKED INSIDE ANOTHER SOLID STILL HAS A SILHOUETTE AGAINST
+    IT.** The shoulder sphere closes the join between the sleeve and the trunk,
+    it is half inside the trunk, and it was inked — so the inverted hull drew a
+    black horseshoe on the gown at every shoulder in the game, with a small
+    black notch above it, and from behind it read as a hole in the back of the
+    scrubs. Seen on the TITLE SCREEN, which is the first frame anybody sees.
+    The arm and the trunk both carry a line already; a third one between them is
+    not the edge of anything, it is a scar. Un-inking it then exposes the V at
+    the top-outer corner that the sphere was too small to reach, so the width
+    has to go up to the sleeve's own — and no further (gotcha 82).
 
 ## Design rules that are load-bearing
 

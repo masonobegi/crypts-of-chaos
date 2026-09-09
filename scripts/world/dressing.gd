@@ -608,9 +608,15 @@ static func hamper(h: Node3D, pos: Vector3, rot_y := 0.0,
 		Vector3(0.04, 0.70, 0.02), 0.95, 0.008))
 	return _add(h, root, pos, rot_y)
 
-## A mat inside a doorway. Flat, dark, and the reason a floor has a threshold.
+## A mat inside a doorway, and the reason a floor has a threshold.
+##
+## NOT DARK. At 0.22 of a value on a floor at 0.72 it is not a mat, it is a
+## rectangular HOLE in the vinyl — which is exactly what it reads as in the wide
+## ward shot, and a black rectangle lying flat with no thickness is the single
+## most convincing way to tell somebody your floor is broken. A doormat is a mid
+## grey-brown; the trim inside it carries whatever contrast it needs.
 static func floor_mat(h: Node3D, pos: Vector3, size := Vector2(1.4, 0.9),
-		tint := Color(0.24, 0.32, 0.34), rot_y := 0.0) -> Node3D:
+		tint := Color(0.42, 0.47, 0.48), rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
 	root.name = "FloorMat"
 	root.add_child(Build.box_mi(Vector3(size.x, 0.016, size.y), tint, Vector3.ZERO, 0.95, 0.0))

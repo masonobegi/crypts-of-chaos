@@ -244,6 +244,7 @@ func start() -> void:
 			"discharged_at": -1,
 		}
 	_family_been.clear()
+	_wrote_in_the_open.clear()
 	_called.clear()
 	_registrar_known = false
 	for pe in Cases.prior_entries():
@@ -388,9 +389,12 @@ func write_entry(pid: String, claim: int, text: String, stated: int,
 	# it, is the observable half of the crime this game is about. Weighted low —
 	# a doctor writing at a bedside is also just a doctor writing at a bedside —
 	# so it takes a pattern rather than one note to make Adeyemi look up.
+	if e.supports_stay() and not e.seen_by.is_empty():
+		_wrote_in_the_open[pid] = int(_wrote_in_the_open.get(pid, 0)) + 1
 	if e.supports_stay() and not e.seen_by.is_empty() and is_inside_tree():
 		WorldEvent.new("wrote_at_the_bedside", "player") \
 			.at(_player_pos(), TERMINAL_ROOM.get(terminal, "ward")) \
+			.about(pid) \
 			.seen(0.28).in_the_room().tag("paperwork") \
 			.says("wrote a note at the bedside").emit()
 	records.add(e)
@@ -1451,7 +1455,63 @@ func review_truth() -> Dictionary:
 	return truth
 
 func review_findings() -> Array:
-	return Contradictions.find_all(records.entries, review_truth(), records.placements)
+	var truth := review_truth()
+	var out: Array = Contradictions.find_all(records.entries, truth, records.placements)
+	# ...AND WHAT THE NURSE SAW, which is not in any document and never reached
+	# the folder. See `Contradictions.she_was_standing_there` for the three gates
+	# and `SuspicionSystem.what_the_ward_saw` for where the belief comes from.
+	out.append_array(Contradictions.she_was_standing_there(
+		_what_the_nurse_has(), records.entries, truth))
+	return out
+
+## THE SAME SHAPE AS `witness_stub`, AND FOR THE SAME REASON. None of the
+## economics probes builds a suspicion system, so the live answer is unavailable
+## to them; a test that wants a specific one sets this, and a probe that wants
+## the game gets the model below. The real game computes it.
+static var watch_stub: Dictionary = {}
+
+## HOW MANY TIMES YOU WROTE A REASON FOR EACH BED WHERE SOMEBODY COULD SEE YOU.
+## Reset every morning with everything else in `start()`.
+var _wrote_in_the_open := {}
+
+func _what_the_nurse_has() -> Dictionary:
+	if not watch_stub.is_empty():
+		return watch_stub
+	if is_inside_tree():
+		var sus = get_tree().get_first_node_in_group("suspicion_system")
+		if sus != null and sus.has_method("what_the_ward_saw"):
+			return sus.what_the_ward_saw()
+	return _the_ward_would_have_seen()
+
+## A PROBE THAT BUILDS NO WORLD SEARCHES A GAME THAT DOES NOT SHIP, AND THIS IS
+## THE SECOND TIME.
+##
+## `witness_stub` exists because `seen_by` was empty in every one of the 2,601
+## strategies a ward, so `_written_in_front_of_them` — a bed-killer — could not
+## fire in the search whose entire purpose is that a dominant strategy has to
+## hide from a search rather than from an author. Shipping
+## `she_was_standing_there` behind a live `SuspicionSystem` and stopping there
+## would have made exactly the same hole on the same day.
+##
+## So the model, and it is one measured claim rather than a guess: writing at the
+## bedside is worth 0.28 to a witness, `Mind.add_evidence` MERGES duplicates
+## rather than stacking them, and the real ward after a whole shift of notes
+## about ONE bed sits at tier 1 (0.331 on the loudest of five, measured in the
+## tree). It is notes about SEVERAL beds that make it a pattern, which is
+## precisely the threshold `WATCHED_TIER` encodes. The bed the room remembers is
+## the one it watched you write about most.
+func _the_ward_would_have_seen() -> Dictionary:
+	if _wrote_in_the_open.size() < 2:
+		return {}
+	var pid := ""
+	var most := 0
+	for k in _wrote_in_the_open:
+		if int(_wrote_in_the_open[k]) > most:
+			most = int(_wrote_in_the_open[k])
+			pid = String(k)
+	return {"tier": 3 if _wrote_in_the_open.size() >= 4 else 2,
+		"who": "The ward", "patient_id": pid,
+		"summary": "wrote a note at the bedside", "weight": 0.28 * float(most)}
 
 # ------------------------------------------------------- place and time
 ## WHERE YOU WERE, AND WHO COULD SEE YOU BEING THERE.
@@ -1515,18 +1575,36 @@ static var witness_stub: PackedStringArray = PackedStringArray()
 
 func _who_can_see_me(terminal := TERMINAL_WARD) -> PackedStringArray:
 	var out := PackedStringArray()
-	# CLAUDE.md 5: a node added during a SceneTree's _initialize() is not inside
-	# the tree, and get_tree() is null there. The headless harnesses build a
-	# WardDay exactly that way.
+	# THE STUB IS CHECKED FIRST, AND THE FIRST VERSION CHECKED IT LAST — WHICH
+	# MEANT IT WAS NEVER CHECKED AT ALL.
+	#
+	# CLAUDE.md 5: a node added during a SceneTree's `_initialize()` is NOT
+	# inside the tree. Every probe in this repo builds its `WardDay` exactly
+	# that way and runs the entire search inside `_initialize`, so
+	# `is_inside_tree()` is false for all of them — and the early return above
+	# the stub sent every one of them home with an empty list before the stub
+	# was consulted. `frontier_impl` has set `witness_stub` to ["Adeyemi"] since
+	# the session that added it, with eight lines of comment saying why, and it
+	# has never once reached an entry: `_written_in_front_of_them` (0.62, and in
+	# the CONTRADICTED list) still could not fire in a single one of the 2,601
+	# strategies searched per ward. The fix for "the probe searches with a
+	# detector switched off" was itself switched off, in the same way, by the
+	# gotcha it cites in its own comment.
+	#
+	# Nothing in the shipped game sets the stub, so preferring it costs the real
+	# ward nothing: it is set by a harness, and a harness that sets it is saying
+	# there is no world to compute an answer from.
+	if not witness_stub.is_empty():
+		if terminal == TERMINAL_OFFICE:
+			return out            ## the office door is the thing that shuts
+		return witness_stub.duplicate()
 	if not is_inside_tree():
 		return out
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
 	var player = get_tree().get_first_node_in_group("player")
 	var h = get_tree().get_first_node_in_group("hospital")
 	if sus == null or player == null:
-		if witness_stub.is_empty() or terminal == TERMINAL_OFFICE:
-			return out
-		return witness_stub.duplicate()
+		return out
 	var mine: String = String(h.room_at(player.global_position)) if h != null else ""
 	for m in sus.all_minds():
 		var b = sus.body_of(m.id)

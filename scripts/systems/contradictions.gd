@@ -1237,6 +1237,95 @@ static func pattern_findings(entries: Array, truth: Dictionary) -> Array:
 	return out
 
 # ======================================================================
+## THE WARD HAS ITS OWN ACCOUNT, AND UNTIL THIS NOBODY EVER ASKED FOR IT.
+##
+## The rest of this file reads DOCUMENTS. That is deliberate and it stays: the
+## audit is a read across truth, record and belief, and a reviewer who can
+## simply know things is a reviewer the player cannot argue with.
+##
+## But the four people in the other beds are not documents. They spent twelve
+## hours in the same twenty metres as you, they clock what you do, they say one
+## of four escalating things as it mounts up, and `tells_everyone` is an authored
+## field on a patient because the game has always known they talk to the staff.
+## All of it was thrown in the bin at eight o'clock.
+## `SuspicionSystem.what_the_ward_saw` is what the room would say if anybody
+## asked it, and this is the one question it is allowed to become.
+##
+## THREE GATES, and every one of them is what stops it being a tax on working.
+##
+##   1. The witness has to be at `WATCHED_TIER` or above. One note typed in front
+##      of somebody is a doctor writing a note — measured in the real ward, a
+##      whole shift of notes about ONE bed leaves the room at tier 1, because
+##      `Mind.add_evidence` merges duplicates rather than stacking them. It takes
+##      notes about SEVERAL beds, which is to say it takes a pattern.
+##   2. The bed has to be YOURS ALONE. If anybody else — a nurse review, the
+##      registrar, a lab result — put a reason for the stay in the record, then
+##      what she watched you type was a doctor writing down what was already
+##      true, and she has nothing to say about it. This is the whole reason the
+##      corroboration verbs cost what they cost.
+##   3. Nowhere to go is exempt, the way it is exempt everywhere else. A social
+##      hold has no corroborating observation by construction (see
+##      `_uncorroborated_stay` and `audit_beds`), so gate 2 can never clear it,
+##      and the third ward would have been unplayable in front of anybody.
+##   4. And if you EXAMINED them, she watched you write down what you had just
+##      been at the bedside finding out, which is a doctor working. This one is
+##      the design rule rather than a balance decision: information must never
+##      have negative expected value, and a rule that fires on "wrote a note
+##      where somebody could see" and not on "went and looked first" is a rule
+##      that pays you to decide blind. The lie told by a doctor who examined
+##      somebody and wrote the opposite is caught by `_objective_refutes` and
+##      `_justification_undermined`, which read what the examination FOUND —
+##      that is their job, and it is not this one's.
+##
+## It is in the CONTRADICTED list in `audit_beds`, which means one of these turns
+## a bed from "only you saw it" into "and she watched you decide it" — NOTED
+## becomes FLAGGED. That is the entire mechanical claim being made: being seen
+## costs you exactly one notch, on exactly the bed you could not corroborate,
+## and going somewhere private to write it is free.
+const WATCHED_TIER := 2
+
+static func she_was_standing_there(watch: Dictionary, entries: Array,
+		truth: Dictionary) -> Array:
+	var out: Array = []
+	if int(watch.get("tier", 0)) < WATCHED_TIER:
+		return out
+	var pid := String(watch.get("patient_id", ""))
+	if pid == "" or not truth.has(pid):
+		return out
+	var t: Dictionary = truth[pid]
+	if not bool(t.get("held", false)):
+		return out
+	if bool(t.get("no_care_at_home", false)):
+		return out                     ## gate 3
+	if bool(t.get("examined", false)):
+		return out                     ## gate 4
+	var yours := false
+	for e in entries:
+		if e.patient_id != pid or not e.supports_stay():
+			continue
+		if e.author == ChartEntry.Author.YOU:
+			yours = true
+		else:
+			return out                 ## gate 2 — somebody else saw a reason too
+	if not yours:
+		return out                     ## nothing of yours for her to have watched
+	var who := String(watch.get("who", "Somebody on the ward"))
+	var f := Finding.new()
+	f.kind = "she_was_standing_there"
+	f.patient_id = pid
+	f.axis = "what the ward watched you do"
+	f.severity = clampf(0.54 + 0.09 * float(int(watch.get("tier", 0)) - WATCHED_TIER)
+		+ 0.18 * float(watch.get("weight", 0.0)), 0.54, 0.86)
+	f.question = Cases.about(pid,
+		"%s watched you put that in at the bedside yourself. Nobody else looked at {them}."
+			% who)
+	f.because = ("%s was in the room while the only note keeping this patient in was "
+		+ "typed, and there is nothing else in the record that agrees with it.") % who
+	if String(watch.get("summary", "")) != "":
+		f.because += " The account is: %s." % String(watch["summary"])
+	out.append(f)
+	return out
+
 # THE BED AUDIT — what replaced the severity sum.
 #
 # For three iterations the verdict was a float: add up every finding, compare
@@ -1369,6 +1458,7 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 					"symptom_was_suggested", "grateful_witness",
 					"already_being_looked_at",
 					"written_in_front_of_them", "reads_own_chart",
+					"she_was_standing_there",
 					"they_asked_you_to"]:
 				contradicted = true
 

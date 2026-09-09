@@ -1696,3 +1696,142 @@ func test_the_end_of_day_screen_promises_what_actually_happens() -> void:
 		"and two shifts later she has gone")
 	GameState.set_flag("auditor_shifts", 0)
 	GameState.set_flag("auditor_present", false)
+
+## THE BELIEF LAYER REACHES THE VERDICT, FINALLY.
+##
+## `Mind`, `Evidence`, the gossip pass, the four escalating things a nurse says
+## to you and `file_complaint` are about nine hundred and fifty lines that model
+## being SEEN, and they reached the eight o'clock audit through exactly one
+## channel — `seen_by`, stamped on an entry at the moment it was typed. Twelve
+## hours of a person watching you work went in the bin at handover: she would
+## tell you to your face that she had seen enough and then say nothing at all to
+## the woman holding the folder.
+##
+## Proven red by deleting the `she_was_standing_there` call from
+## `WardDay.review_findings`: the watched night and the unwatched night came back
+## with the same verdict, which is the whole fault.
+func test_what_the_nurse_saw_reaches_the_folder() -> void:
+	# The same night twice: a bed held on a note you typed yourself, about a man
+	# who is perfectly well, with nothing else in the record agreeing with it.
+	var quiet := _the_lie_about_oduya({})
+	t.ok(not _kinds(quiet.review_findings()).has("she_was_standing_there"),
+		"nobody was watching, so there is nothing of hers in the folder")
+	var before := _verdict(quiet)
+	t.eq(before, ReviewSystem.OUTCOME_QUESTIONS,
+		"and one bed on your word alone is noted")
+	quiet.queue_free()
+
+	var watched := _the_lie_about_oduya({"tier": 2, "who": "Nurse Adeyemi",
+		"patient_id": "oduya", "summary": "wrote a note at the bedside",
+		"weight": 0.42})
+	t.ok(_kinds(watched.review_findings()).has("she_was_standing_there"),
+		"she was watching, and she says so")
+	t.eq(_verdict(watched), ReviewSystem.OUTCOME_FLAGGED,
+		"and the same night is one notch worse for it")
+	# And there is no answer in the room that is her own note, because SHE is
+	# the question.
+	var rv := ReviewSystem.new()
+	var fs: Array = watched.review_findings()
+	rv.begin(fs, watched.records.entries, watched.review_truth())
+	for f in fs:
+		if String(f.kind) != "she_was_standing_there":
+			continue
+		var answers: Array = []
+		for o in rv.options(f, watched.records):
+			answers.append(int(o["a"]))
+		t.ok(not answers.has(ReviewSystem.Answer.POINT_AT_NURSE),
+			"and you cannot answer the nurse by citing the nurse")
+	watched.queue_free()
+	WardDay.watch_stub = {}
+
+## ...AND IT IS NOT A TAX ON WORKING. Three gates, and every one of them is a
+## thing a careful doctor did that a lazy one did not. A rule that fires on
+## "wrote a note where somebody could see" and not on "went and looked first"
+## is a rule that pays you to decide blind, which is the one inversion this
+## whole design exists to prevent.
+func test_being_watched_only_costs_you_the_bed_nobody_else_saw() -> void:
+	var stub := {"tier": 3, "who": "Nurse Adeyemi", "patient_id": "oduya",
+		"summary": "wrote a note at the bedside", "weight": 0.6}
+
+	# Control: a bed held on your note and nothing else, watched.
+	var alone := _held_on_your_word("oduya", stub)
+	t.ok(_kinds(alone.review_findings()).has("she_was_standing_there"),
+		"held on your word alone in front of her: she has something to say")
+	alone.queue_free()
+
+	# Gate 2 — somebody else put a reason for the bed in the record. Adeyemi's
+	# ten o'clock round says the same thing about the man who is genuinely ill,
+	# so what she watched you type was a doctor writing down something the ward
+	# had already found. Marchetti, not Oduya, because the corroboration has to
+	# be TRUE — you cannot manufacture a second opinion about a well man, and
+	# that is the point of the gate rather than a limitation of the test.
+	var backed := _held_on_your_word("marchetti",
+		{"tier": 3, "who": "Nurse Adeyemi", "patient_id": "marchetti",
+			"summary": "wrote a note at the bedside", "weight": 0.6})
+	t.ok(not _kinds(backed.review_findings()).has("she_was_standing_there"),
+		"a second opinion behind the bed and she has nothing to add")
+	backed.queue_free()
+
+	# Gate 4 — you examined him. The examination writes nothing to the chart by
+	# design, so it cannot corroborate the record; it is still the difference
+	# between a doctor and a typist.
+	var looked := _held_on_your_word("oduya", stub, "examine")
+	t.ok(not _kinds(looked.review_findings()).has("she_was_standing_there"),
+		"you went and looked first, and that is what she watched you write up")
+	looked.queue_free()
+
+	# Gate 3 — nowhere to go. A social hold has no corroborating observation by
+	# construction, so gate 2 can never clear one, and the third ward would have
+	# been unplayable in front of a nurse.
+	var social := _held_on_your_word("kerrigan",
+		{"tier": 3, "who": "Nurse Adeyemi", "patient_id": "kerrigan",
+			"summary": "wrote a note at the bedside", "weight": 0.6}, "social")
+	t.ok(not _kinds(social.review_findings()).has("she_was_standing_there"),
+		"and nowhere to go is exempt here the way it is exempt everywhere else")
+	social.queue_free()
+	WardDay.watch_stub = {}
+
+func _verdict(w: WardDay) -> String:
+	var rv := ReviewSystem.new()
+	rv.begin(w.review_findings(), w.records.entries, w.review_truth())
+	return String(rv.outcome()["verdict"])
+
+## One bed held on a note of your own, one bed held honestly by somebody else's,
+## one held because there is nowhere for her to go, and the two well men sent
+## home. Everything but the first bed is BACKED, so the verdict is a read on the
+## first bed and nothing else.
+func _the_lie_about_oduya(stub: Dictionary) -> WardDay:
+	WardDay.watch_stub = stub
+	var w := _day()
+	# ELEVEN, NOT TEN. `Cases.ROUNDS` is 10/13/16/19 and two entries within
+	# forty-five minutes of each other are looking at the same moment, so a note
+	# typed on the hour of a round is `conflicting_observations` — which is a
+	# bed-killer in its own right and would have made this measure nothing.
+	# Writing in the gap between her rounds is the central timing skill of this
+	# game, and it is what leaves a bed SOLO for her to have watched.
+	w.advance_to(11 * 60)
+	w.nurse_check("marchetti")
+	w.write_entry("kerrigan", ChartEntry.Claim.SOCIAL,
+		"Lives alone. Nobody at home tonight.", w.minute)
+	w.write_entry("oduya", ChartEntry.Claim.UNWELL,
+		"Short of breath on the ward round.", w.minute)
+	for id in ["marchetti", "kerrigan", "oduya"]:
+		w.set_disposition(id, "hold")
+	for id in ["brennan", "blake"]:
+		w.set_disposition(id, "discharge")
+	return w
+
+## One bed, held, with exactly one thing behind it — and `extra` says what.
+func _held_on_your_word(pid: String, stub: Dictionary, extra := "") -> WardDay:
+	WardDay.watch_stub = stub
+	var w := _day()
+	w.advance_to(11 * 60)          ## in the gap between rounds — see above
+	if extra == "nurse":
+		w.nurse_check(pid)
+	elif extra == "examine":
+		w.examine(pid)
+	var claim: int = ChartEntry.Claim.SOCIAL if extra == "social" \
+		else ChartEntry.Claim.UNWELL
+	w.write_entry(pid, claim, "Not right yet.", w.minute)
+	w.set_disposition(pid, "hold")
+	return w

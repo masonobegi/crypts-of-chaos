@@ -2812,3 +2812,52 @@ Then eight strategies on the two wards nobody had ever played, `FRONTIER_SEED`
 to go with the other three overrides, and nine things a stranger would have hit
 in the first ten minutes — including that the control a player reaches for when
 the text is too small was the control that hid the button they needed next.
+
+## The belief layer reaches the verdict, and the stub that was never read
+
+Nine hundred and fifty lines model being SEEN — `Mind`, `Evidence`, the gossip
+pass, four tiers of dialogue, `file_complaint` — and they reached the eight
+o'clock audit through exactly one channel: `seen_by`, stamped on a chart entry
+at the moment it was typed. Everything else the ward accumulated over twelve
+hours was thrown away at handover. Somebody would tell you to your face that
+they had seen enough, and then say nothing at all to the woman holding the
+folder.
+
+`SuspicionSystem.what_the_ward_saw` is what the room would say if anybody asked
+it, and `Contradictions.she_was_standing_there` is the one question it is
+allowed to become: a bed you held that nobody else saw a reason for, in front of
+a room that has been watching. It is in the CONTRADICTED list, so it costs one
+notch and no more — noted becomes flagged — and going somewhere private to write
+is free.
+
+The first version filtered on `role == "nurse"`, because "Adeyemi watched you
+type that" is the sentence the design wanted. It returned nothing. Measured in
+the real tree after a shift of bedside notes, the minds holding witnessed
+evidence were marchetti 0.331, bassong 0.257, whitcombe 0.257, blake 0.257,
+oduya 0.186 — five patients and no staff, because the nurse is at her station
+and the people who can see the bay are the people lying in it.
+
+Four gates keep it off a careful doctor: a pattern rather than one note, anybody
+else having recorded a reason, nowhere-to-go, and having examined them. The
+last is the design rule rather than a balance decision — a measure that fires on
+"wrote a note where somebody could see" and not on "went and looked first" pays
+you to decide blind.
+
+**And the stub was never read.** `WardDay.witness_stub` was added so the probes,
+which build no world, could search a game where somebody is standing there. It
+was set in four probes with eight lines of comment each — and read *after*
+`if not is_inside_tree(): return`, in files whose entire search runs inside
+`_initialize()`, where a node added to the root is not in the tree. The fix for
+"the probe searches with a detector switched off" was itself switched off, by
+the gotcha its own comment cites. Turning it on puts 9,402
+`written_in_front_of_them` and 724 `she_was_standing_there` into the four
+searches; the frontier's headline numbers did not move, which is the answer you
+want.
+
+Two harness faults found by sweeping seeds while checking this: the End of Shift
+readback asked `Cases.roster()` for names while the card in front of it was
+built from a different ward (gotcha 30, in a new place — it only showed on
+`SMOKE_SEED=0`), and the clatter check demanded that a twelve-metre noise wake a
+patient more than twelve metres away.
+
+358 assertions, 250 smoke checks on three seeds, every probe green.

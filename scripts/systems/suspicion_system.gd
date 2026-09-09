@@ -439,6 +439,61 @@ func suspicion_of(id: String) -> float:
 		return 0.0
 	return m.suspicion(GameState.career_minutes, GameState.active_covers)
 
+## WHAT THE WARD SAW, and the only route the belief layer has ever had to a
+## verdict.
+##
+## `Mind`, `Evidence`, the gossip pass, the four escalating things somebody says
+## to you and `file_complaint` are about nine hundred and fifty lines that model
+## being SEEN, and they reached the eight o'clock audit through exactly one
+## channel — `seen_by`, a list of names stamped on a chart entry at the moment it
+## was typed. Twelve hours of people watching you work went in the bin at
+## handover: they would say it to your face and then say nothing at all to the
+## woman holding the folder.
+##
+## IT IS NOT THE NURSE, AND THAT WAS THE FIRST VERSION. This filtered on
+## `role == "nurse"` because "Adeyemi watched you type that" is the sentence the
+## design wanted, and it returned nothing at all: measured in the real tree after
+## a shift of notes written at the bedside, the minds holding witnessed evidence
+## were `marchetti 0.331, bassong 0.257, whitcombe 0.257, blake 0.257, oduya
+## 0.186` — five patients and no staff, because the nurse is at her station and
+## the people who can see the bay are the people lying in it. A rule keyed to a
+## witness who is never there is a rule that never fires, which is the exact
+## fault this exists to fix. The ward's memory is whoever was in the room, and
+## the game has said since it was written that these people talk: `tells_everyone`
+## is an authored field, and `_gossip_pass` is a whole system.
+##
+## The subject is excluded — a patient who watched you write your own reason for
+## HIS bed is `Contradictions._written_in_front_of_them`, which already exists and
+## is already a bed-killer. This is the OTHER four.
+##
+## Returns the heaviest single thing anybody personally saw, and the tier of the
+## person who saw it. Witnessed only: a thing somebody was told in a corridor is
+## gossip, and gossip is not what you put in front of a sister at ten past eight.
+func what_the_ward_saw() -> Dictionary:
+	var now: int = GameState.career_minutes
+	var covers: Dictionary = GameState.active_covers
+	var tier := 0
+	var who := ""
+	var pid := ""
+	var summary := ""
+	var best := 0.0
+	for m in all_minds():
+		for ev in m.evidence:
+			if ev.source != Evidence.Source.WITNESSED or ev.patient_id == "":
+				continue
+			if ev.patient_id == m.id:
+				continue          ## their own bed — see `_written_in_front_of_them`
+			var w: float = ev.current_weight(now, covers.has(ev.cover_tag))
+			if w <= best:
+				continue
+			best = w
+			tier = m.tier(now, covers)
+			who = m.display_name
+			pid = ev.patient_id
+			summary = ev.label()
+	return {"tier": tier, "who": who, "patient_id": pid,
+		"summary": summary, "weight": best}
+
 ## Anyone currently able to see the player. Drives the HUD "eyes on you" tell.
 ## Who can see the player right now.
 ##

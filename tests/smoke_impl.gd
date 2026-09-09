@@ -1043,15 +1043,30 @@ func _check_the_ward_goes_quiet_in_the_evening() -> void:
 		# asserting on a coin.
 		_ok(true, "(nobody dozed this pass, so there is nothing to wake)")
 	else:
-		WorldEvent.new("prop_noise", "").at(dozing[0].global_position, "ward") \
-			.heard(0.0, 12.0).tag("noise").says("something clattered").emit()
+		# WITHIN EARSHOT, AND NOT ONE METRE FURTHER. The first version dropped
+		# the clatter at the first dozing patient with a twelve-metre radius and
+		# asserted the WHOLE ward woke — which passed on the three pinned seeds
+		# and failed on seed 99, where the draw put a dozing patient more than
+		# twelve metres from the noise. That is the rule working: a bang at one
+		# end of a twenty-metre bay is not a bang at the other end, and a check
+		# that demands it is asserting something the game deliberately does not
+		# do. Sweeping seeds is what found it, which is the entire argument for
+		# sweeping seeds.
+		var pos: Vector3 = dozing[0].global_position
+		var radius := 12.0
+		WorldEvent.new("prop_noise", "").at(pos, "ward") \
+			.heard(0.0, radius).tag("noise").says("something clattered").emit()
 		var still := 0
+		var deaf := 0
 		for b in dozing:
-			if bool(b.get("asleep")):
+			var heard: bool = b.perception != null and b.perception.can_hear(pos, radius)
+			if not heard:
+				deaf += 1
+			elif bool(b.get("asleep")):
 				still += 1
 		_ok(still == 0,
-			"a clatter in the bay wakes the ward you were relying on being asleep (%d of %d still under)"
-				% [still, dozing.size()])
+			"a clatter in the bay wakes everybody who can hear it (%d of %d still under, %d out of earshot)"
+				% [still, dozing.size(), deaf])
 	GameState.minute_of_day = was_minute
 
 ## SOMEBODY WAS UPSET ENOUGH TO PUT IT IN WRITING, AND THE GAME SHRUGGED.
@@ -2020,6 +2035,77 @@ func _check_writing_is_observed(w) -> void:
 	_ok(_witnessed(sus) == mid,
 		"and writing it in your own office is not, which is the whole point (%d -> %d)"
 			% [mid, _witnessed(sus)])
+	_check_what_she_saw_gets_to_the_folder(w, sus, pid)
+
+## ...AND IT REACHES THE MORNING, which for nine hundred and fifty lines of
+## belief layer it never did.
+##
+## Every other check in this file that touches suspicion stops at the moment of
+## being seen: the nametag changes, somebody makes a note, a line gets said. The
+## claim here is the one the whole system was built for and had no route to —
+## that a room which spent the shift watching you write your own reasons for a
+## bed has something to say to the woman holding the folder at ten past eight.
+##
+## Walked end to end, in the real tree, because every link in it is live wiring:
+## the WorldEvent naming the patient, perception turning it into WITNESSED
+## evidence in somebody's mind, `what_the_ward_saw` finding the heaviest thing
+## anybody actually saw, `WardDay._what_the_nurse_has` preferring the live answer
+## to the probes' stub, and `Contradictions.she_was_standing_there` deciding what
+## it is worth. A break anywhere along it is silent — the game looks and plays
+## identically and the review is simply easier.
+##
+## AND IT ASSERTS THE THRESHOLD RATHER THAN THE MECHANISM. A whole shift of notes
+## about ONE bed leaves the room at tier 1 (measured: 0.331 on the loudest of the
+## five), because `Mind.add_evidence` merges duplicates instead of stacking them.
+## `WATCHED_TIER` is 2. So the first version of this check wrote sixteen notes
+## about one patient, reported tier 0 for a nurse who was never in the room, and
+## would have passed a build where the finding could not fire at all.
+func _check_what_she_saw_gets_to_the_folder(w, sus, pid: String) -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	var p = tree.get_first_node_in_group("player")
+	if h == null or p == null:
+		return
+	p.global_position = h.point_in("ward")
+	# SEVERAL BEDS, which is what makes it a pattern rather than a note.
+	var others: Array = []
+	for c in Cases.roster():
+		if String(c["id"]) != pid:
+			others.append(String(c["id"]))
+	for other in others:
+		for i in 3:
+			w.write_entry(other, ChartEntry.Claim.UNWELL, "Not settled.", w.minute,
+				WardDay.TERMINAL_WARD)
+	var watch: Dictionary = sus.what_the_ward_saw()
+	_ok(watch.has("tier") and watch.has("patient_id"),
+		"the ward can be asked what it saw")
+	_ok(int(watch["tier"]) >= Contradictions.WATCHED_TIER,
+		"and a shift of notes written across the beds is enough to be a pattern (tier %d, %s)"
+			% [int(watch["tier"]), String(watch["who"])])
+	_ok(String(watch["patient_id"]) != "" and String(watch["patient_id"]) != String(watch.get("who", "")),
+		"and it is about a bed rather than about nobody (%s)" % String(watch["patient_id"]))
+	# The live answer, not the probes' stub — which is empty in the real game and
+	# would make every one of these read as "nobody saw anything".
+	WardDay.watch_stub = {}
+	var live: Dictionary = w._what_the_nurse_has()
+	_ok(int(live.get("tier", -1)) == int(watch["tier"]),
+		"and the ward asks the ROOM rather than the stub the probes search against")
+	# Held on your word alone, watched, with nothing else in the folder doing the
+	# work — the shape `she_was_standing_there` exists for.
+	var mine := ChartEntry.new()
+	mine.patient_id = pid
+	mine.author = ChartEntry.Author.YOU
+	mine.claim = ChartEntry.Claim.UNWELL
+	var raised: Array = Contradictions.she_was_standing_there(
+		{"tier": 2, "who": "Mr Oduya", "patient_id": pid,
+			"summary": "wrote a note at the bedside", "weight": 0.4},
+		[mine], {pid: {"held": true, "well": true, "examined": false,
+			"no_care_at_home": false}})
+	_ok(raised.size() == 1 and String(raised[0].kind) == "she_was_standing_there",
+		"and a bed nobody else saw a reason for becomes a question she asks")
+	# ...and the answer to it is not a nurse's note, because a witness is the
+	# question.
+	_ok("she_was_standing_there" in ReviewSystem.NURSE_IS_THE_ACCUSATION,
+		"and you cannot answer a witness by citing a witness")
 
 ## Evidence somebody SAW, as opposed to evidence that reached them.
 func _witnessed(sus) -> int:
@@ -2569,10 +2655,20 @@ func _check_the_handover_button_reaches_tomorrow() -> void:
 	for n in _all_nodes(ui.get("current")):
 		if n is Label:
 			card_text += String(n.text) + "\n"
+	# THE WARD'S OWN FIVE, NOT `Cases.roster()`. Gotcha 30 in a new place: the
+	# roster is a pure function of (day, seed) and this file re-seeds itself to
+	# visit wards it has never seen — so with `SMOKE_SEED=0` it asked for one
+	# ward's names while the WardDay in the tree, and the card built from it,
+	# held another's, and reported all five as missing from a readback that was
+	# perfectly correct. Anything checking what is on a card has to ask the
+	# object the card was built from.
 	var missing: Array = []
-	for c in Cases.roster():
-		if card_text.find(String(c.get("name", ""))) < 0:
-			missing.append(String(c["id"]))
+	var ward = tree.get_first_node_in_group("ward_day")
+	var five: Array = ward.state.keys() if ward != null else []
+	for pid in five:
+		var name := String(Cases.by_id(String(pid)).get("name", ""))
+		if name != "" and card_text.find(name) < 0:
+			missing.append(String(pid))
 	_ok(missing.is_empty(),
 		"and the card says what all five of them turned out to be (missing %s)"
 			% str(missing))

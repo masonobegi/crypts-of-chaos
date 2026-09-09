@@ -701,6 +701,41 @@ with it because a lost afternoon does not care which.
     one synchronous `change_scene_to_file`; it stopped being survivable the
     moment there was a loading screen in front of it.
 
+77. **A STUB CHECKED LAST IS A STUB THAT IS NEVER CHECKED.** `WardDay.witness_stub`
+    exists because no probe builds a world, so `seen_by` was empty in all 2,601
+    strategies a ward and `_written_in_front_of_them` — 0.62, and in the
+    CONTRADICTED list — could not fire in the search whose entire purpose is
+    that a dominant strategy has to hide from a SEARCH rather than from an
+    author. The fix set the stub in four probes, with eight lines of comment
+    each saying why... and read it *after* `if not is_inside_tree(): return`.
+    Every probe runs its whole search inside `_initialize()`, where a node
+    added to the root is NOT in the tree (gotcha 5) — so the early return fired
+    first, every time, and the stub never reached a single entry. The fix for
+    "the probe searches with a detector switched off" was itself switched off,
+    in the same way, by the gotcha its own comment cites. Live now: 9,402
+    `written_in_front_of_them` and 724 `she_was_standing_there` across the four
+    searches, and the frontier's headline numbers did not move, which is the
+    result you want from turning a detector on — the properties held without it
+    and hold harder with it. Any fallback of this shape belongs ABOVE the guard
+    that decides there is no real answer, not below it.
+78. **Gotcha 30 in a new place, and it looked exactly like a broken screen.**
+    `Cases.roster()` is a pure function of `(day, seed_value)`, and
+    `smoke_impl` re-seeds itself mid-run to visit wards it has never seen — so
+    the End of Shift readback check asked `roster()` for five names while the
+    `WardDay` in the tree, and the card built from it, held a different ward's
+    five, and reported all five as missing from a readback that was perfectly
+    correct. It only showed on `SMOKE_SEED=0`, which nothing runs by default.
+    Anything asserting about what is ON a card has to ask the object the card
+    was built FROM.
+79. **A noise has a radius, and a check that ignores it is asserting something
+    the game deliberately does not do.** `a clatter wakes the dozing ward`
+    dropped a twelve-metre `prop_noise` at the first sleeping patient and
+    demanded all of them wake. It passed on the three pinned seeds and failed
+    on seed 99, where the draw put a dozing patient more than twelve metres
+    away — the rule WORKING. Assert on the people who can hear it
+    (`perception.can_hear`), and report the ones who cannot. Found by sweeping
+    seeds, which is the fourth time.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -718,6 +753,27 @@ with it because a lost afternoon does not care which.
   second time. It went with the redesign, and the only thing left of it was a
   lookup in `StaffNPC` for a group nothing has been in since — guarded, so it
   read as a working feature.)
+- **THE BELIEF LAYER REACHES THE VERDICT, THROUGH ONE QUESTION.** `Mind`,
+  `Evidence`, the gossip pass and the four escalating things a witness says are
+  about nine hundred and fifty lines modelling being SEEN, and they reached the
+  eight o'clock audit through exactly one channel: `seen_by`, stamped on an
+  entry as it was typed. Twelve hours of people watching you work went in the
+  bin at handover. `SuspicionSystem.what_the_ward_saw` is what the room would
+  say if anybody asked it, and `Contradictions.she_was_standing_there` is the
+  one question it is allowed to become — a bed you held that nobody else saw a
+  reason for, in front of a room that has been watching. It is in the
+  CONTRADICTED list, so it costs exactly one notch: NOTED becomes FLAGGED.
+  **It is not the nurse, and that was the first version.** Filtering on
+  `role == "nurse"` returned nothing at all: measured in the real tree after a
+  shift of bedside notes, the minds holding witnessed evidence were five
+  PATIENTS (0.331 down to 0.186) and no staff, because the nurse is at her
+  station and the people who can see the bay are the ones lying in it. Four
+  gates keep it off a careful doctor: a pattern rather than one note
+  (`WATCHED_TIER`, and `Mind.add_evidence` MERGES duplicates so it takes
+  several beds), anybody else having recorded a reason, `no_care_at_home`, and
+  having EXAMINED them — that last one is the design rule and not a balance
+  decision, because a measure that fires on "wrote where somebody could see"
+  and not on "went and looked first" pays you to decide blind.
 - **Suspicion is derived, never stored.** It is a read over the `Evidence` a
   `Mind` holds. Never add a "suspicion += x" anywhere; emit a `WorldEvent` and
   let perception decide who noticed.
@@ -909,8 +965,8 @@ with it because a lost afternoon does not care which.
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 349 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 172 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 358 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| `smoke_run.gd` | "everything compiles and nothing works" — 250 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | nothing on its own either, and it is the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

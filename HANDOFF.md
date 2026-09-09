@@ -54,10 +54,10 @@ prints the exact command to fetch them.
 
 ## Last known good
 
-**349 assertions · 240 smoke checks on three seeds · 39 day criteria runs
+**358 assertions · 250 smoke checks on three seeds · 39 day criteria runs
 against 7 criteria · the authored-data, ship, draw and economics checks · 6
 career properties on three seeds · a 2,601-strategy frontier probe per ward plus
-an honest day on all 52 reachable boards · both play runs · the quiet check ·
+an honest day on all 88 reachable boards · both play runs · the quiet check ·
 the boot check.** All three platforms export at 0.9.0 with no placeholders, and
 the Linux build boots and exits cleanly. `./play.sh keys` passes separately
 under Xvfb.
@@ -95,24 +95,30 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
    go further the next pieces are cheekbones and the hands, which are still
    mittens with a thumb; both are `npc_body.gd`, and both should be judged from
    `faces.sh` and not from a twenty-minute screenshot run.
-5. **The belief layer still cannot change a verdict.** `Mind`, `Evidence`,
-   gossip, the three institutional minds and `file_complaint` are about 950
-   lines that reach the ward — a watched doctor gets denser nurse rounds, staff
-   bark when they see something — and reach the AUDIT through exactly one
-   channel, `seen_by`. `complaint_filed`, `suspicion_changed` and
-   `evidence_recorded` have no listeners anywhere, and `press_present` is read
-   and never set. Either give `ReviewSystem` a term that reads
-   `SuspicionSystem.suspicion_of("adeyemi")`, so being watched all day makes
-   the folder heavier, or delete the unreachable half and say in the README
-   that the audit is a document audit. Do not leave it: it is the largest
-   instance in the repo of a promise made in copy and not kept in code.
-6. **A second ill-pair per ward.** The 52 boards are 8 puzzles wearing 52 sets
-   of names, because a ward's variability is one coin flip.
-   `ILL_PAIR_BY_DAY` becomes a LIST of pairs, `_pair_flip` takes an index, and
-   `enumerate_draws` folds over them; the content cost is one new alternate per
-   ward, at a matching tier, with the opposite truth. It doubles the distinct
-   puzzle count for about four patients of prose, which is the cheapest
-   remaining thing on this list per word written.
+5. **A second ill-pair per ward.** The 88 boards are 11 puzzles wearing 88 sets
+   of names, because a ward's variability is one coin flip. `ILL_PAIR_BY_DAY`
+   becomes a LIST of pairs, `_pair_flip` takes an index, and `enumerate_draws`
+   folds over them. **Read this before doing it:** a pair means "exactly one of
+   these two is ill", so a SECOND pair adds an ill patient to the ward and the
+   honest hold count goes 2 -> 3, which is the money-optimal count — honest play
+   would then earn what the best lie earns and the central tension collapses.
+   The safe shapes are a same-tier GROUP of three (exactly one ill, count
+   unchanged: ward 3 can take bed 2 and ward 4 bed 5, both STANDARD, one new
+   patient each) or a pair on a DIFFERENT axis, `no_care_at_home`, which moves
+   which bed the social lesson is on and cannot touch the economy at all.
+   Whichever, `frontier_run` is the arbiter: it plays an honest day on all 88.
+6. **Wards five and six.** About twenty patients of prose; the recipe is in
+   `gaps_content.md`. This is a writing budget, not an engineering one.
+7. **Character art.** Two full passes plus the neck/mouth/shoulder pass are in;
+   `./faces.sh` is the loop. The next pieces are cheekbones and the hands, which
+   are still mittens with a thumb. Both are `npc_body.gd`.
+8. **Environment.** The pass that landed deliberately skipped four things:
+   nothing at floor and knee height in the wide frames (the one to do first),
+   the four wards being visually one room (needs a ward index threaded through
+   `Hospital.build()`/`Furniture.furnish()`), room-corner occlusion darkening,
+   and a two-level variation in the wall shader.
+9. **Sound stems.** Splitting the score into three sample-locked players. Note
+   `test_ward.gd` computes a stat that a stereo change would break.
 
 ## Two noises that are not bugs
 

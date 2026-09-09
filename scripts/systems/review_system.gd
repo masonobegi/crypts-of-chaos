@@ -92,8 +92,13 @@ func finished() -> bool:
 ##
 ## Three findings are about the discharge rather than the stay, and for all
 ## three a nurse note supporting the stay is what you are being asked about.
+##
+## The fourth is the room. `she_was_standing_there` is somebody who watched you
+## type the only note there was, so answering it with "Adeyemi reviewed them and
+## agreed with me" is offering a witness against a witness — and offering her
+## against a question that exists precisely because nobody else looked.
 const NURSE_IS_THE_ACCUSATION := ["sent_home_unwell", "never_laid_eyes_on_them",
-	"readmitted_after_your_discharge"]
+	"readmitted_after_your_discharge", "she_was_standing_there"]
 
 static func _nurse_is_a_defence(f) -> bool:
 	return not (String(f.kind) in NURSE_IS_THE_ACCUSATION)

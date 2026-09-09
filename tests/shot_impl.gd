@@ -36,6 +36,13 @@ const SHOTS := [
 	# — and it fails loudly, which is the difference between a check and a
 	# screenshot.
 	["02b_fittings_off", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
+	# THE SAME CAMERA ON A DIFFERENT WARD, which is the only way to see whether
+	# there IS a different ward. The building is built once and a career rolls
+	# the day over in place, so for the life of this project every night was
+	# played in one room painted one colour with "Ward C" over the beds —
+	# invisible to twenty-one frames of one morning, because every one of them
+	# was night one.
+	["02d_ward_another", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 3],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],
@@ -190,6 +197,10 @@ func tick() -> bool:
 	if game.ui and game.ui.has_method("close"):
 		game.ui.close()
 	_set_clock(shot[3] if shot.size() > 3 else _clock_override())
+	# A FIFTH FIELD IS A DAY, and it repaints the room for whichever ward that
+	# night deals. Put back after the save, like the clock.
+	if shot.size() > 4:
+		_set_ward(int(shot[4]))
 	if String(shot[0]) == "02b_fittings_off":
 		_fittings(false)
 	if typeof(shot[1]) == TYPE_STRING:
@@ -207,6 +218,8 @@ func tick() -> bool:
 		_fittings_reading()
 	if String(shot[0]) == "09_ward_evening":
 		_evening_reading()
+	if shot.size() > 4:
+		_set_ward(1)
 	# BACK TO THE MORNING BEFORE THE NEXT FRAME. The clock is set here for the
 	# LIGHT and nothing else — no verb has been performed and no minute has
 	# really passed — so leaving it forward would hand every later stage a ward
@@ -623,6 +636,13 @@ func _shot_wanted(name: String) -> bool:
 		if name.contains(want):
 			return true
 	return false
+
+## Paint the ward for a given night without playing to it. `Hospital.reskin`
+## reads `GameState.day` through `Cases.pool_index`, so the day IS the ward.
+func _set_ward(day: int) -> void:
+	GameState.day = maxi(1, day)
+	if game != null and game.hospital != null:
+		game.hospital.reskin()
 
 func _save(name: String) -> void:
 	if _skip_only:

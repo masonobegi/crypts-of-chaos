@@ -872,6 +872,28 @@ with it because a lost afternoon does not care which.
     not the edge of anything, it is a scar. Un-inking it then exposes the V at
     the top-outer corner that the sphere was too small to reach, so the width
     has to go up to the sleeve's own — and no further (gotcha 82).
+89. **FOUR AUTHORED WARDS WERE ONE ROOM, PAINTED ONE COLOUR, WITH THE SAME NAME
+    OVER THE BEDS.** The building is built once at `Game._ready()` and a career
+    rolls the day over in place — `patient_system.reset_day()` swaps the cast and
+    nothing else — so four different casts and four different lessons were all
+    played in the same twenty metres and the sign said "Ward C" on every night of
+    every career. It is the loudest statement the game makes about how much
+    content is in it, and it is a LIE about the number: the wards genuinely are
+    different and the room denied it. Twenty-five screenshots could not see it
+    because every one of them is night one, and no assertion in fifteen test
+    layers had any reason to look at a wall.
+    `Hospital.reskin()` runs on `day_started`. Repainting is safe where
+    rebuilding is not: the floor is one node per room, the DRESSING has no
+    collision and no navigation footprint — the rule that lets there be a lot of
+    it is exactly what makes it disposable — and the signs are two labels. Three
+    things that cost a render each: `Build.surfaced_slab` returns the STATIC
+    BODY and not the mesh, so `if f is MeshInstance3D` was false every time and
+    the floor alone stayed green while everything else changed; the west and east
+    exterior walls ran the building's whole depth as ONE slab each, so the ward's
+    own ends could not be painted without painting the office (split at z = 4,
+    where the corridor wall meets them and no join can be seen); and the palette
+    belongs in `Cases.WARDS` rather than in `Furniture`, because adding a ward
+    must not require touching a system.
 
 ## Design rules that are load-bearing
 
@@ -1103,7 +1125,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 358 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 254 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 258 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | the one thing that can see a face: it MEASURES how much room each subject has left below its own skin for the four features that are all darker than it, and exits non-zero when a face runs out. It is also the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

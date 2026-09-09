@@ -387,6 +387,10 @@ func _spawn_staff() -> void:
 	# card at the end of every bad night, and then nobody arrived — for the whole
 	# life of the feature.
 	GameState.day_started.connect(func(_d): _refresh_days_visitors())
+	# ...AND THE ROOM IS REPAINTED FOR WHICHEVER WARD THIS IS. See
+	# `Hospital.reskin`: the building is built once and a career rolls the day
+	# over in place, so without this every ward in the game is Ward C.
+	GameState.day_started.connect(func(_d): hospital.reskin())
 	_hook_the_ward_for_visitors()
 
 ## Family arrives DURING a shift rather than at the start of one, so it cannot
@@ -636,6 +640,9 @@ func _start() -> void:
 			EventBus.toast.emit("That save could not be read. Starting a new career.", "bad")
 	patient_system.populate()
 	ward.start()
+	# Before the first morning as well as between them, because Continue drops
+	# a career straight into night five and the room has to be that ward.
+	hospital.reskin()
 	if GameState.flag("headless_sim", false):
 		return
 	GameState.start_day()

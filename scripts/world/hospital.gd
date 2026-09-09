@@ -73,6 +73,48 @@ func build() -> void:
 	_bake_nav(blocked)
 	Log.i("hospital built: %d rooms, %d nav cells" % [rooms.size(), nav.cell_count()], "Hospital")
 
+## FOUR WARDS, ONE ROOM, PAINTED ONE COLOUR, WITH THE SAME NAME OVER THE BEDS.
+##
+## The building is built once, at `Game._ready()`, and a career rolls the day
+## over in place — so four authored wards with four different casts and four
+## different lessons were all played in the same twenty metres, and the sign
+## above the beds said "Ward C" on every night of every career. It is the
+## loudest thing in the game about how much content there is, and it says the
+## wrong number: the wards genuinely are different and the room denied it.
+##
+## Repainting is safe where rebuilding is not. The floor is one node per room;
+## the dressing has no collision and no navigation footprint, which is the rule
+## that lets there be a lot of it and is exactly what makes it disposable; the
+## signs are two labels. Nothing structural, nothing navigable and no bed moves,
+## so this can run every morning between one ward and the next.
+func reskin() -> void:
+	var look: Dictionary = Cases.ward_look()
+	for r in room_list():
+		if r.kind != "ward":
+			continue
+		# THE FLOOR IS A STATIC BODY WITH THE MESH INSIDE IT. `Build.surfaced_slab`
+		# returns the collider, not the mesh — so the first version of this asked
+		# `if f is MeshInstance3D`, was false every time, and repainted nothing
+		# while the sign above the beds and every curtain in the room changed.
+		# It looked like the floor had been deliberately left out.
+		var f := r.get_node_or_null("Floor")
+		if f != null:
+			var paint := Surfaces.floor_mat(
+				Color(look.get("floor", Build.FLOOR_A)), 2.0,
+				r.rect.position, r.rect.end)
+			for c in f.get_children():
+				if c is MeshInstance3D:
+					(c as MeshInstance3D).material_override = paint
+	var dado := Surfaces.wall_mat(Color(look.get("dado", Build.WALL_LOWER)))
+	for n in get_children():
+		if not n.is_in_group(WARD_DADO_GROUP):
+			continue
+		for c in n.get_children():
+			if c is MeshInstance3D:
+				(c as MeshInstance3D).material_override = dado
+	Furniture.rename_ward(self)
+	Furniture.redress_ward(self)
+
 # ------------------------------------------------------------------ outside
 ## SOMETHING TO LOOK AT, BEFORE THERE IS ANYTHING TO LOOK THROUGH.
 ##
@@ -95,6 +137,17 @@ func build() -> void:
 ## it was the single biggest reason the far end read as a bad place to be — so
 ## distance is carried by desaturating toward the sky instead.
 const OUTSIDE_GROUP := "outside"
+## THE DADO IS THE BIGGEST COLOUR FIELD IN THE ROOM AFTER THE FLOOR, and it is
+## the one the eye reads as "what colour is this ward". Every lower wall slab
+## whose midpoint is north of the corridor belongs to the ward and to nothing
+## else — the corridor wall itself is at z = 4.0 and is deliberately NOT in
+## here, because it is shared with the station and the office on its other face
+## and repainting it would repaint half the building.
+const WARD_DADO_GROUP := "ward_dado"
+
+func _tag_dado(n: Node, mid: Vector3) -> void:
+	if mid.z > 4.05:
+		n.add_to_group(WARD_DADO_GROUP)
 
 func _build_outside() -> void:
 	# ALBEDOS FOR AN UNSHADED MATERIAL WITH A GAIN ON IT, which is a different
@@ -402,8 +455,18 @@ func _build_shell() -> void:
 	_wall_along_x(-8.0, 0.0, 20.0, [], true)       # south exterior
 
 	# Walls running along Z.
-	_wall_along_z(0.0, -8.0, 13.0, [], true)       # west exterior
-	_wall_along_z(20.0, -8.0, 13.0, [], true)      # east exterior
+	# SPLIT AT THE CORRIDOR WALL, so the ward owns its own two ends.
+	#
+	# These ran the whole depth of the building as one slab each, which is
+	# structurally fine and made the ward's dado un-repaintable: one mesh
+	# spanning the office, the station, the corridor and the ward cannot be the
+	# ward's colour without being the office's too. The seam lands exactly where
+	# the corridor wall meets it, which is the one place on a wall nobody can
+	# see a join.
+	_wall_along_z(0.0, -8.0, 4.0, [], true)        # west exterior, south half
+	_wall_along_z(0.0, 4.0, 13.0, [], true)        # west exterior, the ward
+	_wall_along_z(20.0, -8.0, 4.0, [], true)       # east exterior, south half
+	_wall_along_z(20.0, 4.0, 13.0, [], true)       # east exterior, the ward
 	# The one interior divider left. It must NOT cross the corridor band
 	# (z 0..4), or the corridor is severed and half the building is unreachable.
 	_wall_along_z(12.0, -8.0, 0.0, [])             # station <-> office
@@ -469,8 +532,10 @@ func _wall_segment(a: Vector3, b: Vector3, exterior := false) -> void:
 	# is up to twenty metres of one quad, and on this backend a fitting three
 	# metres away from the middle of it contributes nothing at all, because
 	# there is no vertex there to contribute to.
-	add_child(Build.surfaced_slab(lower, Surfaces.wall_mat(Build.WALL_LOWER),
-		mid + Vector3(0, lower_h * 0.5, 0), 0.0, 1.1, true))
+	var lower_slab := Build.surfaced_slab(lower, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, lower_h * 0.5, 0), 0.0, 1.1, true)
+	add_child(lower_slab)
+	_tag_dado(lower_slab, mid)
 	add_child(Build.surfaced_slab(upper, Surfaces.wall_mat(Build.WALL_UPPER),
 		mid + Vector3(0, lower_h + upper.y * 0.5, 0), 0.0, 1.1, true))
 
@@ -528,8 +593,10 @@ func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> voi
 	var t := WALL_T
 	var below := Vector3(size.x, WIN_SILL, size.z)
 	var above := Vector3(size.x, WALL_H - WIN_HEAD, size.z)
-	add_child(Build.surfaced_slab(below, Surfaces.wall_mat(Build.WALL_LOWER),
-		mid + Vector3(0, WIN_SILL * 0.5, 0), 0.0, 1.1, true))
+	var below_slab := Build.surfaced_slab(below, Surfaces.wall_mat(Build.WALL_LOWER),
+		mid + Vector3(0, WIN_SILL * 0.5, 0), 0.0, 1.1, true)
+	add_child(below_slab)
+	_tag_dado(below_slab, mid)
 	add_child(Build.surfaced_slab(above, Surfaces.wall_mat(Build.WALL_UPPER),
 		mid + Vector3(0, WIN_HEAD + above.y * 0.5, 0), 0.0, 1.1, true))
 

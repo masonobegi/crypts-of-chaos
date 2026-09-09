@@ -1751,6 +1751,82 @@ const PRIOR_FOUR := [
 
 const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR]
 
+## WHICH WARD YOU ARE STANDING IN, AND WHAT IT LOOKS LIKE.
+##
+## The building is built ONCE, at `Game._ready()`, and never rebuilt — a career
+## rolls the day over in place. So four authored wards, four different casts and
+## four different lessons were all played in one room, painted one colour, with
+## "Ward C" on the sign above the beds on every night of every career. Nine
+## nights of the same twenty metres. It is the loudest thing left in the game
+## about how much content there is, and it is a LIE about how much there is:
+## the wards genuinely are different and the room said otherwise.
+##
+## Content, not a system (see the rule about `Cases`): a name, a floor, a dado
+## accent, and the five bay colours. `Hospital.reskin` reads it every morning
+## and repaints; nothing about the layout, the navigation or the beds moves,
+## because the dressing is the only part of a room that is safe to rebuild
+## after the nav is baked.
+##
+## The names are deliberately four different SHAPES — a letter, a tree, a
+## number, a tree — because that is what a real hospital's wards are called and
+## a set of four matching names reads as generated.
+const WARDS := [
+	{
+		"name": "Ward C",
+		## The canonical one. Seed 0 deals this ward on night one and every
+		## screenshot, measurement and pinned test in this repo is of it, so
+		## its palette is exactly what the building was built in.
+		"floor": Color(0.72, 0.80, 0.74),
+		"dado": Color(0.22, 0.62, 0.60),
+		"bays": [Color(0.36, 0.68, 0.72), Color(0.86, 0.55, 0.40),
+			Color(0.52, 0.66, 0.86), Color(0.62, 0.78, 0.52), Color(0.80, 0.62, 0.76)],
+	},
+	{
+		"name": "Ash Ward",
+		## Warm: sand floor, ochre dado, and bays that live in the same half of
+		## the wheel. A ward decorated in one decade.
+		"floor": Color(0.80, 0.76, 0.66),
+		"dado": Color(0.72, 0.52, 0.26),
+		"bays": [Color(0.88, 0.66, 0.36), Color(0.74, 0.46, 0.34),
+			Color(0.86, 0.76, 0.44), Color(0.66, 0.56, 0.36), Color(0.82, 0.58, 0.50)],
+	},
+	{
+		"name": "Ward 9",
+		## Cold and municipal. Grey-blue lino, slate dado, and the only ward
+		## whose bays are nearly the same colour as each other — which is its
+		## own kind of character.
+		"floor": Color(0.70, 0.74, 0.78),
+		"dado": Color(0.26, 0.40, 0.56),
+		"bays": [Color(0.44, 0.58, 0.78), Color(0.56, 0.64, 0.74),
+			Color(0.38, 0.52, 0.68), Color(0.62, 0.70, 0.80), Color(0.48, 0.60, 0.72)],
+	},
+	{
+		"name": "Elm Ward",
+		## The oldest-looking of the four: olive dado, a floor gone slightly
+		## yellow, and bays in colours nobody would choose today.
+		"floor": Color(0.76, 0.78, 0.68),
+		"dado": Color(0.38, 0.50, 0.30),
+		"bays": [Color(0.60, 0.70, 0.44), Color(0.80, 0.68, 0.40),
+			Color(0.50, 0.62, 0.56), Color(0.74, 0.58, 0.44), Color(0.58, 0.66, 0.62)],
+	},
+]
+
+## The ward being played, by index, with a wrap so a caller cannot fall off the
+## end of a table that has to stay the same length as `DAYS`.
+static func ward_look(index := -1) -> Dictionary:
+	var i: int = index if index >= 0 else pool_index(GameState.day)
+	return WARDS[i % WARDS.size()]
+
+static func ward_name(index := -1) -> String:
+	return String(ward_look(index).get("name", "Ward C"))
+
+## One bay's colour on this ward. Every tint in the room comes through here, so
+## a new ward is a row in the table above rather than an edit to `Furniture`.
+static func bay_tint(bay: int, index := -1) -> Color:
+	var bays: Array = Array(ward_look(index).get("bays", []))
+	return Color(0.36, 0.68, 0.72) if bays.is_empty() else bays[bay % bays.size()]
+
+
 ## Who is coming back.
 ##
 ## THE CONSEQUENCE THE GAME DID NOT HAVE. Until this existed, a discharge was

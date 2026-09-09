@@ -281,6 +281,7 @@ func _check_the_verbs_work() -> void:
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
 	_check_nobody_has_their_eyes_inside_their_head()
+	_check_the_four_wards_are_four_rooms()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -2312,6 +2313,61 @@ func _check_nobody_has_their_eyes_inside_their_head() -> void:
 	_ok(buried == 0,
 		"nobody in %d faces has an eye or a mouth inside their own skull (%d of %d buried%s)"
 			% [24, buried, tried, (", worst %.1fcm on %s" % [worst * 100.0, worst_who]) if buried > 0 else ""])
+
+
+## FOUR WARDS, FOUR ROOMS — and until this they were one.
+##
+## The building is built once at `Game._ready()` and a career rolls the day over
+## in place, so four authored wards with four casts and four lessons were played
+## in the same twenty metres, painted one colour, with "Ward C" over the beds on
+## every night of every career. Twenty-five screenshots could not see it because
+## every one of them is night one, and no assertion in fifteen test layers had
+## any reason to look at a wall.
+##
+## Checked by repainting for each ward in turn and reading back what actually
+## changed on the nodes — the floor's material, the dado's, and the text of the
+## sign above the beds. Not by reading `Cases.WARDS`, which would only prove the
+## table has four rows in it.
+func _check_the_four_wards_are_four_rooms() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to repaint")
+		return
+	var was := GameState.day
+	var seen_floor := {}
+	var seen_dado := {}
+	var seen_name := {}
+	for i in Cases.DAYS.size():
+		GameState.day = i + 1
+		h.reskin()
+		seen_name[Cases.ward_name()] = true
+		for r in h.room_list():
+			if r.kind != "ward":
+				continue
+			var f = r.get_node_or_null("Floor")
+			for c in (f.get_children() if f != null else []):
+				if c is MeshInstance3D and c.material_override != null:
+					seen_floor[c.material_override.get_instance_id()] = true
+		for n in h.get_children():
+			if not n.is_in_group(Hospital.WARD_DADO_GROUP):
+				continue
+			for c in n.get_children():
+				if c is MeshInstance3D and c.material_override != null:
+					seen_dado[c.material_override.get_instance_id()] = true
+	GameState.day = was
+	h.reskin()
+	_ok(seen_name.size() == Cases.DAYS.size(),
+		"the four wards have four names (%s)" % ", ".join(PackedStringArray(seen_name.keys())))
+	_ok(seen_floor.size() == Cases.DAYS.size(),
+		"and four floors — the repaint reaches the mesh, not just the table (%d)"
+			% seen_floor.size())
+	_ok(seen_dado.size() == Cases.DAYS.size(),
+		"and four dados, which is the colour field the eye actually reads (%d)"
+			% seen_dado.size())
+	# ...and the dado belongs to the WARD. The exterior runs used to span the
+	# whole depth of the building as one slab each, so repainting the ward's
+	# ends repainted the office's.
+	_ok(not seen_dado.is_empty(), "and there is a dado to repaint at all")
 
 ## Evidence somebody SAW, as opposed to evidence that reached them.
 func _witnessed(sus) -> int:

@@ -40,8 +40,15 @@ const STEEL := Color(0.80, 0.85, 0.92)
 ## pronounced them all correct.
 const CEILING_GROUP := "ceiling_fitting"
 
+## An EXTRA group for whatever is being dressed right now, so a caller can throw
+## its own pieces away again without knowing what they were. Set around a block
+## of calls and cleared after; see `Furniture.redress_ward`.
+static var tag := ""
+
 static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0) -> Node3D:
 	h.add_child(n)
+	if tag != "":
+		n.add_to_group(tag)
 	# EVERYTHING DECORATIVE ANSWERS TO ONE NAME. Scenery has no collision and no
 	# navigation footprint, which is what lets there be a lot of it — and also
 	# means nothing in the engine will ever object to a piece of it standing in

@@ -106,7 +106,58 @@ static func _dress(h: Hospital, r: Room) -> void:
 ## Everything in the bay that is not a bed. The per-bed dressing — gas panel,
 ## bed number, cabinet, table — is placed with the bed itself in _ward(),
 ## because it belongs to the bed rather than to the room.
+## EVERY MORNING, NOT ONCE. See `Hospital.reskin`: the dressing is the only
+## part of a room that is safe to rebuild after the navigation is baked, because
+## none of it has collision or a footprint — which is exactly the rule that lets
+## there be this much of it.
+static func redress_ward(h: Hospital) -> void:
+	_clear_group(h, WARD_DRESSING)
+	for r in h.room_list():
+		if r.kind == "ward":
+			_dress_ward(h, r)
+			return
+
+## THE HOSPITAL'S OWN CHILDREN, NOT `get_tree().get_nodes_in_group`. Everything
+## either of these throws away was parented to `h` by `Dressing._add` or by
+## `_wall_sign`, so `h` is the only index anybody needs — and a static helper
+## that does not reach for the SceneTree cannot be called too early, which
+## matters because `build()` runs before the hospital is in one.
+## `remove_child` BEFORE `queue_free`, per the auditor: a node freed the
+## deferred way is still in the tree, still visible and still found by the next
+## walk for the rest of the frame.
+static func _clear_group(h: Hospital, group: String) -> void:
+	for n in h.get_children():
+		if n.is_in_group(group):
+			h.remove_child(n)
+			n.queue_free()
+
+const WARD_DRESSING := "ward_dressing"
+## The signs that carry the ward's NAME, which changes with it. Separate from
+## the dressing group because one of them is in the corridor.
+const WARD_NAME_SIGN := "ward_name_sign"
+
+## Rebuild both of them for whichever ward this is. The plate behind a sign is
+## sized to the text on it, so this cannot be a `text` assignment.
+static func rename_ward(h: Hospital) -> void:
+	_clear_group(h, WARD_NAME_SIGN)
+	for r in h.room_list():
+		if r.kind == "ward":
+			r.display = Cases.ward_name()
+			_wall_sign(h, Cases.ward_name(), Vector3(r.rect.get_center().x, 2.62,
+				_far_wall_z(r) + _toward(r) * 0.14), _far_rot(r), 0.14, true,
+				WARD_NAME_SIGN)
+	_wall_sign(h, "%s  ▲" % Cases.ward_name(), Vector3(6.8, 2.6, 3.85), PI, 0.16,
+		true, WARD_NAME_SIGN)
+
 static func _dress_ward(h: Hospital, r: Room) -> void:
+	# ...and everything below is tagged, so tomorrow can throw it away. The
+	# `_occupy` calls in here are deliberately NOT repeated on a redress — the
+	# nav grid is baked once and the two pieces that carve it never move.
+	Dressing.tag = WARD_DRESSING
+	_dress_ward_body(h, r)
+	Dressing.tag = ""
+
+static func _dress_ward_body(h: Hospital, r: Room) -> void:
 	var into := _toward(r)
 	var far_z := _far_wall_z(r)
 	var bed_z: float = h.bed_position(1).z
@@ -239,11 +290,12 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	Dressing.screen_partition(h, scr, _door_rot(r) + 0.5, _bay_tint(4))
 	_occupy(scr.x, scr.z, 1.4, 0.6)
 
-## One colour per bay, so bed three is somewhere rather than anywhere.
+## One colour per bay, so bed three is somewhere rather than anywhere — and one
+## PALETTE per ward, so night three is somewhere rather than anywhere either.
+## The table lives in `Cases.WARDS` because it is content: see the rule that
+## adding a ward must not require touching a system.
 static func _bay_tint(index: int) -> Color:
-	var tints := [Color(0.36, 0.68, 0.72), Color(0.86, 0.55, 0.40),
-		Color(0.48, 0.62, 0.86), Color(0.52, 0.74, 0.46), Color(0.78, 0.52, 0.74)]
-	return tints[posmod(index, tints.size())]
+	return Cases.bay_tint(index)
 
 static func _dress_corridor(h: Hospital, r: Room) -> void:
 	var z0: float = r.rect.position.y
@@ -450,7 +502,7 @@ static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
 ## both what the building looks like and the reason you can find anything in it
 ## from the far end of a corridor.
 static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float,
-		size := 0.1, plate := true) -> void:
+		size := 0.1, plate := true, group := "") -> void:
 	# The wall normal the sign is mounted on, so the plate sits just behind the
 	# text rather than z-fighting with it.
 	var out := Vector3(sin(rot_y), 0.0, cos(rot_y))
@@ -467,10 +519,14 @@ static func _wall_sign(h: Hospital, text: String, pos: Vector3, rot_y: float,
 		q.mesh = qm
 		q.material_override = Build.unshaded(Color(0.14, 0.20, 0.26))
 		h.add_child(q)
+		if group != "":
+			q.add_to_group(group)
 		q.position = pos - out * 0.012
 		q.rotation.y = rot_y
 	var l := Build.label3d(text, size, Color(0.96, 0.97, 0.94), false)
 	h.add_child(l)
+	if group != "":
+		l.add_to_group(group)
 	l.position = pos
 	l.rotation.y = rot_y
 
@@ -559,8 +615,10 @@ static func _ward(h: Hospital, r: Room) -> void:
 	t.rotation.y = _far_rot(r)
 	_occupy(term_x, term_z, 0.7, 0.5)
 
-	_wall_sign(h, r.display, Vector3(r.rect.get_center().x, 2.62, far_z + into * 0.14),
-		_far_rot(r), 0.14)
+	# THE ONE ABOVE THE BEDS. Rebuilt every morning by `Hospital.reskin`, because
+	# the plate is sized to its own text and four ward names are four lengths.
+	_wall_sign(h, Cases.ward_name(), Vector3(r.rect.get_center().x, 2.62,
+		far_z + into * 0.14), _far_rot(r), 0.14, true, WARD_NAME_SIGN)
 
 ## Which way is "into the room" from the far wall.
 static func _toward(r: Room) -> float:
@@ -619,7 +677,8 @@ static func _corridor(h: Hospital, r: Room) -> void:
 	# the door rather than as a chair in front of it.
 	for x in [4.0, 5.4, 14.4, 15.8]:
 		_chair(h, Vector3(x, 0, z + 1.5), PI)
-	_wall_sign(h, "WARD C  ▲", Vector3(6.8, 2.6, 3.85), PI, 0.16)
+	_wall_sign(h, "%s  ▲" % Cases.ward_name(), Vector3(6.8, 2.6, 3.85), PI, 0.16,
+		true, WARD_NAME_SIGN)
 	_wall_sign(h, "◄  NURSES' STATION        YOUR OFFICE  ►",
 		Vector3(11.0, 2.6, 0.15), 0.0, 0.13)
 

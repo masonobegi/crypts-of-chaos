@@ -1,6 +1,22 @@
 extends RefCounted
-## ADVERSARIAL ECONOMICS PROBE (scratch, not part of the suite).
+## FOUR WAYS TO PLAY WITHOUT EVER LOOKING AT ANYBODY, AND NONE OF THEM MAY WIN.
+##
+## `career_impl` asserts that "never looking at anybody NEVER pays it off", and
+## it asserts it about exactly ONE blind policy: discharge all five, every
+## night. That is the laziest blind play there is, and the interesting ones are
+## the blind play that READS THE HANDOVER — keep whoever the night staff already
+## wrote up as unwell, look at nobody, write nothing — and its two greedier
+## cousins. This file exists because one of those found the hole: `blind_prior`
+## used to clear the entire debt in eleven nights and never be struck off, on a
+## design whose whole subject is that information must be paid for.
+##
+## It was a scratch file. It printed four tables, asserted nothing, and was not
+## in `run_tests.sh` — so the one probe that had found the largest design
+## inversion in the game could not report it, which is the same shape of fault
+## as a harness whose last pipeline stage is `head`. It fails now, and it is in
+## the suite.
 var tree: SceneTree = null
+var bad := 0
 var C = ChartEntry.Claim
 var A = ReviewSystem.Answer
 const DAYS := 25
@@ -95,7 +111,8 @@ func _play(w: WardDay, policy: String) -> void:
 		if String(w.state[pid]["disposition"]) == "":
 			w.set_disposition(pid, "discharge")
 
-func run() -> void:
+func run() -> bool:
+	var endings := {}
 	for policy in ["blind_dump", "blind_prior", "blind_prior_plus", "blind_rich"]:
 		_fresh()
 		print("\n--- %s" % policy)
@@ -105,4 +122,29 @@ func run() -> void:
 			var r := _one_day(policy)
 			print("  %3d %7d %8d %-18s %4d %4d %4d %s" % [r["day"], r["paid"], r["left"], r["verdict"],
 				r["indef"], r["solo"], r["re"], ("SHORT " if r["short"] else "") + String(r["ending"]).to_upper()])
+			endings[policy] = String(r["ending"])
 			if String(r["ending"]) != "": break
+
+	print("\n=== CAN A BLIND CAREER PAY IT OFF? ===")
+	for policy in endings:
+		var e := String(endings[policy])
+		var ok: bool = e != GameState.ENDING_PAID
+		if not ok:
+			bad += 1
+		print("  %-18s %-14s %s" % [policy,
+			e if e != "" else "still going", "ok" if ok else "*** PAID OFF BLIND ***"])
+	# ...AND A CAREER THAT NEVER ENDS IS NOT A PASS EITHER. `blind_prior` ran
+	# twenty-five nights without being struck off and without clearing the debt
+	# for two iterations of this file, which is the loop the whole debt rework
+	# exists to stop: he asks for the same number forever and nothing happens.
+	for policy in endings:
+		if String(endings[policy]) == "":
+			bad += 1
+			print("  %-18s ran %d nights and neither paid nor was struck off"
+				% [policy, DAYS])
+	print("")
+	if bad == 0:
+		print("ECONOMICS PROBE PASSED — no blind career pays it off, and none of them loops")
+	else:
+		print("ECONOMICS PROBE FAILED — %d problems" % bad)
+	return bad == 0

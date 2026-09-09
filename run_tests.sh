@@ -103,6 +103,21 @@ SHIP=${PIPESTATUS[0]}
 "$GODOT" --headless --path "$DIR" --script res://tests/probe/draws_run.gd 2>&1 | grep -vE "$NOISE"
 DRAWS=${PIPESTATUS[0]}
 
+# FOUR WAYS TO PLAY WITHOUT EVER LOOKING AT ANYBODY, AND NONE OF THEM MAY WIN.
+#
+# The career probe asserts "never looking at anybody NEVER pays it off" about
+# exactly one blind policy: discharge all five, every night, which is the
+# laziest blind play there is. The interesting one is the blind play that READS
+# THE HANDOVER — keep whoever the night staff already wrote up as unwell, look
+# at nobody, write nothing — and it used to clear the entire debt in eleven
+# nights and never be struck off, on a design whose whole subject is that
+# information has to be paid for. The file that found that printed four tables,
+# asserted nothing and was not in this script, so the largest design inversion
+# in the game was discovered and reported to nobody. Same shape as a harness
+# whose last pipeline stage is `head`.
+"$GODOT" --headless --path "$DIR" --script res://tests/probe/econ_run.gd 2>&1 | grep -vE "$NOISE"
+ECON=${PIPESTATUS[0]}
+
 # DOES A CAREER HOLD ITS SHAPE. Eight policies played to their ending, against
 # the six criteria the design lives or dies by — honest play pays it off, a
 # restrained liar pays it off faster, doing it every night does not, greed is
@@ -226,8 +241,8 @@ GODOT="$GODOT" "$DIR/boot_check.sh"
 BOOT=$?
 
 if [ "$UNIT" -ne 0 ] || [ "$SMOKE" -ne 0 ] || [ "$SMOKE_SEEDS" -ne 0 ] || [ "$QUIET" -ne 0 ] || [ "$PLAY" -ne 0 ] || [ "$DATA" -ne 0 ] || [ "$SHIP" -ne 0 ] \
-    || [ "$DRAWS" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$PLAY_DAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
-  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA ship=$SHIP draws=$DRAWS career=$CAREER frontier=$FRONTIER input=$PLAY_IN day=$PLAY_DAY boot=$BOOT)" >&2
+    || [ "$DRAWS" -ne 0 ] || [ "$ECON" -ne 0 ] || [ "$CAREER" -ne 0 ] || [ "$FRONTIER" -ne 0 ] || [ "$PLAY_IN" -ne 0 ] || [ "$PLAY_DAY" -ne 0 ] || [ "$BOOT" -ne 0 ]; then
+  echo "TESTS FAILED (unit=$UNIT smoke=$SMOKE seeds=$SMOKE_SEEDS quiet=$QUIET playtest=$PLAY data=$DATA ship=$SHIP draws=$DRAWS econ=$ECON career=$CAREER frontier=$FRONTIER input=$PLAY_IN day=$PLAY_DAY boot=$BOOT)" >&2
   exit 1
 fi
 echo "ALL TESTS PASSED"

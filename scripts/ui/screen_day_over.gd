@@ -33,7 +33,12 @@ func _build() -> void:
 	# one object in this game that has an obvious noise.
 	AudioMgr.play("stamp", -6.0,
 		0.82 if verdict == ReviewSystem.OUTCOME_ESCALATED else 1.0)
-	var v := card_shell(720, 620, "END OF SHIFT",
+	# TALL ENOUGH FOR THE READBACK. `card_shell` caps against the window at
+	# `viewport - 136`, which is 764 at the pinned 1600x900, so this asks for
+	# the cap rather than a number: the five beds put six more rows on a card
+	# that was already showing TOMORROW at the fold, and the shot harness
+	# measured 23% of it below the line.
+	var v := card_shell(720, 780, "END OF SHIFT",
 		"Day %d  ·  Ward C" % GameState.day)
 
 	var tint := UIKit.GOOD
@@ -67,6 +72,34 @@ func _build() -> void:
 	m.add_child(mv)
 	v.add_child(m)
 
+	# THE ANSWER KEY, AND THERE HAS NEVER BEEN ONE.
+	#
+	# `truly_well` is the hidden boolean the entire investigation layer exists
+	# to deduce — twelve minutes a chart, twenty-five to lay hands on somebody,
+	# fifty to find the registrar — and the game has never once told the player
+	# what it was. It is exposed in exactly two places: through `examine`, which
+	# costs you a quarter of an hour and returns a sentence, and by implication
+	# when a finding names it. So a bed you KEPT that was in fact perfectly well
+	# and that Sister Nkemelu happened not to query got no correction at all,
+	# and a bed you sent home correctly got nothing either. Over a nine-night
+	# career a player received fewer than nine pieces of evidence about a
+	# question they were being asked forty times, and never saw the answer.
+	#
+	# That is the whole reason a second career is execution rather than
+	# deduction: you cannot get better at reading people if nobody ever tells
+	# you what they were.
+	#
+	# No score, no praise, no money against a name. The design rule is that
+	# nothing in this game ever grades the player's choice for them, and this
+	# does not: it says what they did and what was true, in that order, and
+	# leaves the arithmetic to the person who did it.
+	if w != null:
+		v.add_child(UIKit.rule())
+		v.add_child(UIKit.label("THE FIVE BEDS", 12, UIKit.INK_DIM))
+		for line in _readback(w):
+			v.add_child(UIKit.label("· " + String(line), 14, UIKit.INK,
+				HORIZONTAL_ALIGNMENT_LEFT, true))
+
 	v.add_child(UIKit.rule())
 	v.add_child(UIKit.label("TOMORROW", 12, UIKit.INK_DIM))
 	var standing := String(DoctorRecord.load_from_state().standing())
@@ -85,6 +118,39 @@ func _build() -> void:
 	foot.add_child(UIKit.button("Main menu", func():
 		_leave("res://scenes/MainMenu.tscn")))
 	card_footer(foot)
+
+## WHAT THEY ACTUALLY WERE, one line a bed, in the order they lie in.
+##
+## Flat on purpose. "He was not fit to go" is a fact about a man; "you were
+## wrong" is a score, and this game does not keep one. The medically-fit patient
+## with nobody at home gets the second clause because the first one on its own
+## is true and misleading, which is the same reason her hold is exempt from
+## three of the audit rules.
+func _readback(w) -> Array:
+	var out: Array = []
+	var truth: Dictionary = w.review_truth()
+	var seen := {}
+	for c in Cases.roster():
+		var pid := String(c["id"])
+		if not truth.has(pid) or seen.has(pid):
+			continue
+		seen[pid] = true
+		var t: Dictionary = truth[pid]
+		var did := "was still here at eight"
+		if bool(t.get("self_discharged", false)):
+			did = Cases.about(pid, "signed {themselves} out")
+		elif bool(t.get("held", false)):
+			did = "kept in"
+		elif bool(t.get("discharged", false)):
+			did = "sent home"
+		var was := "was not fit to go"
+		if bool(t.get("well", true)):
+			was = "was fit to go"
+			if bool(t.get("no_care_at_home", false)):
+				was = "was medically fit, and had nobody at home"
+		out.append("%s — %s. %s %s." % [String(t.get("name", pid)), did,
+			Cases.about(pid, "{They}"), was])
+	return out
 
 ## What last night actually costs you, said out loud rather than stored in a
 ## flag nobody reads.

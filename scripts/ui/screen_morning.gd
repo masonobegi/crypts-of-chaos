@@ -22,8 +22,12 @@ func _build() -> void:
 	for c in Cases.roster():
 		var row := UIKit.panel(UIKit.NOTE, 3)
 		var col := UIKit.vbox(1)
+		# THE RATE, ON THE ROW. Who is paying is on this card and what they pay
+		# is not, so "PREMIUM" and "STATE" were two words with no numbers behind
+		# them until the player had opened five patient cards one at a time.
 		col.add_child(UIKit.row("%d.  %s" % [int(c["bed"]), String(c["name"])],
-			Cases.tier_name(int(c["tier"])), UIKit.INK, 15))
+			"%s  ·  %s a night" % [Cases.tier_name(int(c["tier"])),
+				UIKit.money_str(Cases.night_fee(int(c["tier"])))], UIKit.INK, 15))
 		col.add_child(UIKit.label("      " + String(c["condition"]), 12, UIKit.INK_DIM,
 			HORIZONTAL_ALIGNMENT_LEFT))
 		row.add_child(col)
@@ -47,9 +51,20 @@ func _build() -> void:
 	mv.add_child(UIKit.row("In your account",
 		UIKit.money_str(w.cash if w != null else Cases.STARTING_CASH),
 		UIKit.MONEY, 17))
+	# AND IT WAS FALSE FOR A STATE BED. "A night pays more" is true at $850 and
+	# $450 and not at $180, because the bed you empty takes the next admission
+	# as well — $650 against $180. The player was told the opposite of the
+	# arithmetic on a third of the beds in the game, on the card whose whole job
+	# is to state the premise. Every figure here is read from the constants, so
+	# it cannot drift the way that sentence did.
 	mv.add_child(UIKit.label(
-		"A discharge pays %s. A night in a bed pays more, and the difference depends on who is paying for the bed."
-			% UIKit.money_str(Cases.DISCHARGE_FEE),
+		("A discharge pays %s, and the empty bed takes the next admission at %s. "
+			+ "A night pays %s, %s or %s, depending on who is paying for it.")
+			% [UIKit.money_str(Cases.DISCHARGE_FEE),
+				UIKit.money_str(Cases.ADMISSION_FEE),
+				UIKit.money_str(Cases.NIGHT_FEE[Cases.Tier.PREMIUM]),
+				UIKit.money_str(Cases.NIGHT_FEE[Cases.Tier.STANDARD]),
+				UIKit.money_str(Cases.NIGHT_FEE[Cases.Tier.STATE])],
 		12, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
 	# THE ONLY PLACE THE INTEREST IS STATED BEFORE IT IS CHARGED. The morning
 	# card calls itself the place the premise is stated, and it left out the

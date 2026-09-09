@@ -592,6 +592,26 @@ with it because a lost afternoon does not care which.
     visible on somebody lying in a bed, which is why it survived until there
     was a harness that photographs people standing up.
 
+65. **A GDScript lambda captures a local BY VALUE.** `var seen := false` then
+    `sig.connect(func(): seen = true)` sets a copy, and the variable outside is
+    still false however many times the signal fires — so a check written that
+    way can never pass, and one written as `var bad := false` can never fail.
+    It cost a false failure in the smoke run on the first attempt at asserting
+    that deciding a bed emits `money_changed`. Anything a callable writes to
+    has to be a container (`var fired := [0]`), which is a reference.
+66. **The player was never told what anybody actually was.** `truly_well` is the
+    hidden boolean the whole investigation layer exists to deduce, and it was
+    exposed in exactly two places: `examine`, which costs a quarter of an hour
+    and returns a sentence, and by implication when a finding happens to name
+    it. So a bed you KEPT that was perfectly well, and that Sister Nkemelu did
+    not query, produced no correction at all — over a nine-night career the
+    player got fewer than nine pieces of evidence about a question they were
+    asked forty times and never saw the answer. That is why a second career was
+    execution rather than deduction. The End of Shift card reads all five beds
+    back now: what you did, and what they were, flat, in that order, with no
+    score attached — the rule that nothing grades the player's choice for them
+    is about JUDGEMENT, not about facts.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

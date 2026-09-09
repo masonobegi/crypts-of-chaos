@@ -283,6 +283,7 @@ func _check_the_verbs_work() -> void:
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
+	_check_deciding_a_bed_moves_the_money()
 	_check_the_day_gives_you_warning()
 	_check_nothing_calls_a_method_that_is_not_there()
 	_check_the_money_on_the_hud_is_the_money_you_get()
@@ -908,6 +909,42 @@ func _check_the_nurse_does_not_copy_and_paste() -> void:
 ## Two halves, because the first version of this check asserted against Dot
 ## Kerrigan by name and the smoke run's ward does not have her on it — so it
 ## passed by doing nothing, which is how a check that cannot fail gets written.
+## DECIDING A BED MOVES THE NUMBER THE DECISION IS ABOUT.
+##
+## The projection in the corner of the screen is refreshed by `money_changed`
+## and by `minute_passed`. `money_changed` fired once a night, from `end_day`.
+## And the patient card stops the clock while it is open, so `minute_passed`
+## does not fire either — which meant every verb that COSTS TIME updated the
+## figure as a side effect and the one act that costs no time, the decision the
+## whole day is for, left it frozen until about two seconds after the card was
+## closed. `patient_changed` existed for exactly this purpose and had no
+## listeners anywhere in the project.
+##
+## Asserted on the signal rather than on the HUD's label, because the label is a
+## string built by a screen and this is a question about the ward.
+func _check_deciding_a_bed_moves_the_money() -> void:
+	var q := WardDay.new()
+	tree.root.add_child(q)
+	q.start()
+	# AN ARRAY, NOT AN INT. A GDScript lambda captures a local BY VALUE, so
+	# `func(_c): fired += 1` increments a copy and the counter outside is still
+	# zero however many times the signal fires. It cost a false failure here and
+	# it is the other way round that matters: a check written as
+	# `var seen := false ... _ok(seen, ...)` can never pass, and one written as
+	# `var bad := false` can never fail. Anything a callable writes to has to be
+	# a container, which is passed by reference.
+	var fired := [0]
+	q.money_changed.connect(func(_c): fired[0] += 1)
+	var who := String(Cases.roster()[0]["id"])
+	var before: int = int(q.projected()["total"])
+	q.set_disposition(who, "hold")
+	_ok(int(fired[0]) > 0, "deciding a bed tells the HUD the money has moved")
+	_ok(int(q.projected()["total"]) != before,
+		"and the projection actually changed (%d -> %d)"
+			% [before, int(q.projected()["total"])])
+	tree.root.remove_child(q)
+	q.free()
+
 func _check_the_daughter_actually_turns_up() -> void:
 	# THE TRIGGER, on whichever ward actually has somebody expecting family.
 	var fired := {}
@@ -2195,6 +2232,25 @@ func _check_the_handover_button_reaches_tomorrow() -> void:
 			% String(ui.get("current_id")))
 	var tomorrow = _find_button(ui.get("current"), "Work tomorrow")
 	_ok(tomorrow != null, "with the button that starts tomorrow on it")
+	# ...AND THE ANSWER KEY ON IT, FOR ALL FIVE BEDS.
+	#
+	# `truly_well` is the hidden boolean the whole investigation layer exists to
+	# deduce and the game never once told the player what it was — so a bed you
+	# kept that was perfectly well, and that Sister Nkemelu did not happen to
+	# query, produced no correction at all. Checked by name because a readback
+	# that quietly dropped the patient it was hardest to be right about would
+	# look exactly like a readback.
+	var card_text := ""
+	for n in _all_nodes(ui.get("current")):
+		if n is Label:
+			card_text += String(n.text) + "\n"
+	var missing: Array = []
+	for c in Cases.roster():
+		if card_text.find(String(c.get("name", ""))) < 0:
+			missing.append(String(c["id"]))
+	_ok(missing.is_empty(),
+		"and the card says what all five of them turned out to be (missing %s)"
+			% str(missing))
 	# ...and Escape must not be able to take it away again.
 	if ui.has_method("_unhandled_input"):
 		var ev := InputEventAction.new()

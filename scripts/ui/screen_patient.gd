@@ -58,6 +58,28 @@ func _build() -> void:
 		"Every further night" if disposition != "discharge" else "You sent them home",
 		"+%s to you" % UIKit.money_str(Cases.night_fee(int(c["tier"]))
 			if disposition != "discharge" else Cases.DISCHARGE_FEE), UIKit.MONEY))
+	# THE THIRD NUMBER, AND IT WAS NOWHERE IN THE GAME.
+	#
+	# An empty bed does not just pay a discharge; it takes the next admission
+	# off the list downstairs, and `Cases.ADMISSION_FEE`'s own comment calls
+	# that inequality "what stops 'hold everybody' from being the answer". The
+	# word "admission" appeared nowhere a player could read it. So this panel
+	# offered $150 against $180 for a state bed and made holding look like the
+	# better night by thirty pounds, when emptying it is worth $650 and holding
+	# it costs you four hundred and seventy — the single fact the whole economy
+	# turns on, omitted from the one screen where the decision is made.
+	#
+	# Only when there is actually somebody waiting for the bed, because
+	# `admissions_taken()` is capped by how many beds are free.
+	if disposition != "hold" and w.admissions_taken() > 0:
+		mv.add_child(UIKit.row("...and the bed goes to somebody waiting",
+			"+%s" % UIKit.money_str(Cases.ADMISSION_FEE), UIKit.MONEY))
+	# ...and NOT the running total, which was the other half of this fix and is
+	# already on the screen. The HUD's "IF YOU SIGNED OFF NOW" plate is nine
+	# centimetres from this panel and now moves on the frame a bed is decided,
+	# so a fourth row here would be the same number twice on a card that is
+	# already the tallest in the game — measured at 14% under the fold with the
+	# row in and 10% without it.
 	m.add_child(mv)
 	v.add_child(m)
 

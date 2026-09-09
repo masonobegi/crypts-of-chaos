@@ -827,6 +827,22 @@ func set_disposition(pid: String, what: String) -> void:
 		# A bed decided sounds like a rubber stamp, because that is what it is.
 		AudioMgr.play("stamp", -11.0, 1.0 if what == "discharge" else 0.85)
 	patient_changed.emit(pid)
+	# ...AND THE NUMBER IN THE CORNER MOVES.
+	#
+	# Deciding a bed is the only decision in this game and the figure it changes
+	# did not respond to it. `money_changed` fired once a night, from `end_day`;
+	# the HUD's projection is refreshed by that and by `minute_passed`; and the
+	# patient card is a screen that stops the clock while it is open, so
+	# `minute_passed` does not fire either. Every verb that COSTS TIME therefore
+	# updated the projection as a side effect, and the one act that costs no
+	# time — the decision the whole day is for — left it frozen until about two
+	# seconds after the card was closed. `patient_changed` existed for exactly
+	# this and had no listeners anywhere in the project.
+	#
+	# Re-entrancy: the only listener calls `projected()`, which reads state and
+	# does not move the clock. It reaches `end_day()` only on the `ended`
+	# branch, which this is not — see gotcha 27.
+	money_changed.emit(cash)
 	_update_objective()
 
 ## WHAT TO DO NEXT, AND WHERE IT IS.

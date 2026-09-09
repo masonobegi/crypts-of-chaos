@@ -1596,8 +1596,48 @@ static func _mix(seed_v: int, day: int, bed: int) -> int:
 	x = ((x ^ (x >> 29)) * 1442695040888963407) & 0x7FFFFFFFFFFFFFFF
 	return (x ^ (x >> 32)) & 0x7FFFFFFFFFFFFFFF
 
+## WHICH WARD YOU WALK ONTO TONIGHT.
+##
+## It used to be `(day - 1) % DAYS.size()`, and that one line was the largest
+## single piece of transferable knowledge in the game: night one is always the
+## Marchetti ward, night two is always the Bux ward, night four is always the
+## one Dr Costa covered. The four wards are the four LESSONS — the honest hold
+## is in the diagnosis, in a body the chart cannot describe, in a life, in
+## somebody else's decision — so a returning player walked onto every ward
+## already knowing which verb it was about, on every career, forever. It also
+## meant the softest ward, the one whose honest hold is also its money-optimal
+## one, was played three times in nine nights and the other three twice.
+##
+## Now the order is a permutation of the wards drawn from the career seed, with
+## a fresh permutation every cycle, so nights one to four and five to eight are
+## different orders of the same four wards. Every ward is still visited exactly
+## once per cycle — the pressure curve of a career is unchanged, and the debt
+## arithmetic with it — but WHICH ward is a thing you find out by walking onto
+## it, which is what reading the handover is for.
+##
+## Seed 0 returns the old order, exactly as `draw_five` short-circuits to the
+## first candidate in every slot: seed 0 is the canonical game that every
+## authored measurement, every screenshot and every pinned test plays.
+static func pool_index(day: int) -> int:
+	var n: int = DAYS.size()
+	var d: int = maxi(1, day) - 1
+	if GameState.seed_value == 0:
+		return d % n
+	var cycle: int = d / n
+	var order: Array = []
+	for i in n:
+		order.append(i)
+	# Fisher-Yates through the same mixer the slot draw uses, on a key that
+	# cannot collide with a bed number or with the pair flip.
+	for i in range(n - 1, 0, -1):
+		var j: int = _mix(GameState.seed_value, cycle * 977 + i, 199) % (i + 1)
+		var t = order[i]
+		order[i] = order[j]
+		order[j] = t
+	return int(order[d % n])
+
 static func draw_five(day: int, picks: Array = []) -> Array:
-	var pool: Array = DAYS[(day - 1) % DAYS.size()]
+	var pool: Array = DAYS[pool_index(day)]
 	if picks.is_empty():
 		picks = forced_picks
 	var by_bed := {}
@@ -1667,7 +1707,7 @@ static func _pair_flip(day: int) -> int:
 ## 1 if this bed should hold the ill candidate, 0 if the well one, -1 if this
 ## bed is not part of the ward's pair.
 static func _paired_want_ill(day: int, bed: int, flip: int) -> int:
-	var pair = ILL_PAIR_BY_DAY.get((day - 1) % DAYS.size() + 1, null)
+	var pair = ILL_PAIR_BY_DAY.get(pool_index(day) + 1, null)
 	if pair == null:
 		return -1
 	if bed == int(pair[0]):
@@ -1689,7 +1729,14 @@ static func _paired_want_ill(day: int, bed: int, flip: int) -> int:
 ## career can produce: the product of the unpaired slots, doubled by the coin
 ## flip that decides which end of the pair is the ill one.
 static func enumerate_draws(day: int) -> Array:
-	var pool: Array = DAYS[(day - 1) % DAYS.size()]
+	return enumerate_pool(pool_index(day))
+
+## The same question asked about a WARD rather than about a night, which is what
+## anything sweeping seeds needs: under a seeded rotation "night three" is not a
+## ward, and a probe that groups its results by night is averaging four
+## different wards together.
+static func enumerate_pool(index: int) -> Array:
+	var pool: Array = DAYS[index % DAYS.size()]
 	var by_bed := {}
 	for c in pool:
 		var b := int(c["bed"])
@@ -1698,7 +1745,7 @@ static func enumerate_draws(day: int) -> Array:
 		by_bed[b].append(c)
 	var beds: Array = by_bed.keys()
 	beds.sort()
-	var pair = ILL_PAIR_BY_DAY.get((day - 1) % DAYS.size() + 1, [])
+	var pair = ILL_PAIR_BY_DAY.get(index % DAYS.size() + 1, [])
 	var out: Array = [[]]
 	for b in beds:
 		var cands: Array = by_bed[b]
@@ -1753,7 +1800,7 @@ static func enumerate_draws(day: int) -> Array:
 ## How many candidates each slot has, in bed order — the shape of the draw.
 static func slot_sizes(day: int) -> Array:
 	var by_bed := {}
-	for c in DAYS[(day - 1) % DAYS.size()]:
+	for c in DAYS[pool_index(day)]:
 		var b := int(c["bed"])
 		by_bed[b] = int(by_bed.get(b, 0)) + 1
 	var beds: Array = by_bed.keys()
@@ -1765,7 +1812,7 @@ static func slot_sizes(day: int) -> Array:
 
 static func pool_for(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
-	return DAYS[(d - 1) % DAYS.size()]
+	return DAYS[pool_index(d)]
 
 static func roster(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
@@ -1906,7 +1953,7 @@ const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE, PRIOR_FOUR]
 
 static func prior_entries(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day
-	var base: Array = PRIOR_BY_DAY[(d - 1) % PRIOR_BY_DAY.size()].duplicate()
+	var base: Array = PRIOR_BY_DAY[pool_index(d)].duplicate()
 	# WHOEVER ADMITTED THEM AT THREE IN THE MORNING WROTE SOMETHING.
 	#
 	# A readmission arrived with a completely blank chart, so the audit could

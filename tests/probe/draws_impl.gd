@@ -165,16 +165,56 @@ func _check_the_draw_is_actually_random() -> void:
 				ids.append(String(c["id"]))
 			var wk := ",".join(ids)
 			key += wk + "|"
-			if not per_ward.has(d):
-				per_ward[d] = {}
-			per_ward[d][wk] = true
+			# BY WARD, NOT BY NIGHT. The rotation is a per-career permutation,
+			# so "night three" is four different wards across a seed sweep and
+			# grouping by it counts each ward's deals against another ward's
+			# total. This check exists because the draw has silently stopped
+			# being a draw twice; a version of it that groups by the wrong key
+			# is the third way for that to happen.
+			var w: int = Cases.pool_index(d)
+			if not per_ward.has(w):
+				per_ward[w] = {}
+			per_ward[w][wk] = true
+		# ...and the ORDER is drawn too, so it belongs in the career key.
+		var order: Array = []
+		for d in range(1, Cases.DAYS.size() + 1):
+			order.append(Cases.pool_index(d))
+		key += str(order)
 		careers[key] = true
 	GameState.seed_value = was
-	for d in range(1, Cases.DAYS.size() + 1):
-		var possible: int = Cases.enumerate_draws(d).size()
-		var got: int = Dictionary(per_ward[d]).size()
+	for w in range(Cases.DAYS.size()):
+		var possible: int = Cases.enumerate_pool(w).size()
+		var got: int = Dictionary(per_ward.get(w, {})).size()
 		if got < possible:
 			_fail("ward %d deals only %d of its %d possible wards in 2000 seeds"
-				% [d, got, possible])
+				% [w + 1, got, possible])
+	# AND THE ORDER ITSELF IS ACTUALLY DRAWN. A permutation that comes out the
+	# same every career is the old constant with more code in front of it, and
+	# it would look identical in the game, in the tests and in the deal counts
+	# above — which is exactly how the slot draw failed twice.
+	var orders := {}
+	var first_cycle_complete := true
+	for s2 in range(1, 2001):
+		GameState.seed_value = s2
+		var o: Array = []
+		for d in range(1, Cases.DAYS.size() + 1):
+			o.append(Cases.pool_index(d))
+		orders[str(o)] = true
+		var seen := {}
+		for i in o:
+			seen[i] = true
+		if seen.size() != Cases.DAYS.size():
+			first_cycle_complete = false
+	GameState.seed_value = was
+	var want_orders := 1
+	for i in range(2, Cases.DAYS.size() + 1):
+		want_orders *= i
+	if orders.size() < want_orders:
+		_fail("the ward order takes only %d of its %d permutations over 2000 seeds"
+			% [orders.size(), want_orders])
+	if not first_cycle_complete:
+		_fail("a career's first %d nights do not visit every ward" % Cases.DAYS.size())
+	print("  the ward order takes all %d permutations, every career visiting all %d wards"
+		% [orders.size(), Cases.DAYS.size()])
 	print("  %d distinct careers over 2000 seeds, every combination reachable"
 		% careers.size())

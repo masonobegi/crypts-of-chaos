@@ -299,7 +299,7 @@ func _honest_on_every_board() -> void:
 			key.sort()
 			reachable[",".join(PackedStringArray(key))] = true
 		var by_bed := {}
-		for c in Cases.DAYS[day - 1]:
+		for c in Cases.DAYS[Cases.pool_index(day)]:
 			var b := int(c["bed"])
 			if not by_bed.has(b):
 				by_bed[b] = []
@@ -342,9 +342,11 @@ func _honest_on_every_board() -> void:
 				clean += 1
 			else:
 				print("  ward %d: %s is %s played straight"
-					% [day, ",".join(PackedStringArray(ids)), String(row["verdict"])])
+					% [Cases.pool_index(day) + 1, ",".join(PackedStringArray(ids)),
+						String(row["verdict"])])
 				_honest_failed = true
-		print("  ward %d: %d of %d reachable boards sign off" % [day, clean, seen])
+		print("  ward %d: %d of %d reachable boards sign off"
+			% [Cases.pool_index(day) + 1, clean, seen])
 	Cases.forced_picks = []
 	GameState.day = saved
 
@@ -399,7 +401,11 @@ func _search(day: int) -> void:
 	rows.append(honest)
 	rows.sort_custom(func(a, b): return int(a["cash"]) > int(b["cash"]))
 
-	print("\n=== ADVERSARIAL FRONTIER — WARD %d — %d strategies ===" % [day, rows.size()])
+	# The ward, not the night: the rotation is a per-career permutation now, so
+	# "day 3" is not a ward and a report labelled by night cannot be compared
+	# with the one before it.
+	print("\n=== ADVERSARIAL FRONTIER — WARD %d — %d strategies ==="
+		% [Cases.pool_index(day) + 1, rows.size()])
 	# The pareto front: for each verdict, the most money anybody made reaching it.
 	var best := {}
 	for r in rows:

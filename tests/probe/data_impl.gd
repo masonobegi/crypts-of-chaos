@@ -27,6 +27,13 @@ func run() -> void:
 		"readmit_summary", "readmit_opening", "readmit_hold", "readmit_discharge",
 		"readmit_exam"]
 	var seen_ids := {}
+	# SEED 0 IS THE CANONICAL GAME, and this file walks WARDS rather than
+	# nights. The ward rotation is a per-career permutation now, so on any other
+	# seed `pool_for(day + 1)` is not the ward whose prior-entry list and
+	# ill-pair entry are indexed by `day` — and every check below pairs those
+	# three together. Pinned rather than assumed, because nothing else in this
+	# process sets it and a default is not a decision.
+	GameState.seed_value = 0
 	print("\n=== AUTHORED DATA — %d wards ===" % Cases.DAYS.size())
 	for day in Cases.DAYS.size():
 		GameState.day = day + 1

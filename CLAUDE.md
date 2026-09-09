@@ -704,6 +704,19 @@ with it because a lost afternoon does not care which.
   draw producing a ward with no honest hold or a different economy. Seed 0 is
   the canonical ward and is what every test and every authored measurement
   plays — `setup()` pins it.
+- **The ORDER of the wards is drawn too, and seed 0 is the old order.** Night
+  one was always the Marchetti ward and night four always the one Dr Costa
+  covered, and because the four wards are the four LESSONS, that single `%`
+  was the largest piece of transferable knowledge in the game: a returning
+  player walked onto every ward already knowing which verb it was about.
+  `Cases.pool_index(day)` is a per-career permutation with a fresh one every
+  cycle, so every ward is still visited exactly once per four nights — the
+  pressure curve and the debt arithmetic are unchanged — but which one is
+  something you find out by reading the handover. Anything that pairs a night
+  with a ward-indexed table (`PRIOR_BY_DAY`, `ILL_PAIR_BY_DAY`, `DAYS`) must go
+  through it, and anything that GROUPS results by night is averaging four
+  different wards together — `draws_impl` counts deals per WARD, and
+  `enumerate_pool(index)` is the ward-space form of `enumerate_draws(day)`.
 - **Anything seeded gets its distribution counted, not eyeballed.** The draw has
   been broken twice in a way that dealt the same two games forever while looking
   perfect in the game, the tests and the data check: once because `hash ^ seed`

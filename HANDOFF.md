@@ -33,13 +33,13 @@ export GODOT=/tmp/Godot_v4.3-stable_linux.x86_64
 Then, from `/home/user/crypts-of-chaos`:
 
 ```bash
-./run_tests.sh                    # all of it, ~6 min. Green before committing.
+./run_tests.sh                    # all of it, ~7 min. Green before committing.
 ./check.sh scripts/foo.gd         # parse errors for specific files
 ./look.sh try1                    # FOUR frames — the loop for a shader, a light
                                   # or a line weight
 ./faces.sh try1                   # SIX faces close up, one body, the cast —
                                   # the loop for a CHARACTER
-./screenshots.sh                  # all 21 frames plus two layout measurements
+./screenshots.sh                  # all 23 frames plus two layout measurements
 SHOT_ONLY=struck_off ./screenshots.sh   # one frame, ~90 s
 ./playfast.sh day                 # play a whole shift with a controller
 ./play.sh keys                    # WASD and a real mouse, under Xvfb
@@ -54,10 +54,13 @@ prints the exact command to fetch them.
 
 ## Last known good
 
-**298 assertions · 172 smoke checks on three seeds · 7 day criteria · 6 career
-properties on three seeds · 2,601-strategy frontier probe per ward · both play
-runs · the quiet check · the boot check.** All three platforms export and the
-Linux build boots and exits cleanly.
+**343 assertions · 228 smoke checks on three seeds · 39 day criteria runs
+against 7 criteria · the authored-data, ship, draw and economics checks · 6
+career properties on three seeds · a 2,601-strategy frontier probe per ward plus
+an honest day on all 52 reachable boards · both play runs · the quiet check ·
+the boot check.** All three platforms export at 0.9.0 with no placeholders, and
+the Linux build boots and exits cleanly. `./play.sh keys` passes separately
+under Xvfb.
 
 ## What this game is, in one paragraph
 
@@ -72,22 +75,58 @@ and no minigame; `ShiftSystem`, `NightSystem` and `LegalSystem` are gone.
 
 1. **Nothing is known-broken.** The suite, the screenshots and the exports are
    all green as of the last commit.
+1b. **A saved patch is waiting to land:
+   `docs/social-discharge.patch`.** It adds
+   `_sent_home_with_nowhere_to_go` — the offensive half of `no_care_at_home`,
+   which for the whole life of the project has been an EXEMPTION protecting a
+   hold and nothing at all on the other side of the ledger, so sending the
+   eighty-one-year-old found on the floor twice this year back to an empty flat
+   produced no finding, no audited bed and no line on the record. It is the
+   third ward's entire authored subject and the review cannot see it. The patch
+   is correct and tested against `data_run`, `draws_run` and `frontier_run`; it
+   was held back because it also requires `career_impl`'s honest policies to
+   stop discharging the socially stuck, and that file was being edited by
+   another pass at the time. Apply it, then fix `career_impl._needs_bed`,
+   `playtest_impl` scenario 01 and `test_ward.gd::test_the_money_creates_the_
+   decision` — all three fail loudly and all three fail for the same reason.
 2. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
 3. **The game has never been played by a person.** Every design number in it —
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by
    some distance and no amount of further polish substitutes for it.
-4. **The characters have had a full pass and `./faces.sh` is how to judge
+4. **The characters have had two full passes and `./faces.sh` is how to judge
    them.** Eyes are dark almonds with a catchlight rather than white sclerae,
    there is a forehead, the torso is round enough not to read as a board, the
-   legs have a two-centimetre gap and the arms hang. Lighting is NOT the lever
+   legs have a two-centimetre gap, the arms hang — and, from the second pass,
+   there is a NECK (the chin was ten centimetres inside the shoulders), the
+   arms are joined to the body by a shoulder tucked into the seam rather than
+   capping it, and the mouth is a line that tapers to its corners rather than a
+   letterbox. Lighting is NOT the lever
    for any of it and has been measured twice: `BACKLIGHT` at 0.28 moved 6,100
    pixels by at most 27 levels, and at 0.70 — well past subtle — 6,300 by at
    most 52, with the face reading identically both times. If somebody wants to
    go further the next pieces are cheekbones and the hands, which are still
    mittens with a thumb; both are `npc_body.gd`, and both should be judged from
    `faces.sh` and not from a twenty-minute screenshot run.
+5. **The belief layer still cannot change a verdict.** `Mind`, `Evidence`,
+   gossip, the three institutional minds and `file_complaint` are about 950
+   lines that reach the ward — a watched doctor gets denser nurse rounds, staff
+   bark when they see something — and reach the AUDIT through exactly one
+   channel, `seen_by`. `complaint_filed`, `suspicion_changed` and
+   `evidence_recorded` have no listeners anywhere, and `press_present` is read
+   and never set. Either give `ReviewSystem` a term that reads
+   `SuspicionSystem.suspicion_of("adeyemi")`, so being watched all day makes
+   the folder heavier, or delete the unreachable half and say in the README
+   that the audit is a document audit. Do not leave it: it is the largest
+   instance in the repo of a promise made in copy and not kept in code.
+6. **A second ill-pair per ward.** The 52 boards are 8 puzzles wearing 52 sets
+   of names, because a ward's variability is one coin flip.
+   `ILL_PAIR_BY_DAY` becomes a LIST of pairs, `_pair_flip` takes an index, and
+   `enumerate_draws` folds over them; the content cost is one new alternate per
+   ward, at a matching tier, with the opposite truth. It doubles the distinct
+   puzzle count for about four patients of prose, which is the cheapest
+   remaining thing on this list per word written.
 
 ## Two noises that are not bugs
 

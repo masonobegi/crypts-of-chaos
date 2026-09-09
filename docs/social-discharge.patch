@@ -1,0 +1,163 @@
+diff --git a/scripts/systems/contradictions.gd b/scripts/systems/contradictions.gd
+index 0c2b481..d86bfb7 100644
+--- a/scripts/systems/contradictions.gd
++++ b/scripts/systems/contradictions.gd
+@@ -96,6 +96,7 @@ static func find_all(entries: Array, truth: Dictionary, placements: Dictionary)
+ 	out.append_array(_sent_home_unwell(by_patient, truth))
+ 	out.append_array(_never_laid_eyes_on_them(truth))
+ 	out.append_array(_they_came_back(truth))
++	out.append_array(_sent_home_with_nowhere_to_go(truth))
+ 
+ 	out.append_array(pattern_findings(entries, truth))
+ 	# A file already marked for review is read by somebody whose eyes are open.
+@@ -244,6 +245,64 @@ static func _never_laid_eyes_on_them(truth: Dictionary) -> Array:
+ 	out.append(f)
+ 	return out
+ 
++## AND THE OTHER ONE THE PLAYER DID NOT AUTHOR: YOU SENT SOMEBODY HOME AND THERE
++## IS NO HOME.
++##
++## `no_care_at_home` had a defensive half and no offensive half. It appeared in
++## this file four times, every one of them an EXEMPTION protecting a hold — and
++## nowhere at all on the other side of the ledger. All six socially-stuck people
++## in the game are `truly_well`, so `_sent_home_unwell` returns early on them,
++## `audit_beds`'s `emptied_wrongly` requires `not well`, and `end_day`'s bounce
++## list requires `not truly_well`. Sending the eighty-one-year-old found on the
++## floor twice this year back to an empty flat, or the woman with no heating
++## since November, produced no finding, no audited bed, no readmission and no
++## line on the record. It is the third ward's entire authored subject and the
++## review could not see it.
++##
++## Ungated, like `_they_came_back` and for the same reason: it is a fact about a
++## person, not a question about a document, and no amount of not-looking may
++## make it go away. Graded like `_sent_home_unwell` — worse if you ASKED them
++## and did it anyway, because then you were told.
++static func _sent_home_with_nowhere_to_go(truth: Dictionary) -> Array:
++	var out: Array = []
++	for pid in truth:
++		var t: Dictionary = truth[pid]
++		if not bool(t.get("no_care_at_home", false)):
++			continue
++		if not bool(t.get("discharged", false)):
++			continue
++		# Somebody who signs themselves out has decided for themselves, and
++		# that is not on your conscience — the same carve-out `audit_beds`
++		# makes for a walkout.
++		if bool(t.get("self_discharged", false)):
++			continue
++		var f := Finding.new()
++		f.kind = "sent_home_with_nowhere_to_go"
++		f.patient_id = pid
++		f.axis = "where they went"
++		if bool(t.get("was_asked", false)):
++			f.severity = 0.80
++			f.question = Cases.about(pid,
++				"You sat down with %s and {they} told you there was nobody at "
++				+ "home. And then you sent {them} there.") % _who(t)
++			f.because = ("They told you there was nobody at home and you "
++				+ "discharged them anyway.")
++		elif bool(t.get("looked_at", false)):
++			f.severity = 0.60
++			f.question = Cases.about(pid,
++				"%s has nobody at home. You had the file open. Where did "
++				+ "{they} go last night?") % _who(t)
++			f.because = "You knew enough to know, and they went home to nothing."
++		else:
++			f.severity = 0.50
++			f.question = Cases.about(pid,
++				"%s has nobody at home, and it is written on the front of "
++				+ "{their} file. Did you read it?") % _who(t)
++			f.because = ("Nowhere to go is on the record, and the bed was "
++				+ "emptied without anybody reading it.")
++		out.append(f)
++	return out
++
+ ## THEY CAME BACK.
+ ##
+ ## The one finding in this file the PLAYER did not author. Everything else is a
+@@ -1211,9 +1270,14 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
+ 		# on their own is not on your conscience.
+ 		var t: Dictionary = truth[pid]
+ 		var kept: bool = bool(t.get("held", false))
++		# EMPTIED WRONGLY IS NOT ONLY A MEDICAL QUESTION. This required `not
++		# well`, so the six people in this game who are perfectly well and have
++		# nowhere to go were not audited on the way out at all — their beds did
++		# not appear on the list the reviewer walks, whatever was written.
+ 		var emptied_wrongly: bool = bool(t.get("discharged", false)) \
+-			and not bool(t.get("well", true)) \
+-			and not bool(t.get("self_discharged", false))
++			and not bool(t.get("self_discharged", false)) \
++			and (not bool(t.get("well", true))
++				or bool(t.get("no_care_at_home", false)))
+ 		if not kept and not emptied_wrongly:
+ 			continue
+ 		var a := BedAudit.new()
+@@ -1295,7 +1359,11 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
+ 		if not a.billed:
+ 			var caught := false
+ 			for f in a.findings:
+-				if f.kind == "sent_home_unwell":
++				# BOTH WAYS OF EMPTYING A BED WRONGLY. The medical one and the
++				# one that has nothing to do with medicine, which is the third
++				# ward's whole subject and was not in this list at all.
++				if f.kind == "sent_home_unwell" \
++						or f.kind == "sent_home_with_nowhere_to_go":
+ 					caught = true
+ 			if caught:
+ 				a.state = Defence.CONTRADICTED
+diff --git a/tests/probe/frontier_impl.gd b/tests/probe/frontier_impl.gd
+index 93246d6..a7e0350 100644
+--- a/tests/probe/frontier_impl.gd
++++ b/tests/probe/frontier_impl.gd
+@@ -164,7 +164,23 @@ func _honest_day(day: int) -> Dictionary:
+ 	w.advance_to(11 * 60)
+ 	for c in Cases.roster():
+ 		var pid := String(c["id"])
+-		if bool(Cases.by_id(pid).get("truly_well", true)):
++		var c2 := Cases.by_id(pid)
++		# ...AND THE ONES WHO ARE MEDICALLY FINE AND HAVE NOWHERE TO GO.
++		#
++		# This day used to discharge them, because it only ever asked
++		# `truly_well` — and until the audit grew the other half of
++		# `no_care_at_home`, sending the eighty-one-year-old found on the floor
++		# twice this year back to an empty flat cost nothing at all. It is a
++		# different note, in a different claim, and the third ward is built on
++		# it: `SOCIAL` is what makes the hold defensible and what stops
++		# `_social_hold_is_a_lie` firing, and the reason comes from the patient
++		# rather than from this file.
++		if bool(c2.get("no_care_at_home", false)):
++			w.write_entry(pid, ChartEntry.Claim.SOCIAL,
++				String(c2.get("social_reason", "Nothing arranged for tonight.")),
++				w.minute)
++			continue
++		if bool(c2.get("truly_well", true)):
+ 			continue
+ 		w.write_entry(pid, ChartEntry.Claim.UNWELL,
+ 			"Examined at the bedside. Not fit for discharge today.", w.minute)
+@@ -199,6 +215,13 @@ func _honest_day(day: int) -> Dictionary:
+ 		if not bool(Cases.by_id(pid).get("truly_well", true)):
+ 			w.order_test(pid, "Repeat bloods")
+ 	for c in Cases.roster():
++		# ...BUT NOT TO CONFIRM A HOUSING SITUATION. Adeyemi reviews a patient,
++		# so sending her to somebody who is medically settled and has nowhere to
++		# go gets "settled, no complaints" back — a second opinion you asked for
++		# and were contradicted by, on the bed you were right about. It is the
++		# wrong question and the ward is where you learn so.
++		if bool(Cases.by_id(String(c["id"])).get("no_care_at_home", false)):
++			continue
+ 		w.nurse_check(String(c["id"]))
+ 	# ...AND DO NOT ASK A MAN WHO HAS ALREADY TOLD YOU.
+ 	#
+@@ -217,8 +240,10 @@ func _honest_day(day: int) -> Dictionary:
+ 		w.ask_colleague(pid)
+ 	for c in Cases.roster():
+ 		var pid := String(c["id"])
+-		w.set_disposition(pid,
+-			"discharge" if bool(Cases.by_id(pid).get("truly_well", true)) else "hold")
++		var c3 := Cases.by_id(pid)
++		var needs_it: bool = not bool(c3.get("truly_well", true)) \
++			or bool(c3.get("no_care_at_home", false))
++		w.set_disposition(pid, "hold" if needs_it else "discharge")
+ 	var done := w.minute
+ 	var res := w.end_day()
+ 	if OS.has_environment("FRONTIER_DEBUG"):

@@ -2620,3 +2620,38 @@ the data and draw checks, careers on three seeds, the frontier probe, both play
 runs, the quiet check and the boot check. All green, and the title, bedside,
 lineup, station and visitor frames re-rendered and reviewed.
 
+## Session 18, continued — the bodies
+
+With the faces fixed, the body became the weak link: `faces.sh`'s cast shot
+showed six people who all appeared to be wearing sandwich boards.
+
+It was not a stray object. The torso is a taper 0.70 wide and 0.36 deep with a
+corner radius of 0.13 — which leaves a FLAT FRONT 0.44 across bounded by a 0.13
+curve, so the chest is a big evenly-lit panel with a darker border round it, and
+the arms hang beside it rather than off it. Deeper and much rounder (0.40,
+radius 0.17) leaves a small flat front and a wide soft turn, which is a chest.
+The arithmetic generalises: for anything built from `taper_mesh` or `rbox_mesh`,
+the ratio of corner radius to half-depth decides whether it reads as a solid or
+as a board.
+
+Two smaller ones from the same shot. The legs sat at sx*0.145 with a thigh 0.20
+across, which is nine centimetres of daylight between the thighs — two poles at
+four metres. 0.118 closed it completely and made hip-to-ankle one column with a
+seam; 0.129 leaves about two centimetres. And every arm hung at exactly
+vertical, which on six people at once is a rack of mannequins; `ARM_REST_X` and
+`ARM_REST_Z` put a few degrees of forward and outward into the rest pose, and
+`set_in_bed` restores to those rather than to zero.
+
+None of it is visible on somebody lying in a bed, which is why all three
+survived every screenshot this project has taken.
+
+`faces.sh` grew a full-body frame for this, taken BEFORE the cast closes ranks
+— taken after, it photographed the middle of a crowd. That was the third
+harness fault in a row that looked like a modelling fault, and the running
+score for the session is three renders lost to the camera and none to the
+model.
+
+Verified: 298 assertions, 172 smoke checks on three seeds, seven day criteria,
+the data and draw checks, careers on three seeds, the frontier probe, both play
+runs, the quiet check and the boot check. All green.
+

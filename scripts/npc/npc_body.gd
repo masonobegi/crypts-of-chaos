@@ -74,6 +74,12 @@ var _speech_timer := 0.0
 var _nametag: Label3D = null
 var _head: Node3D = null
 var _legs: Array[Node3D] = []
+## How an arm hangs when it is doing nothing: a little forward and a little out
+## from the body. Both halves matter — everybody's arms vertical and parallel is
+## a rack of mannequins — and both are tiny, because an arm that is obviously
+## posed is worse than one that is obviously not.
+const ARM_REST_X := 0.07
+const ARM_REST_Z := 0.055
 var _eyes_open: Array[MeshInstance3D] = []
 var _eyes_shut: Array[MeshInstance3D] = []
 var _brows: Array[MeshInstance3D] = []
@@ -203,9 +209,17 @@ func _build_body() -> void:
 	# body would just be a taller or shorter copy of the same person; widening
 	# the trunk against a fixed head is the difference between five sizes of one
 	# person and five people.
+	# ROUNDED HARD ENOUGH TO BE A BODY. At a corner radius of 0.13 on a solid
+	# 0.70 wide and 0.36 deep, the flat front face is 0.44 across and the rim
+	# only 0.13 — so the chest is a big flat panel, lit head-on and evenly, with
+	# a darker curved border round it. Photographed at four metres
+	# (`./faces.sh`) every character in the game was wearing a sandwich board:
+	# the arms read as being BEHIND a slab rather than attached to a torso.
+	# Deeper and much rounder leaves a small flat front and a wide soft turn,
+	# which is a chest.
 	_torso.add_child(Build.mi(
-		Build.taper_mesh(Vector2(0.44 * girth, 0.30 * girth),
-			Vector2(0.70 * girth, 0.36 * girth), 0.74, 0.13),
+		Build.taper_mesh(Vector2(0.44 * girth, 0.34 * girth),
+			Vector2(0.68 * girth, 0.40 * girth), 0.74, 0.17),
 		Build.cloth_mat(outfit, LINE), Vector3(0, 0.06, 0)))
 	# A collar, deliberately proud of the shoulders so it DOES take a line of
 	# its own — one band of contrast at the top of the body, which is what the
@@ -458,6 +472,12 @@ func _build_body() -> void:
 		# Shoulders move out with the trunk. Left at a fixed 0.395 the arms of a
 		# broad person hang inside their own chest.
 		arm.position = Vector3(sx * 0.395 * girth, 1.24, 0)
+		# ...AND THEY HANG, they do not stand to attention. Six characters with
+		# both arms at exactly vertical is six mannequins; three degrees out and
+		# four forward is what an arm resting at somebody's side actually does,
+		# and it costs nothing. `set_in_bed` restores to the same rest rather
+		# than to zero.
+		arm.rotation = Vector3(ARM_REST_X, 0.0, sx * ARM_REST_Z)
 		root.add_child(arm)
 		# One sleeve, one cuff, one mitten. The hand is WIDER than the wrist:
 		# limbs that taper to nothing read as tentacles, and what sells a hand
@@ -492,8 +512,18 @@ func _build_body() -> void:
 		# horizontal and their feet in the air. A knee costs one more node per
 		# leg and buys a real sit — thigh forward, shin down, foot on the floor —
 		# as well as a bend on the back-swing of the walk.
+		# CLOSER TOGETHER, BUT STILL TWO OF THEM. At sx*0.145 with a thigh 0.20
+		# across, the inner faces sit 45mm off centre each — a nine-centimetre
+		# gap of daylight between the thighs of every standing character, which
+		# at four metres reads as two poles rather than as legs. It is invisible
+		# on somebody lying in a bed, which is why it survived until there was a
+		# harness that photographs people standing up.
+		#
+		# 0.118 was too far the other way and closed the gap completely: hip to
+		# ankle became one column with a seam down it, which is a different
+		# wrong answer. This leaves about two centimetres.
 		var leg := Node3D.new()
-		leg.position = Vector3(sx * 0.145 * limb, 0.68, 0)
+		leg.position = Vector3(sx * 0.129 * limb, 0.68, 0)
 		root.add_child(leg)
 		leg.add_child(Build.mi(Build.taper_mesh(Vector2(0.20 * limb, 0.20 * limb),
 			Vector2(0.27 * limb, 0.25 * limb), 0.34, 0.085),
@@ -1189,8 +1219,9 @@ func set_seated(on: bool) -> void:
 		var arm: Node3D = _arms[i]
 		# Down and forward, elbows in — hands land on the thighs rather than
 		# hovering over them.
-		arm.rotation.x = -0.95 if on else 0.0
-		arm.rotation.z = (0.16 if i == 0 else -0.16) if on else 0.0
+		var sx: float = -1.0 if i == 0 else 1.0
+		arm.rotation.x = -0.95 if on else ARM_REST_X
+		arm.rotation.z = (0.16 if i == 0 else -0.16) if on else sx * ARM_REST_Z
 	if _nametag:
 		_nametag.position.y = (1.58 if on else 1.92) * height_scale
 	if _speech:

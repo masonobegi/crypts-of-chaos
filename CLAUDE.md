@@ -571,6 +571,27 @@ with it because a lost afternoon does not care which.
     nobody is falling now. When a subject looks wrong, check where it is
     standing before you change the model.
 
+63. **A FLAT FRONT FACE INSIDE A ROUNDED RIM IS A SANDWICH BOARD.** The torso
+    was a taper 0.70 wide and 0.36 deep with a corner radius of 0.13, which
+    leaves a flat front 0.44 across bounded by a 0.13 curve — so the chest was a
+    big evenly-lit panel with a darker border, the arms read as being BEHIND a
+    slab rather than attached to a body, and every character in the ward looked
+    like they were wearing a bib. Deeper and much rounder (0.40 deep, radius
+    0.17) leaves a small flat front and a wide soft turn, which is a chest. The
+    same arithmetic applies to anything built from `taper_mesh` or `rbox_mesh`:
+    the ratio of radius to half-depth is what decides whether it reads as a
+    solid or as a board.
+64. **Two legs need a gap, and it is about two centimetres.** At sx*0.145 with a
+    thigh 0.20 across, the inner faces sit 45mm off centre each — nine
+    centimetres of daylight between the thighs, which at four metres reads as
+    two poles. At 0.118 the gap closes entirely and hip-to-ankle becomes one
+    column with a seam down it, which is a different wrong answer. 0.129. And
+    an arm that hangs at exactly vertical on everybody is a rack of mannequins:
+    `ARM_REST_X`/`ARM_REST_Z` put a few degrees of forward and outward in it,
+    and `set_in_bed` restores to those rather than to zero. None of this is
+    visible on somebody lying in a bed, which is why it survived until there
+    was a harness that photographs people standing up.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -86,7 +86,7 @@ func tick() -> bool:
 	if bodies.is_empty():
 		_spawn()
 		return false
-	if index > WHO.size():
+	if index > WHO.size() + 1:
 		print("faces done")
 		return true
 	# AIMED ONCE, EACH AT ITS OWN LENS. Re-aiming every subject for every shot
@@ -107,10 +107,23 @@ func tick() -> bool:
 
 	var cam: Camera3D = game.player.camera
 	var eye: Vector3 = Vector3.ZERO
+	var aim: Vector3 = Vector3.ZERO
 	if index < WHO.size():
+		# A PORTRAIT.
 		eye = _aims[index]
+		aim = eye + Vector3(-0.26, -0.05, 0.80)
+	elif index == WHO.size():
+		# ONE WHOLE PERSON, HEAD TO FLOOR, and BEFORE the cast closes ranks —
+		# taken after it, this framed the middle of a crowd. The portraits
+		# answer "is this a face" and the cast answers "are these six people";
+		# neither answers "is this a BODY", which is what you see of everybody
+		# who is not in a bed: the nurse, a visitor, the registrar.
+		var subj: Vector3 = bodies[1].global_position
+		eye = subj + Vector3(0.62, 1.16, -2.45)
+		aim = subj + Vector3(0.0, 1.00, 0.0)
 	else:
 		eye = Vector3(CAST_AT.x, 1.60, CAST_AT.z - CAST_BACK)
+		aim = Vector3(CAST_AT.x, 1.52, CAST_AT.z)
 		if not _cast_posed:
 			_cast_posed = true
 			for i in bodies.size():
@@ -118,12 +131,13 @@ func tick() -> bool:
 					(float(i) - float(WHO.size() - 1) * 0.5) * CAST_SPACING, 0.0, 0.0)
 				bodies[i].look_toward(eye)
 	cam.global_position = eye
-	cam.look_at(eye + Vector3(-0.26, -0.05, 0.80), Vector3.UP)
+	cam.look_at(aim, Vector3.UP)
 	settle += 1
-	if settle < (SETTLE_CAST if index == WHO.size() else SETTLE_PORTRAIT):
+	if settle < (SETTLE_CAST if index > WHO.size() else SETTLE_PORTRAIT):
 		return false
 	settle = 0
-	var shot := "%s__%02d" % [tag, index] if index < WHO.size() else "%s__cast" % tag
+	var shot := "%s__%02d" % [tag, index] if index < WHO.size() \
+		else ("%s__body" % tag if index == WHO.size() else "%s__cast" % tag)
 	tree.root.get_texture().get_image().save_png("user://faces/%s.png" % shot)
 	print("  face: ", shot)
 	index += 1

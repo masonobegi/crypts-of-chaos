@@ -2346,10 +2346,26 @@ func _check_every_ward_is_its_own_room() -> void:
 	var seen_floor := {}
 	var seen_dado := {}
 	var seen_name := {}
+	# EVERY SIGN IN THE BUILDING THAT NAMES THE WARD, and there are three of
+	# them in two different files. `Furniture.rename_ward` rebuilt the plate
+	# above the beds and the arrow in the corridor; the flag projecting over the
+	# ward door is built out of `Hospital.LAYOUT` and said "Ward C" on every
+	# night of every career, three metres from a plate saying something else.
+	# Nothing could see it — the name was correct in the table, correct on two
+	# signs, and wrong on the one a player navigates by. Found by looking at a
+	# frame of the fifth ward, which is not a way of finding things.
+	var stale: Array = []
 	for i in Cases.DAYS.size():
 		GameState.day = i + 1
 		h.reskin()
 		seen_name[Cases.ward_name()] = true
+		var want := Cases.ward_name()
+		for lbl in _labels_under(h):
+			var txt := String(lbl.text).strip_edges().trim_suffix(" ▲").strip_edges()
+			if not txt.ends_with("Ward") and not txt.begins_with("Ward"):
+				continue
+			if txt != want:
+				stale.append("%s says %s" % [want, txt])
 		for r in h.room_list():
 			if r.kind != "ward":
 				continue
@@ -2378,6 +2394,17 @@ func _check_every_ward_is_its_own_room() -> void:
 	# whole depth of the building as one slab each, so repainting the ward's
 	# ends repainted the office's.
 	_ok(not seen_dado.is_empty(), "and there is a dado to repaint at all")
+	_ok(stale.is_empty(), "and every sign in the building agrees on the name%s"
+		% ("" if stale.is_empty() else " — " + String(stale[0])))
+
+## Every `Label3D` anywhere under the hospital, however deeply parented.
+func _labels_under(n: Node) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		if c is Label3D:
+			out.append(c)
+		out.append_array(_labels_under(c))
+	return out
 
 
 ## AND THE SCORE LOSES INSTRUMENTS, NOT JUST DECIBELS.

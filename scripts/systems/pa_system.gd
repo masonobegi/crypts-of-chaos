@@ -12,7 +12,7 @@ const MAX_GAP := 55
 
 const IDLE_LINES := [
 	"Would the owner of the blue estate blocking the ambulance bay please move it. Again.",
-	"Ward C, your dressings trolley is in the lift. The lift is between floors.",
+	"{ward}, your dressings trolley is in the lift. The lift is between floors.",
 	"A reminder that the third-floor vending machine is not a shared resource.",
 	"Catering apologises for today's lunch, and for tomorrow's.",
 	"Would whoever keeps setting the Vibe Stabiliser to eleven please stop.",
@@ -40,7 +40,7 @@ const HEAT_LINES := [
 	"Would the duty physician please report to Administration.",
 	"Administration is reviewing this week's length-of-stay figures.",
 	"A reminder that all extended admissions require a documented cause.",
-	"Records has requested several charts from Ward C. Several.",
+	"Records has requested several charts from {ward}. Several.",
 	"Would the duty physician contact Administration. At their convenience. Today.",
 ]
 
@@ -96,10 +96,18 @@ func _pick() -> String:
 			GameState.flag(Cases.READMIT_FLAG, [])).is_empty() else 0.0,
 	}
 	match String(RNG.pick_weighted("pa_kind", weights)):
-		"heat": return String(RNG.pick("pa_heat", HEAT_LINES))
-		"inspection": return String(RNG.pick("pa_insp", INSPECTION_LINES))
-		"readmit": return String(RNG.pick("pa_readmit", READMIT_LINES))
-	return String(RNG.pick("pa_idle", IDLE_LINES))
+		"heat": return _named(String(RNG.pick("pa_heat", HEAT_LINES)))
+		"inspection": return _named(String(RNG.pick("pa_insp", INSPECTION_LINES)))
+		"readmit": return _named(String(RNG.pick("pa_readmit", READMIT_LINES)))
+	return _named(String(RNG.pick("pa_idle", IDLE_LINES)))
+
+## WHICH WARD THE TANNOY IS TALKING TO. Two of these lines named Ward C as a
+## literal, and Ward C is one of six — so on five nights in six the building
+## paged a ward nobody was standing in. `{ward}` rather than `%s` because these
+## are authored strings in a const array and a stray percent in one of them
+## would be a format error rather than a typo.
+func _named(line: String) -> String:
+	return line.replace("{ward}", Cases.ward_name())
 
 func announce(text: String) -> void:
 	AudioMgr.play("ding", -16.0, 0.75)

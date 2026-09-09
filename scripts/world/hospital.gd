@@ -112,6 +112,25 @@ func reskin() -> void:
 		for c in n.get_children():
 			if c is MeshInstance3D:
 				(c as MeshInstance3D).material_override = dado
+	# THE FLAG OVER THE DOOR, which is built out of LAYOUT and so had the
+	# building's original name welded into it.
+	# `get_children()`, never `get_tree()`: every probe in this repo builds a
+	# hospital outside the tree, where a group query finds nothing and the
+	# rebuild silently doubles the sign instead of replacing it.
+	for n in get_children():
+		if not n.is_in_group(WARD_DOOR_FLAG):
+			continue
+		remove_child(n)
+		n.queue_free()
+	for entry in LAYOUT:
+		if String(entry["kind"]) == "ward":
+			_door_flag(entry)
+		elif String(entry["kind"]) == "corridor":
+			# ...and the corridor is named after the ward it serves. `Room.display`
+			# is what a witness quotes ("found them in Ward C Corridor").
+			var cr = rooms.get(String(entry["key"]), null)
+			if cr != null:
+				cr.display = "%s Corridor" % Cases.ward_name()
 	Furniture.rename_ward(self)
 	Furniture.redress_ward(self)
 
@@ -716,39 +735,59 @@ func _build_signage() -> void:
 	for entry in LAYOUT:
 		if String(entry["kind"]) == "corridor":
 			continue
-		var rect: Rect2 = entry["rect"]
-		var centre := float(entry.get("door", rect.get_center().x))
-		var north := rect.position.y > 0.0
-		var z := (4.0 - 0.2) if north else (0.0 + 0.2)
-		var w := float(entry.get("door_w", DOOR_W))
+		_door_flag(entry)
 
-		# A flag projecting into the corridor at right angles to the wall. Two
-		# labels back to back, each showing only its front face: a single
-		# double-sided Label3D is legible walking one way and MIRRORED walking
-		# the other, and the first screenshot of this read "ǝʞɐʇnI ⅋ ʎqqo˥".
-		var short := String(entry["display"])
-		var plate_w := float(short.length()) * 0.105 * 0.62 + 0.14
-		var plate := Build.box_mi(Vector3(0.04, 0.21, plate_w),
-			Color(0.14, 0.20, 0.26), Vector3.ZERO)
-		plate.position = Vector3(centre + w * 0.5 + 0.30, 2.46,
+## THE OTHER SIGN WITH THE WARD'S NAME ON IT, and the one nothing repainted.
+##
+## `Furniture.rename_ward` rebuilds the plate above the beds and the arrow in
+## the corridor every morning, and this flag — the one projecting over the ward
+## door, which is the sign a player actually navigates by — was built once out
+## of `LAYOUT` at `_build_rooms` time and said "Ward C" on every night of every
+## career, three metres from a plate saying something else. Found by looking at
+## a frame of the fifth ward.
+const WARD_DOOR_FLAG := "ward_door_flag"
+
+func _door_flag(entry: Dictionary) -> void:
+	var rect: Rect2 = entry["rect"]
+	var centre := float(entry.get("door", rect.get_center().x))
+	var north := rect.position.y > 0.0
+	var z := (4.0 - 0.2) if north else (0.0 + 0.2)
+	var w := float(entry.get("door_w", DOOR_W))
+	var ward: bool = String(entry["kind"]) == "ward"
+
+	# A flag projecting into the corridor at right angles to the wall. Two
+	# labels back to back, each showing only its front face: a single
+	# double-sided Label3D is legible walking one way and MIRRORED walking
+	# the other, and the first screenshot of this read "ǝʞɐʇnI ⅋ ʎqqo˥".
+	var short := Cases.ward_name() if ward else String(entry["display"])
+	var plate_w := float(short.length()) * 0.105 * 0.62 + 0.14
+	var plate := Build.box_mi(Vector3(0.04, 0.21, plate_w),
+		Color(0.14, 0.20, 0.26), Vector3.ZERO)
+	plate.position = Vector3(centre + w * 0.5 + 0.30, 2.46,
+		z + (0.28 if not north else -0.28))
+	add_child(plate)
+	if ward:
+		plate.add_to_group(WARD_DOOR_FLAG)
+	# A stub back to the wall, so the plate is mounted rather than hovering.
+	var arm := Build.box_mi(Vector3(0.035, 0.04, 0.28),
+		Color(0.14, 0.20, 0.26), Vector3.ZERO)
+	arm.position = Vector3(centre + w * 0.5 + 0.30, 2.46,
+		z + (0.15 if not north else -0.15))
+	add_child(arm)
+	if ward:
+		arm.add_to_group(WARD_DOOR_FLAG)
+	for face in [0.0, PI]:
+		var flag := Build.label3d(short, 0.105, Color(0.93, 0.96, 0.98), false)
+		flag.double_sided = false
+		# Each face sits proud of its own side of the plate. Centred, both
+		# labels are buried inside the box and the corridor loses its signs.
+		var side := 0.032 if is_zero_approx(face) else -0.032
+		flag.position = Vector3(centre + w * 0.5 + 0.30 + side, 2.46,
 			z + (0.28 if not north else -0.28))
-		add_child(plate)
-		# A stub back to the wall, so the plate is mounted rather than hovering.
-		var arm := Build.box_mi(Vector3(0.035, 0.04, 0.28),
-			Color(0.14, 0.20, 0.26), Vector3.ZERO)
-		arm.position = Vector3(centre + w * 0.5 + 0.30, 2.46,
-			z + (0.15 if not north else -0.15))
-		add_child(arm)
-		for face in [0.0, PI]:
-			var flag := Build.label3d(short, 0.105, Color(0.93, 0.96, 0.98), false)
-			flag.double_sided = false
-			# Each face sits proud of its own side of the plate. Centred, both
-			# labels are buried inside the box and the corridor loses its signs.
-			var side := 0.032 if is_zero_approx(face) else -0.032
-			flag.position = Vector3(centre + w * 0.5 + 0.30 + side, 2.46,
-				z + (0.28 if not north else -0.28))
-			flag.rotation.y = PI * 0.5 + face
-			add_child(flag)
+		flag.rotation.y = PI * 0.5 + face
+		add_child(flag)
+		if ward:
+			flag.add_to_group(WARD_DOOR_FLAG)
 
 # ------------------------------------------------------------------ nav
 func _bake_nav(blocked: Array[Rect2] = []) -> void:

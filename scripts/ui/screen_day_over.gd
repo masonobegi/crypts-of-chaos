@@ -39,7 +39,7 @@ func _build() -> void:
 	# that was already showing TOMORROW at the fold, and the shot harness
 	# measured 23% of it below the line.
 	var v := card_shell(720, 780, "END OF SHIFT",
-		"Day %d  ·  Ward C" % GameState.day)
+		"Day %d  ·  %s" % [GameState.day, Cases.ward_name()])
 
 	var tint := UIKit.GOOD
 	if verdict == ReviewSystem.OUTCOME_ESCALATED:
@@ -291,7 +291,7 @@ func _ending_card(ending: String) -> void:
 	# rising tone in the bank. Being struck off gets the low one.
 	AudioMgr.play("money" if won else "error", -4.0, 1.0 if won else 0.7)
 	var v := card_shell(760, 640, "THE END OF IT",
-		"Day %d  ·  Ward C" % GameState.day)
+		"Day %d  ·  %s" % [GameState.day, Cases.ward_name()])
 	v.add_child(UIKit.stamp("PAID" if won else "STRUCK OFF",
 		UIKit.GOOD if won else UIKit.BAD))
 	var rec := DoctorRecord.load_from_state()

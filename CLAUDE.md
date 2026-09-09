@@ -983,6 +983,32 @@ with it because a lost afternoon does not care which.
     two women. `Cases.about` templates both now. A grep that requires a second
     marker misses every line that simply hardcodes one person.
 
+97. **THREE SIGNS SAY THE WARD'S NAME AND ONE OF THEM IS BUILT SOMEWHERE
+    ELSE.** `Furniture.rename_ward` rebuilds the plate above the beds and the
+    arrow in the corridor every morning; the flag projecting over the ward
+    DOOR — the sign a player actually navigates by — is built out of
+    `Hospital.LAYOUT` at construction time and said "Ward C" on every night of
+    every career, three metres from a plate saying something else. So did the
+    End of Shift card ("Day %d · Ward C", hardcoded, on the most-read screen in
+    the game), the objective waypoint over the door, the corridor's own
+    `Room.display` that a witness quotes, and two tannoy lines. Found by
+    looking at a frame of the fifth ward, which is not a way of finding things
+    — the smoke run now walks every `Label3D` under the hospital after each
+    reskin and fails if any of them names a different ward. Proven red.
+98. **GOTCHA 17 HID THE FAULT FROM THE PROBE THAT WENT LOOKING FOR IT.** There
+    are TWO folding screens in the ward and only the far one was ever passed a
+    bay colour, so the near one — the largest object in `02_ward_from_door`,
+    which is the frame a store page leads with — kept
+    `Dressing.screen_partition`'s own default teal on all six wards. Both nodes
+    are named "ScreenPartition", Godot discards the second name and substitutes
+    the class, so a probe searching by name found exactly ONE screen in a room
+    with two, read the wrong one's material, and reported it correct. The same
+    fault the ceiling-height check had, in a room I had just repainted.
+    **And `get_shader_parameter()` cannot confirm a tint** (gotcha 36), so what
+    settled it was the material's INSTANCE ID: `Build.cloth_mat` caches by
+    colour, so two colours are two objects and a colour that did not change is
+    the same object. Failing that, measure the pixel.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

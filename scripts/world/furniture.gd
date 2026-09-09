@@ -308,8 +308,18 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	# camera that is not standing in the doorway of it is where it belongs.
 	Dressing.curtain_track(h, lx + 1.2, rx - 1.2, far_z - into * 1.35)
 	Dressing.trays(h, Vector3(lx + 4.5, 0, dz - into * 1.35), _door_rot(r))
+	# ...AND IT TAKES A BAY COLOUR LIKE EVERYTHING ELSE IN THE ROOM. There are
+	# two folding screens in a ward and only the far one was ever given one, so
+	# this one kept `screen_partition`'s own default teal on all six wards —
+	# a metre and a half of Ward C standing in the middle of Beech Ward, which
+	# is the largest unbroken surface in the room after the floor and the wall.
+	#
+	# It hid from the probe that went looking for it because of gotcha 17: both
+	# nodes are called "ScreenPartition", Godot discards the second name and
+	# substitutes the class, so a search by name found exactly one screen in a
+	# room with two and reported the wrong one's material.
 	Dressing.screen_partition(h, Vector3(r.rect.get_center().x - 2.6, 0,
-		dz - into * 3.2), LEFT_ROT)
+		dz - into * 3.2), LEFT_ROT, _screen_tint(2))
 	# The handrail every ward has, down the blank wall — cut around the doorway,
 	# because a rail across a fire door is the sort of detail that makes a room
 	# read as generated rather than built.
@@ -328,7 +338,7 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 	Dressing.hamper(h, hmp, 0.4)
 	_occupy(hmp.x, hmp.z, 0.6, 0.6)
 	var scr := Vector3(r.rect.end.x - 1.2, 0, _door_wall_z(r) - into * 2.2)
-	Dressing.screen_partition(h, scr, _door_rot(r) + 0.5, _bay_tint(4))
+	Dressing.screen_partition(h, scr, _door_rot(r) + 0.5, _screen_tint(4))
 	_occupy(scr.x, scr.z, 1.4, 0.6)
 
 ## One colour per bay, so bed three is somewhere rather than anywhere — and one
@@ -337,6 +347,15 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 ## adding a ward must not require touching a system.
 static func _bay_tint(index: int) -> Color:
 	return Cases.bay_tint(index)
+
+## ...MIXED TOWARD A NEUTRAL FOR THE BIG FLAT ONES. Same reasoning as
+## `floor_zone`: a bay colour on a curtain 6cm wide is an accent, and the same
+## colour on a metre and a half of screen standing two metres from the camera
+## is a swatch. These are the two largest single-colour surfaces in the room
+## after the floor and the wall, and they are in the frame a store page leads
+## with, so they take the ward's colour at about half strength.
+static func _screen_tint(index: int) -> Color:
+	return _bay_tint(index).lerp(Color(0.64, 0.70, 0.72), 0.45)
 
 static func _dress_corridor(h: Hospital, r: Room) -> void:
 	var z0: float = r.rect.position.y

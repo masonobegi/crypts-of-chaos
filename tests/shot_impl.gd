@@ -42,13 +42,14 @@ const SHOTS := [
 	# played in one room painted one colour with "Ward C" over the beds —
 	# invisible to twenty-one frames of one morning, because every one of them
 	# was night one.
-	["02d_ward_another", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 3],
-	# ...AND ONE FROM EACH HALF OF THE TABLE. Six wards is six palettes, and a
-	# palette is the one thing in `Cases.WARDS` that no assertion can see: the
-	# repaint either happened or the room is still the colour it was built in,
-	# and both look like a decision in the source.
-	["02e_ward_beech", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 5],
-	["02f_ward_2a", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 6],
+	# A WARD INDEX, NOT A NIGHT. This was the day number, and the ward order is
+	# a per-career permutation — so "day 3" is whichever of the six that career
+	# happens to deal third, and a frame named after a ward showed a different
+	# one. Two of these were rendered under the wrong names before anybody
+	# looked at the sign in the picture.
+	["02d_ward_ash", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 1],
+	["02e_ward_beech", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 4],
+	["02f_ward_2a", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 5],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],
@@ -225,7 +226,14 @@ func tick() -> bool:
 	if String(shot[0]) == "09_ward_evening":
 		_evening_reading()
 	if shot.size() > 4:
-		_set_ward(1)
+		# BACK TO NIGHT ONE, and by the DAY rather than by the ward. `Cases`
+		# is a pure function of `GameState.day`, and every later stage in this
+		# file builds its card from the `WardDay` in the tree — which is still
+		# night one's. Restoring "whichever night deals Ward C" put the two out
+		# of step under a career seed whose rotation does not start there, and
+		# the board screen went looking for a patient who was not on the ward
+		# it was asked about.
+		_set_day(1)
 	# BACK TO THE MORNING BEFORE THE NEXT FRAME. The clock is set here for the
 	# LIGHT and nothing else — no verb has been performed and no minute has
 	# really passed — so leaving it forward would hand every later stage a ward
@@ -645,10 +653,31 @@ func _shot_wanted(name: String) -> bool:
 
 ## Paint the ward for a given night without playing to it. `Hospital.reskin`
 ## reads `GameState.day` through `Cases.pool_index`, so the day IS the ward.
-func _set_ward(day: int) -> void:
+## Stand in the ward at `index` in `Cases.WARDS`, whichever night deals it.
+##
+## The rotation is a per-career permutation, so this walks the first cycle for
+## the night that lands on the ward asked for rather than assuming night N is
+## ward N — which it has not been since the order was drawn.
+func _set_ward(index: int) -> void:
+	var want: int = maxi(0, index) % Cases.DAYS.size()
+	for d in range(1, Cases.DAYS.size() + 1):
+		if Cases.pool_index(d) == want:
+			_set_day(d)
+			return
+	_set_day(1)
+
+func _set_day(day: int) -> void:
 	GameState.day = maxi(1, day)
 	if game != null and game.hospital != null:
 		game.hospital.reskin()
+	# ...AND THE CORNER OF THE SCREEN AGREES WITH THE SIGN. The HUD writes the
+	# day on `day_started`, which this deliberately does not emit — so without
+	# this every ward frame carried whatever number the frame before it left
+	# behind, in a store screenshot.
+	if game != null and game.ui != null:
+		var hud = game.ui.get_node_or_null("HUD")
+		if hud != null and hud.has_method("_refresh_static"):
+			hud.call("_refresh_static")
 
 func _save(name: String) -> void:
 	if _skip_only:

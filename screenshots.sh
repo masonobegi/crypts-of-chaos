@@ -51,6 +51,19 @@ if echo "$OUT" | grep -q "SHADER ERROR\|Shader compilation failed"; then
   echo "  rendering a flat fallback material and it looks deliberate" >&2
   exit 1
 fi
+# ...AND ANYTHING THE GAME THREW WHILE BEING PHOTOGRAPHED. `run_tests.sh` has a
+# quiet check and does not run this harness, so a runtime error raised only
+# while staging a screen — a card built for the wrong ward, a freed node — was
+# printed in the middle of a page of "shot:" lines and exited 0. One was found
+# by eye, which is not a way of finding things. `Parameter "m" is null` is the
+# headless rasteriser and is filtered for the reason gotcha 16 gives.
+BAD=$(echo "$OUT" | grep -E "SCRIPT ERROR|Trying to assign invalid|previously freed" \
+  | grep -v 'Parameter "m" is null' || true)
+if [ -n "$BAD" ]; then
+  echo "screenshots.sh: the game threw while being photographed" >&2
+  echo "$BAD" | sort -u | sed 's/^/  /' >&2
+  exit 1
+fi
 if echo "$OUT" | grep -q "SHOT CHECK FAILED"; then
   echo "screenshots.sh: a measured frame regressed" >&2
   exit 1

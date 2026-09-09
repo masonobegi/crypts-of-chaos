@@ -918,7 +918,7 @@ func _update_objective() -> void:
 		EventBus.objective_changed.emit("Five beds. %s to decide." % (
 			"All five" if undecided == 5 else "%d still" % undecided))
 		if h != null:
-			EventBus.objective_target_changed.emit(h.door_point("ward"), "Ward C")
+			EventBus.objective_target_changed.emit(h.door_point("ward"), Cases.ward_name())
 		return
 	EventBus.objective_changed.emit(
 		"All five decided. Sign off in your office before eight.")

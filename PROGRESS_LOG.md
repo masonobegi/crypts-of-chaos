@@ -3060,3 +3060,38 @@ sixteen boards. Every other social bed in the game is handed over as
 `MOBILISING` or `SETTLED` and nobody had ever written down why: the night staff
 record what they SAW, and the reason a bed is held for a broken stairlift is the
 day doctor's to write, which is the verb the ward is about.
+
+### And then the wards were photographed, which found five more
+
+Ward five rendered with the right floor, the right dado, the right curtains and
+"Beech Ward" over the beds — and "Ward C" on the flag projecting over the ward
+door, three metres away. `Furniture.rename_ward` rebuilds the plate and the
+corridor arrow every morning; the door flag is built out of `Hospital.LAYOUT` at
+construction time and had said Ward C on every night of every career. So had the
+End of Shift card, which prints "Day %d · Ward C" as a literal and is the most
+read screen in the game; the objective waypoint over the door; the corridor's own
+`Room.display`, which a witness quotes back at you; and two tannoy lines paging a
+ward nobody was standing in. The smoke run walks every `Label3D` under the
+hospital after each reskin now and fails if any of them names a different ward.
+Proven red by putting the flag back.
+
+Then the largest object in the frame — a folding screen a metre and a half wide,
+two metres from the camera, in the shot a store page leads with — stayed teal on
+all six wards. There are TWO screens in a ward and only the far one was ever
+passed a bay colour. The probe written to find that reported the room as correct,
+because both nodes are named "ScreenPartition", Godot discards the second name
+and substitutes the class (gotcha 17), and a search by name found exactly one
+screen in a room with two. `get_shader_parameter` cannot confirm a tint either
+(gotcha 36); what settled it was the material's instance id, because
+`Build.cloth_mat` caches by colour and a colour that did not change is the same
+object.
+
+Both screens take the ward's colour at about half strength now, mixed toward a
+neutral — the same reasoning `floor_zone` already carried. A bay colour on a
+6cm curtain is an accent; the same colour on the biggest flat surface in the
+room after the floor is a swatch.
+
+`screenshots.sh` also could not fail on a runtime error. It greps for shader
+failures and for its own measured regressions and exited 0 on a `SCRIPT ERROR`
+printed in the middle of a page of "shot:" lines — which is how a card built for
+the wrong ward got rendered, noticed by eye, and would otherwise have shipped.

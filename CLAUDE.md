@@ -470,6 +470,20 @@ with it because a lost afternoon does not care which.
     Hair COLOUR is close to invisible across a lit ward; a hair SHAPE is not,
     which is why there are five cuts and they cost two spheres each.
 
+54b. **THERE WAS NO NECK, and it is the loudest primitive tell a body has.** The
+    chin sat at 1.285 and the collar's top edge at 1.38, so the head was ten
+    centimetres INSIDE the shoulders: photographed from three metres the jaw
+    rested on the collar and the cast read as a rack of skittles. It is louder
+    than the hands and louder than the flat gown, because a neck is the one part
+    of a person the eye checks without being asked. The trunk keeps its hip line
+    and loses six centimetres off the top, the head goes up eight, the chin
+    lands at 1.37 and five centimetres of throat shows. The crown ends at 1.80
+    rather than 1.72, which is a person rather than a short one. And a rounded
+    sleeve end beside a rounded trunk leaves a dark vertical seam between two
+    separate solids — one sphere in the gown's colour, tucked INTO the join
+    rather than capping the shoulder, is the difference between an arm attached
+    to a body and a sausage laid against a slab. Capped too high and too proud
+    it reads as an epaulette, which is what the first attempt looked like.
 55. **The title screen is the first screenshot anybody sees of this game, and
     it was lit like a different one.** `MenuScene` carried its own copy of the
     grade — a sky-blue ambient at 1.05, exposure 0.80, white 2.6, saturation

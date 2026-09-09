@@ -155,7 +155,7 @@ func _build_body() -> void:
 	var cs := CollisionShape3D.new()
 	var cap := CapsuleShape3D.new()
 	cap.radius = 0.30
-	cap.height = 1.7 * height_scale
+	cap.height = 1.78 * height_scale
 	cs.shape = cap
 	cs.position = Vector3(0, cap.height * 0.5, 0)
 	add_child(cs)
@@ -222,10 +222,21 @@ func _build_body() -> void:
 	# the arms read as being BEHIND a slab rather than attached to a torso.
 	# Deeper and much rounder leaves a small flat front and a wide soft turn,
 	# which is a chest.
+	# SHORTER BY SIX CENTIMETRES, AND THE HEAD IS UP EIGHT, BECAUSE THERE WAS NO
+	# NECK. The chin sat at 1.285 and the collar's top edge at 1.38, so the head
+	# was ten centimetres INSIDE the shoulders — photographed from three metres
+	# the jaw rested on the collar and the whole cast read as a rack of skittles.
+	# It is the single loudest "assembled from primitives" tell left in the
+	# frame, louder than the hands and louder than the flat gown, because a neck
+	# is the one piece of a person the eye checks without being asked.
+	# The trunk keeps its hip line (world 0.64) and loses the six centimetres off
+	# the top; the head goes up to put the chin at 1.37, which leaves five
+	# centimetres of neck under it. The crown ends up at 1.80 rather than 1.72,
+	# which is a person rather than a short one.
 	_torso.add_child(Build.mi(
 		Build.taper_mesh(Vector2(0.44 * girth, 0.34 * girth),
-			Vector2(0.68 * girth, 0.40 * girth), 0.74, 0.17),
-		Build.cloth_mat(outfit, LINE), Vector3(0, 0.06, 0)))
+			Vector2(0.68 * girth, 0.40 * girth), 0.68, 0.17),
+		Build.cloth_mat(outfit, LINE), Vector3(0, 0.03, 0)))
 	# A collar, deliberately proud of the shoulders so it DOES take a line of
 	# its own — one band of contrast at the top of the body, which is what the
 	# eye lands on first.
@@ -233,16 +244,20 @@ func _build_body() -> void:
 		Build.taper_mesh(Vector2(0.42 * girth, 0.34 * girth),
 			Vector2(0.34 * girth, 0.28 * girth), 0.09, 0.035),
 		Build.cloth_mat(outfit.lightened(0.30), LINE),
-		Vector3(0, 0.385, 0.005)))
+		Vector3(0, 0.325, 0.005)))
 	# ...and a neck inside it, so the head is attached to something instead of
 	# hovering over a collar. No line: it is never the silhouette.
-	_torso.add_child(Build.mi(Build.capsule_mesh(0.082, 0.22),
+	# ...and a neck inside it that is now LONG ENOUGH TO SHOW. It was 22cm at
+	# local 0.46, which put its top at world 1.52 and every centimetre of it
+	# behind the collar or inside the skull. No line on it: a neck is never the
+	# silhouette, and inking it would draw a collar where there is a throat.
+	_torso.add_child(Build.mi(Build.capsule_mesh(0.076, 0.30),
 		Build.mat(skin.darkened(0.10), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, 0.46, 0)))
+		Vector3(0, 0.42, 0)))
 
 	_head = Node3D.new()
-	_head.position = Vector3(0, 1.50, 0)
-	_head_y = 1.50
+	_head.position = Vector3(0, 1.585, 0)
+	_head_y = 1.585
 	root.add_child(_head)
 	# An egg, not a ball: taller than wide, flattened at the back, the volume
 	# carried high, and the jaw taken out of the same solid by squashing rather
@@ -482,7 +497,7 @@ func _build_body() -> void:
 		var arm := Node3D.new()
 		# Shoulders move out with the trunk. Left at a fixed 0.395 the arms of a
 		# broad person hang inside their own chest.
-		arm.position = Vector3(sx * 0.395 * girth, 1.24, 0)
+		arm.position = Vector3(sx * 0.395 * girth, 1.18, 0)
 		# ...AND THEY HANG, they do not stand to attention. Six characters with
 		# both arms at exactly vertical is six mannequins; three degrees out and
 		# four forward is what an arm resting at somebody's side actually does,
@@ -496,6 +511,14 @@ func _build_body() -> void:
 		# Limbs take HALF the trunk's variation. A broad person is not broad in
 		# proportion everywhere, and arms at full girth read as inflated.
 		var limb: float = lerpf(1.0, girth, 0.5)
+		# A SHOULDER, so the arm is attached to the body rather than standing
+		# beside it. The sleeve is a taper with a rounded end, and a rounded end
+		# next to a rounded trunk leaves a dark vertical seam between two
+		# separate solids — from three metres the arms read as sausages laid
+		# against a slab, which is most of what made the cast look assembled.
+		# One sphere in the gown's own colour, at the joint, closes it.
+		arm.add_child(Build.mi(Build.sphere_mesh(0.105 * limb),
+			Build.cloth_mat(outfit, LINE), Vector3(sx * -0.035, -0.03, 0)))
 		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.15 * limb, 0.15 * limb),
 			Vector2(0.20 * limb, 0.20 * limb), 0.56, 0.075),
 			Build.cloth_mat(outfit, LINE), Vector3(0, -0.26, 0)))

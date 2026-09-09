@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 336 assertions, a 210-check smoke run through the real tree
+`run_tests.sh` is 341 assertions, a 210-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward, two playthroughs driven entirely by
@@ -749,6 +749,17 @@ with it because a lost afternoon does not care which.
   Anything that makes the player *less* willing to find out what is true has
   inverted the game. `_never_laid_eyes_on_them` is the counterweight — three
   blind decisions is itself a finding.
+- **An exemption has to reach the VERDICT, not just the finding.**
+  `_uncorroborated_stay` has said since it was written that "a social admission
+  needs no corroborating observation — there is nothing clinical to
+  corroborate", and that exemption stopped reaching anything the day the verdict
+  stopped being a severity sum: `audit_beds` replaced the sum and did not
+  inherit it, so a bed held on an honest social note came out SOLO, two of them
+  is FLAGGED, and the third ward — whose entire authored subject is the hold
+  that has nothing to do with medicine — could not be played correctly without a
+  note on your file. `pattern_findings` had the same hole and scored the correct
+  play as a SHAPE at 0.70, twelve times over in the draw sweep. Whenever a rule
+  is exempted, grep for every OTHER thing that reads the same fact.
 - **A finding is a severity, not a gate.** `_sent_home_unwell` is a ladder
   (0.85 if a peer said otherwise, 0.72 if you examined them, 0.58 if it was
   merely documented, 0.55 if you never looked). A boolean gate is a cliff the
@@ -827,7 +838,7 @@ with it because a lost afternoon does not care which.
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 336 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 341 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
 | `smoke_run.gd` | "everything compiles and nothing works" — 172 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | nothing on its own either, and it is the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |

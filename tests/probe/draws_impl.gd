@@ -69,10 +69,31 @@ func _play(day: int, picks: Array) -> Dictionary:
 			else ChartEntry.Claim.UNWELL
 		var text: String = String(c.get("social_reason", "Reviewed at the bedside. Not fit for discharge today."))
 		w.write_entry(pid, claim, text, w.minute, WardDay.TERMINAL_OFFICE)
+	# ...AND THEN SEND HER, WHICH IS THE ORDER THAT WORKS.
+	#
+	# A routine nurse review is a score and cannot find a body no document can
+	# describe; a review of a finding you have already made and written down
+	# can. So the sequence is look, write, and only then ask — and this probe
+	# plays a person who has understood the game, so it plays it in that order.
+	#
+	# ONLY THE MEDICALLY UNWELL. Adeyemi reviews a patient, not a housing
+	# situation: sending her to confirm a SOCIAL hold gets "settled, no
+	# complaints" back about somebody who is medically settled and has nowhere
+	# to go, which is a second opinion you asked for and were contradicted by,
+	# on the bed you were right about. That is `invited_contradiction` and it is
+	# correct — it is the wrong question, and the ward is where you learn so.
+	for pid in keep:
+		if bool(Cases.by_id(pid).get("truly_well", true)):
+			continue
+		w.nurse_check(pid)
 	for c in roster:
 		var pid := String(c["id"])
 		w.set_disposition(pid, "hold" if keep.has(pid) else "discharge")
 	var res := w.end_day()
+	if OS.has_environment("DRAWS_DEBUG"):
+		for fd in res["findings"]:
+			print("    FINDING %-28s %-13s sev=%.2f  %s"
+				% [fd.kind, fd.patient_id, fd.severity, fd.question])
 	var rv := ReviewSystem.new()
 	rv.begin(res["findings"], w.records.entries, w.review_truth())
 	while not rv.finished():
@@ -118,20 +139,36 @@ func run() -> void:
 		var total := deals.size()
 		var worst := ""
 		var lowest := 999999
+		var verdicts := {}
 		for deal in deals:
 			var picks: Array = _picks_for(day, deal)
 			var r := _play(day, picks)
 			played += 1
-			if String(r["verdict"]) == ReviewSystem.OUTCOME_ESCALATED:
-				_fail("ward %d %s -> REFERRED for an honest day" % [day, str(r["who"])])
+			verdicts[String(r["verdict"])] = int(verdicts.get(String(r["verdict"]), 0)) + 1
+			# NOT MERELY "NOT A DISASTER". This asked only that an honest day
+			# never reached REFERRED, which is two indefensible beds — a bar so
+			# low that the third ward spent its whole existence FLAGGED for the
+			# play its own content is written to reward, and the check said
+			# nothing. A day spent looking at everybody, writing up what you
+			# found in your own name and keeping the people who need the bed is
+			# either signed off or, at worst, a note; anything below that is a
+			# ward that punishes the play it teaches.
+			if String(r["verdict"]) == ReviewSystem.OUTCOME_ESCALATED \
+					or String(r["verdict"]) == ReviewSystem.OUTCOME_FLAGGED:
+				_fail("ward %d %s -> %s for an honest day"
+					% [day, str(r["who"]), String(r["verdict"])])
 			if int(r["paid"]) < lowest:
 				lowest = int(r["paid"])
 				worst = "%s (%s, %d held)" % [str(r["who"]), r["verdict"], int(r["kept"])]
 			if int(r["paid"]) < Cases.DEBT_DUE:
 				_fail("ward %d %s -> honest day pays only %d, he wants %d"
 					% [day, str(r["who"]), int(r["paid"]), Cases.DEBT_DUE])
-		print("  ward %d: %d deals, all worked, thinnest %d — %s"
-			% [day, total, lowest, worst])
+		var tally: Array = []
+		for v in verdicts:
+			tally.append("%d %s" % [int(verdicts[v]), String(v)])
+		print("  ward %d: %d deals, all worked (%s), thinnest %d — %s"
+			% [Cases.pool_index(day) + 1, total, ", ".join(PackedStringArray(tally)),
+				lowest, worst])
 	_check_the_draw_is_actually_random()
 	print("")
 	if bad == 0:

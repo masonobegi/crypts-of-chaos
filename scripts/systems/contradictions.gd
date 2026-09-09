@@ -1126,11 +1126,20 @@ static func pattern_findings(entries: Array, truth: Dictionary) -> Array:
 			continue
 		var mine := false
 		var anyone_else := false
+		# ...AND A SOCIAL HOLD IS NOT PART OF A PATTERN OF HOLDING PEOPLE ON
+		# YOUR OWN WORD, for exactly the reason `_uncorroborated_stay` and the
+		# bed audit both say so: there is nothing clinical for anybody else to
+		# corroborate. An honest day on the third ward keeps the ill man and the
+		# two people with nobody at home, and this counted the two of them as a
+		# SHAPE — 0.70, twelve times over in the draw sweep, on the correct play.
+		var social_and_true := bool(truth[pid].get("no_care_at_home", false))
 		for e in entries:
 			if e.patient_id != pid or not e.supports_stay():
 				continue
 			if e.author == ChartEntry.Author.YOU:
 				mine = true
+				if social_and_true and e.claim == ChartEntry.Claim.SOCIAL:
+					anyone_else = true      ## not "somebody else" — not YOUR OPINION
 			else:
 				anyone_else = true
 		if mine and not anyone_else:
@@ -1303,9 +1312,43 @@ static func audit_beds(entries: Array, truth: Dictionary, findings: Array) -> Ar
 			out.append(a)
 			continue
 
+		# NOWHERE TO GO IS NOT A CLINICAL OPINION, AND IT NEVER WILL BE.
+		#
+		# `_uncorroborated_stay` has carried this exemption since it was written
+		# — "a social admission needs no corroborating observation, there is
+		# nothing clinical to corroborate" — and the exemption stopped reaching
+		# the verdict the day the verdict stopped being a severity sum. The bed
+		# audit replaced the sum and did not inherit it, so a bed held on an
+		# honest social note came out SOLO, two of them are FLAGGED, and the
+		# third ward — whose entire authored subject is the hold that has
+		# nothing to do with medicine — could not be played correctly without a
+		# note on your file. Same shape as the second ward's, and the same shape
+		# as the RIM constant that went on doing exactly what it was told after
+		# the world around it moved.
+		#
+		# Nobody else was ever going to write this down. Adeyemi reviews a
+		# patient, not a housing situation; sending her to confirm it gets
+		# "settled, no complaints" back about somebody who IS medically settled,
+		# which is a second opinion you asked for and were contradicted by, on
+		# the bed you were right about.
+		#
+		# It cannot be abused, and that is not an accident: writing SOCIAL about
+		# somebody who has somewhere to go is `social_hold_is_a_lie`, which is
+		# in the `contradicted` list above and is therefore checked first.
+		var social_and_true := false
+		if not contradicted and bool(t.get("no_care_at_home", false)):
+			for e in entries:
+				if e.patient_id != pid or e.author != ChartEntry.Author.YOU:
+					continue
+				if e.claim == ChartEntry.Claim.SOCIAL:
+					social_and_true = true
+
 		if contradicted:
 			a.state = Defence.CONTRADICTED
 			a.why = "the record disagrees with the reason given"
+		elif social_and_true:
+			a.state = Defence.BACKED
+			a.why = "there was nowhere for them to go, and you wrote it down"
 		elif backed:
 			a.state = Defence.BACKED
 			a.why = "somebody other than you recorded a reason"

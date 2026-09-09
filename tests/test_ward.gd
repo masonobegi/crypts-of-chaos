@@ -1408,6 +1408,68 @@ func _day_three() -> WardDay:
 ## diagnosis and the second in a body the chart cannot describe; here nobody is
 ## ill except a man who insists he is fine, and the two beds that cannot be
 ## emptied cannot be emptied for reasons no investigation will ever find.
+## NOWHERE TO GO IS NOT YOUR WORD ALONE.
+##
+## `_uncorroborated_stay` has carried this exemption since it was written — "a
+## social admission needs no corroborating observation, there is nothing
+## clinical to corroborate" — and the exemption stopped reaching the verdict the
+## day the verdict stopped being a severity sum. `audit_beds` replaced the sum
+## and did not inherit it, so a bed held on an honest social note came out SOLO;
+## two of them is FLAGGED; and the third ward, whose whole authored subject is
+## the hold that has nothing to do with medicine, could not be played correctly
+## without a note on your file. `pattern_findings` had the same hole and scored
+## the correct play as a SHAPE at 0.70.
+func test_nowhere_to_go_is_not_your_word_alone() -> void:
+	var w := _day_three()
+	var social: Array = []
+	for c in Cases.roster():
+		if bool(c.get("no_care_at_home", false)):
+			social.append(String(c["id"]))
+	t.eq(social.size(), 2, "this ward has two people who cannot go home")
+	w.advance_to(11 * 60)
+	for pid in social:
+		w.examine(pid)
+		w.write_entry(pid, ChartEntry.Claim.SOCIAL,
+			String(Cases.by_id(pid).get("social_reason", "Nothing arranged.")), w.minute)
+		w.set_disposition(pid, "hold")
+	w.examine("okwuosa")
+	w.write_entry("okwuosa", ChartEntry.Claim.UNWELL, "Still tender.", w.minute)
+	w.nurse_check("okwuosa")
+	w.set_disposition("okwuosa", "hold")
+	_rest_home(w)
+	var res := w.end_day()
+	var kinds: Array = []
+	for f in res["findings"]:
+		kinds.append(String(f.kind))
+	t.ok(not kinds.has("pattern_of_holds"),
+		"keeping both of them is not a pattern of holding people on your word (%s)" % str(kinds))
+	var rv := ReviewSystem.new()
+	rv.begin(res["findings"], w.records.entries, w.review_truth())
+	while not rv.finished():
+		rv.answer(ReviewSystem.Answer.STAND_BY, res["held"])
+	var o := rv.outcome()
+	t.eq(int(o["solo"]), 0, "no bed on this ward rests on your word alone")
+	t.eq(String(o["verdict"]), ReviewSystem.OUTCOME_CLEAR,
+		"and the day the ward is written to reward is signed off (%s)" % String(o["verdict"]))
+	w.queue_free()
+
+	# ...AND WRITING IT ABOUT SOMEBODY WHO HAS SOMEWHERE TO GO IS STILL A LIE.
+	# The exemption cannot be used as a free defence, and that is not luck:
+	# `social_hold_is_a_lie` is checked before it.
+	var faked := _day_three()
+	faked.advance_to(11 * 60)
+	faked.write_entry("tsang", ChartEntry.Claim.SOCIAL,
+		"Nothing arranged for tonight.", faked.minute)
+	faked.set_disposition("tsang", "hold")
+	_rest_home(faked)
+	var lied: Array = []
+	for f in faked.end_day()["findings"]:
+		lied.append(String(f.kind))
+	t.ok(lied.has("social_hold_is_a_lie"),
+		"a social note about somebody with a home is still caught (%s)" % str(lied))
+	faked.queue_free()
+	GameState.day = 1
+
 func test_the_third_ward_is_about_circumstances() -> void:
 	var w := _day_three()
 	var unwell := 0

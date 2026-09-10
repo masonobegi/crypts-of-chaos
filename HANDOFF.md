@@ -22,6 +22,8 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 
 | What |
 |---|
+| The board was read from a random floor tile |
+| The station, and an argument the file had already made |
 | Nobody looked at the doctor standing over them |
 | Four things in the frames, found by looking at them again |
 | Two measurements that printed a number nobody read |
@@ -165,14 +167,22 @@ reach, and the ward order is drawn per career.
    test — turn the suspect piece bright red and re-render one frame — settles an
    argument in ninety seconds rather than an afternoon. Re-do the pass after any
    change to `Surfaces`, `Build`, `Dressing` or `NPCBody`.
-3. **The floor is a third of several frames and there is nothing on it.**
+3. **The floor is a third of several frames and there is nothing on it —
+   LOOKED AT AND LEFT, with the reasoning, because it will come up again.**
    `06_station`, `02_ward_from_door` and `05_ward_along` all put the horizon at
-   about 55% and fill the bottom with empty vinyl. **Read gotcha 83 before
-   touching this**: two attempts at "the empty planes" — downstand beams and
-   floor lines — were both worse than the emptiness, and what landed was the
-   thing that was MISSING rather than the thing that was empty (curtain tracks
-   over the curtains, a chair at the station worktop). Look for missing objects,
-   not for decoration.
+   about 55% and fill the bottom with empty vinyl. The station's was real and is
+   fixed (a chair at the worktop, and the camera moved in). The WARD's is not:
+   `_dress_ward_top` already puts the working end — linen, hamper, boxes, mop
+   bucket, whiteboard, gel, stools, water cooler — along the DOOR wall, which is
+   the wall the store-page camera stands against, so all of it is behind the
+   lens. The clear floor between the door and the beds is the space a ward is
+   supposed to keep clear. **Read gotcha 83 before touching this**: two attempts
+   at "the empty planes" — downstand beams and floor lines — were both worse
+   than the emptiness, and what landed was the thing that was MISSING rather
+   than the thing that was empty. If this is revisited, the lever is the CAMERA
+   (gotcha 49), not more objects — but `02_ward_from_door` is one half of two
+   measured pairs (`02b_fittings_off`, `09_ward_evening`), so both halves have
+   to move together and both readings re-taken.
 4. **The Windows exe has no icon and no version block.** `export.sh` says so and
    names the remedy — install rcedit and point `export/windows/rcedit` at it;
    Godot generates the icon from `config/icon` once it has the tool, so nothing

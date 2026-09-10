@@ -3304,3 +3304,21 @@ run that found this is what proved it red.
 A second, latent instance of the same shape was found on the way: `main_menu`
 re-asked for `get_tree()` on the line after an `await`, which is a null waiting
 for a slow frame. It was not the cause and its comment says so.
+
+### Something on the screen
+
+The terminal is the object this whole game is about — every note in it is typed
+at one, and the office machine is what a player stands over for the whole
+handover. It rendered as a flat dark-green rectangle with the word EHR floating
+at its top edge. A blank screen on the one machine the player spends the day at
+reads as a prop that was never finished.
+
+It has a header, a rule, seven rows in two columns with one of them selected, and
+a caret on the line under it. Bars rather than text, for the reason
+`Dressing.poster` already gives: real words on a screen are a promise the game
+has to keep, because a player will walk up and read them, and a ward list that
+has to stay in step with the ward is a second copy of the roster that can go
+stale. Bars read as a list of names at the distance anybody sees this from and
+cannot disagree with anything. No ink on any of it — at two centimetres a bar is
+mostly outline (gotcha 46), and a cel line around a glowing pixel is not what a
+screen does.

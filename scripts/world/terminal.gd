@@ -32,9 +32,49 @@ func build(disp: String, private: bool) -> void:
 		{"mesh": Build.box_mesh(Vector3(0.4, 0.02, 0.16)), "mat": Build.mat(Color(0.4, 0.42, 0.45)), "pos": Vector3(0, 0.01, 0.25)},
 	], Vector3(0, 0.21, 0))
 
-	var glow := Build.label3d("EHR", 0.06, Color(0.4, 1.0, 0.8), false, Typeface.mono_bold())
-	glow.position = Vector3(0, 0.54, 0.04)
+	# SOMETHING ON THE SCREEN.
+	#
+	# The terminal is the object this whole game is about — every note in it is
+	# typed at one — and it rendered as a flat dark-green rectangle with the
+	# word EHR floating at its top edge. A blank screen on the one machine the
+	# player spends the day at reads as a prop that was never finished.
+	#
+	# BARS, NOT TEXT, for the reason `Dressing.poster` gives: real words on a
+	# screen are a promise the game has to keep, because a player will walk up
+	# and read them, and a ward list that has to stay in step with the ward is a
+	# second copy of the roster. Bars read as a list of names at the distance
+	# anybody sees this from, and they cannot go stale.
+	#
+	# No ink on any of it (line 0.0): at 2cm a bar is mostly outline, which is
+	# gotcha 46, and a cel line around a glowing pixel is not what a screen does.
+	var glow := Build.label3d("EHR", 0.045, Color(0.45, 1.0, 0.85), false,
+		Typeface.mono_bold())
+	glow.position = Vector3(0, 0.505, 0.038)
 	add_child(glow)
+	var rule := Build.mat(Color(0.10, 0.42, 0.34), 0.2, 0.0, Color(0.10, 0.42, 0.34), 0.0)
+	var row := Build.mat(Color(0.09, 0.34, 0.28), 0.2, 0.0, Color(0.09, 0.34, 0.28), 0.0)
+	var lit := Build.mat(Color(0.30, 0.88, 0.70), 0.2, 0.0, Color(0.30, 0.88, 0.70), 0.0)
+	add_child(Build.mi(Build.box_mesh(Vector3(0.48, 0.004, 0.004)), rule,
+		Vector3(0, 0.478, 0.038)))
+	# Seven rows, one of them selected, and a caret on the row under it. The
+	# widths come off a sine so the list has the ragged right edge a list of
+	# names has rather than the block a loop with one width produces.
+	for i in 7:
+		var t: float = float(i)
+		var w: float = 0.20 + 0.24 * (0.5 + 0.5 * sin(t * 2.3))
+		var y: float = 0.446 - t * 0.036
+		var sel: bool = i == 3
+		if sel:
+			add_child(Build.mi(Build.box_mesh(Vector3(0.50, 0.026, 0.003)), row,
+				Vector3(0, y, 0.037)))
+		add_child(Build.mi(Build.box_mesh(Vector3(w, 0.011, 0.004)),
+			lit if sel else row, Vector3(-0.24 + w * 0.5, y, 0.039)))
+		# A short second column, which is what makes it read as a TABLE — a
+		# left-aligned stack of bars alone reads as a paragraph.
+		add_child(Build.mi(Build.box_mesh(Vector3(0.055, 0.011, 0.004)),
+			lit if sel else row, Vector3(0.205, y, 0.039)))
+	add_child(Build.mi(Build.box_mesh(Vector3(0.012, 0.018, 0.004)), lit,
+		Vector3(-0.232, 0.194, 0.039)))
 
 func prompt(_player) -> Array:
 	var w = get_tree().get_first_node_in_group("ward_day")

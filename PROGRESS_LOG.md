@@ -3264,3 +3264,17 @@ plaster, and it is re-checked every settle frame rather than once at stage time.
 
 The two frames now show what they are named after: Alfie Renton on the ochre
 ward, and a different patient on a different one.
+
+### The three cards you read at the desk are read at the desk
+
+The end of a shift and both endings are signed off in your office with the door
+shut. All three were staged in the middle of the ward, so all three were
+photographed through a crowd — a nurse's head filling a third of the frame,
+three speech bubbles clipped across the corner, and a bearded patient standing
+between the camera and the room. The PAID card, which is the last thing a
+finished career shows anybody, was the worst of them.
+
+They stage in the office now, with the desk, the terminal, the chair and DR. YOU
+on the wall behind the card. A guessed vantage a metre nearer than the one
+`07_office` already uses put the camera inside the desk; the fix was to reuse the
+one that is known to frame the thing.

@@ -1139,7 +1139,14 @@ with it because a lost afternoon does not care which.
     vantage walks into the plaster, and it is re-checked EVERY settle frame
     rather than once at stage time. `faces.sh` learned this twice already
     (gotcha 62): when a frame looks wrong, check where the camera is standing
-    before you change anything in it.
+    before you change anything in it. **And the three cards you read at the desk
+    are read at the desk**: the end of a shift and both endings are signed off
+    in your office with the door shut, and all three were staged in the middle
+    of the ward — photographed through a crowd, with a nurse's head filling a
+    third of the frame and three speech bubbles clipped across the corner. The
+    room behind a card should be the room the card belongs to. A guessed office
+    vantage a metre nearer than `07_office`'s put the camera inside the desk;
+    reuse the one that is known to frame the thing.
 
 ## Design rules that are load-bearing
 

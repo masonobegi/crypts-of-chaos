@@ -190,7 +190,18 @@ func tick() -> bool:
 			# their point — into the bay to be witnessed, into the station to
 			# reach the board — and the camera is a child of the player, so
 			# pointing it first just carried it into the plaster with them.
-			_look_down_the_ward(cam)
+			#
+			# ...AND THE THREE CARDS YOU READ AT THE DESK ARE READ AT THE DESK.
+			# The end of a shift and both endings are signed off in your office
+			# with the door shut, and they were staged in the middle of the ward
+			# instead — so all three were photographed through a crowd, with
+			# Adeyemi's head filling a third of the frame and three speech
+			# bubbles clipped across the corner. The room behind a card is why
+			# any of this is 3D; it should be the room the card belongs to.
+			if String(shot[1]).substr(3) in ["day_over", "paid", "struck_off"]:
+				_look_at_the_desk(cam)
+			else:
+				_look_down_the_ward(cam)
 		else:
 			# EVERY SETTLE FRAME, because they are walking. See `_clear_the_lens`.
 			_clear_the_lens(cam)
@@ -398,6 +409,17 @@ func _mean_luma(path: String) -> float:
 
 ## From the ward door, along the row of beds. The one view that shows the game
 ## is a place and not a spreadsheet.
+## Your own office, from the door, with the desk and the terminal in shot.
+func _look_at_the_desk(cam: Camera3D) -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		return
+	# The vantage `07_office` already uses, which is known to frame the desk and
+	# the terminal. A guessed one a metre nearer put the camera inside the desk.
+	cam.global_position = Vector3(16.0, 1.7, -2.0)
+	cam.look_at(Vector3(16.0, 1.3, -7.0), Vector3.UP)
+	_clear_the_lens(cam)
+
 func _look_down_the_ward(cam: Camera3D) -> void:
 	var h = tree.get_first_node_in_group("hospital")
 	if h == null:

@@ -3322,3 +3322,63 @@ stale. Bars read as a list of names at the distance anybody sees this from and
 cannot disagree with anything. No ink on any of it — at two centimetres a bar is
 mostly outline (gotcha 46), and a cel line around a glowing pixel is not what a
 screen does.
+
+## The career probe was driving a different doctor to the frontier probe
+
+Swept `CAREER_SEED` across twenty-seven values, which is the technique this
+repo's own notes credit with five previous finds. Three went red, and all three
+were the probe rather than the game — but the third one, chased far enough,
+turned out to be sitting on a real inversion.
+
+**The honest doctor never wrote anything down.** `_hold` recorded a `SOCIAL`
+note for a bed held because there is nobody at home, and nothing at all for a
+bed held because the patient is ill. So every "honest" policy in the file kept
+a genuinely unwell person on whatever the night staff or the registrar happened
+to have written, and on the one ward where the handover says FIT FOR DISCHARGE
+that is `no_reason_recorded` at 0.70 — one indefensible bed, which is a referral
+while you are being watched, which is four strikes. It examines and writes now,
+and only on the bed nothing else stands behind.
+
+**And it corroborated with the wrong verb.** `ask_colleague` on every held bed,
+on every ward. Gwen Ashworth's chart carries the night registrar's opinion
+before the shift starts and `colleague_wrong` means asking him again gets it
+back in writing, so the honest hold came out with `reversed_a_colleague` twice
+and an `uncorroborated_stay` on top — on the bed the doctor was right about,
+every night that ward came round. `frontier_impl` had already worked this out
+and written the day by hand: look at everybody, write up what you found, order
+the bloods, then send the nurse to check what you wrote, and only ask the
+registrar about somebody no doctor has already committed an opinion about. The
+two probes were measuring two different players and both were reporting
+truthfully about their own. They agree now, and the honest career signs off on
+every night of every seed swept.
+
+**The timing helper read the sparse round table.** A watched day runs each of
+Adeyemi's rounds twice, the second forty-five minutes after the first, and only
+`WardDay.rounds_today()` knows it. Stepping over the round listed in
+`Cases.ROUNDS` therefore landed exactly on the second write, so the restrained
+liar — who had stopped lying, because she was being watched — took
+`conflicting_observations` at 0.59 for an honest examination note two nights
+running and was struck off for two clean nights.
+
+**Greed was not greedy, and on some wards it was honest.** The policy filled the
+ward to three beds and stopped, which is the same arithmetic guard `skilled`'s
+own comment says turns a liar into a survivor: on any ward whose honest hold
+already fills three it took no extra bed at all. So the property "greed is
+struck off before it finishes" was being asked of a policy that was, a third of
+the time, not lying about anything. A farmer holds the ward, so it holds all
+five now — which earns less than three, that being the inequality the whole
+game rests on, and collects a finding on every fabricated bed.
+
+**And underneath all of that, one real inversion.** With the honest day fixed,
+the doctor who takes exactly one bed on his own word EVERY night came out ahead
+of the restrained one: four free nights, a flag on the fifth, a referral on the
+sixth — four strikes of the five — and the debt clears in six. He walked out
+with the deeds. That is precisely the arithmetic `review_system.gd`'s own
+comment says the entrenched rate was added to close; the ladder was right and it
+started one night too late. `ENTRENCHED_NIGHTS` is 4. The morning of night five
+now says "the next bed you are the only witness for goes straight to the panel"
+and the night of it does exactly that — warned, then charged. Nothing below
+three-quarters moves at all, so the bed-every-other-night player the design
+exists to make findable is untouched.
+
+Twenty-seven career seeds green, and the whole suite green.

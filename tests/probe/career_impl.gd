@@ -66,6 +66,13 @@ func _one_day(policy: String) -> Dictionary:
 				pick = A.RECONCILE
 		rv.answer(pick, res["held"])
 	var out := rv.outcome()
+	if OS.get_environment("CAREER_DEBUG") != "":
+		print("DBG %s day %d ward %d verdict %s indef %d solo %d watched %s"
+			% [policy, GameState.day, Cases.pool_index(GameState.day),
+				String(out["verdict"]), int(out["indefensible"]), int(out["solo"]),
+				str(GameState.flag("watched", false))])
+		for f in res["findings"]:
+			print("   %-26s %-14s %.2f" % [f.kind, f.patient_id, f.severity])
 	rv.commit(res["findings"])
 	var row := {
 		"day": GameState.day, "owed": int(res.get("paid", 0)), "cash": int(res["cash"]),
@@ -132,17 +139,122 @@ func _needs_bed(w: WardDay) -> Array:
 ##
 ## `SOCIAL` is the claim that says why, and the reason comes off the patient
 ## rather than out of this file.
+## AND AN HONEST HOLD IS WRITTEN DOWN, WHICH THIS NEVER DID.
+##
+## `_hold` recorded a SOCIAL note for a social bed and NOTHING AT ALL for a
+## medical one, so every "honest" policy in this file kept a genuinely ill
+## patient on whatever somebody else happened to have written. On five wards in
+## six the handover note or the registrar backs it and the night signs off. On
+## the fourth it does not: Gwen Ashworth's handover says FIT FOR DISCHARGE and
+## `colleague_wrong` means asking the registrar again gets that same opinion
+## back, so the honest hold was `no_reason_recorded` at 0.70 — one indefensible
+## bed, which is `referred` while watched, which is four strikes.
+##
+## `frontier_impl` learned this exact lesson and wrote it down: "The first
+## version of this honest day looked at everybody and never wrote anything, and
+## it came out FLAGGED — correctly." This probe never did. Found by sweeping
+## `CAREER_SEED`, which is the fifth time that has turned something up.
+##
+## Examine, then write ONLY on the bed nothing else stands behind — the
+## `only_if_needed` shape, which is what a careful person actually does.
 func _hold(w: WardDay, pid: String) -> void:
 	var c := Cases.by_id(pid)
 	if bool(c.get("no_care_at_home", false)):
 		w.write_entry(pid, C.SOCIAL,
 			String(c.get("social_reason", "Nothing arranged for tonight.")), w.minute)
+		w.set_disposition(pid, "hold")
+		return
+	w.examine(pid)
+	var backed := false
+	for e in w.records.for_patient(pid):
+		if e.supports_stay() and e.author != ChartEntry.Author.YOU:
+			backed = true
+	if not backed:
+		_out_of_a_round(w)
+		w.write_entry(pid, C.UNWELL,
+			"Examined at the bedside. Not fit for discharge today.", w.minute)
 	w.set_disposition(pid, "hold")
+
+## NOT ON TOP OF A ROUND. `concerns_same_moment_as` is a forty-five minute
+## window, so a note stated at the same moment as one of Adeyemi's rounds reads
+## as two people disagreeing about the same half hour — `conflicting_observations`
+## on a bed you were right about. The examinations above cost twenty-five minutes
+## each, so five of them walk the clock straight through one o'clock; this steps
+## over the window rather than backdating out of it, because backdating is its
+## own finding.
+func _out_of_a_round(w: WardDay) -> void:
+	# `w.rounds_today()` AND NOT `Cases.ROUNDS`, which is the whole of this.
+	#
+	# A watched day runs each round TWICE, the second forty-five minutes after
+	# the first, and stepping over the one in `Cases.ROUNDS` lands you exactly
+	# on the second write. So the restrained liar — who had stopped lying,
+	# because she was being watched — wrote her honest examination note on top
+	# of a round she could not see and took `conflicting_observations` at 0.59
+	# for it, twice in a row, and was struck off for two clean nights. The
+	# denser schedule is meant to make the timing skill HARDER, and a probe
+	# that reads the sparse table is not exercising the skill at all.
+	var rounds: Array = w.rounds_today()
+	var at: int = w.minute
+	for _step in 24:
+		var clash := -1
+		for r in rounds:
+			if absi(at - int(r)) <= ChartEntry.SAME_MOMENT + 1:
+				clash = int(r)
+				break
+		if clash < 0:
+			break
+		at = clash + ChartEntry.SAME_MOMENT + 2
+	if at > w.minute:
+		w.advance_to(at)
 
 ## ...AND YOU DO NOT SEND THE NURSE OR THE REGISTRAR TO CONFIRM ONE. They review
 ## a patient, not a housing situation, so a second opinion on somebody who is
 ## medically settled comes back settled — which is a contradiction you asked for,
 ## on the bed you were right about.
+## THE CORROBORATION IS THE WARD'S OWN, AND ASKING THE REGISTRAR IS NOT ALWAYS IT.
+##
+## Every "documented" policy in this file did the same thing on every ward:
+## `ask_colleague` on each held bed. On the fourth ward that is precisely the
+## wrong verb. Gwen Ashworth's chart carries the night registrar's opinion
+## before the shift starts — "Cleared for home" — and `colleague_wrong` means
+## asking him again gets it back in writing, so the honest hold came out with
+## `reversed_a_colleague` TWICE and an `uncorroborated_stay` on top: `noted` on
+## a bed you were right about, on both of that ward's beds, on every night it
+## came round. Sweeping `CAREER_SEED` dealt that ward on nights six and seven
+## of the same career and the restrained liar — who had stopped lying, because
+## she was being watched — was struck off for two honest nights in a row.
+##
+## `frontier_impl` had already worked this out and written the day by hand:
+## look at everybody, write up what you found, order the bloods, THEN send the
+## nurse to check what you wrote, and only ask the registrar about somebody no
+## doctor has already committed an opinion about. That day signs off on all 128
+## boards. This is the same day, and the two probes agree about what honesty
+## costs now instead of measuring two different players.
+func _corroborate(w: WardDay, held: Array) -> void:
+	# Bloods first, so a result that agrees with you has time to land.
+	for pid in held:
+		if not _is_social(pid):
+			w.order_test(pid, "Repeat bloods")
+	# ...THEN the directed check. She reviews a patient and not a housing
+	# situation, so a social bed gets "settled, no complaints" back — a second
+	# opinion you asked for and were contradicted by, on the bed you were right
+	# about.
+	for pid in held:
+		if not _is_social(pid):
+			w.nurse_check(pid)
+	# ...AND DO NOT ASK A MAN WHO HAS ALREADY TOLD YOU.
+	w.advance_to(15 * 60)
+	for pid in held:
+		if _is_social(pid) or _seen_by_a_doctor(w, pid):
+			continue
+		w.ask_colleague(pid)
+
+func _seen_by_a_doctor(w: WardDay, pid: String) -> bool:
+	for e in w.records.entries:
+		if e.patient_id == pid and e.author == ChartEntry.Author.DOCTOR:
+			return true
+	return false
+
 func _is_social(pid: String) -> bool:
 	return bool(Cases.by_id(pid).get("no_care_at_home", false))
 
@@ -161,11 +273,9 @@ func _play(w: WardDay, policy: String) -> void:
 			for pid in honest:
 				_hold(w, pid)
 		"honest_corroborated":
-			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				if not _is_social(pid):
-					w.ask_colleague(pid)
 				_hold(w, pid)
+			_corroborate(w, honest)
 		"one_lie":
 			for pid in honest:
 				_hold(w, pid)
@@ -175,24 +285,39 @@ func _play(w: WardDay, policy: String) -> void:
 				w.write_entry(extra, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
 				w.set_disposition(extra, "hold")
 		"greedy":
+			# GREED WAS NOT GREEDY, AND ON SOME WARDS IT WAS HONEST.
+			#
+			# This policy filled the ward to THREE beds and stopped, which is
+			# the same arithmetic guard `skilled`'s own comment says turns a
+			# liar into a survivor — and on any ward where the honest hold
+			# already fills three, it took no extra bed at all and played the
+			# careful doctor's day. So the property "greed is struck off before
+			# it finishes" was being asked of a policy that was, a third of the
+			# time, not lying about anything, and it went red on two seeds in
+			# ten. It is not a balance failure; it is a probe that was
+			# measuring restraint and calling it greed.
+			#
+			# A farmer holds the ward. Five beds earn less than three — that is
+			# the load-bearing inequality the whole game rests on — so this
+			# makes less money than honesty AND collects a finding on every
+			# fabricated bed, which is exactly the shape the property is
+			# claiming. It cannot accidentally become an honest day.
 			for pid in honest:
 				_hold(w, pid)
 			w.advance_to(17 * 60 + 20)
 			for c in Cases.roster():
 				var pid := String(c["id"])
-				if honest.has(pid) or w.held_ids().size() >= 3:
+				if honest.has(pid):
 					continue
 				w.write_entry(pid, C.UNWELL, "Unsettled this evening.", 17 * 60 + 18)
-				_hold(w, pid)
+				w.set_disposition(pid, "hold")
 		"skilled":
 			# What a good dishonest player does: spend the registrar on the bed
 			# that deserves it, so it is BACKED and only ONE bed is on your word
 			# alone — the difference between "noted" and "referred".
-			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				if not _is_social(pid):
-					w.ask_colleague(pid)
 				_hold(w, pid)
+			_corroborate(w, honest)
 			# AND NO ARITHMETIC GUARD, WHICH IS THE WHOLE DIFFERENCE BETWEEN
 			# THIS AND `restrained`.
 			#
@@ -218,11 +343,9 @@ func _play(w: WardDay, policy: String) -> void:
 			# accepting "only I saw it" at all. So you keep the rate under
 			# that: one dishonest night, one clean one, forever. This is the
 			# policy the whole design is trying to make findable.
-			w.advance_to(11 * 60 + 10)
 			for pid in honest:
-				if not _is_social(pid):
-					w.ask_colleague(pid)
 				_hold(w, pid)
+			_corroborate(w, honest)
 			# WHAT A RESTRAINED LIAR ACTUALLY DOES, AND IT IS NOT A FOURTH BED.
 			#
 			# Four beds earn less than three, so once the honest holds have

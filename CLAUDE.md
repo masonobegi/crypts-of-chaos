@@ -1169,6 +1169,57 @@ with it because a lost afternoon does not care which.
     `data.tree` is in that grep now, and it is proven red by the run that found
     this.
 
+110. **THE CAREER PROBE'S HONEST DOCTOR NEVER WROTE ANYTHING DOWN, AND ITS
+    GREEDY ONE WAS SOMETIMES HONEST.** Three faults in one file, all found by
+    sweeping `CAREER_SEED` — the sixth time that has turned something up.
+    `_hold` recorded a `SOCIAL` note for a social bed and NOTHING AT ALL for a
+    medical one, so every "honest" policy kept a genuinely ill patient on
+    whatever somebody else happened to have written. Then the corroboration was
+    `ask_colleague` on every held bed, on every ward — which on the fourth ward
+    is exactly the wrong verb, because Gwen Ashworth's chart already carries the
+    night registrar's opinion and `colleague_wrong` means asking again gets it
+    back in writing: `reversed_a_colleague` TWICE plus an `uncorroborated_stay`,
+    on the bed you were right about, every night that ward came round. And
+    `greedy` filled the ward to THREE beds and stopped, which is the same
+    arithmetic guard `skilled`'s own comment says turns a liar into a survivor —
+    so on any ward whose honest hold already fills three it took no extra bed at
+    all and played the careful doctor's day, and the property "greed is struck
+    off before it finishes" was being asked of a policy that was, a third of the
+    time, not lying about anything.
+    `frontier_impl` had written the correct day out by hand and left the lesson
+    above it ("look at everybody, write up what you found, order the bloods,
+    THEN send the nurse to check what you wrote") and this probe never learned
+    it. **Two probes measuring two different players is worse than one probe**:
+    the frontier said every ward has a clean day and the career said the honest
+    doctor collects findings, and both were reporting truthfully about the
+    doctor each of them happened to be driving.
+111. **A WATCHED DAY RUNS EACH ROUND TWICE AND `Cases.ROUNDS` DOES NOT SAY SO.**
+    Writing in the gap between rounds is the central timing skill of the game,
+    and `WardDay.rounds_today()` is the only thing that knows where the gaps
+    are: once the record is flagged, Adeyemi writes up again forty-five minutes
+    after each round. A helper that stepped over the round in `Cases.ROUNDS`
+    therefore landed precisely on the second write, so the restrained liar — who
+    had STOPPED lying, because she was being watched — took
+    `conflicting_observations` at 0.59 for an honest examination note, twice in
+    a row, and was struck off for two clean nights. The denser schedule exists
+    to make the skill harder to exercise; anything reading the sparse table is
+    not exercising it at all. Same shape as gotcha 30: a table that is a
+    function of state, read against different state.
+112. **A LADDER THAT ARRIVES AFTER THE MONEY IS NOT A LADDER.**
+    `ENTRENCHED_NIGHTS` was 5, so the doctor who takes exactly one bed on his own
+    word EVERY night banked four free nights, one flag on the fifth and one
+    referral on the sixth — four strikes of the five — and the debt clears in
+    six. He walked out with the deeds, faster than the restrained liar the whole
+    design exists to reward, which is the inversion `review_system.gd`'s own
+    comment says the entrenched rate was added to close. It was right and it
+    started one night too late. Four now: `habit_warning()` reads the same pair,
+    so an entrenched career is TOLD "the next bed you are the only witness for
+    goes straight to the panel" on the morning of night five and referred on the
+    night of it. Nothing below three-quarters moves — a bed every other night is
+    a rate of a half and never reaches this rung. **Check any escalation against
+    the length of the run it has to bite inside**, not against the shape of the
+    curve.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

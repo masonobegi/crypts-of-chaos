@@ -29,9 +29,25 @@ const OUTCOME_ESCALATED := "referred"
 ## referral. Both wait for a few nights first, so nobody is described by their
 ## first Tuesday. Everything about the difficulty curve of a career is these
 ## four numbers.
+##
+## AND THE SECOND ONE HAS TO ARRIVE BEFORE THE MONEY DOES. `ENTRENCHED_NIGHTS`
+## was 5, so the doctor who takes exactly one bed on his own word EVERY night
+## banked four free nights, one flag on the fifth and one referral on the sixth
+## — four strikes of the five — and the debt clears in six. He walked out with
+## the deeds. That is the same arithmetic the comment further down this file
+## says the entrenched rate exists to close, one night short of closing it: the
+## ladder was right and it started too late.
+##
+## Four now, which is the night the record starts SAYING so. `habit_warning()`
+## reads the same pair, so an entrenched career is told "the next bed you are
+## the only witness for goes straight to the panel" on the morning of night
+## five and referred on the night of it — warned, then charged. Nothing below
+## three-quarters moves at all: a bed every OTHER night is a rate of a half and
+## never reaches this rung, which is the policy the design exists to make
+## findable and the one number in here that must not change.
 const HABIT_NIGHTS := 4
 const HABIT_RATE := 0.5
-const ENTRENCHED_NIGHTS := 5
+const ENTRENCHED_NIGHTS := 4
 const ENTRENCHED_RATE := 0.75
 
 ## She opens with the softest thing she found and works inward. A reviewer who

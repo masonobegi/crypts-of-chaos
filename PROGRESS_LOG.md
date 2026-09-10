@@ -3244,3 +3244,23 @@ The loading card names no ward at all now. Its own comment already says nothing
 on it may read `GameState`, because on the Continue path the save has not been
 read yet; a ward name there would have been last career's, printed with total
 confidence, for a fifth of a second.
+
+### One of the twenty-eight frames had no card on it
+
+The ward-three stage set `day = 3` and asked for "fry" by id. The ward order is a
+per-career permutation, so night three is not the third ward and Rosalind Fry was
+not on it — and `request_ui` for a patient who is not on the ward opens nothing,
+silently. So that frame, in a set whose whole job is the screens, was a
+photograph of the back of a nurse's head. It selects by ward index now and lets
+the roster name itself.
+
+The head was a second fault underneath the first. The `ui:` vantage stands a
+metre and a half inside the ward door, which is where every nurse in the building
+walks, and those stages settle for five frames before the save — so somebody
+clear when the camera was placed has walked into it by the time the picture is
+taken. The offender is pushed out along the line from the camera rather than the
+camera being pushed back, because backing up from that vantage walks into the
+plaster, and it is re-checked every settle frame rather than once at stage time.
+
+The two frames now show what they are named after: Alfie Renton on the ochre
+ward, and a different patient on a different one.

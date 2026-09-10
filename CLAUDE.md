@@ -1121,6 +1121,26 @@ with it because a lost afternoon does not care which.
     on it may read `GameState`: on the Continue path the save has not been read
     yet, so a ward name there would be last career's.
 
+107. **A STAGE THAT NAMES A PATIENT NAMES ONE WHO IS NOT ON THE WARD.**
+    `shot_impl`'s ward-three stage set `day = 3` and asked for "fry" by id.
+    The ward order is a per-career permutation, so night three is not the third
+    ward and Rosalind Fry was not on it — and `request_ui` for a patient who is
+    not on the ward opens NOTHING, silently. So one of the twenty-eight frames,
+    in a set whose whole job is the screens, was a photograph of the back of a
+    nurse's head with no card on it at all. Gotcha 78 in a harness rather than
+    in a check: **select by WARD INDEX and let the roster name itself.**
+108. **NOBODY STANDS ON THE LENS.** The `ui:` vantage is a metre and a half
+    inside the ward door, which is exactly where every nurse in the building
+    walks, and those stages settle for five frames before the save — so
+    somebody clear when the camera was placed has walked into it by the time
+    the picture is taken. Two card frames came back with a head filling a third
+    of the picture. The offender is pushed OUT along the line from the camera
+    rather than the camera being pushed back, because backing up from that
+    vantage walks into the plaster, and it is re-checked EVERY settle frame
+    rather than once at stage time. `faces.sh` learned this twice already
+    (gotcha 62): when a frame looks wrong, check where the camera is standing
+    before you change anything in it.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

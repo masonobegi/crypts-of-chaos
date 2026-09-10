@@ -191,6 +191,9 @@ func tick() -> bool:
 			# reach the board — and the camera is a child of the player, so
 			# pointing it first just carried it into the plaster with them.
 			_look_down_the_ward(cam)
+		else:
+			# EVERY SETTLE FRAME, because they are walking. See `_clear_the_lens`.
+			_clear_the_lens(cam)
 		settle += 1
 		if settle < 5:
 			return false
@@ -400,7 +403,34 @@ func _look_down_the_ward(cam: Camera3D) -> void:
 	if h == null:
 		return
 	cam.global_position = h.door_point("ward") + Vector3(-4.5, 0.0, 1.6)
-	cam.look_at(h.door_point("ward") + Vector3(4.0, -0.35, 6.5), Vector3.UP)
+	var at: Vector3 = h.door_point("ward") + Vector3(4.0, -0.35, 6.5)
+	cam.look_at(at, Vector3.UP)
+	_clear_the_lens(cam)
+
+## NOBODY STANDS ON THE LENS.
+##
+## `_look_down_the_ward` puts the camera a metre and a half inside the ward
+## door, which is exactly where every nurse in the building walks — and the
+## `ui:` stages then settle for five frames, so somebody who was clear when the
+## camera was placed has walked into it by the time the picture is taken. Two
+## card frames came back as a photograph of the back of a head filling a third
+## of the picture, with the card beside it. `faces.sh` learned the same lesson
+## twice (gotcha 62): when a frame looks wrong, check where the camera is
+## standing before you change anything in it.
+##
+## The offender is pushed OUT along the line from the camera rather than the
+## camera being pushed back, because backing up from that vantage walks into
+## the plaster. It is a photograph; moving a bystander is allowed.
+func _clear_the_lens(cam: Camera3D) -> void:
+	for n in tree.get_nodes_in_group("npc"):
+		if not (n is Node3D):
+			continue
+		var b := n as Node3D
+		var away: Vector3 = b.global_position - cam.global_position
+		away.y = 0.0
+		if away.length() > 1.9 or away.length() < 0.001:
+			continue
+		b.global_position += away.normalized() * (2.6 - away.length())
 
 func _stage_ui(which: String, w) -> void:
 	match which:
@@ -441,7 +471,7 @@ func _stage_ui(which: String, w) -> void:
 		"ward_two":
 			# TOMORROW. A different five people and a different problem, which is
 			# the whole point of there being a second one.
-			GameState.day = 2
+			GameState.day = _day_dealing(1)
 			GameState.start_day()
 			if w != null:
 				w.start()
@@ -492,14 +522,22 @@ func _stage_ui(which: String, w) -> void:
 		"ward_three":
 			# THE THIRD WARD. Nobody on it is ill except a man who says he is
 			# fine, and the best-paying bed is a woman asking you to keep her.
-			GameState.day = 3
+			#
+			# BY WARD, AND WITHOUT NAMING ANYBODY. This set `day = 3` and asked
+			# for "fry" by id — and the ward order is a per-career permutation,
+			# so night three is not the third ward and Rosalind Fry was not on
+			# it. `request_ui` for a patient who is not on the ward opens
+			# nothing, so this frame was a photograph of the back of a nurse's
+			# head with no card on it at all, in a set whose whole job is the
+			# screens. Gotcha 78, in the harness rather than in a check.
+			GameState.day = _day_dealing(2)
 			GameState.start_day()
 			if w != null:
 				w.start()
 				var ps4 = tree.get_first_node_in_group("patient_system")
 				if ps4 != null and ps4.has_method("reset_day"):
 					ps4.reset_day()
-			EventBus.request_ui.emit("patient", {"patient_id": "fry"})
+			EventBus.request_ui.emit("patient", {"patient_id": _someone()})
 		"review":
 			# Back to the first ward: this stage names its patients, and the
 			# ward_two stage before it left the day on the second one. Staged
@@ -550,6 +588,15 @@ func _stage_ui(which: String, w) -> void:
 ##
 ## That is why "every patient in the game is the same body" survived a hundred
 ## screenshot runs: the shots that would have shown it never framed anybody.
+## The night in the first cycle that deals the ward at `index` in `Cases.WARDS`.
+## The rotation is drawn per career, so "day N" is not "ward N" on any seed but
+## zero — and this harness runs at 20260822.
+func _day_dealing(index: int) -> int:
+	for d in range(1, Cases.DAYS.size() + 1):
+		if Cases.pool_index(d) == index:
+			return d
+	return 1
+
 func _someone() -> String:
 	var r := Cases.roster()
 	return String(r[0]["id"]) if not r.is_empty() else ""

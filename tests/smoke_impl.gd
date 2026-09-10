@@ -1998,8 +1998,11 @@ func _check_nothing_in_scripts_is_uncalled() -> void:
 			# there is no bracket to count.
 			if not (name in engine) and not name.begins_with("_on_"):
 				decls.append([name, f, n])
-	# EVERY DECLARATION SUBTRACTS, wherever it is: `_build` is overridden in six
-	# screens and calling it in one does not make the other five live.
+	# EVERY DECLARATION SUBTRACTS, so a name declared six times needs at least
+	# seven brackets before it counts as called. It does NOT attribute a call to
+	# a particular declaration, and that is the right answer rather than a
+	# limitation: `_build` is an override on six screens and one `_build()` in
+	# the base class calls all six.
 	var by_name := {}
 	for d in decls:
 		by_name[String(d[0])] = int(by_name.get(String(d[0]), 0)) + 1

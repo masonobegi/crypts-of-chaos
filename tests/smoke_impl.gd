@@ -1917,13 +1917,51 @@ func _check_every_signal_is_wired_at_both_ends() -> void:
 ## a colour for a reputation system that was cut; two ways for the navigation
 ## grid to be blocked at runtime; and three accessors for a held item.
 ##
-## Counted by bare token across `scripts/` and `tests/`, so a name reached
-## through `call()`, `has_method()` or a `connect` by string counts as a caller.
-## Engine callbacks are exempt because the engine is the caller.
+## Counted as `name(` across `scripts/` and `tests/`, minus one for each place it
+## is DECLARED, plus every place the name is a whole string — `call("foo")` and
+## `has_method("foo")` are how half the harnesses in this repo reach a method.
+## Engine callbacks are exempt because the engine is the caller, and so is
+## anything named `_on_*`: this codebase connects those by reference,
+## `sig.connect(_on_minute)`, where the signal is the caller and there is no
+## bracket to count.
+##
+## COUNTED BY BARE TOKEN, IT PASSED WITH TEN DEAD FUNCTIONS IN IT. The first passed with TEN dead functions still in
+## `scripts/`, and every one was hidden the same way: `bar` by `for bar in
+## MUSIC_BARS`, `field` by `for field in [...]`, `shell` by `var shell :=
+## Rect2()`, `mood` by `var mood: Dictionary = SCORE`, `watchers` by `var
+## watchers := _who_can_see()`, and the rest by prose — "a wall painted by
+## somebody in a hurry", "that is not a compliment, it is a low bar". Short
+## verbs and nouns are exactly what a small function is called AND exactly what
+## a local variable and an English sentence are made of, so the tokens this
+## check trusted were the ones most likely to be an accident. **Requiring the
+## OPEN BRACKET is what separates a call from a coincidence** — and excluding
+## locals instead was tried first and was worse: it is per-FILE and blanket, so
+## `var standing := String(_rv.record.standing())` hid its own call and the
+## check reported the career's "one more bad night and the Board writes to you"
+## warning as dead.
+##
+## Note the OPPOSITE rule in `_check_every_constant_has_a_reader`, deliberately:
+## there, a name mentioned only in prose DOES count, because the failure that
+## check is looking for is a constant nobody has thought about, and a constant
+## somebody wrote a paragraph about is not that. A function is different — the
+## paragraph is usually its own docstring.
 func _check_nothing_in_scripts_is_uncalled() -> void:
 	var files: Array = _all_scripts("res://scripts")
 	files.append_array(_all_scripts("res://tests"))
-	var word := RegEx.create_from_string("[A-Za-z_][A-Za-z0-9_]*")
+	# A `#` outside a string starts a comment. Crude and deliberate: the only
+	# way it can be wrong is by keeping a line it should have dropped, which
+	# fails safe — this check going quiet is the failure that costs.
+	var strip := RegEx.create_from_string("(?m)^([^\"#]*(?:\"[^\"]*\"[^\"#]*)*)#.*$")
+	# Three passes over the corpus rather than one per name: `called(` anywhere,
+	# `"called"` as a whole string, and `func called(` to subtract.
+	var call := RegEx.create_from_string("(\\w+)[\\t ]*\\(")
+	var literal := RegEx.create_from_string("\"(\\w+)\"")
+	# ...AND A CALLABLE HANDED OVER WITHOUT BRACKETS. `UIKit.button("Continue",
+	# _continue)` is how every button on the title screen is wired and there is
+	# no `(` after the name, so requiring one reported the Continue handler —
+	# the second button a returning player presses — as dead. An argument that
+	# is a bare identifier counts as a reference.
+	var handed := RegEx.create_from_string("[(,][\\t ]*(\\w+)[\\t ]*[,)]")
 	var decl := RegEx.create_from_string("^(?:static[\\t ]+)?func[\\t ]+(\\w+)[\\t ]*\\(")
 	var engine := ["_ready", "_process", "_physics_process", "_input",
 		"_unhandled_input", "_init", "_enter_tree", "_exit_tree", "_notification",
@@ -1936,21 +1974,44 @@ func _check_nothing_in_scripts_is_uncalled() -> void:
 		var txt := FileAccess.get_file_as_string(f)
 		if txt == "":
 			continue
-		for m in word.search_all(txt):
-			var wd := m.get_string()
+		var code := strip.sub(txt, "$1", true)
+		for m in call.search_all(code):
+			var wd := m.get_string(1)
 			seen[wd] = int(seen.get(wd, 0)) + 1
+		for lit in literal.search_all(code):
+			var whole := lit.get_string(1)
+			seen[whole] = int(seen.get(whole, 0)) + 1
+		for hm in handed.search_all(code):
+			var arg := hm.get_string(1)
+			seen[arg] = int(seen.get(arg, 0)) + 1
 		if not String(f).begins_with("res://scripts"):
 			continue
 		var n := 0
-		for line in txt.split("\n"):
+		for line in code.split("\n"):
 			n += 1
 			var d := decl.search(line)
-			if d != null and not (d.get_string(1) in engine):
-				decls.append([d.get_string(1), f, n])
-	var orphans: Array = []
+			if d == null:
+				continue
+			var name := d.get_string(1)
+			# `_on_*` IS EXEMPT because this codebase connects those by reference
+			# — `sig.connect(_on_minute)` — where the signal is the caller and
+			# there is no bracket to count.
+			if not (name in engine) and not name.begins_with("_on_"):
+				decls.append([name, f, n])
+	# EVERY DECLARATION SUBTRACTS, wherever it is: `_build` is overridden in six
+	# screens and calling it in one does not make the other five live.
+	var by_name := {}
 	for d in decls:
-		if int(seen.get(String(d[0]), 0)) <= 1:
-			orphans.append("%s:%d %s" % [String(d[1]).get_file(), int(d[2]), String(d[0])])
+		by_name[String(d[0])] = int(by_name.get(String(d[0]), 0)) + 1
+	var orphans: Array = []
+	var reported := {}
+	for d in decls:
+		var name := String(d[0])
+		if reported.has(name):
+			continue
+		if int(seen.get(name, 0)) - int(by_name.get(name, 0)) <= 0:
+			reported[name] = true
+			orphans.append("%s:%d %s" % [String(d[1]).get_file(), int(d[2]), name])
 	_ok(orphans.is_empty(),
 		"every one of %d functions in scripts/ has something that calls it%s"
 			% [decls.size(), "" if orphans.is_empty() else " — " + ", ".join(orphans)])

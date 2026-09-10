@@ -3679,3 +3679,40 @@ The other eight went. Deleting `Log.recent()` then left `_ring` written and
 never read, which is the same fault one level down — a four hundred entry array
 every log line appended to, with a docstring naming an in-game debug console and
 a bug-report dump that do not exist.
+
+## The check for "a function nobody calls" passed with ten of them in it
+
+There has been a check for this since the session that found twenty-six dead
+functions. It counted bare TOKENS across `scripts/` and `tests/`, and every one
+of the ten I found by hand was kept alive by something that was not a call:
+`bar` by `for bar in MUSIC_BARS`, `field` by `for field in [...]`, `shell` by
+`var shell := Rect2()`, `mood` by `var mood: Dictionary = SCORE`, `watchers` by
+`var watchers := _who_can_see()`, and the rest by prose the game says out loud —
+"a wall painted by somebody in a hurry", "that is not a compliment, it is a low
+bar". Short verbs and nouns are exactly what a small function is called and
+exactly what a local variable and an English sentence are made of, so the tokens
+the check trusted were the ones most likely to be an accident.
+
+Two wrong fixes first, and both are the lesson. Excluding LOCALS is per-file and
+blanket, so `var standing := String(_rv.record.standing())` hid its own call and
+the check reported the career's "one more bad night and the Board writes to you"
+as dead. Requiring the bracket alone reported `main_menu._continue` — the second
+button a returning player presses — because `UIKit.button("Continue", _continue)`
+hands a Callable over with no bracket at all.
+
+It is `name(` minus one for each DECLARATION, plus whole-string literals for
+`call()` and `has_method()`, plus bare identifiers in argument position, with
+`_on_*` exempt because those are connected by reference. Tightened, it found
+five more immediately: the downstand beam gotcha 83 records as tried and
+reverted, a `follow()` for walking a route in a street phase that was cut,
+`ChartEntry.as_line()` (superseded by `UIKit.chart_line`, which delivers the
+property `as_line`'s docstring promised), and a whole OFF-DUTY STATE for staff —
+hide them under the floor, take them off the collision layer, stop their
+perception, with the suspicion system checking the flag before handing out a
+body — that nothing in the game has ever set.
+
+And it keeps the opposite rule next door in `_check_every_constant_has_a_reader`
+on purpose: there a name mentioned only in prose does count, because the failure
+that check hunts is a constant nobody has thought about, and a constant somebody
+wrote a paragraph about is not that. A function is different. The paragraph is
+usually its own docstring.

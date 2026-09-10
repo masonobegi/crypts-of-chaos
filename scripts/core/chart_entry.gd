@@ -125,10 +125,12 @@ func author_label() -> String:
 		Author.DOCTOR: return author_id
 	return "?"
 
-## How the line reads on a chart, which is how the player and the reviewer both
-## see it. Deliberately identical for both — there is no privileged view.
-func as_line() -> String:
-	return "%s  %s  (%s)" % [_hhmm(stated_minute), text, author_label()]
+## `as_line()` LIVED HERE and is gone: one flat string in the interface's own
+## face, superseded by `UIKit.chart_line`, which sets each author in their own
+## hand so the note the reviewer reads back at you looks like the note you
+## wrote. Both screens went through it and neither went through this. Its
+## docstring promised the property `chart_line` now actually delivers — "how the
+## player and the reviewer both see it, deliberately identical for both".
 
 static func _hhmm(m: int) -> String:
 	return "%02d:%02d" % [(m / 60) % 24, m % 60]

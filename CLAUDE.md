@@ -1431,6 +1431,35 @@ with it because a lost afternoon does not care which.
     features — an in-game debug console and a bug-report dump — that do not
     exist. The sweep is nine lines of grep and is worth re-running after any
     system is cut.
+127. **THE CHECK FOR "A FUNCTION NOBODY CALLS" PASSED WITH TEN OF THEM IN IT,
+    AND THE WORD IT TRUSTED WAS THE PROBLEM.** It counted bare TOKENS across
+    `scripts/` and `tests/`, so every one of the ten was kept alive by something
+    that was not a call: `bar` by `for bar in MUSIC_BARS`, `field` by `for field
+    in [...]`, `shell` by `var shell := Rect2()`, `mood` by `var mood:
+    Dictionary = SCORE`, `watchers` by `var watchers := _who_can_see()`, and the
+    rest by prose the GAME SAYS OUT LOUD — "a wall painted by somebody in a
+    hurry", "that is not a compliment, it is a low bar". Short verbs and nouns
+    are exactly what a small function is called AND exactly what a local
+    variable and an English sentence are made of, so the tokens it trusted were
+    the ones most likely to be an accident. **Requiring the open bracket is what
+    separates a call from a coincidence.**
+    Two wrong fixes first, and both are the lesson. Excluding LOCALS is per-file
+    and blanket, so `var standing := String(_rv.record.standing())` hid its own
+    call and the check reported the career's "one more bad night and the Board
+    writes to you" as dead. And requiring the bracket alone reported
+    `main_menu._continue` — the second button a returning player presses —
+    because `UIKit.button("Continue", _continue)` hands a Callable over with no
+    bracket at all. It is `name(` minus one per DECLARATION, plus whole-string
+    literals for `call()`/`has_method()`, plus bare identifiers in argument
+    position, with `_on_*` exempt because those are connected by reference.
+    Tightened, it found five more immediately, including a whole off-duty state
+    for staff that the suspicion system checked before handing out a body and
+    that nothing in the game ever set.
+    **Note the OPPOSITE rule next door in `_check_every_constant_has_a_reader`,
+    and it is deliberate**: there a name mentioned only in prose DOES count,
+    because the failure that check hunts is a constant nobody has thought about,
+    and a constant somebody wrote a paragraph about is not that. A function is
+    different — the paragraph is usually its own docstring.
 
 ## Design rules that are load-bearing
 

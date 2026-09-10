@@ -137,10 +137,11 @@ var _blink_t := 2.0
 var _blink_close := 0.0
 ## Set while physically startled — drives the flail animation.
 var _startle := 0.0
-## Whether this character is rostered on right now. See set_on_duty().
-var on_duty := true
-var _duty_layer := 8
-var _off_duty_at := Vector3.ZERO
+## THERE IS NO ROSTER, and `on_duty` was the last of one. `set_on_duty` hid a
+## character under the floor, took them off the collision layer and stopped
+## their perception — a whole off-duty state, with the suspicion system checking
+## it before handing out a body — and nothing in the game ever set it. This ward
+## has one clinician and one nurse and they are both here for the whole shift.
 ## Held in place by something else — a bed, for now. A pinned body does no
 ## physics at all.
 ##
@@ -793,20 +794,6 @@ func goto(target: Vector3, run := false) -> void:
 	_path_i = 0
 	_speed = RUN_SPEED if run else WALK_SPEED
 
-## Walk a route that nothing has pathfound.
-##
-## `goto` asks the hospital's navigation grid, which does not exist anywhere
-## except the hospital. Anybody walking home down a street is following a line
-## somebody drew, and this is how they do it.
-func follow(points: PackedVector3Array, run := false, speed := -1.0) -> void:
-	_path = points
-	_path_i = 0
-	# An explicit pace, because follow() is called once PER LEG of a route and
-	# was resetting the walk to WALK_SPEED at every corner — so a caller that
-	# set a speed after handing over the route lost it at the first turn, and
-	# six differently paced evenings all walked at exactly the same speed.
-	_speed = speed if speed > 0.0 else (RUN_SPEED if run else WALK_SPEED)
-
 func stop_moving() -> void:
 	_path = PackedVector3Array()
 	velocity.x = 0.0
@@ -1374,45 +1361,6 @@ func refresh_tell(player_pos: Vector3) -> void:
 ##
 ## A -90 degree rotation about X maps local +Y to local -Z, so the head ends up
 ## at the -Z end of the body — which is the pillow end of the bed.
-## Off-duty staff are not in the building. Their mind stays registered with the
-## suspicion system — somebody who saw you on Tuesday still saw you on Tuesday —
-## but they cannot witness, be talked to, or be walked into while they are at
-## home, and perception skips them.
-func set_on_duty(v: bool) -> void:
-	if on_duty == v:
-		return
-	on_duty = v
-	visible = v
-	set_physics_process(v)
-	set_process(v)
-	collision_layer = _duty_layer if v else 0
-	if not v:
-		stop_moving()
-		_off_duty_at = global_position if is_inside_tree() else Vector3.ZERO
-		if is_inside_tree():
-			global_position = Vector3(_off_duty_at.x, -40.0, _off_duty_at.z)
-	elif is_inside_tree():
-		var h = get_tree().get_first_node_in_group("hospital")
-		if h == null:
-			global_position = _off_duty_at
-		else:
-			var back := String(get("home_room") if get("home_room") != null else "corridor")
-			if back == "":
-				back = "corridor"
-			global_position = h.point_in(back, "duty_return")
-
-## Sit down.
-##
-## Waiting patients and visitors are sent to chairs and then STOOD in them,
-## which is the sort of thing that is invisible in a wide shot and impossible to
-## unsee at three metres. There is no knee in this rig, so the whole leg rotates
-## forward at the hip and the torso drops to seat height: at this level of
-## stylisation that reads as sitting, and it costs two rotations.
-## Sitting.
-##
-## Hips down, thighs forward, shins down, hands on the thighs and a little
-## forward lean. The first version left the arms straight out in front like
-## somebody sleepwalking, and never put them back when they stood up.
 func set_seated(on: bool) -> void:
 	var body := get_node_or_null("Body")
 	if body == null:

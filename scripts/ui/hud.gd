@@ -296,6 +296,21 @@ func _refresh_objective_arrow() -> void:
 	if marker == null or cam == null or not marker.target.is_finite():
 		_arrow.visible = false
 		return
+	# ...AND IT GOES OUT WHEN THE MARKER DOES, WHICH IS THE MOMENT YOU ARRIVE.
+	#
+	# `ObjectiveMarker` fades itself out inside `FADE_NEAR` because "it is a
+	# hint, not a quest arrow, and it disappears the moment you are close enough
+	# to read the thing it is pointing at". This arrow read only
+	# `target.is_finite()`, so standing ON an objective — where the chevron has
+	# gone and the target is now below the camera and therefore off-screen —
+	# turned it on, pointing straight down at the player's own feet. A pale teal
+	# triangle at the bottom edge of the screen with nothing under it, every
+	# time you reached anywhere, including in `02_ward_from_door`, which is the
+	# frame a store page leads with. The marker already knows the answer: it is
+	# `visible`.
+	if not marker.visible:
+		_arrow.visible = false
+		return
 
 	var target: Vector3 = marker.target
 	var behind: bool = cam.is_position_behind(target)

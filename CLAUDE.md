@@ -1276,6 +1276,30 @@ with it because a lost afternoon does not care which.
     that lays out at 510, which fails any "is it still visible" test on every
     card in the game. It takes a real `await get_tree().process_frame`.
 
+116. **THE ARROW THAT SAYS "IT IS OVER THERE" CAME ON THE MOMENT YOU ARRIVED,
+    POINTING AT YOUR OWN FEET.** `ObjectiveMarker` fades its chevron out inside
+    `FADE_NEAR` because its own docstring says "it is a hint, not a quest arrow,
+    and it disappears the moment you are close enough to read the thing it is
+    pointing at" — and it measured that distance from the PLAYER BODY, while the
+    HUD's edge-of-screen arrow projected the target through the CAMERA. Those
+    are the same thing in the game and not in the shot harness, which moves a
+    camera to a vantage and leaves the body where it was: the camera stood 1.8m
+    from the office door with the body across the building, so the chevron was
+    "not arrived yet" and the target was below the lens, and a pale teal triangle
+    sat at the bottom edge of `02_ward_from_door` — the frame a store page leads
+    with — with nothing under it. The fade is about what you can SEE, so it is
+    measured from the eye now, and the arrow also goes out when the marker does.
+    **A harness that separates two things the game always keeps together is not
+    lying to you, it is asking whether the code knows they are the same.**
+117. **A CARD HAS A CLOCK ON IT TOO.** `_set_clock` exists because the first
+    evening frame this project rendered was a ward at dusk with "8:03 AM" over
+    it, and it pokes the HUD label directly for exactly that reason. The UI
+    stages run after the world stages and inherit whatever clock those leave —
+    so the morning briefing, the first card of every shift and the one a store
+    page leads on, was photographed reading "7:25 PM · five beds" with "7:26 PM"
+    beside it. The same self-contradicting frame the function was written to
+    stop, on a surface nobody thought of as having a clock.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

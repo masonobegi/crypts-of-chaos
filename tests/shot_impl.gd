@@ -201,7 +201,13 @@ func tick() -> bool:
 			# Adeyemi's head filling a third of the frame and three speech
 			# bubbles clipped across the corner. The room behind a card is why
 			# any of this is 3D; it should be the room the card belongs to.
-			if String(shot[1]).substr(3) in ["day_over", "paid", "struck_off"]:
+			# ...AND THE HANDOVER IS ONE OF THEM. Sister Nkemelu goes through
+			# last night's folder with you at the desk — `ward_day` opens this
+			# screen from `sign_off()`, and signing off is a thing you do at the
+			# office terminal — so staging it in the middle of the ward
+			# photographed the wrong room and put a different nurse's face
+			# across half of it.
+			if String(shot[1]).substr(3) in ["day_over", "paid", "struck_off", "review"]:
 				_look_at_the_desk(cam)
 			else:
 				_look_down_the_ward(cam)
@@ -505,6 +511,19 @@ func _look_down_the_ward(cam: Camera3D) -> void:
 ## The offender is pushed OUT along the line from the camera rather than the
 ## camera being pushed back, because backing up from that vantage walks into
 ## the plaster. It is a photograph; moving a bystander is allowed.
+## HOW FAR IS FAR ENOUGH, and 2.6 metres was not.
+##
+## The first version of this pushed anybody inside 1.9m out to 2.6, which stops
+## a head filling the frame and does not stop a whole PERSON filling it: at 2.6
+## a standing adult subtends about thirty-eight degrees of a fifty-degree
+## vertical field, so three quarters of the picture is one nurse, cut off at the
+## knees by the bottom edge. That is what `17_review` was — the handover, which
+## is a conversation with Sister Nkemelu, photographed from inside Nurse
+## Adeyemi. At 3.8 the same person is about half the height of the frame and
+## reads as somebody standing in the room, which is the point of the room.
+const LENS_CLEAR := 3.0
+const LENS_STAND := 3.8
+
 func _clear_the_lens(cam: Camera3D) -> void:
 	for n in tree.get_nodes_in_group("npc"):
 		if not (n is Node3D):
@@ -512,13 +531,24 @@ func _clear_the_lens(cam: Camera3D) -> void:
 		var b := n as Node3D
 		var away: Vector3 = b.global_position - cam.global_position
 		away.y = 0.0
-		if away.length() > 1.9 or away.length() < 0.001:
+		if away.length() > LENS_CLEAR or away.length() < 0.001:
 			continue
-		b.global_position += away.normalized() * (2.6 - away.length())
+		b.global_position += away.normalized() * (LENS_STAND - away.length())
 
 func _stage_ui(which: String, w) -> void:
 	match which:
 		"morning":
+			# AT EIGHT IN THE MORNING, WHICH IS THE ONE TIME IT IS EVER SEEN.
+			#
+			# The UI stages run after the world stages and inherit whatever
+			# clock those left, and the last of them is an evening frame — so
+			# the first card of every shift, the most-read screen in the game
+			# and the one a store page leads on, was photographed reading
+			# "7:25 PM · five beds" with "7:26 PM" over it in the corner. The
+			# same self-contradicting frame as the ward at dusk with 8:03 AM on
+			# it that `_set_clock` was written for; it just never occurred to
+			# anybody that a CARD has a clock on it too.
+			_set_clock(Cases.DAY_START_MINUTE)
 			EventBus.request_ui.emit("morning", {})
 		"patient":
 			EventBus.request_ui.emit("patient", {"patient_id": _someone()})

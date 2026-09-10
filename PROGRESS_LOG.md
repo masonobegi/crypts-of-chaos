@@ -3470,3 +3470,33 @@ are two different queues, and in that frame the scroller still reports its
 placeholder height: 120 pixels for a region that lays out at 510, which fails
 any "is this still visible from the top" test on every card in the game. It
 takes a real awaited frame.
+
+## Four things in the frames, found by looking at them again
+
+**The handover was photographed from inside a nurse.** `17_review` is Sister
+Nkemelu going through last night's folder with you, and the game opens it from
+`sign_off()` — which is a thing you do at the office terminal. It was staged in
+the middle of the ward, so a different nurse's face filled half of it. It is a
+desk card now, like the End of Shift and both endings. And `_clear_the_lens`
+pushed anybody inside 1.9m out to 2.6, which stops a HEAD filling the frame and
+does not stop a whole PERSON: at 2.6m a standing adult is three quarters of the
+picture, cut off at the knees by the bottom edge. 3.8m.
+
+**The morning briefing said 7:25 PM.** The UI stages inherit whatever clock the
+world stages left, and the last of those is an evening frame. `_set_clock`
+exists because the first evening frame this project rendered was a ward at dusk
+with 8:03 AM over it; it simply never occurred to anybody that a CARD has a
+clock on it too.
+
+**The objective arrow came on the moment you arrived, pointing at your feet.**
+`ObjectiveMarker` fades out inside `FADE_NEAR` — "it is a hint, not a quest
+arrow" — and measured that from the player's BODY, while the HUD arrow projects
+the target through the CAMERA. Identical in the game, not identical in the shot
+harness, which moves a camera to a vantage and leaves the body behind: so the
+camera stood 1.8m from the office door with the body across the building, the
+chevron said "not there yet", the target was below the lens, and a pale teal
+triangle sat at the bottom of `02_ward_from_door` with nothing under it. The
+fade is about what you can see, so it comes off the eye now.
+
+A harness that separates two things the game always keeps together is not lying
+to you. It is asking whether the code knows they are the same thing.

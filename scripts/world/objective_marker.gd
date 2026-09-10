@@ -77,10 +77,21 @@ func _process(delta: float) -> void:
 		_chevron.position.y = sin(_bob) * 0.07
 		_chevron.rotation.y += delta * 1.1
 
-	var player = get_tree().get_first_node_in_group("player")
-	if player == null:
+	# FROM THE CAMERA, NOT FROM THE BODY. They are the same thing in the game —
+	# the camera is the player's head — and they are not the same thing in the
+	# shot harness, which moves the camera to a vantage and leaves the body
+	# where it was. That gap put this marker's own "have you arrived" answer and
+	# the HUD arrow's "where is it on screen" answer in two different places: the
+	# camera was standing 1.8m from the office door, so the chevron should have
+	# been faded out, while the body was across the building, so it was not — and
+	# the edge-of-screen arrow came on pointing straight down at a target below
+	# the lens. A pale teal triangle at the bottom of `02_ward_from_door`, which
+	# is the frame a store page leads with. The fade is about what you can SEE,
+	# so the eye is the right thing to measure it from.
+	var eye = get_viewport().get_camera_3d()
+	if eye == null:
 		return
-	var d: float = player.global_position.distance_to(target)
+	var d: float = eye.global_position.distance_to(target)
 	# Fades out as you arrive rather than switching off, so it never pops.
 	var alpha: float = clampf((d - FADE_NEAR) / (FADE_FAR - FADE_NEAR), 0.0, 1.0)
 	visible = alpha > 0.02

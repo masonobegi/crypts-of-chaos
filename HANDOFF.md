@@ -154,32 +154,43 @@ reach, and the ward order is drawn per career.
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by
    some distance and no amount of further polish substitutes for it.
-2. **Keep looking at frames.** One full pass is done and it found nine faults,
-   four of which had been shipping for a long time with the whole suite green
-   around them — a hedge growing inside the office, a hairline on every rounded
-   box in the game, the corridor's wayfinding hung edge-on, seven places naming
-   the wrong ward. The loop is `SHOT_ONLY=<frag> ./screenshots.sh` at ninety
-   seconds a frame, and the red test — turn the suspect piece bright red and
-   re-render one frame — is what settles an argument in ninety seconds rather
-   than an afternoon. Re-do the pass after any change to `Surfaces`, `Build` or
-   `Dressing`.
-3. **Two `Parameter "data.tree" is null` errors on every launch.** Bisected to
-   after `Game._start()` returns — in a `start_day()`/`day_started` listener or
-   the morning screen. Pre-existing, harmless, not yet located. They are NOT
-   filtered by the quiet check, which reads only `ERROR|SCRIPT ERROR|WARNING`
-   lines from the play run; these come from the shot harness.
-4. **The office EHR monitor is a blank green rectangle.** The terminal is the
-   object the game is about and its screen has nothing on it.
-5. **The corridor keeps Ward C's teal dado on every ward.** Deliberate — only
-   the ward room repaints — but a player walking from a teal corridor into a
-   slate ward may read it as a bug. `Hospital.WARD_DADO_GROUP` tags on
-   `mid.z > 4.05`; widening it to the corridor is a one-line change plus a
-   look.
+2. **Keep looking at frames.** Two full passes are done and between them they
+   found fifteen faults, most of which had been shipping for a long time with
+   the whole suite green around them — a hedge growing inside the office, a
+   hairline on every rounded box, the corridor's wayfinding hung edge-on, seven
+   places naming the wrong ward, an eye socket seating a sclera deleted three
+   passes ago, the morning briefing reading 7:25 PM, nobody in the building
+   looking at the doctor standing over them. The loop is
+   `SHOT_ONLY=<frag> ./screenshots.sh` at ninety seconds a frame, and the red
+   test — turn the suspect piece bright red and re-render one frame — settles an
+   argument in ninety seconds rather than an afternoon. Re-do the pass after any
+   change to `Surfaces`, `Build`, `Dressing` or `NPCBody`.
+3. **The floor is a third of several frames and there is nothing on it.**
+   `06_station`, `02_ward_from_door` and `05_ward_along` all put the horizon at
+   about 55% and fill the bottom with empty vinyl. **Read gotcha 83 before
+   touching this**: two attempts at "the empty planes" — downstand beams and
+   floor lines — were both worse than the emptiness, and what landed was the
+   thing that was MISSING rather than the thing that was empty (curtain tracks
+   over the curtains, a chair at the station worktop). Look for missing objects,
+   not for decoration.
+4. **The Windows exe has no icon and no version block.** `export.sh` says so and
+   names the remedy — install rcedit and point `export/windows/rcedit` at it;
+   Godot generates the icon from `config/icon` once it has the tool, so nothing
+   needs committing. `STRICT=1 ./export.sh` treats it as a release blocker,
+   which is the right setting for the build that actually ships. Not fixable in
+   this container: rcedit is a Windows binary.
+5. **The corridor and the office keep Ward C's teal dado on every ward.**
+   Deliberate — only the ward room repaints — but a player walking from a teal
+   corridor into a slate ward may read it as a bug. `Hospital.WARD_DADO_GROUP`
+   tags on `mid.z > 4.05`; widening it to the corridor is a one-line change plus
+   a look.
 6. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
 7. **The hands are still mittens with a thumb**, and there are no cheekbones.
    Both are `npc_body.gd`, and both should be judged from `faces.sh` and not
-   from a twenty-minute screenshot run.
+   from a twenty-minute screenshot run. The socket removal (gotcha 113) is the
+   evidence that this model wants FEWER pieces rather than more: read gotcha 86
+   before adding geometry to a face.
 8. **A second ill-pair per ward.** The 128 boards are 21 puzzles wearing 128
    sets of names, because a ward's variability is one coin flip.
    `ILL_PAIR_BY_DAY` becomes a LIST of pairs, `_pair_flip` takes an index, and
@@ -191,7 +202,9 @@ reach, and the ward order is drawn per career.
    three (exactly one ill, count unchanged) or a pair on a DIFFERENT axis,
    `no_care_at_home`, which moves which bed the social lesson is on and cannot
    touch the economy at all. Whichever, `frontier_run` is the arbiter: it plays
-   an honest day on all 128.
+   an honest day on all 128. **Weigh it against the rule that matters most**:
+   128 deals crossed with 720 ward orders is already a great deal of variety,
+   and more content is not more fun.
 
 ## Two noises that are not bugs
 

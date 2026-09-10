@@ -14,32 +14,34 @@ but the half-finished edit in the buffer.
 ## Live log — 2026-09-10
 
 **State: green and shipped-shaped.** Version 1.0.0. `run_tests.sh` passes end
-to end (363 assertions, 266 smoke checks on three seeds); all three platforms
-export; the Linux build boots and exits cleanly.
+to end (363 assertions, 267 smoke checks on three seeds); `screenshots.sh`
+renders all 28 frames and passes its own checks; all three platforms export at
+1.0.0 and the Linux build boots and exits cleanly.
 
-Nothing is half-done in the working tree. Recent commits, newest first:
+Nothing is half-done in the working tree. This session's commits, newest first:
 
-| Commit | What |
-|---|---|
-| `HEAD` | "Shared" meant shared by index, and a sphere does not share its seam |
-| — | A painted marking was casting a shadow onto itself |
-| — | HANDOFF is the live log again |
-| `82b5bcc` | 1.0.0 |
-| `69702d4` | Fifteen hedges were standing inside the building |
-| `0528d81` | The man in bed was still in his shoes, and the bay strip was a green rug |
-| `30dec47` | Every sign in the building agreed on the ward's name except three |
-| `1738fb5` | Two more wards, and the three rules they broke |
+| What |
+|---|
+| The three cards you read at the desk are read at the desk |
+| One of the twenty-eight frames had no card on it |
+| Two more Ward Cs, on the two biggest pieces of text in the game |
+| The wayfinding was turned ninety degrees from the way people walk |
+| "Shared" meant shared by index, and a sphere does not share its seam |
+| A painted marking was casting a shadow onto itself |
+| HANDOFF is the live log again |
+| 1.0.0 |
+| Fifteen hedges were standing inside the building |
+| The man in bed was still in his shoes, and the bay strip was a green rug |
+| Every sign in the building agreed on the ward's name except three |
+| Two more wards, and the three rules they broke |
 
-**In flight right now:** item 2 under *Open* — looking at every screenshot frame
-in turn. Examined and clean this pass: `00_title`, `01_corridor`,
-`02_ward_from_door`, `02e_ward_beech`, `02f_ward_2a`, `03_bedside`, `04_face`,
-`04b_lineup`, `04c_visitor`, `05_ward_along`, `06_station`, `07_office`,
-`08_ward_wide`, `09_ward_evening`, `11_patient`, `17_review`, `18_day_over`,
-plus `faces.sh` `try2__00`–`05`. **Still to examine:** `00b_title_settings`,
-`02b_fittings_off`, `10_morning`, `12_chart`, `13_board`, `14_write`,
-`15_ward_two`, `16_ward_three`, `19_paid`, `20_struck_off`.
+**In flight right now:** nothing. The frame-by-frame pass of item 2 is DONE —
+every one of the 28 screenshot frames and all six `faces.sh` portraits have been
+looked at closely, and everything found was fixed. Nine faults came out of it,
+of which four had been shipping for a long time with the whole suite green
+around them.
 
-**Two things looked at and deliberately left:**
+**Three things looked at and deliberately left:**
 - Two dark stripes on the corridor floor running parallel to the wayfinding
   lines. Proved by a magenta test NOT to be `Dressing.floor_line`; best
   remaining hypothesis is the wall-mounted strip lights' housings casting
@@ -48,6 +50,9 @@ plus `faces.sh` `try2__00`–`05`. **Still to examine:** `00b_title_settings`,
 - `09_ward_evening` shows nobody dozing, because the shot harness sets the clock
   directly rather than running the sim. The frame exists for the LIGHT and is a
   controlled pair with `02_ward_from_door`.
+- The corridor and office keep Ward C's teal dado on every ward. Only the ward
+  room repaints. Defensible — corridors are painted on their own schedule — but
+  see item 5.
 
 ## Where the work lives
 
@@ -119,16 +124,15 @@ reach, and the ward order is drawn per career.
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by
    some distance and no amount of further polish substitutes for it.
-2. **Keep looking at frames.** Every visual fault found in the last two
-   sessions was found by looking, and each one had been shipping for a long
-   time with the whole suite green around it: a hedge growing inside the
-   office, five signs naming the wrong ward, a patient in bed in his shoes, a
-   folding screen that ignored the ward palette. There is very likely more. The
-   loop is `SHOT_ONLY=<frag> ./screenshots.sh` at ninety seconds a frame.
-   Frames not yet examined closely this pass: `04b_lineup`, `04c_visitor`,
-   `05_ward_along`, `09_ward_evening`, `10_morning`, `12_chart`, `13_board`,
-   `14_write`, `15_ward_two`, `16_ward_three`, `19_paid`, `20_struck_off`,
-   `00b_title_settings`.
+2. **Keep looking at frames.** One full pass is done and it found nine faults,
+   four of which had been shipping for a long time with the whole suite green
+   around them — a hedge growing inside the office, a hairline on every rounded
+   box in the game, the corridor's wayfinding hung edge-on, seven places naming
+   the wrong ward. The loop is `SHOT_ONLY=<frag> ./screenshots.sh` at ninety
+   seconds a frame, and the red test — turn the suspect piece bright red and
+   re-render one frame — is what settles an argument in ninety seconds rather
+   than an afternoon. Re-do the pass after any change to `Surfaces`, `Build` or
+   `Dressing`.
 3. **Two `Parameter "data.tree" is null` errors on every launch.** Bisected to
    after `Game._start()` returns — in a `start_day()`/`day_started` listener or
    the morning screen. Pre-existing, harmless, not yet located. They are NOT

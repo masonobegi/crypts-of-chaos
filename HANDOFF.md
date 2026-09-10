@@ -22,6 +22,9 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 
 | What |
 |---|
+| The career probe was driving a different doctor to the frontier probe |
+| Something on the screen |
+| Two engine errors on the one transition every player makes |
 | The three cards you read at the desk are read at the desk |
 | One of the twenty-eight frames had no card on it |
 | Two more Ward Cs, on the two biggest pieces of text in the game |
@@ -35,7 +38,15 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 | Every sign in the building agreed on the ward's name except three |
 | Two more wards, and the three rules they broke |
 
-**In flight right now:** nothing. The frame-by-frame pass of item 2 is DONE —
+**In flight right now:** a `FRONTIER_SEED` sweep, running in the background.
+`CAREER_SEED` has been swept across twenty-seven values and is green on all of
+them; `SMOKE_SEED` across twelve and `PLAY_SEED` across three, likewise. The
+career sweep found three faults in the career probe and, under them, one real
+inversion in the economy — the every-night liar was beating the restrained one,
+which is the single thing the whole design is built to prevent. See
+`PROGRESS_LOG.md` and gotchas 110-112.
+
+The frame-by-frame pass of item 2 is DONE —
 every one of the 28 screenshot frames and all six `faces.sh` portraits have been
 looked at closely, and everything found was fixed. Nine faults came out of it,
 of which four had been shipping for a long time with the whole suite green

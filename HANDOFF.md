@@ -22,6 +22,9 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 
 | What |
 |---|
+| The capsule the menu has been able to pose for all along |
+| The screen that promises who saw you, and the record of who saw you |
+| Sixty-seven seeds, and a click that did not exist |
 | The board was read from a random floor tile |
 | The station, and an argument the file had already made |
 | Nobody looked at the doctor standing over them |
@@ -183,25 +186,33 @@ reach, and the ward order is drawn per career.
    (gotcha 49), not more objects — but `02_ward_from_door` is one half of two
    measured pairs (`02b_fittings_off`, `09_ward_evening`), so both halves have
    to move together and both readings re-taken.
-4. **The Windows exe has no icon and no version block.** `export.sh` says so and
-   names the remedy — install rcedit and point `export/windows/rcedit` at it;
-   Godot generates the icon from `config/icon` once it has the tool, so nothing
-   needs committing. `STRICT=1 ./export.sh` treats it as a release blocker,
-   which is the right setting for the build that actually ships. Not fixable in
-   this container: rcedit is a Windows binary.
+4. **The store capsule is a 16:9 frame and a capsule is not.** `00c_capsule`
+   renders the posed title room with the game's name over the quiet left, at
+   1457x820. Steam's header is 460x215 (about 2.14:1) and the library capsule is
+   600x900, i.e. VERTICAL. The composition survives a centre crop to the header
+   shape — the subjects sit vertically centred and the title is low-left — and
+   does not survive a portrait crop at all. Whoever makes the store art should
+   pose again for that one: `MenuScene.pose_for_capsule` is the place, and the
+   loop is `SHOT_ONLY=00c_capsule ./screenshots.sh` at ninety seconds a try.
 5. **The corridor and the office keep Ward C's teal dado on every ward.**
    Deliberate — only the ward room repaints — but a player walking from a teal
    corridor into a slate ward may read it as a bug. `Hospital.WARD_DADO_GROUP`
    tags on `mid.z > 4.05`; widening it to the corridor is a one-line change plus
    a look.
-6. **Whether tripling the outline weight costs real fill on hardware.**
+6. **The Windows exe has no icon and no version block.** `export.sh` says so and
+   names the remedy — install rcedit and point `export/windows/rcedit` at it;
+   Godot generates the icon from `config/icon` once it has the tool, so nothing
+   needs committing. `STRICT=1 ./export.sh` treats it as a release blocker,
+   which is the right setting for the build that actually ships. Not fixable in
+   this container: rcedit is a Windows binary.
+7. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
-7. **The hands are still mittens with a thumb**, and there are no cheekbones.
+8. **The hands are still mittens with a thumb**, and there are no cheekbones.
    Both are `npc_body.gd`, and both should be judged from `faces.sh` and not
    from a twenty-minute screenshot run. The socket removal (gotcha 113) is the
    evidence that this model wants FEWER pieces rather than more: read gotcha 86
    before adding geometry to a face.
-8. **A second ill-pair per ward.** The 128 boards are 21 puzzles wearing 128
+9. **A second ill-pair per ward.** The 128 boards are 21 puzzles wearing 128
    sets of names, because a ward's variability is one coin flip.
    `ILL_PAIR_BY_DAY` becomes a LIST of pairs, `_pair_flip` takes an index, and
    `enumerate_draws` folds over them. **Read this before doing it:** a pair

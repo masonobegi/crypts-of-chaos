@@ -3153,3 +3153,23 @@ straight back.
 Version bumped from 0.9.0 in `project.godot` and all four fields of
 `export_presets.cfg`, which the ship probe cross-checks against each other.
 All three platforms export and the Linux build boots and exits clean.
+
+### The shadow trench down the middle of every ward frame
+
+`Dressing._add` gives anything below 5cm a contact shadow sized to its own
+footprint. That is right for a bin, a plant or a bedside cabinet and wrong for
+the bay strip under the beds, which is an eighteen-metre painted rectangle and
+got an eighteen-metre radial blob centred on itself — darkest in the middle,
+which is exactly what a shadow trench looks like.
+
+It had been blamed on three other things across two sessions: the zone's own
+tint, the ceiling fittings falling off toward the far wall, and five bed shadows
+merging into one band. Turning the zone bright red and re-rendering the doorway
+frame settled it in ninety seconds — pure red came back at 190 along the strip's
+front edge and 73 through the middle, which is not a lighting gradient. After the
+fix the strip is uniform at (105, 124, 138) across its whole length, and the
+beds' own contact shadows are visible on it again instead of being drowned.
+
+The tint had been `darkened()` twice on top of that, compensating for the blob
+from the other end. Both are gone: a bay marking is the ward's floor colour mixed
+toward its bay tint, and it is paint rather than an object, so it casts nothing.

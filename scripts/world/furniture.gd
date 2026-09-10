@@ -224,10 +224,17 @@ static func _dress_ward_body(h: Hospital, r: Room) -> void:
 	# the beds — the largest painted shape on the floor — was the same green in
 	# every room, and on the slate-blue ward it read as a green rug somebody
 	# had laid down on lino.
+	#
+	# AND IT IS NOT DARKENED, because the place it is painted is already the
+	# darkest floor in the building. Turning the whole zone bright red and
+	# re-rendering the doorway frame settles what the band actually is: pure red
+	# renders 190 at the strip's front edge and 73 against the far wall, so the
+	# darkness is the ceiling fittings falling off toward the beds and not the
+	# paint. Two `darkened()` calls on top of that made a shadow trench of the
+	# one shape in the room that is supposed to say "the beds live here".
 	Dressing.floor_zone(h, Vector3(r.rect.get_center().x, 0, bed_z + into * 0.4),
 		Vector2(r.rect.size.x - 1.6, 3.6),
-		_bay_tint(0).darkened(0.28).lerp(
-			Color(Cases.ward_look().get("floor", Build.FLOOR_A)).darkened(0.10), 0.58))
+		_bay_tint(0).lerp(Color(Cases.ward_look().get("floor", Build.FLOOR_A)), 0.62))
 	# A curtain track between each pair of bays, gathered against the divider.
 	for i in Hospital.BEDS - 1:
 		var mid: float = (h.bed_position(i + 1).x + h.bed_position(i + 2).x) * 0.5

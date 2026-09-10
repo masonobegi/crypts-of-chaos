@@ -69,7 +69,21 @@ static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0)
 	# patch without either of them being asked.
 	if pos.y < 0.05:
 		var box := _local_box(n)
-		if box.size.x > 0.16 and box.size.z > 0.16:
+		# ...UNLESS IT IS A MARKING RATHER THAN AN OBJECT.
+		#
+		# A painted strip is not standing on the floor, it IS the floor, and this
+		# gave one to the bay zone under the beds — an eighteen-metre blob shadow
+		# centred on an eighteen-metre painted rectangle, radial, so it darkened
+		# itself most in the middle. That is the shadow trench running the length
+		# of every ward frame in the game, and it was blamed in turn on the zone's
+		# tint, on the ceiling fittings and on the beds' own shadows merging.
+		# Settled by turning the zone BRIGHT RED and re-rendering one frame: pure
+		# red came back at 190 along the strip's front edge and 73 through the
+		# middle of it, which is not a lighting gradient, it is a blob.
+		#
+		# Four centimetres is the line. A doormat, a wayfinding line and a bay
+		# marking are paint; a bin, a plant and a bedside cabinet are objects.
+		if box.size.y > 0.04 and box.size.x > 0.16 and box.size.z > 0.16:
 			var sh := Build.blob_shadow(
 				Vector2(box.size.x + 0.22, box.size.z + 0.22), 0.02)
 			sh.position = Vector3(box.get_center().x, 0.02 - pos.y,

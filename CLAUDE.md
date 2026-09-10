@@ -1054,6 +1054,22 @@ with it because a lost afternoon does not care which.
     board's build-time literal proved nothing, because `rename_for_ward` runs
     on every reskin and put it back.
 
+103. **A PAINTED MARKING IS NOT AN OBJECT STANDING ON THE FLOOR, and it was
+    casting a shadow onto itself.** `Dressing._add` gives everything below 5cm
+    a blob shadow sized to its own footprint — correct for a bin, a plant or a
+    bedside cabinet, and wrong for the bay strip under the beds, which got an
+    eighteen-metre RADIAL blob centred on an eighteen-metre painted rectangle.
+    That is the shadow trench running the length of every ward frame in this
+    game, and it was blamed in turn on the zone's tint, on the ceiling fittings
+    falling off toward the far wall, and on five bed shadows merging. Settled by
+    turning the zone BRIGHT RED and re-rendering one frame: pure red came back
+    at **190 along the strip's front edge and 73 through the middle of it**,
+    which is not a lighting gradient, it is a blob. Measured after the fix the
+    strip is uniform. Four centimetres is the line — a doormat, a wayfinding
+    line and a bay marking are paint; a bin, a plant and a cabinet are objects.
+    The tint had also been `darkened()` twice on top of that, which is gotcha
+    100 again: two people compensating for the same fault from opposite ends.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

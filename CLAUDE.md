@@ -1102,6 +1102,25 @@ with it because a lost afternoon does not care which.
     off both ends into the air — same estimate (0.62 of the size per character),
     same fix.
 
+106. **THE SIGN CHECK WALKS `Label3D`s AND TWO OF THEM WERE CARDS.** Gotcha 97
+    caught five signs naming the wrong ward and the check written for it walks
+    the world. It cannot see a UI screen, and the two biggest remaining ones
+    were: the MORNING BRIEFING, whose header is the largest text in the game and
+    the first card of every shift, and the loading card between the menu and the
+    ward. Both said WARD C on all six wards. They also survived a
+    `grep "Ward C"` over the whole of `scripts/` **because they SHOUT** — gotcha
+    102's lesson a second time in the same week. The static half of the check
+    now greps every quoted string in `scripts/` against `Cases.WARDS` itself,
+    case-insensitively and on WHOLE WORDS: the first version matched "Ward C"
+    inside "the ward can see", which is a line on the records screen.
+    It also caught `Hospital.LAYOUT`, which spelled both room names out as
+    literals that `reskin()` corrected a moment later — so between `build()` and
+    the first reskin, and in every harness that builds a hospital and never
+    reskins, the corridor a witness quotes was the wrong ward's. The loading
+    card names no ward at all now, because its own comment already says nothing
+    on it may read `GameState`: on the Continue path the save has not been read
+    yet, so a ward name there would be last career's.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

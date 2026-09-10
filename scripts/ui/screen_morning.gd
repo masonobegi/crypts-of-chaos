@@ -29,7 +29,7 @@ func _build() -> void:
 	# 860 puts four of the five on ONE row and takes it to 24%. The other cards
 	# stay at 720 and 780 and should: this is the only one that is a LIST, and a
 	# ward list is a wider document than a verdict.
-	var v := card_shell(860, 780, "WARD C",
+	var v := card_shell(860, 780, Cases.ward_name().to_upper(),
 		"%s  ·  five beds  ·  you are the only doctor on" % GameState.time_string())
 
 	v.add_child(UIKit.label(

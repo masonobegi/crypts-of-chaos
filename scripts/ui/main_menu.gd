@@ -243,7 +243,12 @@ func _go_to_ward() -> void:
 	var card := UIKit.center_panel(420, 90)
 	var v := UIKit.vbox(4)
 	card.add_child(v)
-	v.add_child(UIKit.title("WARD C", 26, UIKit.ACCENT))
+	# NOT A WARD NAME. This said WARD C, which was true of one ward in six and
+	# is exactly the thing the comment below forbids: the ward is a function of
+	# the career seed and the day, and on the Continue path neither has been
+	# read yet. There are six wards and which one you are walking onto is the
+	# first thing the handover tells you, so this card does not pre-empt it.
+	v.add_child(UIKit.title("THE WARD", 26, UIKit.ACCENT))
 	# Nothing here names a day or a date. This card is shown for New Career AND
 	# for Continue, and on the Continue path the save has not been read yet —
 	# `Game._start` does that — so anything read off GameState would be last

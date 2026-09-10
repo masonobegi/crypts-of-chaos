@@ -284,6 +284,7 @@ func _check_the_verbs_work() -> void:
 	_check_every_ward_is_its_own_room()
 	_check_nothing_outside_is_inside()
 	_check_the_outline_hull_is_closed()
+	_check_no_screen_names_one_ward()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -2370,6 +2371,50 @@ func _check_nobody_has_their_eyes_inside_their_head() -> void:
 ##
 ## Gotcha 37 already said the hull "only stays closed if they are shared". They
 ## were not. This is the check that says so.
+## ...AND NOTHING IN `scripts/` SPELLS A WARD'S NAME OUT EITHER.
+##
+## The sign check above walks `Label3D`s in the world, which is where the first
+## five of these were. It cannot see a UI card, and two of them were: the
+## MORNING BRIEFING — the first card of every shift, whose header is the biggest
+## text in the game — and the loading card between the menu and the ward. Both
+## said WARD C, on all six wards, for as long as there has been more than one.
+##
+## They also survived a `grep "Ward C"` over the whole of `scripts/`, because
+## they SHOUT. Same lesson as the sign check: match the name, case-insensitively,
+## against the table rather than against a spelling somebody remembered.
+func _check_no_screen_names_one_ward() -> void:
+	var names := PackedStringArray()
+	for row in Cases.WARDS:
+		names.append(String(row.get("name", "")).to_lower())
+	var offenders: Array = []
+	for path in _all_scripts("res://scripts"):
+		if path.ends_with("cases.gd"):
+			continue                      ## the table itself
+		var n := 0
+		for line in FileAccess.get_file_as_string(path).split("\n"):
+			n += 1
+			var bare := line.strip_edges()
+			if bare.begins_with("#"):
+				continue
+			for chunk in _quoted(bare):
+				# WHOLE WORDS. "Ward C" is a substring of "the ward can see",
+				# which is a line on the records screen: the first version of
+				# this check went red on prose. Punctuation to spaces, then look
+				# for the name with a space on each side.
+				var low := " "
+				for ch in String(chunk).to_lower():
+					low += ch if (ch >= "a" and ch <= "z") \
+						or (ch >= "0" and ch <= "9") else " "
+				low += " "
+				for want in names:
+					if want != "" and low.contains(" %s " % want):
+						offenders.append("%s:%d %s"
+							% [path.get_file(), n, String(chunk).substr(0, 40)])
+						break
+	_ok(offenders.is_empty(),
+		"no screen spells a ward's name out%s"
+			% ("" if offenders.is_empty() else " — " + String(offenders[0])))
+
 func _check_the_outline_hull_is_closed() -> void:
 	var bad := 0
 	var worst := 0.0

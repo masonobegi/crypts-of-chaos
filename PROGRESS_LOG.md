@@ -3219,3 +3219,28 @@ A quarter turn, and the board already carries the text on both faces so it reads
 walking either way. The plate was also a fixed 1.5 metres while `_wall_sign` has
 always sized its plate to its text, so the words hung off both ends into the air;
 it takes the same advance-per-character estimate now.
+
+### Two more Ward Cs, on the two biggest pieces of text in the game
+
+The sign check written last commit walks `Label3D`s in the world. It cannot see
+a UI screen, and the two remaining offenders were screens: the morning briefing,
+whose header is the largest text in the game and the first card of every shift,
+and the loading card between the main menu and the ward. Both said WARD C on all
+six wards.
+
+They had also survived a `grep "Ward C"` over the whole of `scripts/`, because
+they shout — the same lesson as the sign check itself, a second time in the same
+week. The static half of the check greps every quoted string in `scripts/`
+against `Cases.WARDS` itself now, case-insensitively and on whole words: the
+first version matched "Ward C" inside "the ward can see", which is a line on the
+records screen.
+
+It also caught `Hospital.LAYOUT`, which spelled both room names out as literals
+that `reskin()` corrected a moment later — so between `build()` and the first
+reskin, and in every harness that builds a hospital and never reskins, the
+corridor a witness quotes was the wrong ward's.
+
+The loading card names no ward at all now. Its own comment already says nothing
+on it may read `GameState`, because on the Continue path the save has not been
+read yet; a ward name there would have been last career's, printed with total
+confidence, for a fifth of a second.

@@ -36,10 +36,10 @@ const BEDS := 5
 ## day is actually made of: the ward you round on, the station the nurse watches
 ## it from, the office with a door you can shut, and the corridor between them.
 const LAYOUT := [
-	{"key": "corridor", "display": "Ward C Corridor", "kind": "corridor",
+	{"key": "corridor", "display": "", "named_after_ward": " Corridor", "kind": "corridor",
 		"rect": Rect2(0, 0, 20, 4), "floor": 0},
 	# The five-bed bay. One room, one door, and everyone in it can see the door.
-	{"key": "ward", "display": "Ward C", "kind": "ward",
+	{"key": "ward", "display": "", "named_after_ward": "", "kind": "ward",
 		"rect": Rect2(0, 4, 20, 9), "door": 10.0, "door_w": 1.6},
 	# Deliberately a wide opening with no leaf: the station's whole job is that
 	# somebody sitting in it can see who walks past.
@@ -321,7 +321,13 @@ func _build_rooms() -> void:
 	for entry in LAYOUT:
 		var r := Room.new()
 		r.key = String(entry["key"])
-		r.display = String(entry["display"])
+		# THE TWO ROOMS NAMED AFTER THE WARD ARE NAMED HERE, not in the table.
+		# `LAYOUT` used to spell "Ward C" and "Ward C Corridor" out as literals
+		# and `reskin()` corrected them a moment later — so between `build()`
+		# and the first reskin, and in every harness that builds a hospital and
+		# never reskins, the corridor a witness quotes was the wrong ward's.
+		r.display = ("%s%s" % [Cases.ward_name(), String(entry["named_after_ward"])]) \
+			if entry.has("named_after_ward") else String(entry["display"])
 		r.kind = String(entry["kind"])
 		r.rect = entry["rect"]
 		r.name = r.key

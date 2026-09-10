@@ -288,6 +288,16 @@ func _process(delta: float) -> void:
 func _refresh_objective_arrow() -> void:
 	if _arrow == null:
 		return
+	# NOT OVER A CARD. The same argument as the two plates along the top and the
+	# controls reminder below them: a card is not a thing you read past, and the
+	# one thing an edge-of-screen pointer is for — go that way — is the one thing
+	# you cannot do with a screen open. Found by the shot harness's own
+	# under-the-card measurement the first time a stage was staged somewhere the
+	# waypoint was off to the side, which is the second fault that check has
+	# caught in an afternoon.
+	if _modal_open:
+		_arrow.visible = false
+		return
 	var marker = get_tree().get_first_node_in_group("objective_marker")
 	var cam: Camera3D = null
 	var p = get_tree().get_first_node_in_group("player")

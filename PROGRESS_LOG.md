@@ -3562,3 +3562,26 @@ from anywhere, and from the old vantage it was sixty pixels wide.
 
 When a file already contains the argument, check every other object it applies
 to before writing a new one.
+
+## The board was read from a random floor tile
+
+`Hospital.point_in` returns a random point in a room and says so in its own
+docstring — it is there to send a nurse somewhere. `_stage_ui` used it to stand
+the player up for the handover board, so the one screen in this game whose whole
+design argument is that it is a PLACE rather than something you can open from
+anywhere was photographed with two thirds of the frame filled by a flat beige
+wall seen from a few centimetres.
+
+Gotcha 108 from the other end. It is not only that nobody should stand on the
+lens; it is that the lens has to be somewhere a person would be, chosen rather
+than drawn. Every UI stage takes a named vantage now — the desk, the board, or
+down the ward — and each of them stands the doctor where the camera is.
+
+Moving it went red immediately on the under-the-card check added this morning:
+from the station the ward door is off to the side, so the objective arrow came
+on and landed under the card. It hides with the modal now, like the money plate,
+the objective banner and the controls reminder. A card is not a thing you read
+past, and the one thing an edge-of-screen pointer is for is the one thing you
+cannot do with a screen open. That is the second fault that measurement has
+caught in an afternoon, having caught none in the year it spent printing a
+number into the middle of a page of `shot:` lines.

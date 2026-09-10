@@ -209,6 +209,8 @@ func tick() -> bool:
 			# across half of it.
 			if String(shot[1]).substr(3) in ["day_over", "paid", "struck_off", "review"]:
 				_look_at_the_desk(cam)
+			elif String(shot[1]).substr(3) == "board":
+				_look_at_the_board(cam)
 			else:
 				_look_down_the_ward(cam)
 		else:
@@ -487,6 +489,24 @@ func _look_at_the_desk(cam: Camera3D) -> void:
 	# the terminal. A guessed one a metre nearer put the camera inside the desk.
 	cam.global_position = Vector3(16.0, 1.7, -2.0)
 	cam.look_at(Vector3(16.0, 1.3, -7.0), Vector3.UP)
+	_stand_where_the_camera_is(cam)
+	_clear_the_lens(cam)
+
+## AND THE BOARD IS READ AT THE BOARD.
+##
+## `_stage_ui("board")` stood the player on `point_in("station")` — which is a
+## RANDOM floor tile, by that function's own docstring — and then pointed the
+## camera down the ward. So the one screen in this game that is a PLACE rather
+## than something you can open from anywhere was photographed from wherever the
+## draw put somebody, and it came back with two thirds of the frame filled by a
+## flat beige wall seen from a few centimetres. Gotcha 108 again, from the other
+## end: it is not only that nobody should stand on the lens, it is that the lens
+## has to be somewhere a person would be. `06_station`'s vantage is the one that
+## is known to frame the boards.
+func _look_at_the_board(cam: Camera3D) -> void:
+	cam.global_position = Vector3(6.0, 1.7, -2.6)
+	cam.look_at(Vector3(6.0, 1.56, -7.0), Vector3.UP)
+	_stand_where_the_camera_is(cam)
 	_clear_the_lens(cam)
 
 func _look_down_the_ward(cam: Camera3D) -> void:
@@ -496,6 +516,7 @@ func _look_down_the_ward(cam: Camera3D) -> void:
 	cam.global_position = h.door_point("ward") + Vector3(-4.5, 0.0, 1.6)
 	var at: Vector3 = h.door_point("ward") + Vector3(4.0, -0.35, 6.5)
 	cam.look_at(at, Vector3.UP)
+	_stand_where_the_camera_is(cam)
 	_clear_the_lens(cam)
 
 ## NOBODY STANDS ON THE LENS.

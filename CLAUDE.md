@@ -1346,6 +1346,24 @@ with it because a lost afternoon does not care which.
     **When a file already contains the argument, check every other object it
     applies to before writing a new one.**
 
+121. **THE ONE SCREEN THAT IS A PLACE WAS PHOTOGRAPHED FROM A RANDOM FLOOR
+    TILE.** `Hospital.point_in` returns "a random point in a room" and says so in
+    its own docstring — it exists to send a nurse somewhere, and `_stage_ui`
+    used it to stand the player up for the handover board. So the screen whose
+    whole design argument is that it is somewhere rather than something you can
+    open from anywhere came back with two thirds of the frame filled by a flat
+    beige wall seen from a few centimetres. Gotcha 108 from the other end: it is
+    not only that nobody should stand on the lens, it is that the lens has to be
+    somewhere a person would be, chosen rather than drawn. Every UI stage takes
+    a named vantage now — the desk, the board, or down the ward.
+    **And moving it immediately went red on the new under-the-card check**: from
+    the station the ward door is off to the side, so the objective arrow came on
+    and landed under the card. It hides with the modal now, like the two plates
+    along the top and the controls reminder — a card is not a thing you read
+    past, and the one thing an edge-of-screen pointer is for is the one thing you
+    cannot do with a screen open. Second fault that measurement caught in an
+    afternoon, having caught none in the year it spent printing.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -581,6 +581,50 @@ static func focus_first(root: Node) -> Control:
 		target.grab_focus()
 	return target
 
+## A CARD OPENS AT ITS TOP, NOT AT ITS FIRST BUTTON.
+##
+## `grab_focus()` inside a `ScrollContainer` makes it scroll the focused control
+## into view, which is right when a pad player walks a selection down a long
+## list and wrong the instant a card opens: the patient sheet's first focusable
+## is "Read the chart", a third of the way down, so opening a bed scrolled the
+## money block — what the bed is worth, which is the reason the card exists —
+## half off the top edge. It is the most-opened screen in the game and it has
+## been doing it for as long as screens have taken focus at all. Caught in
+## `11_patient`, where the first line reads as clipped rather than as scrolled.
+##
+## Only when the control is still fully visible from the top, so this can never
+## hide the thing it just selected — and measured against the CONTENT's origin
+## rather than the scroller's, because the scroller's own global position does
+## not move and the content's does, which makes the offset scroll-independent.
+##
+## CALLED A FRAME AFTER THE FOCUS, NOT WITH IT. `_focus_first` is already
+## deferred once because `grab_focus()` on a control that is not in the tree yet
+## is silently nothing — but a deferred call and a container's own child sort are
+## in two different queues, so at that moment the scroller still reports its
+## placeholder height. Measured: 120 pixels for a region that lays out at 510,
+## which fails the test below on every card in the game and made the first
+## version of this a no-op that looked like it worked.
+static func scroll_to_top_if_visible(target: Control) -> void:
+	if target == null or not is_instance_valid(target) or not target.is_inside_tree():
+		return
+	var sc: ScrollContainer = null
+	var n: Node = target.get_parent()
+	while n != null:
+		if n is ScrollContainer:
+			sc = n as ScrollContainer
+			break
+		n = n.get_parent()
+	if sc == null or sc.get_child_count() == 0:
+		return
+	var content := sc.get_child(0) as Control
+	if content == null:
+		return
+	var offset: float = target.global_position.y - content.global_position.y
+	if offset + target.size.y <= sc.size.y:
+		# DEFERRED, because ScrollContainer does its own `ensure_control_visible`
+		# in response to the focus change and would otherwise win.
+		sc.set_deferred("scroll_vertical", 0)
+
 ## Depth-first, in the order a reader meets them.
 static func first_focusable(n: Node) -> Control:
 	for c in n.get_children():

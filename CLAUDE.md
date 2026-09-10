@@ -1239,6 +1239,43 @@ with it because a lost afternoon does not care which.
     from under it. **The tell was in its own comment** — when a piece explains
     itself by naming another piece, check that the other piece is still there.
 
+114. **THE TWO MEASUREMENTS THAT CAN SEE A LAYOUT FAULT PRINTED A NUMBER AND
+    NOBODY READ IT.** `shot_impl` measures how much of a card is below its own
+    fold and what the HUD has under it — both real, both only possible in a real
+    window (gotcha 28), and both were `print()` in the middle of a page of
+    `shot:` lines. Gotcha 21 in the one harness that photographs the game.
+    They fail the run now, and asking them at the interface sizes the SLIDER
+    OFFERS rather than only at the one the harness opens found a fault
+    immediately: at 120% and 140% the money plate in the top-right corner and
+    the objective plate in the top-centre are under the card on every screen in
+    the game — "IF YOU SIGNED OFF NOW" covered, a green figure cut in half by a
+    card's edge. They hide with the modal now, which is the same decision the
+    file had already made twice for the controls reminder and the toasts.
+    **The window SIZE turns out not to be the hazard, and that is worth as much
+    as the fix.** `stretch/aspect` is `expand`, so the canvas keeps the base 900
+    units of height as a MINIMUM and gains more on anything narrower than 16:9 —
+    a Steam Deck's 1280x800 lays out against 1600x1000 and has a hundred units
+    MORE room than the monitor everything here was tuned on. Swept on this
+    harness: every frame reported an identical fold at 1280x800 and 1280x720. No
+    monitor shape can push a card off the bottom. `content_scale_factor` can, it
+    is the control a player reaches for when the text is too small, and it is
+    the only one of the two worth checking.
+115. **A CARD OPENED AT ITS FIRST BUTTON RATHER THAN AT ITS TOP.** A
+    `ScrollContainer` scrolls a newly focused child into view — right when a pad
+    walks a selection down a list, wrong the instant a screen opens. The patient
+    sheet's first focusable is "Read the chart", a third of the way down, so
+    every bed a player has ever opened scrolled past the patient's own line
+    ("I tried the soup at lunch and I couldn't finish it") and cut the money
+    block in half. The most-opened screen in the game, in a frame this project
+    has photographed twenty times, reading as a clipped panel rather than as a
+    scrolled one. **The first fix was a no-op that looked like it worked**:
+    `_focus_first` is already the deferred call, because `grab_focus()` on a
+    control that is not in the tree yet is silently nothing — but a deferred call
+    and a container's own child sort are two different queues, so the scroller
+    still reports its PLACEHOLDER height there. Measured: 120 pixels for a region
+    that lays out at 510, which fails any "is it still visible" test on every
+    card in the game. It takes a real `await get_tree().process_frame`.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

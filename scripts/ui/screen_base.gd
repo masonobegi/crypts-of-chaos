@@ -159,4 +159,21 @@ func _build() -> void:
 ## The walk itself is `UIKit.focus_first`, because the pause menu, the settings
 ## and the title screen are not ScreenBases and need exactly the same thing.
 func _focus_first() -> void:
-	UIKit.focus_first(self)
+	var target := UIKit.focus_first(self)
+	# ...AND THE CARD IS SHOWN FROM ITS TOP.
+	#
+	# `grab_focus()` inside a `ScrollContainer` makes it scroll the focused
+	# control into view, which is right when a pad player walks a selection down
+	# a list and wrong the instant a card opens: the patient sheet's first
+	# focusable is "Read the chart", a third of the way down, so opening a bed
+	# scrolled the money block — what the bed is worth, which is the reason the
+	# card exists — half off the top edge. It is the most-opened screen in the
+	# game. Caught in `11_patient`, where the first line reads as clipped rather
+	# than as scrolled.
+	#
+	# A FRAME LATER, because this method is already the deferred one and the
+	# scroller is still 120 pixels tall in it. See `scroll_to_top_if_visible`.
+	if target == null or not is_inside_tree():
+		return
+	await get_tree().process_frame
+	UIKit.scroll_to_top_if_visible(target)

@@ -3428,3 +3428,45 @@ distance a player leans in from.
 
 The tell was in the comment above it. When a piece explains itself by naming
 another piece, check the other piece is still there.
+
+## Two measurements that printed a number nobody read
+
+`shot_impl` has measured two things since the day they were written: how much of
+a card is below its own fold, and what the HUD has underneath it. Both are only
+possible in a real window, both have found real faults before — and both were a
+`print()` in the middle of a page of `shot:` lines. That is the harness that
+photographs the game failing in the way this repo has a gotcha about.
+
+They fail the run now, and asking them at the interface sizes the slider offers
+rather than only at the one the harness opens found something at once: above
+100%, the money plate in the top-right corner and the objective plate in the
+top-centre are under the card on every screen in the game — "IF YOU SIGNED OFF
+NOW" covered, a green figure cut in half by the card's edge. Both hide with the
+modal now, which is the decision `hud.gd` had already made twice, for the
+controls reminder and for the toasts.
+
+The window SIZE turned out not to be the hazard, and working that out was worth
+as much as the fix. `stretch/aspect` is `expand`, so the canvas keeps the base
+900 units of height as a minimum and gains more on anything narrower than 16:9:
+a Steam Deck's 1280x800 lays out against 1600x1000 and has a hundred units more
+room than the monitor everything here was tuned on. Swept it to be sure — every
+frame reported an identical fold at 1280x800 and at 1280x720.
+
+## The patient card opened at its first button
+
+A `ScrollContainer` scrolls a newly focused child into view. That is right when
+a pad walks a selection down a list and wrong the instant a screen opens: the
+patient sheet's first focusable is "Read the chart", a third of the way down, so
+every bed anybody has ever opened scrolled past the patient's own line — "I
+tried the soup at lunch and I couldn't finish it" — and cut the money block in
+half. The most-opened screen in the game, in a frame this project has
+photographed twenty times, reading as a clipped panel rather than as a scrolled
+one.
+
+The first fix was a no-op that looked like it worked. `_focus_first` is already
+the deferred call, because a `grab_focus()` on a control that is not in the tree
+yet is silently nothing — but a deferred call and a container's own child sort
+are two different queues, and in that frame the scroller still reports its
+placeholder height: 120 pixels for a region that lays out at 510, which fails
+any "is this still visible from the top" test on every card in the game. It
+takes a real awaited frame.

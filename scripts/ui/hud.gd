@@ -18,6 +18,10 @@ var _cash_label: Label
 var _owed: Label
 var _tl_bg: PanelContainer
 var _objective: Label
+## The plates the two of them sit on, kept so a modal can hide them. See
+## `set_modal`.
+var _money_panel: Control
+var _objective_panel: Control
 var _prompt: Label
 var _prompt_sub: Label
 var _prompt_panel: PanelContainer
@@ -137,6 +141,7 @@ func _build() -> void:
 	tr.add_child(_owed)
 	tr_bg.add_child(tr)
 	add_child(tr_bg)
+	_money_panel = tr_bg
 
 	# ---- top centre: objective.
 	# Inside its own plate, like the other two. It used to be a bare wrapping
@@ -149,6 +154,7 @@ func _build() -> void:
 	_objective.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tc_bg.add_child(_objective)
 	add_child(tc_bg)
+	_objective_panel = tc_bg
 
 	# ---- crosshair
 	_crosshair = Control.new()
@@ -463,6 +469,28 @@ func set_modal(on: bool) -> void:
 	# they come back, and an orphaned Control is gotcha 53.
 	if _toasts != null and is_instance_valid(_toasts):
 		_toasts.visible = not on
+	# AND THE TWO PLATES ALONG THE TOP, WHICH IS THE SAME DECISION A THIRD TIME.
+	#
+	# The controls reminder and the toasts hide here because a card is not a
+	# thing you read past. The money plate in the top-right corner and the
+	# objective plate in the top-centre are the same thing, and they were not
+	# hidden — because at the interface size everything in this project has ever
+	# been photographed at, 100%, they happen not to collide with a card. Above
+	# it they do: `content_scale_factor` divides the visible rect, so at 120%
+	# the sheet grows into both plates and at 140% it covers "IF YOU SIGNED OFF
+	# NOW" entirely, leaving a green number cut in half by a card's edge in the
+	# corner of every screen in the game.
+	#
+	# Found by the shot harness measuring what is under the card at each
+	# interface size the slider offers rather than only at the one the harness
+	# opens — the same measurement that found this line under the patient sheet,
+	# asked at the sizes a player can actually choose. A layout that is only
+	# correct at one setting is not a layout, and the fix is not to move the
+	# plates: it is that a card is not a thing you read past.
+	if _money_panel != null and is_instance_valid(_money_panel):
+		_money_panel.visible = not on
+	if _objective_panel != null and is_instance_valid(_objective_panel):
+		_objective_panel.visible = not on
 	if on and _prompt_panel != null:
 		_prompt_panel.visible = false
 	if on:

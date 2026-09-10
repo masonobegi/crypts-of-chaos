@@ -100,6 +100,9 @@ func start() -> void:
 	# rendered run — it wants the real UI.
 	out_dir = "user://shots"
 	DirAccess.make_dir_recursive_absolute(out_dir)
+	# READ, NOT ASSUMED. Every UI stage puts the window back to this, and a
+	# literal here would put it back to a size the harness was never opened at.
+	_native_screen = DisplayServer.window_get_size()
 	menu = load("res://scenes/MainMenu.tscn").instantiate()
 	tree.root.add_child(menu)
 
@@ -208,8 +211,35 @@ func tick() -> bool:
 		settle += 1
 		if settle < 5:
 			return false
+		# THE FRAMES AFTER THE FIFTH ARE THE SAME CARD AT THE BIGGEST INTERFACE
+		# SIZE THE SLIDER OFFERS, WHICH IS WHERE CARDS ACTUALLY OVERFLOW.
+		#
+		# The window SIZE turns out not to be the hazard, and working that out
+		# is worth more than the check: `stretch/aspect` is `expand` (gotcha
+		# 26), so the canvas keeps the base 900 units of height as a MINIMUM and
+		# gains more on anything narrower than 16:9 — a Steam Deck's 1280x800
+		# lays out against 1600x1000 units and has a hundred units MORE room
+		# than the monitor everything here was tuned on. Measured, on this
+		# harness, by sweeping the window: every frame reported an identical
+		# fold at 1280x800 and 1280x720. No monitor shape can push a card off
+		# the bottom.
+		#
+		# `Interface size` can, and `_shell`'s own comment says it already did
+		# once: `content_scale_factor` DIVIDES the visible rect, so 1.4 leaves
+		# 643 units of height for cards that ask for 780 and 830. It is also the
+		# one control a player reaches for when the text is too small — the
+		# control that hid the button they needed to press next. One frame, no
+		# extra PNG, and it puts the setting back afterwards.
+		var step: int = settle - 5
+		if step == 0:
+			_save(String(shot[0]))
+		elif step - 1 < UI_SCALES.size():
+			_measure_layout(String(shot[0]), UI_SCALES[step - 1])
+		if step < UI_SCALES.size():
+			Settings.set_value("ui_scale", UI_SCALES[step])
+			return false
+		Settings.set_value("ui_scale", 1.0)
 		settle = 0
-		_save(String(shot[0]))
 		if game.ui.has_method("close"):
 			game.ui.close()
 		index += 1
@@ -360,6 +390,38 @@ func _evening_reading() -> void:
 ## returns 0 cannot fail (gotcha 21), and these two measurements are the only
 ## things in this repo that can see a lighting rig that is not connected.
 var _visual_failures: Array = []
+
+## HALF A SCROLL REGION BELOW ITS OWN FOLD is where a card stops being readable
+## without knowing it scrolls, and nothing in this game says that it does.
+const FOLD_LIMIT := 0.5
+
+## THE TOP OF THE SLIDER, AND ONE STOP UNDER IT. `Settings` clamps `ui_scale`
+## to 1.5 and the Settings row offers 0.8 to 1.4, so 1.4 is what a player can
+## actually ask for and 1.2 is the one most of them will land on.
+const UI_SCALES := [1.2, 1.4]
+
+var _native_screen := Vector2i(1600, 900)
+
+## The same pair of measurements as `_save` takes, with the interface scaled up.
+func _measure_layout(name: String, scale: float) -> void:
+	if game == null or game.ui == null or game.ui.current == null:
+		return
+	var hidden := _below_the_fold(game.ui)
+	var buried := _hud_under_the_card()
+	var note := "  at interface size %.0f%%: %.0f%% below the fold" \
+		% [scale * 100.0, hidden * 100.0]
+	if buried != "":
+		note += "   [UNDER THE CARD: %s]" % buried
+	print(note)
+	_layout_failure(name, "interface size %.0f%%" % (scale * 100.0), hidden, buried)
+
+func _layout_failure(name: String, where: String, hidden: float, buried: String) -> void:
+	if hidden >= FOLD_LIMIT:
+		_visual_failures.append("%s at %s is %.0f%% below its own fold"
+			% [name, where, hidden * 100.0])
+	if buried != "":
+		_visual_failures.append("%s at %s has the HUD under the card: %s"
+			% [name, where, buried])
 
 func _visual_fail(why: String) -> void:
 	_visual_failures.append(why)
@@ -769,10 +831,19 @@ func _save(name: String) -> void:
 		# harness runs in a real 1600x900 window, so these are real numbers.
 		var hidden := _below_the_fold(game.ui)
 		note = "   [%.0f%% below the fold%s]" % [hidden * 100.0,
-			"  <-- TOO MUCH" if hidden >= 0.5 else ""]
+			"  <-- TOO MUCH" if hidden >= FOLD_LIMIT else ""]
 		var buried := _hud_under_the_card()
 		if buried != "":
 			note += "   [UNDER THE CARD: %s]" % buried
+		# ...AND BOTH OF THEM FAIL THE RUN NOW.
+		#
+		# They have printed a number and a name since the day they were written
+		# and nothing has ever read either. That is the fault this repo has a
+		# gotcha about and a probe that printed four tables and asserted nothing
+		# — the two measurements that can see a card running off the bottom of a
+		# screen, or the controls reminder buried under the patient sheet,
+		# reported to a page of `shot:` lines that a person has to scroll.
+		_layout_failure(name, "interface size 100%", hidden, buried)
 	print("  shot: ", ProjectSettings.globalize_path(path), note)
 
 ## The worst overflow on any scrolling area in the screen, as a fraction of its

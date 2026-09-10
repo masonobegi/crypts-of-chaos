@@ -5,8 +5,16 @@ extends Node
 ## Talking to somebody was a subtitle that appeared complete and vanished on a
 ## timer, which is why it "goes so quick": there is nothing to read AT, no
 ## control over the pace, and no sense that a person is saying it. Text that
-## arrives at the speed of speech, with a voice under it, and a click to hurry
-## it along, is the difference between a line of text and a conversation.
+## arrives at the speed of speech, with a voice under it, is the difference
+## between a line of text and a conversation.
+##
+## THERE IS NO "CLICK TO HURRY", and this said there was. `hurry()` existed,
+## with a docstring describing the click that calls it, and nothing anywhere
+## called it — the same shape as a constant nothing reads, in a public method,
+## which is worse because it reads in review as the place where the thing
+## happens. It is also not a feature this game wants: these are not lines you
+## advance through, they are the ward talking while you work, and the key that
+## would hurry one is the key that opens a bed. Deleted rather than wired.
 ##
 ## Deliberately a plain Node driving somebody else's Label rather than a widget:
 ## every screen in this project builds its own layout, and this has to work
@@ -44,16 +52,6 @@ func speak(label: Label, text: String, voice_id := "") -> void:
 
 func is_running() -> bool:
 	return _running
-
-## Click once to finish the line instantly. Returns true if it did something,
-## so the caller can tell "hurry up" apart from "next line, please".
-func hurry() -> bool:
-	if not _running:
-		return false
-	_shown = float(_full.length())
-	_apply()
-	_finish()
-	return true
 
 func _process(delta: float) -> void:
 	if not _running:

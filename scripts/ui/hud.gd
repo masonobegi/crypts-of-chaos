@@ -586,10 +586,12 @@ func _speak(voice: String) -> void:
 
 ## Cut a line off mid-word without saying the rest of it.
 ##
-## `Typewriter` has no `stop()`, and `hurry()` is not one: it jumps `_shown` to
-## the end and calls `_apply`, which walks the blip loop over every character
-## that had not arrived yet and fires them all in a single frame — a burst of
-## thirty mumbles, which is a worse sound than the one being cancelled.
+## `Typewriter` has no `stop()`. It had a `hurry()`, which was not one either —
+## it jumped `_shown` to the end and called `_apply`, which walks the blip loop
+## over every character that had not arrived yet and fires them all in a single
+## frame, a burst of thirty mumbles that is a worse sound than the one being
+## cancelled. (It has since been deleted: nothing anywhere called it, and the
+## key that would have is the key that opens a bed. See its own file.)
 ## Speaking an EMPTY line ends the current one on the next frame with the blip
 ## loop finding nothing to say, which is what "she stopped talking" is.
 func _hush() -> void:

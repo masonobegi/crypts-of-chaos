@@ -3585,3 +3585,20 @@ past, and the one thing an edge-of-screen pointer is for is the one thing you
 cannot do with a screen open. That is the second fault that measurement has
 caught in an afternoon, having caught none in the year it spent printing a
 number into the middle of a page of `shot:` lines.
+
+## Sixty-seven seeds, and a click that did not exist
+
+Swept the four seeded harnesses well past their pinned three: twenty-two
+`SMOKE_SEED` values (270 checks each), twenty-seven `CAREER_SEED`, eight
+`FRONTIER_SEED`, ten `PLAY_SEED` on the whole-shift plan. All green. The career
+sweep is the one that earned its keep this session — three faults in the probe
+and one real inversion under them — and the others now say that the rest of the
+game does not depend on the board it happens to be dealt.
+
+And `Typewriter.hurry()` went. Its own class docstring described "a click to
+hurry it along" and nothing anywhere called it: a public method with a
+docstring promising a feature, which is the same shape as a constant nothing
+reads and worse, because it reads in review as the place where the thing
+happens. It is also not a feature this game wants — these are not lines you
+advance through, they are the ward talking while you work, and the key that
+would hurry one is the key that opens a bed.

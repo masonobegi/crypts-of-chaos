@@ -98,8 +98,19 @@ func _ready() -> void:
 	# idle step and the draw for that frame has not happened yet when the first
 	# one comes back; after the second, the menu is genuinely on the screen and
 	# the hitch happens behind something rather than instead of it.
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# HOLD THE TREE, DO NOT ASK FOR IT TWICE. `get_tree()` on the second line is
+	# evaluated AFTER the first await has come back, and by then this node may
+	# have left the tree — which is `Parameter "data.tree" is null`. A
+	# `SceneTree` outlives a node's membership of it, so awaiting a signal on
+	# the captured one is safe where re-asking is not. **This was not the cause
+	# of the two errors the menu used to print** — that was `UIRoot.open`
+	# hearing an autoload signal after it had been removed — but it is the same
+	# hazard one frame away, and it was found while looking for that one. The
+	# guard below still has to be `is_inside_tree()`: two frames is two frames
+	# in which the player could have closed the window.
+	var t := get_tree()
+	await t.process_frame
+	await t.process_frame
 	if is_inside_tree():
 		# THE SELECTION FIRST, THEN THE MUSIC. The title screen is the first
 		# thing a pad reaches and it had no focus at all, so the D-pad had
@@ -256,12 +267,15 @@ func _go_to_ward() -> void:
 	v.add_child(UIKit.label("Eight o'clock. Five beds.", 15, UIKit.INK_DIM,
 		HORIZONTAL_ALIGNMENT_CENTER))
 	add_child(card)
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# Captured, for the reason given at the top of `_ready`: re-asking a node
+	# for its tree after an await is a null waiting for a slow frame.
+	var t2 := get_tree()
+	await t2.process_frame
+	await t2.process_frame
 	# `is_inside_tree` because two frames is two frames in which the player could
 	# have closed the window, and `change_scene_to_file` on a dead tree errors.
 	if is_inside_tree():
-		get_tree().change_scene_to_file("res://scenes/Game.tscn")
+		t2.change_scene_to_file("res://scenes/Game.tscn")
 
 ## The options screen, from the title. UIRoot lives inside the game scene, so
 ## the menu builds its own instance of it rather than reaching for one that

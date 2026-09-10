@@ -3278,3 +3278,29 @@ They stage in the office now, with the desk, the terminal, the chair and DR. YOU
 on the wall behind the card. A guessed vantage a metre nearer than the one
 `07_office` already uses put the camera inside the desk; the fix was to reuse the
 one that is known to frame the thing.
+
+### Two engine errors on the one transition every player makes
+
+`Parameter "data.tree" is null`, twice, on every launch. They had been on the
+open-items list for two sessions as "pre-existing, harmless, not yet located".
+
+`UIRoot._ready` connects `open` to `EventBus.request_ui`, and EventBus is an
+autoload, so the connection outlives the scene that made it. Leaving the main
+menu removes its UIRoot and queues it for deletion — but a queued node is not
+freed until the end of the frame, and `Game._start()` emits
+`request_ui("morning")` inside that same frame. The orphan heard it, built a
+card, and asked a tree it is no longer in to pause. Guarded in `open()` with
+`is_inside_tree()` rather than by disconnecting on the way out: the question
+"can this show anything" has exactly one answer.
+
+Two things about finding it were worth more than the fix. The error fires only
+when the free and the next scene's construction land in the same frame, so the
+first reproduction — which waited three frames between them — reported the game
+as perfectly clean and nearly closed the investigation. And `screenshots.sh` had
+no error grep at all until this session, which is why a harness that printed this
+on every single run never once went red. `data.tree` is in that grep now, and the
+run that found this is what proved it red.
+
+A second, latent instance of the same shape was found on the way: `main_menu`
+re-asked for `get_tree()` on the line after an `await`, which is a null waiting
+for a slow frame. It was not the cause and its comment says so.

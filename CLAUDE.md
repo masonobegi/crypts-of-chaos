@@ -1148,6 +1148,27 @@ with it because a lost afternoon does not care which.
     vantage a metre nearer than `07_office`'s put the camera inside the desk;
     reuse the one that is known to frame the thing.
 
+109. **A CONNECTION TO AN AUTOLOAD SIGNAL OUTLIVES THE SCENE THAT MADE IT.**
+    `UIRoot._ready` does `EventBus.request_ui.connect(open)`, and EventBus is an
+    autoload — so leaving the main menu removed its UIRoot and QUEUED it for
+    deletion, but a queued node is not freed until the end of the frame, and
+    `Game._start()` emits `request_ui("morning")` inside that same frame. The
+    orphan heard it, built a card, and asked a tree it is no longer in to pause:
+    **two `Parameter "data.tree" is null` errors on the one transition every
+    player makes, on every launch, for as long as this project has had a main
+    menu.** `boot_check.sh` stops AT the menu and every other harness starts
+    after it, so nothing had ever watched the step between them — gotcha 76's
+    gap, with a real error sitting in it. Guarded in `open()` with
+    `is_inside_tree()` rather than by disconnecting on the way out, because the
+    question "can this show anything" has exactly one answer.
+    **Two things about finding it are worth more than the fix.** The error fires
+    only when the free and the next scene's construction land in the SAME frame,
+    so a probe that waits three frames between them reports the game as clean;
+    and `screenshots.sh` had no error grep at all until this session, which is
+    why a harness that printed it on every run for months never went red.
+    `data.tree` is in that grep now, and it is proven red by the run that found
+    this.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

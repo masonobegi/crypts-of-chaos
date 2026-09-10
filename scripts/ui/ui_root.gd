@@ -149,6 +149,23 @@ const CARD_DOWN_DB := -16.0
 var _swapping := false
 
 func open(id: String, ctx: Dictionary = {}) -> void:
+	# A UIRoot THAT HAS LEFT THE TREE MUST NOT BUILD A SCREEN.
+	#
+	# `_ready` connects this to `EventBus.request_ui`, and EventBus is an
+	# AUTOLOAD — so the connection outlives the scene. Leaving the main menu
+	# removes its UIRoot and queues it for deletion, but a queued node is not
+	# freed until the end of the frame, and `Game._start()` emits
+	# `request_ui("morning")` inside that same frame. The orphan heard it, built
+	# a card, and asked a tree it is no longer in to pause: two
+	# `Parameter "data.tree" is null` errors on the one transition every player
+	# makes, on every launch, for as long as this project has had a main menu.
+	# `boot_check.sh` stops AT the menu and every other harness starts after it,
+	# so nothing had ever watched the step between them (gotcha 76).
+	#
+	# Guarded here rather than by disconnecting on the way out, because the
+	# question "can this show anything" has exactly one answer and it is this.
+	if not is_inside_tree():
+		return
 	if current != null:
 		_swapping = true
 		close()

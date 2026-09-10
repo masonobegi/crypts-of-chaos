@@ -57,7 +57,12 @@ fi
 # printed in the middle of a page of "shot:" lines and exited 0. One was found
 # by eye, which is not a way of finding things. `Parameter "m" is null` is the
 # headless rasteriser and is filtered for the reason gotcha 16 gives.
-BAD=$(echo "$OUT" | grep -E "SCRIPT ERROR|Trying to assign invalid|previously freed" \
+# `data.tree` is `get_tree()` on a node that is not in the tree, which is never
+# benign and is not something a picture shows you: two of them printed on the
+# way out of the main menu — the one transition every player makes — for as long
+# as this harness has existed, because `boot_check.sh` stops AT the menu and
+# every other harness starts after it.
+BAD=$(echo "$OUT" | grep -E "SCRIPT ERROR|Trying to assign invalid|previously freed|data\.tree" \
   | grep -v 'Parameter "m" is null' || true)
 if [ -n "$BAD" ]; then
   echo "screenshots.sh: the game threw while being photographed" >&2

@@ -16,17 +16,33 @@ but the half-finished edit in the buffer.
 **State: green and shipped-shaped.** Version 1.0.0. `run_tests.sh` passes end
 to end; all three platforms export; the Linux build boots and exits cleanly.
 
-Nothing is half-done in the working tree. The last four commits were:
+Nothing is half-done in the working tree. Recent commits, newest first:
 
 | Commit | What |
 |---|---|
+| `HEAD` | A painted marking was casting a shadow onto itself |
+| — | HANDOFF is the live log again |
 | `82b5bcc` | 1.0.0 — version bumped in `project.godot` and all four `export_presets.cfg` fields |
 | `69702d4` | Fifteen hedges were standing inside the building |
 | `0528d81` | The man in bed was still in his shoes, and the bay strip was a green rug |
 | `30dec47` | Every sign in the building agreed on the ward's name except three |
 | `1738fb5` | Two more wards, and the three rules they broke |
 
-**In flight right now:** nothing. Next up is item 1 under *Open* below.
+**In flight right now:** working through item 2 under *Open* — looking at every
+screenshot frame in turn. Examined and clean so far this pass: `00_title`,
+`01_corridor`, `02_ward_from_door`, `02e_ward_beech`, `02f_ward_2a`,
+`03_bedside`, `04_face` (`try1__04`), `04b_lineup` (as `try1__cast`),
+`05_ward_along`, `06_station`, `07_office`, `08_ward_wide`, `11_patient`,
+`17_review`, `18_day_over`. Still to examine: `00b_title_settings`,
+`02b_fittings_off`, `04c_visitor`, `09_ward_evening`, `10_morning`, `12_chart`,
+`13_board`, `14_write`, `15_ward_two`, `16_ward_three`, `19_paid`,
+`20_struck_off`.
+
+**One thing looked at and deliberately left:** two dark stripes on the corridor
+floor running parallel to the wayfinding lines. Proved by a magenta test NOT to
+be `Dressing.floor_line`; best remaining hypothesis is the wall-mounted strip
+lights' housings casting shadows from the ceiling spots, which is physically
+right and reads as floor marking. Not worth more archaeology.
 
 ## Where the work lives
 

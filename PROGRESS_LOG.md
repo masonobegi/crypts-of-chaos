@@ -3539,3 +3539,26 @@ placed, because the camera is a child of the player and taking the body's own Y
 would drop a 2.6m store-page vantage to the floor. The bedside frame gained its
 interact prompt the moment that landed, which is the game's own affordance
 appearing in a photograph of the game.
+
+## The station, and an argument the file had already made
+
+`_station` carries a note about the corridor counter: a 2.1m slab with a top on
+it was "the largest single object in the room and a featureless rectangle from
+every angle, which is most of why the station read as placeholder", and here are
+the three things that fix it — a recessed kick, a shadow gap under the worktop,
+a lean rail.
+
+The BACK worktop, in the same function, is six metres long, fills `06_station`
+end to end, and was built as exactly the slab that note condemns. It has the
+kick and the shadow gap now. Its top was bare as well, which is the office
+desk's fault a second time with `Dressing.desk_clutter` sitting unplaced again;
+and the one permanently staffed post in the building had nowhere to sit, with
+four metres of empty vinyl in front of it, which was most of what the frame was.
+A chair, pushed in.
+
+The camera moved in a metre and a half too. The handover board is the one piece
+of information in this game that is a PLACE rather than a screen you can open
+from anywhere, and from the old vantage it was sixty pixels wide.
+
+When a file already contains the argument, check every other object it applies
+to before writing a new one.

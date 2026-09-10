@@ -55,7 +55,7 @@ const SHOTS := [
 	["04b_lineup", "lineup"],
 	["04c_visitor", "visitor"],
 	["05_ward_along", Vector3(1.6, 1.7, 9.5), Vector3(18.5, 1.2, 11.0)],
-	["06_station", Vector3(6.0, 1.7, -1.0), Vector3(6.0, 1.3, -7.0)],
+	["06_station", Vector3(6.0, 1.7, -2.6), Vector3(6.0, 1.56, -7.0)],
 	["07_office", Vector3(16.0, 1.7, -2.0), Vector3(16.0, 1.3, -7.0)],
 	["08_ward_wide", Vector3(2.0, 2.6, 6.0), Vector3(14.0, 1.0, 11.5)],
 	# THE SAME WARD, TWELVE HOURS LATER, FROM THE SAME SPOT AS 02.

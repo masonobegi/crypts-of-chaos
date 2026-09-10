@@ -779,8 +779,31 @@ static func _corridor(h: Hospital, r: Room) -> void:
 static func _station(h: Hospital, r: Room) -> void:
 	var c := r.center()
 	# The back worktop, against the exterior wall.
-	_block(h, Vector3(6.0, 1.1, 0.6), Color(0.48, 0.55, 0.58), Vector3(c.x, 0.55, r.rect.position.y + 0.5))
-	_block(h, Vector3(6.2, 0.08, 0.85), Color(0.66, 0.70, 0.72), Vector3(c.x, 1.12, r.rect.position.y + 0.5))
+	#
+	# THE SAME JOINERY AS THE CORRIDOR COUNTER, and it did not have it. The note
+	# below on the counter says a 2.1m slab with a top on it was "the largest
+	# single object in the room and a featureless rectangle from every angle,
+	# which is most of why the station read as placeholder" — and then this run,
+	# which is SIX metres and fills the middle of `06_station` end to end, was
+	# built as exactly that and left. A recessed kick so it stands on the floor
+	# rather than growing out of it, and a shadow gap under the top so the top
+	# reads as a slab laid on. Three boxes, and the fix was already written down
+	# eighteen lines further down the same function.
+	var back_z: float = r.rect.position.y + 0.5
+	_block(h, Vector3(5.85, 0.14, 0.44), Color(0.30, 0.35, 0.38), Vector3(c.x, 0.07, back_z))
+	_block(h, Vector3(6.0, 0.86, 0.6), Color(0.48, 0.55, 0.58), Vector3(c.x, 0.57, back_z))
+	_block(h, Vector3(5.96, 0.05, 0.62), Color(0.34, 0.39, 0.42), Vector3(c.x, 1.02, back_z))
+	_block(h, Vector3(6.2, 0.08, 0.85), Color(0.66, 0.70, 0.72), Vector3(c.x, 1.12, back_z))
+	# ...WITH SOMETHING ON IT. Six metres of empty grey worktop is the largest
+	# single surface in the room and it filled the middle of `06_station` as a
+	# blank slab. Same fault the office desk had and the same one line of fix;
+	# the plate is 8cm centred at 1.12, so its surface is 1.16.
+	Dressing.desk_clutter(h, Vector3(c.x + 1.55, 1.16, back_z + 0.05))
+	# ...and a chair pushed in at it. There are two chairs in this room and both
+	# are at the meeting table; the one permanently staffed post in the building
+	# had nowhere to sit and four metres of empty vinyl in front of it, which is
+	# most of what the frame was. Turned to face the worktop, and set back far
+	# enough that somebody could get up out of it.
 
 	# ...and the counter that actually faces the corridor, in two runs either
 	# side of the opening. This is the post the whole floor plan is arranged
@@ -815,6 +838,14 @@ static func _station(h: Hospital, r: Room) -> void:
 			Vector3(sx, 0.80, corridor_z + 0.33))
 		_occupy(sx, corridor_z, 2.3, 0.9)
 	_wall_sign(h, "NURSES' STATION", Vector3(c.x - 3.0, 1.55, corridor_z + 0.32), 0.0, 0.13)
+	# ...AND SOMEBODY IS WORKING AT IT. Same fault as the office desk, on the
+	# other side of the building: the corridor counter is the biggest surface in
+	# the room, it is what the player walks past every time they cross between
+	# the ward and the office, and it was a bare grey slab. The terminal is on
+	# the east run, so the paperwork goes on the west one. Turned to face the
+	# corridor, because a stack of notes squared up to the wall is a prop and one
+	# squared up to whoever is standing there is a job half done.
+	Dressing.desk_clutter(h, Vector3(c.x - 3.35, 1.16, corridor_z + 0.06), PI)
 
 	# THE BOARD, on the back wall behind the worktop, facing into the room. You
 	# have to be standing IN the station to read it — which is the point: it is
@@ -840,6 +871,7 @@ static func _station(h: Hospital, r: Room) -> void:
 	t.position = Vector3(c.x + 3.0, 1.16, corridor_z)
 	t.rotation.y = PI
 
+	_chair(h, Vector3(c.x + 1.55, 0, back_z + 1.05), PI)
 	_table(h, Vector3(c.x - 2.4, 0, c.z + 2.6), 1.6, 0.8, 0.75)
 	_chair(h, Vector3(c.x - 2.4, 0, c.z + 1.8), 0.0)
 	_chair(h, Vector3(c.x + 1.2, 0, c.z + 2.4), 2.6)

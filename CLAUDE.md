@@ -1333,6 +1333,19 @@ with it because a lost afternoon does not care which.
     floor. The bedside frame gained its interact prompt the moment it landed,
     which is the game's own affordance appearing in a photograph of the game.
 
+120. **THE FIX WAS ALREADY WRITTEN DOWN EIGHTEEN LINES FURTHER DOWN THE SAME
+    FUNCTION.** `_station`'s corridor counter carries a note saying a 2.1m slab
+    with a top on it was "the largest single object in the room and a
+    featureless rectangle from every angle, which is most of why the station
+    read as placeholder", and lists the three things that fix it: a recessed
+    kick, a shadow gap under the worktop, a lean rail. The BACK worktop in the
+    same function is SIX metres, fills `06_station` end to end, and was built as
+    exactly the slab that note condemns. Its top was bare too — the same fault
+    the office desk had, with `Dressing.desk_clutter` sitting unplaced again —
+    and the one permanently staffed post in the building had nowhere to sit.
+    **When a file already contains the argument, check every other object it
+    applies to before writing a new one.**
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -1089,6 +1089,19 @@ with it because a lost afternoon does not care which.
     What found it was zeroing each cloth piece's own `line` in turn. Accumulate
     by POSITION, quantised; the smoke run asserts it and was proven red at 140.
 
+105. **THE BUILDING'S MAIN WAYFINDING HUNG EDGE-ON TO EVERYBODY WHO WALKED
+    UNDER IT.** `Dressing.ceiling_sign` faces its own +Z and takes a `rot_y`
+    that both call sites left at the default — and the corridor runs in X. So
+    the two hanging signs, which carry the only "this way to the ward, that way
+    to the station" in the game, presented their 6cm EDGE to anybody walking the
+    corridor: a blue vertical stripe in the middle of the ceiling, in the first
+    frame of the game, with the text on the two faces nobody can see. A quarter
+    turn is the whole fix, and the board already carries the text on both faces
+    so it reads walking either way. **And the plate was a fixed 1.5m** while
+    `_wall_sign` has always sized its plate to its text, so the words then hung
+    off both ends into the air — same estimate (0.62 of the size per character),
+    same fix.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -197,9 +197,16 @@ static func rename_ward(h: Hospital) -> void:
 		if r.kind != "corridor":
 			continue
 		Dressing.tag = WARD_NAME_SIGN
+		# ...FACING ALONG THE CORRIDOR. `ceiling_sign` faces its own +Z and the
+		# corridor runs in X, so at the default rotation both of these hung
+		# EDGE-ON to everybody who ever walked under them — a blue vertical
+		# stripe in the middle of the ceiling, in the first frame of the game,
+		# with the building's main wayfinding written on the two faces nobody
+		# can see. A quarter turn is the whole fix; the board carries the text
+		# on both faces already, so it reads walking either way.
 		Dressing.ceiling_sign(h, Vector3(5.0, Hospital.WALL_H,
 			r.rect.position.y + r.rect.size.y * 0.5),
-			"%s  ▲      ◀  STATION" % Cases.ward_name().to_upper())
+			"%s  ▲      ◀  STATION" % Cases.ward_name().to_upper(), PI * 0.5)
 		Dressing.tag = ""
 
 static func _dress_ward(h: Hospital, r: Room) -> void:
@@ -413,7 +420,7 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	# names the ward is built by `rename_ward` instead, because it is rewritten
 	# every morning along with the plate above the beds.
 	Dressing.ceiling_sign(h, Vector3(15.0, Hospital.WALL_H, (z0 + z1) * 0.5),
-		"YOUR OFFICE  ▶")
+		"YOUR OFFICE  ▶", PI * 0.5)
 	Dressing.noticeboard(h, Vector3(9.0, 1.65, z0 + 0.10), 0.0, 1.8, 1.1)
 	Dressing.extinguisher(h, Vector3(2.0, 1.05, z0 + 0.10), 0.0)
 	for x in [7.0, 13.0]:

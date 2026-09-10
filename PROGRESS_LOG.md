@@ -3205,3 +3205,17 @@ the offset exceeds the local radius of curvature — and it moved the number by 
 fifth, removed nothing, and would have thinned every outline in the building. It
 was reverted. So was a per-piece ink cap on the bedding, which fixed the symptom
 on two pieces out of every rounded box in the game.
+
+### The wayfinding was turned ninety degrees from the way people walk
+
+`Dressing.ceiling_sign` faces its own +Z and takes a `rot_y` that both call sites
+left at the default. The corridor runs in X. So the two hanging signs — which
+carry the only "this way to the ward, that way to the station" the building has —
+presented their six-centimetre edge to everybody who ever walked under them: a
+blue vertical stripe in the middle of the ceiling, in the first frame a player
+sees on leaving their office, with the text on the two faces nobody can see.
+
+A quarter turn, and the board already carries the text on both faces so it reads
+walking either way. The plate was also a fixed 1.5 metres while `_wall_sign` has
+always sized its plate to its text, so the words hung off both ends into the air;
+it takes the same advance-per-character estimate now.

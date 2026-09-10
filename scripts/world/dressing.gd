@@ -419,10 +419,16 @@ static func ceiling_sign(h: Node3D, pos: Vector3, text: String, rot_y := 0.0,
 	# not: the caller placed the board at a fixed 2.62 and the two 34cm rods sat
 	# above it ending at 3.09, eleven centimetres short of a 3.2m ceiling. Every
 	# corridor sign in the building was suspended from nothing.
-	for dx in [-0.55, 0.55]:
+	# THE PLATE IS SIZED TO THE TEXT, which `_wall_sign` has always done and this
+	# had not: a fixed 1.5m board with "WARD 9 ▲ ◀ STATION" on it at 17cm is a
+	# sign whose words hang off both ends into the air. The 0.62 is the same
+	# advance-per-character estimate the wall plates use.
+	var plate_w: float = maxf(1.2, float(text.length()) * 0.17 * 0.62 + 0.22)
+	for dx in [-plate_w * 0.36, plate_w * 0.36]:
 		root.add_child(Build.mi(Build.cyl_mesh(0.012, 0.34, 6), Build.mat(STEEL, 0.4, 0.6),
 			Vector3(dx, -0.17, 0)))
-	root.add_child(Build.box_mi(Vector3(1.5, 0.34, 0.06), tint, Vector3(0, -0.51, 0), 0.7, 0.010))
+	root.add_child(Build.box_mi(Vector3(plate_w, 0.34, 0.06), tint,
+		Vector3(0, -0.51, 0), 0.7, 0.010))
 	var l := Build.label3d(text, 0.17, Color(0.96, 0.98, 0.98), false)
 	l.position = Vector3(0, -0.51, 0.045)
 	root.add_child(l)

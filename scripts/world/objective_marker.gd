@@ -17,6 +17,15 @@ const FADE_FAR := 6.0       ## fully solid beyond here
 
 var target: Vector3 = Vector3.INF
 var label_text := ""
+## WHICH ROOM THIS IS THE WAY INTO, and the reason it is carried at all.
+##
+## Every target the game sets is a DOORWAY — the ward's or the office's — so
+## once you are through it the chevron is behind you and the HUD's
+## edge-of-screen arrow points back the way you came, at the room you are
+## standing in, for the rest of the shift. It said "Ward 9" and it meant "go
+## back out". `FADE_NEAR` cannot see that: it is three metres, and a ward is
+## twenty. Being in the room IS having arrived.
+var target_room := ""
 
 var _chevron: MeshInstance3D = null
 var _label: Label3D = null
@@ -57,15 +66,25 @@ func _ready() -> void:
 	EventBus.objective_target_changed.connect(_on_target)
 	visible = false
 
-func _on_target(pos: Vector3, text: String) -> void:
+func _on_target(pos: Vector3, text: String, room := "") -> void:
 	target = pos
 	label_text = text
+	target_room = room
 	if _label:
 		_label.text = text
 	visible = _has_target()
 
 func _has_target() -> bool:
 	return target.is_finite()
+
+## Standing in the room the target is the door of.
+func _already_there(eye: Camera3D) -> bool:
+	if target_room == "":
+		return false
+	var h = get_tree().get_first_node_in_group("hospital")
+	if h == null or not h.has_method("room_at"):
+		return false
+	return String(h.room_at(eye.global_position)) == target_room
 
 func _process(delta: float) -> void:
 	if not _has_target():
@@ -90,6 +109,9 @@ func _process(delta: float) -> void:
 	# so the eye is the right thing to measure it from.
 	var eye = get_viewport().get_camera_3d()
 	if eye == null:
+		return
+	if _already_there(eye):
+		visible = false
 		return
 	var d: float = eye.global_position.distance_to(target)
 	# Fades out as you arrive rather than switching off, so it never pops.

@@ -1300,6 +1300,39 @@ with it because a lost afternoon does not care which.
     beside it. The same self-contradicting frame the function was written to
     stop, on a surface nobody thought of as having a clock.
 
+118. **NOBODY LOOKED AT THE DOCTOR STANDING OVER THEM.** Gaze in this game
+    means "I have noticed something" and is rationed on purpose: `refresh_tell`
+    turns a head toward you only from `suspicious` upward, so a stare across a
+    ward is a warning rather than decoration. That is right at fourteen metres
+    and uncanny at one — a doctor walks to a bed, stands over somebody, opens
+    their notes and decides whether they go home, and the patient looks straight
+    ahead through all of it. `03_bedside` is the camera the whole game is played
+    through and it is exactly what that frame showed: a face turned thirty-five
+    degrees away with its features crowded onto the side of the skull, which
+    looked like a modelling fault and was a behaviour one. Hung on the INTERACT
+    PROMPT rather than on proximity, so it is precisely the person you could
+    speak to right now — aimed at, in range, one at a time — and it can never
+    become a room turning to face you, which is what the rationing protects.
+    **`look_toward` LATCHES**, and that is the half that would have rotted in
+    silence: `_has_look` is only ever cleared by `clear_look()`, so a head aimed
+    once stays aimed at a position the player left minutes ago. The interactor
+    releases the previous target the moment the aim moves off it, the smoke run
+    asserts both halves, and the release was proven red.
+119. **A HARNESS THAT SEPARATES TWO THINGS THE GAME ALWAYS KEEPS TOGETHER IS
+    ASKING WHETHER THE CODE KNOWS THEY ARE THE SAME.** `shot_impl` moves a
+    CAMERA to a vantage and leaves the player BODY wherever it spawned, so every
+    world frame in the set was photographed from a place nobody was standing.
+    Two faults came out of that in one session and both looked like modelling
+    faults: the objective marker measured "have you arrived" from the body while
+    the HUD arrow projected the target through the camera (gotcha 116), and
+    every NPC's gaze and every interact prompt read the body, so nobody in any
+    frame was reacting to the picture. `_stand_where_the_camera_is` moves the
+    body's XZ to the camera's, AFTER the camera is placed — the camera is a
+    child of the player, so moving the body afterwards carries the vantage with
+    it, and taking the body's own Y would drop a 2.6m store-page camera to the
+    floor. The bedside frame gained its interact prompt the moment it landed,
+    which is the game's own affordance appearing in a photograph of the game.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

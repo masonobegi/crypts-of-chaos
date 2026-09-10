@@ -3500,3 +3500,42 @@ fade is about what you can see, so it comes off the eye now.
 
 A harness that separates two things the game always keeps together is not lying
 to you. It is asking whether the code knows they are the same thing.
+
+## Nobody looked at the doctor standing over them
+
+Gaze in this game is rationed on purpose. `refresh_tell` turns a head toward you
+only from `suspicious` upward, so a stare across a ward is a warning and not
+decoration — which is right at fourteen metres and uncanny at one. A doctor
+walks to a bed, stands over somebody, opens their notes and decides whether they
+go home, and the patient looks straight ahead through all of it.
+
+`03_bedside` is the camera the whole game is played through and that is exactly
+what it showed: a face turned thirty-five degrees away with its features crowded
+onto the side of the skull. It looked like a modelling fault. It was a
+behavioural one.
+
+The glance hangs off the INTERACT PROMPT rather than off proximity, so it is
+precisely the person you could speak to right now — aimed at, in range, one at a
+time — and it can never become a room turning to face you, which is the thing
+the rationing exists to protect.
+
+And `look_toward` latches. `_has_look` is only ever cleared by `clear_look()`,
+so a head aimed once stays aimed at a position the player left minutes ago; a
+ward of people staring at where somebody used to be, with nothing on screen to
+say so. The interactor releases the previous target the moment the aim moves off
+it. The smoke run asserts both halves and the release was proven red.
+
+## And the harness was standing somewhere else the whole time
+
+`shot_impl` moves a camera to a vantage and leaves the player's body wherever it
+spawned, so every world frame in the set was taken from a place nobody was
+standing. Two faults came out of that in one afternoon and both looked like
+modelling faults: the objective marker measures "have you arrived" from the body
+while the HUD arrow projects the target through the camera, and every NPC's gaze
+and every interact prompt read the body.
+
+The doctor stands where the camera is now — XZ only, and after the camera is
+placed, because the camera is a child of the player and taking the body's own Y
+would drop a 2.6m store-page vantage to the floor. The bedside frame gained its
+interact prompt the moment that landed, which is the game's own affordance
+appearing in a photograph of the game.

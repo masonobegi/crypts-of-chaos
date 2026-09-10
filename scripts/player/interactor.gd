@@ -95,11 +95,63 @@ func _update_hover() -> void:
 		_show_carry_prompt()
 		return
 	if target == null:
+		_meet_their_eye(null)
 		EventBus.interact_prompt_cleared.emit()
 		return
 	_show_prompt_for(target)
 
+## ...AND THEY LOOK UP AT YOU.
+##
+## Gaze in this game means "I have noticed something", and it is deliberately
+## rationed: `refresh_tell` turns a head toward you only from `suspicious`
+## upward, so a stare across a ward is a warning rather than decoration. That is
+## right at fourteen metres and uncanny at one — a doctor walked to a bed, stood
+## over somebody, opened their notes and decided whether they went home, and the
+## patient looked straight ahead through all of it. `03_bedside` is the camera
+## the whole game is played through and it is exactly what that frame showed.
+##
+## Hung on the INTERACT PROMPT rather than on proximity, so it is precisely the
+## person you could speak to right now — aimed at, in range, one at a time — and
+## it can never become a room turning to face you, which is what the rationing
+## exists to protect.
+##
+## AND IT HAS TO BE PUT BACK, which is the half that would have rotted quietly.
+## `look_toward` LATCHES: `_has_look` is only ever cleared by `clear_look()`, so
+## a head aimed once stays aimed at a position the player left minutes ago. The
+## previous target is released the moment the aim moves off it.
+var _met: NPCBody = null
+
+func _meet_their_eye(target: Node) -> void:
+	var who: NPCBody = target as NPCBody
+	if who == _met:
+		if who != null and is_instance_valid(who):
+			who.look_toward(player.global_position + Vector3(0, 1.5, 0))
+		return
+	if _met != null and is_instance_valid(_met):
+		_met.clear_look()
+	_met = who
+	if who != null:
+		who.look_toward(player.global_position + Vector3(0, 1.5, 0))
+
 func _show_prompt_for(target: Node) -> void:
+	# ...AND THEY LOOK UP AT YOU.
+	#
+	# Gaze in this game means "I have noticed something", and it is deliberately
+	# rationed: `refresh_tell` turns a head toward you only from `suspicious`
+	# upward, so a stare across a ward is a warning and not decoration. That is
+	# right at fourteen metres and uncanny at one — a doctor walked to a bed,
+	# stood over somebody, opened their notes and decided whether they went home,
+	# and the patient looked straight ahead through all of it. `03_bedside` is
+	# the camera the whole game is played through and it is what that frame
+	# shows.
+	#
+	# Hung on the INTERACT PROMPT rather than on proximity, so it is exactly the
+	# people you could speak to right now — aimed at, in range, one at a time —
+	# and it cannot become a room turning to face you, which is the thing the
+	# rationing exists to protect. `look_toward` is a one-shot: `_tick_look`
+	# lerps the head back to centre as soon as it stops being renewed, so
+	# looking away lets them look away.
+	_meet_their_eye(target)
 	var title := ""
 	var sub := ""
 	if target.has_method("prompt"):

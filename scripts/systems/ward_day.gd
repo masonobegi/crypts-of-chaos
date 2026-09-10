@@ -918,12 +918,12 @@ func _update_objective() -> void:
 		EventBus.objective_changed.emit("Five beds. %s to decide." % (
 			"All five" if undecided == 5 else "%d still" % undecided))
 		if h != null:
-			EventBus.objective_target_changed.emit(h.door_point("ward"), Cases.ward_name())
+			EventBus.objective_target_changed.emit(h.door_point("ward"), Cases.ward_name(), "ward")
 		return
 	EventBus.objective_changed.emit(
 		"All five decided. Sign off in your office before eight.")
 	if h != null:
-		EventBus.objective_target_changed.emit(h.door_point("office"), "Your office")
+		EventBus.objective_target_changed.emit(h.door_point("office"), "Your office", "office")
 
 func held_ids() -> Array:
 	var out: Array = []

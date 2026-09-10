@@ -207,6 +207,7 @@ func _check_the_chart_works() -> void:
 	_check_the_promised_visitors_arrive()
 
 	_check_the_crosshair_keeps_the_secret(w)
+	_check_somebody_you_could_speak_to_looks_up(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
 	# from half past seven that is enough to walk the shift past eight o'clock,
@@ -1969,6 +1970,52 @@ func _all_scripts(dir: String) -> Array:
 		f = d.get_next()
 	d.list_dir_end()
 	return out
+
+## A PATIENT YOU COULD SPEAK TO LOOKS UP AT YOU, AND LOOKS AWAY AGAIN.
+##
+## Gaze is rationed on purpose — `refresh_tell` only turns a head toward you
+## from `suspicious` upward, so a stare across a ward is a warning rather than
+## decoration. At fourteen metres that is right; at one it is uncanny, and
+## `03_bedside` is the camera the whole game is played through. The interact
+## prompt is the exact condition "you could speak to this person right now", so
+## it is what the glance hangs off.
+##
+## BOTH HALVES, because the second one would have rotted silently: `look_toward`
+## LATCHES. `_has_look` is only ever cleared by `clear_look()`, so a head aimed
+## once stays aimed at a position the player left minutes ago — a ward of people
+## staring at where somebody used to be. There is nothing on screen that says
+## which of the two is happening, and no other layer in this repo can see it.
+func _check_somebody_you_could_speak_to_looks_up(_w) -> void:
+	var ps = tree.get_first_node_in_group("patient_system")
+	var pl = tree.get_first_node_in_group("player")
+	if ps == null or pl == null:
+		_fail("no ward to be looked at from")
+		return
+	var it = pl.get("interactor")
+	if it == null or not it.has_method("_meet_their_eye"):
+		_fail("the interactor cannot meet anybody's eye")
+		return
+	var who = null
+	for p in ps.active():
+		var body = ps.get_body(p.id)
+		if body != null and body.is_inside_tree():
+			who = body
+			break
+	if who == null:
+		_fail("nobody on the ward to look at")
+		return
+	who.call("clear_look")
+	_ok(not bool(who.get("_has_look")),
+		"a patient nobody is speaking to is looking straight ahead")
+	it.call("_meet_their_eye", who)
+	_ok(bool(who.get("_has_look")),
+		"and looks up at somebody who could speak to them")
+	# ...AND THE AIM MOVING OFF PUTS IT BACK. Aimed at nothing, not at somebody
+	# else, because "nothing" is the path a player takes every time they turn
+	# their head and is the one a `null` target would skip.
+	it.call("_meet_their_eye", null)
+	_ok(not bool(who.get("_has_look")),
+		"and looks away again when the aim moves off them")
 
 func _check_the_crosshair_keeps_the_secret(w) -> void:
 	var ps = tree.get_first_node_in_group("patient_system")

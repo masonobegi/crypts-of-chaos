@@ -71,7 +71,7 @@ signal request_ui(id: String, context: Dictionary)
 ## could never complete, and the whole tutorial was stuck on step 1 of 6 forever.
 signal ui_opened(id: String)
 signal objective_changed(text: String)
-signal objective_target_changed(pos: Vector3, label: String)  ## where it is
+signal objective_target_changed(pos: Vector3, label: String, room: String)  ## where it is, and which room it is the way into
 ## Where that objective is, in the world. Vector3.INF means "nowhere in
 ## particular" — a step that is about a screen rather than a place.
 

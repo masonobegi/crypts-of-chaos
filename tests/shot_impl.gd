@@ -265,6 +265,7 @@ func tick() -> bool:
 	else:
 		cam.global_position = shot[1]
 		cam.look_at(shot[2], Vector3.UP)
+	_stand_where_the_camera_is(cam)
 	settle += 1
 	if settle < 4:
 		return false
@@ -523,6 +524,31 @@ func _look_down_the_ward(cam: Camera3D) -> void:
 ## reads as somebody standing in the room, which is the point of the room.
 const LENS_CLEAR := 3.0
 const LENS_STAND := 3.8
+
+## THE DOCTOR STANDS WHERE THE CAMERA IS.
+##
+## Everything in this building that reacts to the player reads the PLAYER BODY,
+## and this harness moves a camera to a vantage and leaves the body wherever it
+## spawned — so every world frame was photographed from a place nobody was
+## standing. Two things came out of that and both looked like modelling faults:
+## the objective marker measured "have you arrived" from the body while the HUD
+## arrow projected the target through the camera, which put a teal triangle at
+## the bottom edge of the frame a store page leads with; and `look_toward`
+## turns a patient's head toward the body, so the man photographed from his own
+## bedside was looking thirty-five degrees off, at somebody standing in another
+## room, with his eyes and mouth crowded onto the side of his head.
+##
+## XZ only, and the camera is placed FIRST: the camera is a child of the player,
+## so moving the body afterwards would carry the vantage with it, and taking the
+## body's own Y would drop a 2.6m store-page camera to the floor.
+func _stand_where_the_camera_is(cam: Camera3D) -> void:
+	var pl = tree.get_first_node_in_group("player")
+	if pl == null or not (pl is Node3D):
+		return
+	var body := pl as Node3D
+	var was: Vector3 = cam.global_position
+	body.global_position = Vector3(was.x, body.global_position.y, was.z)
+	cam.global_position = was
 
 func _clear_the_lens(cam: Camera3D) -> void:
 	for n in tree.get_nodes_in_group("npc"):

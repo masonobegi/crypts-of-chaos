@@ -3382,3 +3382,24 @@ three-quarters moves at all, so the bed-every-other-night player the design
 exists to make findable is untouched.
 
 Twenty-seven career seeds green, and the whole suite green.
+
+## The ladder, asserted where it can be read
+
+The economy change above was found by a career probe playing eight policies over
+twenty nights on three seeds, which is an expensive way to notice arithmetic.
+Two unit tests now say it directly, and writing them corrected a comment.
+
+The first walks a once-a-night liar's strikes from the constants themselves and
+demands he is out by night six — the night the money arrives. The second plays a
+bed-every-other-night career through the real `record_night`, because what
+shapes that one is `FORGIVENESS` rather than the rates: it sits at nought or one
+strike through night eleven, which is longer than any career in this game that
+pays, and then drifts up a strike every second night and is struck off on the
+nineteenth.
+
+`review_system.gd` had said for a long time that a bed every other night "stays
+survivable forever". It does not, and it is better that it does not — a treadmill
+that paid a strike back forever is the fault the forgiveness cap was added to
+close. The comment says what the measurement says now, and both halves are
+asserted, because a fix to the every-night liar that moved the other rate would
+have traded one inversion for another and nothing would have caught it.

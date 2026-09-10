@@ -575,8 +575,16 @@ func outcome() -> Dictionary:
 	# ("I have started keeping a list") and the verdict never climbed.
 	#
 	# The gap between the two rates is deliberate and it is the whole game: an
-	# uncorroborated bed every other night stays survivable forever, and that is
-	# the policy the design is trying to make findable.
+	# uncorroborated bed every other night stays survivable for as long as a
+	# career lasts, and that is the policy the design is trying to make
+	# findable. NOT "forever", which is what this said until somebody measured
+	# it: `DoctorRecord.FORGIVENESS` refunds three clean nights and no more, so
+	# an alternating run sits at nought or one strike through night eleven —
+	# every career that pays finishes inside that — and then drifts up a strike
+	# every second night and is struck off on the nineteenth. Both halves are
+	# the design, and `test_a_bed_every_other_night_stays_survivable` asserts
+	# them: restraint survives the run it has to survive, and a treadmill that
+	# paid a strike back forever was the fault the forgiveness cap closed.
 	var entrenched: bool = record != null and record.nights >= ENTRENCHED_NIGHTS \
 		and rate >= ENTRENCHED_RATE
 	var indefensible: Array = []

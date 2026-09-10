@@ -1857,3 +1857,119 @@ func _held_on_your_word(pid: String, stub: Dictionary, extra := "") -> WardDay:
 	w.write_entry(pid, claim, "Not right yet.", w.minute)
 	w.set_disposition(pid, "hold")
 	return w
+
+## A LADDER THAT ARRIVES AFTER THE MONEY IS NOT A LADDER.
+##
+## `ENTRENCHED_NIGHTS` was 5, and read against the shape of the curve that is
+## obviously right: four nights before anybody is described by their habits, one
+## rung, then the next. Read against the LENGTH OF THE RUN IT HAS TO BITE INSIDE
+## it was one night short of doing anything at all — the doctor who takes exactly
+## one bed on his own word EVERY night banked four free nights, a flag on the
+## fifth and a referral on the sixth, four strikes of the five, and the debt
+## clears in six. He walked out with the deeds, faster than the restrained liar
+## the whole design exists to reward.
+##
+## The career probe found it and this is the arithmetic underneath, asserted
+## where it can be read: an every-night liar must be OUT by the night an honest
+## career is still working, and a bed every OTHER night must never reach the
+## rung at all, however long the career runs. The second half is the one that
+## matters most — it is the policy the design is trying to make findable, and a
+## fix to the first half that moved it would have traded one inversion for
+## another.
+func test_the_entrenched_rung_lands_before_the_debt_does() -> void:
+	# WHAT THE REVIEW DOES TO A ONCE-A-NIGHT LIAR, night by night, from the
+	# constants themselves rather than from a played career — a played one costs
+	# eight wards and can only ever check the ward order it was dealt.
+	var strikes := 0
+	var out_on := 0
+	for night in range(1, 12):
+		var completed: int = night - 1
+		var rate: float = 1.0 if completed > 0 else 0.0
+		var entrenched: bool = completed >= ReviewSystem.ENTRENCHED_NIGHTS \
+			and rate >= ReviewSystem.ENTRENCHED_RATE
+		var habitual: bool = completed >= ReviewSystem.HABIT_NIGHTS \
+			and rate >= ReviewSystem.HABIT_RATE
+		# One solo bed. Entrenched makes it a referral, habitual a flag, and
+		# neither leaves it at "noted".
+		var verdict: String = ReviewSystem.OUTCOME_QUESTIONS
+		if entrenched:
+			verdict = ReviewSystem.OUTCOME_ESCALATED
+		elif habitual:
+			verdict = ReviewSystem.OUTCOME_FLAGGED
+		strikes += int(DoctorRecord.STRIKE_FOR.get(verdict, 0))
+		if out_on == 0 and strikes >= DoctorRecord.STRIKES_TO_STRIKE_OFF:
+			out_on = night
+	# SIX, because that is when the money arrives. A liar earns about a
+	# thousand a night more than an honest doctor and the debt is nine nights
+	# of honest work, so he finishes on the sixth. Anything later than this and
+	# the ladder is decoration.
+	t.ok(out_on > 0 and out_on <= 6,
+		"lying every night is struck off by night six, before the debt can be paid (night %d)"
+			% out_on)
+	# AND THE MORNING BEFORE IT, IN WORDS. A threshold nobody can see coming
+	# feels arbitrary when it lands, and `habit_warning()` is the only place the
+	# game says this one out loud — so it has to be readable on the morning of
+	# the night it first bites, not after.
+	DoctorRecord.wipe()
+	var rec := DoctorRecord.load_from_state()
+	rec.nights = out_on - 1
+	rec.counts["uncorroborated_stay"] = out_on - 1
+	t.ok(rec.habit_warning() != "",
+		"and he is told so on the morning of the night it lands")
+	DoctorRecord.wipe()
+
+## ...AND THE RATE BELOW IT DOES NOT MOVE, FOR AS LONG AS A CAREER LASTS. A bed
+## every other night is the policy the design is trying to make findable, and it
+## must stay survivable long enough to pay the debt. If this ever goes red, the
+## fix above traded one inversion for another.
+##
+## Played through the REAL `record_night` rather than the arithmetic, because
+## what shapes it is `FORGIVENESS`: a clean night pays a strike back only three
+## times in a career, so an alternating run is not zero forever and the curve
+## has to be run to be seen. It is 0 or 1 through night eleven — every career
+## that pays finishes inside that — and then drifts up a strike every second
+## night and is struck off on the nineteenth. Both halves are the design:
+## restraint survives the run it needs to survive, and a treadmill that paid a
+## strike back forever was the fault `FORGIVENESS` was added to close.
+func test_a_bed_every_other_night_stays_survivable() -> void:
+	DoctorRecord.wipe()
+	var rec := DoctorRecord.load_from_state()
+	var worst_inside_a_career := 0
+	var out_on := 0
+	for night in range(1, 25):
+		var lying: bool = night % 2 == 1
+		var rate: float = rec.uncorroborated_rate()
+		var entrenched: bool = rec.nights >= ReviewSystem.ENTRENCHED_NIGHTS \
+			and rate >= ReviewSystem.ENTRENCHED_RATE
+		var habitual: bool = rec.nights >= ReviewSystem.HABIT_NIGHTS \
+			and rate >= ReviewSystem.HABIT_RATE
+		var verdict := ReviewSystem.OUTCOME_CLEAR
+		var findings: Array = []
+		if lying:
+			verdict = ReviewSystem.OUTCOME_QUESTIONS
+			if entrenched:
+				verdict = ReviewSystem.OUTCOME_ESCALATED
+			elif habitual:
+				verdict = ReviewSystem.OUTCOME_FLAGGED
+			var f := Contradictions.Finding.new()
+			f.kind = "uncorroborated_stay"
+			f.patient_id = "oduya"
+			findings.append(f)
+		rec.record_night(findings, verdict)
+		# TWELVE, which is longer than any career in this game that pays. The
+		# career probe's honest route finishes on the eighth night and its
+		# restrained one on the seventh; twelve is the margin.
+		if night <= 12:
+			worst_inside_a_career = maxi(worst_inside_a_career, rec.strikes)
+		if out_on == 0 and rec.strikes >= DoctorRecord.STRIKES_TO_STRIKE_OFF:
+			out_on = night
+	t.lt(float(worst_inside_a_career), float(DoctorRecord.STRIKES_TO_STRIKE_OFF),
+		"a bed every other night survives the whole of any career that pays (worst %d strikes in twelve nights)"
+			% worst_inside_a_career)
+	t.gt(float(out_on), 12.0,
+		"...and it does run out eventually, which is what the forgiveness cap is for (night %d)"
+			% out_on)
+	t.lt(rec.uncorroborated_rate(), ReviewSystem.ENTRENCHED_RATE,
+		"and the rate never reaches the rung that ends a career in one night (%.2f)"
+			% rec.uncorroborated_rate())
+	DoctorRecord.wipe()

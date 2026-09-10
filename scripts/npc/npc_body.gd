@@ -379,16 +379,26 @@ func _build_body() -> void:
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
 		Vector3(0, 0.018, _face_z(0.0, 0.018, -0.0233)), Vector3.ZERO,
 		Vector3(0.78, 1.0, 0.82)))
-	# AND A SOCKET UNDER EACH EYE. The whites are unshaded ovals sitting proud
-	# of an ellipsoid, which is why they read as stickers: a real eye sits IN
-	# something. A slightly larger, slightly darker skin disc behind each one
-	# seats it, and costs one sphere. Darkened rather than tinted, so it works
-	# across the whole skin range without anybody going grey round the eyes.
-	for ex2 in [-1.0, 1.0]:
-		_head.add_child(Build.mi(Build.sphere_mesh(0.050),
-			Build.mat(skin.darkened(0.10), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(ex2 * 0.072, 0.012, _face_z(0.072, 0.012, -0.0156)), Vector3.ZERO,
-			Vector3(1.08, 0.90, 0.26)))
+	# THERE IS NO SOCKET UNDER THE EYE, AND THE PIECE THAT WAS THERE WAS SEATING
+	# SOMETHING THAT NO LONGER EXISTS.
+	#
+	# Its own comment said so: "the whites are unshaded ovals sitting proud of an
+	# ellipsoid, which is why they read as stickers — a real eye sits IN
+	# something". The whites went with gotcha 60 and the disc stayed, ten and a
+	# half centimetres across on a five and a half centimetre eye, darkened a
+	# tenth. Photographed at eighty centimetres it is a pair of teardrop patches
+	# a third darker than the cheek, which on a pale face reads as spectacle rims
+	# and on a dark one as bruising — and, worse than either, it darkens the skin
+	# in exactly the region the eye has to be legible against. `faces.sh`
+	# measures that: every one of the six subjects gained room for its features
+	# when this came out (+7.3, +1.7, +4.3, +2.3, +0.3 and +7.7 levels), the
+	# darkest gaining least because it had least to give.
+	#
+	# At the CAST distance the two renders are indistinguishable, which is the
+	# check gotcha 86 says to make: it cost nothing where it might have been
+	# paying for itself, and cost a great deal at the distance a player leans in
+	# from. Fifth instance of gotcha 56 — a piece doing exactly what it was told,
+	# in a world that moved out from under it.
 	# The mouth is built further down, in three pieces that move. There WAS a
 	# static bar here as well — the original single-piece mouth — and adding the
 	# animated one below it did not remove it, so every face in the building
@@ -568,9 +578,10 @@ func _build_body() -> void:
 	# A LOWER LIP FIRST, so the dark bar has something to be the edge OF.
 	#
 	# The mouth was one flat bar and two flat corner blocks, all unshaded, and
-	# on a head that now has a nose with a bridge and eyes in sockets it was the
-	# last thing on the face reading as a sticker: a dark red letterbox with
-	# nothing above or below it. A mouth is a LINE between two lips, and the
+	# on a head that now has a nose with a bridge it was the last thing on the
+	# face reading as a sticker: a dark red letterbox with nothing above or
+	# below it. (It said "and eyes in sockets" until the sockets came out — see
+	# the note where they were.) A mouth is a LINE between two lips, and the
 	# lower one is the half that catches light — so it is a small warm piece
 	# sitting just under the bar, in the person's own skin pushed toward it
 	# rather than a fixed pink, which is the only way this works across a range

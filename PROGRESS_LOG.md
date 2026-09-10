@@ -3403,3 +3403,28 @@ that paid a strike back forever is the fault the forgiveness cap was added to
 close. The comment says what the measurement says now, and both halves are
 asserted, because a fix to the every-night liar that moved the other rate would
 have traded one inversion for another and nothing would have caught it.
+
+## The eye socket was seating something that had been deleted
+
+`./faces.sh` again, which is the only loop in this repo that can see a face. Six
+portraits at eighty centimetres, and on every one of them a pair of teardrop
+patches around the eyes — spectacle rims on the pale faces, bruising on the dark
+ones.
+
+It is the socket: a darkened skin disc built behind each eye, ten and a half
+centimetres across on an eye five and a half wide. Its own comment says what it
+was for — "the whites are unshaded ovals sitting proud of an ellipsoid, which is
+why they read as stickers: a real eye sits IN something" — and the whites were
+dropped three passes ago, when the eye became a dark almond with one catchlight.
+The seat stayed and had nothing left to seat.
+
+Worse than decorative: it darkens the skin in exactly the region the eye has to
+be legible against, which is the thing `faces.sh` measures. Every one of the six
+subjects gained room for its features when it came out — +7.3, +1.7, +4.3, +2.3,
++0.3 and +7.7 levels, the darkest gaining least because it had the least to
+give. The cast shot is indistinguishable between the two, so it was costing
+nothing at the distance it might have been earning at and a great deal at the
+distance a player leans in from.
+
+The tell was in the comment above it. When a piece explains itself by naming
+another piece, check the other piece is still there.

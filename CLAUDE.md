@@ -1220,6 +1220,25 @@ with it because a lost afternoon does not care which.
     the length of the run it has to bite inside**, not against the shape of the
     curve.
 
+113. **THE EYES WERE SEATED IN A SOCKET THAT WAS SEATING SOMETHING DELETED THREE
+    PASSES AGO.** `NPCBody` built a darkened skin disc behind each eye and its
+    own comment said exactly what it was for: "the whites are unshaded ovals
+    sitting proud of an ellipsoid, which is why they read as stickers — a real
+    eye sits IN something". The whites went with gotcha 60; the disc stayed.
+    Ten and a half centimetres across on a five and a half centimetre eye, a
+    tenth darker than the cheek, and photographed at eighty centimetres it is a
+    pair of teardrop patches that read as spectacle rims on a pale face and as
+    bruising on a dark one — while darkening the skin in precisely the region
+    the eye has to be legible against, which is gotcha 85's whole subject.
+    `faces.sh` measured it: **every one of the six subjects gained room for its
+    features when it came out** (+7.3, +1.7, +4.3, +2.3, +0.3, +7.7 levels), the
+    darkest gaining least because it had least to give. At the CAST distance the
+    two renders are indistinguishable, so it cost nothing where it might have
+    been earning and a great deal where a player leans in. Fifth instance of
+    gotcha 56: a piece doing exactly what it was told, in a world that moved out
+    from under it. **The tell was in its own comment** — when a piece explains
+    itself by naming another piece, check that the other piece is still there.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -324,10 +324,37 @@ static func _reface(arr: Array) -> void:
 		acc[b] += fn
 		acc[c] += fn
 		t += 3
+	# ...AND SHARED MEANS SHARED BY POSITION, NOT BY INDEX.
+	#
+	# `SphereMesh` duplicates its seam meridian: two vertices at the SAME point
+	# with different indices, because they need different UVs. Accumulating by
+	# index gives each copy only the faces on its own side of the seam, so the
+	# two normals at one point differ by half the segment angle — and the
+	# outline hull, which pushes every vertex along its own normal, then pulls
+	# them apart and opens a crack down the meridian. Drawn back-faces-only,
+	# that crack is a black hairline running from the middle of a face toward
+	# its edge, on every rounded box in the building, at every ink weight down
+	# to two and a half millimetres. There was one across the bedding on every
+	# bed in the game, in the frame the whole game is played from.
+	#
+	# Gotcha 37 already says the hull "only stays closed if they are shared".
+	# They were not: the loop above shared by index and the sphere does not.
+	var group := {}
+	for i in verts.size():
+		var key := Vector3i(roundi(verts[i].x * 100000.0),
+			roundi(verts[i].y * 100000.0), roundi(verts[i].z * 100000.0))
+		if group.has(key):
+			acc[int(group[key])] += acc[i]
+			group[key] = group[key]
+		else:
+			group[key] = i
 	var out := PackedVector3Array()
 	out.resize(verts.size())
 	for i in out.size():
-		out[i] = acc[i].normalized() if acc[i].length_squared() > 1e-12 else Vector3.UP
+		var key2 := Vector3i(roundi(verts[i].x * 100000.0),
+			roundi(verts[i].y * 100000.0), roundi(verts[i].z * 100000.0))
+		var lead: int = int(group[key2])
+		out[i] = acc[lead].normalized() if acc[lead].length_squared() > 1e-12 else Vector3.UP
 	arr[Mesh.ARRAY_NORMAL] = out
 
 static func rbox_mesh(size: Vector3, radius := 0.05, segments := 14) -> ArrayMesh:

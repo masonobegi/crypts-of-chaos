@@ -283,6 +283,7 @@ func _check_the_verbs_work() -> void:
 	_check_nobody_has_their_eyes_inside_their_head()
 	_check_every_ward_is_its_own_room()
 	_check_nothing_outside_is_inside()
+	_check_the_outline_hull_is_closed()
 	_check_the_doors_have_room_to_swing()
 	_check_the_nurse_does_not_copy_and_paste()
 	_check_the_daughter_actually_turns_up()
@@ -2349,6 +2350,52 @@ func _check_nobody_has_their_eyes_inside_their_head() -> void:
 ## piece of furniture, which is why nobody recognised it in three sessions of
 ## looking at that frame. Nothing else could see it — the blocks are correct,
 ## the ring is correct, and the building is simply not a circle.
+## THE OUTLINE HULL IS ONLY CLOSED IF SHARED VERTICES SHARE A NORMAL.
+##
+## Every mesh in this building is a `rbox_mesh` or a `taper_mesh` — a Godot
+## `SphereMesh` Minkowski-summed with a box — and a SphereMesh duplicates its
+## seam meridian: two vertices at the SAME point with different indices,
+## because they need different UVs. `_reface` accumulated area-weighted normals
+## by INDEX, so each copy got only the faces on its own side of the seam and the
+## two normals differed by half the segment angle. The outline pass pushes every
+## vertex along its own normal, so the two copies went different ways and opened
+## a crack down the meridian — drawn back-faces-only, a black hairline running
+## from the middle of a face toward its edge, on every rounded box in the game.
+##
+## It was on the bedding of every bed, in the bedside frame, which is the camera
+## the whole game is played through. Six renders went past it: it survived a red
+## test on the bed rails, on the bed posts, on the IV stand's crossbar, and two
+## rounds of tightening the ink cap — because it is not a magnitude problem, it
+## is a topology one, and it is there at two and a half millimetres of ink.
+##
+## Gotcha 37 already said the hull "only stays closed if they are shared". They
+## were not. This is the check that says so.
+func _check_the_outline_hull_is_closed() -> void:
+	var bad := 0
+	var worst := 0.0
+	var checked := 0
+	for size in [Vector3(0.84, 0.05, 0.92), Vector3(0.86, 0.42, 1.42),
+			Vector3(2.0, 1.0, 0.5), Vector3(0.05, 0.05, 1.0)]:
+		var m: ArrayMesh = Build.rbox_mesh(size, Build.corner_for(size))
+		var arr: Array = m.surface_get_arrays(0)
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var seen := {}
+		for i in verts.size():
+			checked += 1
+			var key := Vector3i(roundi(verts[i].x * 100000.0),
+				roundi(verts[i].y * 100000.0), roundi(verts[i].z * 100000.0))
+			if not seen.has(key):
+				seen[key] = norms[i]
+				continue
+			var off: float = (Vector3(seen[key]) - norms[i]).length()
+			if off > 1e-4:
+				bad += 1
+				worst = maxf(worst, off)
+	_ok(bad == 0,
+		"a shared vertex has one normal, so the outline hull is closed "
+			+ "(%d of %d, worst %.3f)" % [bad, checked, worst])
+
 func _check_nothing_outside_is_inside() -> void:
 	var h = tree.get_first_node_in_group("hospital")
 	if h == null:

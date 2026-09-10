@@ -3173,3 +3173,35 @@ beds' own contact shadows are visible on it again instead of being drowned.
 The tint had been `darkened()` twice on top of that, compensating for the blob
 from the other end. Both are gone: a bay marking is the ward's floor colour mixed
 toward its bay tint, and it is paint rather than an object, so it casts nothing.
+
+### A black hairline on every rounded box in the game
+
+There was a short black dash lying across the bedding of every bed, visible in
+the bedside frame — which is the camera the whole game is played through — and
+in the visitor frame. It survived six renders of red tests: the bed's side
+rails, its bracket posts, the IV stand's crossbar, and two rounds of tightening
+the ink cap. None of them was it, because it is not a thin object and it is not
+a magnitude problem. What found it was zeroing each cloth piece's own `line` in
+turn: the dash belonged to the piece it was drawn on.
+
+Every mesh in this building is a Godot `SphereMesh` Minkowski-summed with a box,
+and a SphereMesh duplicates its seam meridian — two vertices at the same point
+with different indices, because they need different UVs. `_reface` accumulated
+area-weighted normals by INDEX, so each copy got only the faces on its own side
+of the seam. Measured after the fix: 140 of 540 shared vertices carried
+different normals, and the worst pair were exactly opposite. The outline pass
+pushes every vertex along its own normal, so the two copies went different ways
+and opened a crack down the meridian; drawn back-faces-only, that crack is a
+hairline running from the middle of a face toward its edge.
+
+Gotcha 37 has said since it was written that the hull "only stays closed if they
+are shared". They were not. `_reface` accumulates by quantised POSITION now, the
+smoke run asserts that a shared vertex has one normal, and it was proven red at
+140 of 540.
+
+The two wrong turns are worth keeping. Bounding the ink growth by the mesh's own
+corner radius is sound reasoning — an offset surface folds through itself when
+the offset exceeds the local radius of curvature — and it moved the number by a
+fifth, removed nothing, and would have thinned every outline in the building. It
+was reverted. So was a per-piece ink cap on the bedding, which fixed the symptom
+on two pieces out of every rounded box in the game.

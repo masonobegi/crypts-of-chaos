@@ -1070,6 +1070,25 @@ with it because a lost afternoon does not care which.
     The tint had also been `darkened()` twice on top of that, which is gotcha
     100 again: two people compensating for the same fault from opposite ends.
 
+104. **"SHARED" MEANT SHARED BY INDEX, AND A SPHERE DOES NOT SHARE ITS SEAM.**
+    Gotcha 37 says the outline hull "only stays closed if they are shared", and
+    `_reface` accumulated area-weighted normals by vertex INDEX — but every mesh
+    in this building is a Godot `SphereMesh` Minkowski-summed with a box, and a
+    SphereMesh DUPLICATES its seam meridian: two vertices at the same point with
+    different indices, because they need different UVs. So each copy got only
+    the faces on its own side of the seam. Measured after the fix: **140 of 540
+    shared vertices carried different normals and the worst pair were exactly
+    OPPOSITE**. The outline pass pushes every vertex along its own normal, so the
+    copies went different ways and opened a crack down the meridian — drawn
+    back-faces-only, that is a black hairline running from the middle of a face
+    toward its edge, on every rounded box in the game. There was one across the
+    bedding of every bed, in the frame the whole game is played from.
+    **It survived six renders of red tests** on the bed rails, the bed posts and
+    the IV stand's crossbar, and two rounds of tightening `INK_CAP`, because it
+    is not a magnitude problem: it is there at two and a half millimetres of ink.
+    What found it was zeroing each cloth piece's own `line` in turn. Accumulate
+    by POSITION, quantised; the smoke run asserts it and was proven red at 140.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

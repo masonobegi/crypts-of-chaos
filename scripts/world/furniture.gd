@@ -431,6 +431,25 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	for x2 in [1.0, 18.6]:
 		Dressing.plant(h, Vector3(float(x2), 0, z1 - 0.55), 0.95)
 	Dressing.bin(h, Vector3(12.0, 0, z1 - 0.5), Color(0.30, 0.50, 0.58))
+	# THE MACHINE THE TANNOY TALKS ABOUT. `Dressing.vending` is twenty lines of
+	# cabinet, glass, four rows of snacks with a gap where somebody bought one,
+	# a coin slot and a card reader — built during the dressing pass and placed
+	# NOWHERE, while `PASystem` has two lines about it ("a reminder that the
+	# third-floor vending machine is not a shared resource", "would the doctor
+	# who left a bedpan on the vending machine please collect it"). The building
+	# was being told off about an object that did not exist in it.
+	#
+	# South wall, between the wall art at 11.6 and the office door, facing into
+	# the corridor. Occupied like the water cooler so a nurse walks round it
+	# rather than through it.
+	#
+	# 13.15 AND NOT 13.6, WHICH THE DOOR-SWING CHECK CAUGHT ON THE FIRST RUN:
+	# the office leaf is hinged at 15.3 and sweeps 1.40m, so a 0.9m-wide cabinet
+	# centred at 13.6 came within 1.25m of the hinge and the door opened through
+	# it. That check is the fixture audit's neighbour and it is the reason a
+	# piece of scenery can be added to a corridor at all without a render.
+	Dressing.vending(h, Vector3(13.15, 0, z0 + 0.32), 0.0)
+	_occupy(13.15, z0 + 0.32, 0.9, 0.6)
 
 static func _dress_station(h: Hospital, r: Room) -> void:
 	# Raised from 1.68 to clear the back worktop it hangs over.

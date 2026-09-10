@@ -14,38 +14,6 @@ var ui = null
 var body: VBoxContainer = null
 var _card_outer: VBoxContainer = null
 
-## Every modal screen is a sheet of paper on a clipboard.
-##
-## The red margin rule down the left is doing most of the work: it is the one
-## mark that says "form" before a single word has been read, and it costs three
-## pixels. Above it goes a coloured band and the heading in capitals over a
-## double rule, which is what the top of every printed record in the world
-## looks like.
-func shell(width: float, height: float, heading: String, subheading := "") -> VBoxContainer:
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(UIKit.dim_background())
-	var panel := UIKit.center_panel(width, height)
-	add_child(panel)
-
-	var sheet := UIKit.hbox(0)
-	panel.add_child(sheet)
-	var margin := ColorRect.new()
-	margin.color = UIKit.MARGIN_RED
-	margin.custom_minimum_size.x = 3
-	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sheet.add_child(margin)
-	sheet.add_child(UIKit.spacer(14, false))
-
-	var v := UIKit.vbox(10)
-	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sheet.add_child(v)
-	if heading != "":
-		v.add_child(UIKit.chart_header(heading))
-	if subheading != "":
-		v.add_child(UIKit.label(subheading, 14, UIKit.INK_DIM))
-	body = v
-	return v
-
 ## The same sheet, pinned to the right, with the world left visible behind it.
 ##
 ## "I still want the patient's physical body in front of me — I'm just saying

@@ -3646,3 +3646,36 @@ A dead method is worse than a dead constant, because it reads in review as the
 place where the thing happens: `hurry()` promised a feature in prose and
 `watchers()` looked like the canonical answer to a question that already had two
 other implementations.
+
+## The capsule the menu has been able to pose for all along
+
+Of the ten dead functions, two turned out to be features nobody finished rather
+than features nobody wanted.
+
+`MenuScene.pose_for_capsule` is thirty lines that stop the title screen's drift,
+move the chair, the patient and the nurse, and re-aim the camera "so the room's
+occupants fill the right two thirds with the title over the quiet left". A store
+capsule — the one image a Steam page is mostly made of — written out in full,
+with a docstring saying exactly what it is for, and called by nothing.
+`MainMenu._capsule_ui` was the other half, declared as a null and never written.
+
+It is `00c_capsule` in the shot set now, and rendering it for the first time
+showed what a composition nobody has ever looked at looks like: the nurse stood
+directly between the camera and the patient with her back to the lens, and the
+second bed — which exists because the DRIFTING shot has a panel across its
+middle and needed somebody in both thirds — landed three screen percent from the
+subject, so two heads overlapped and neither read. Composing is not the same as
+rendering. A pose function is a hypothesis until a frame comes out of it.
+
+And `Dressing.vending` — a cabinet, glass, four rows of snacks with a gap where
+somebody bought one, a coin slot and a card reader — was built during the
+dressing pass and placed nowhere, while `PASystem` has two lines about the
+vending machine. The building was being told off about an object that was not in
+it. The door-swing check caught the first position on the first run: the office
+leaf is hinged at 15.3 and sweeps 1.40m, and a 0.9m cabinet centred at 13.6 came
+within 1.25m of it.
+
+The other eight went. Deleting `Log.recent()` then left `_ring` written and
+never read, which is the same fault one level down — a four hundred entry array
+every log line appended to, with a docstring naming an in-game debug console and
+a bug-report dump that do not exist.

@@ -398,30 +398,6 @@ static func row(key: String, value: String, value_color := INK, size := 15,
 	h.add_child(v)
 	return h
 
-## A 0..1 bar. Used for reputations, exposure and suspicion.
-## A 0..1 bar. Built from two ColorRects inside a fixed-size Control rather than
-## a PanelContainer: a PanelContainer in a VBox stretches to the full row width,
-## which made a nearly-empty bar read as an empty text field.
-static func bar(value: float, color := ACCENT, width := 180.0, height := 8.0) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(width, height)
-	root.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	root.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-
-	var back := ColorRect.new()
-	back.color = Color(1, 1, 1, 0.10)
-	back.position = Vector2.ZERO
-	back.size = Vector2(width, height)
-	root.add_child(back)
-
-	var fill := ColorRect.new()
-	fill.color = color
-	fill.position = Vector2.ZERO
-	fill.size = Vector2(maxf(2.0, width * clampf(value, 0.0, 1.0)), height)
-	root.add_child(fill)
-	return root
-
-
 static func money_str(amount: int) -> String:
 	var neg := amount < 0
 	var s := str(absi(amount))
@@ -815,21 +791,6 @@ static func chart_line(e: ChartEntry, tint := INK, size := 14) -> Control:
 	var mark := mono_label(way, maxi(11, size - 2), tint, HORIZONTAL_ALIGNMENT_RIGHT)
 	mark.custom_minimum_size.x = size * 2.9
 	h.add_child(mark)
-	return h
-
-## A form field: a label, a dotted leader, and a value. The leader is what makes
-## a row of these read as a document rather than as a settings screen.
-static func field(key: String, value: String, value_color := INK, size := 15) -> HBoxContainer:
-	var h := hbox(8)
-	h.add_child(label(key, size, INK_DIM, HORIZONTAL_ALIGNMENT_LEFT))
-	var leader := label(" " + ". ".repeat(60), size, Color(INK.r, INK.g, INK.b, 0.28))
-	leader.clip_text = true
-	leader.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	h.add_child(leader)
-	# The printed half of a form is set; the filled-in half is typed into it, so
-	# it is mono. It also makes a column of values line up under each other,
-	# which a proportional face on a right-aligned number does not.
-	h.add_child(mono_label(value, size, value_color, HORIZONTAL_ALIGNMENT_RIGHT))
 	return h
 
 static func _hhmm(m: int) -> String:

@@ -42,17 +42,6 @@ func _drift_temperature(seconds: float) -> void:
 		target -= 1.0
 	temperature = lerpf(temperature, target, 1.0 - exp(-0.035 * seconds))
 
-## Multiplier applied to the recovery rate of every patient in this room.
-func comfort() -> float:
-	var m := 1.0
-	var temp_error := absf(temperature - IDEAL_TEMP)
-	m *= clampf(1.0 - temp_error * 0.035, 0.35, 1.05)
-	if not lights_on:
-		m *= 0.88
-	m *= lerpf(0.8, 1.02, cleanliness)
-	m *= clampf(1.0 - noise * 0.12, 0.7, 1.0)
-	return clampf(m, 0.25, 1.1)
-
 ## What a person standing here would notice. Drives NPC comments and evidence.
 func complaints() -> Array[String]:
 	var out: Array[String] = []

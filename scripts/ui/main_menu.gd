@@ -170,7 +170,53 @@ func _backdrop() -> void:
 	_scrim = scrim
 
 
+## THE STORE CAPSULE, and `_capsule_ui` was declared for it and never written.
+##
+## A capsule is the one image a Steam page is mostly made of, and this project
+## could not produce one: `MenuScene.pose_for_capsule` is thirty lines that stop
+## the title screen's drift, move the chair, the patient and the nurse, and
+## re-aim the camera so the cast fills the right two thirds with a quiet left
+## for a title — written out in full, with a docstring explaining exactly what
+## it is for, and called by nothing. This member was the other half of it, sat
+## here alone as a null.
+##
+## The panel and the scrim go, because a capsule with the game's own settings
+## card across the middle is a screenshot rather than a capsule, and the title
+## goes where the pose left room for it.
 var _capsule_ui: Control = null
+
+func pose_for_capsule(on: bool) -> void:
+	if _scene != null and _scene.has_method("pose_for_capsule"):
+		_scene.pose_for_capsule(on)
+	if _panel != null and is_instance_valid(_panel):
+		_panel.visible = not on
+	if _scrim != null and is_instance_valid(_scrim):
+		_scrim.visible = not on
+	if _capsule_ui != null and is_instance_valid(_capsule_ui):
+		_capsule_ui.queue_free()
+	_capsule_ui = null
+	if not on:
+		return
+	var root := Control.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := UIKit.vbox(6)
+	# The left third, at the height the pose leaves clear. Not centred: the
+	# whole point of the pose is that the people are on the right.
+	# LOW AND LEFT, over the dado rather than over the pale wall: white type on
+	# a cream wall is not type, and the whole point of the pose is that the left
+	# of the frame is quiet.
+	UIKit.place(v, Control.PRESET_TOP_LEFT, 74, 448, 520, 280)
+	var t := UIKit.title("CHRONIC CARE", 68, Color(0.96, 0.98, 0.97))
+	t.add_theme_constant_override("shadow_offset_y", 4)
+	v.add_child(t)
+	v.add_child(UIKit.label("A broke doctor. A struggling hospital.",
+		21, Color(0.88, 0.93, 0.92)))
+	v.add_child(UIKit.label("Patients who really should have gone home by now.",
+		21, Color(0.88, 0.93, 0.92)))
+	root.add_child(v)
+	add_child(root)
+	_capsule_ui = root
 
 func _new_career() -> void:
 	var s := 0

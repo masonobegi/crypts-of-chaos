@@ -6,6 +6,7 @@ var game: Node = null
 var menu: Node = null
 var menu_index := 0
 var menu_opened := false
+var capsule_posed := false
 var frames := 0
 var index := 0
 var settle := 0
@@ -90,7 +91,17 @@ const SHOTS := [
 ## the backdrop and an unstyled stock LineEdit sitting under the game's own
 ## buttons both survived: the only way to see either is to look, and nothing
 ## looked.
-const MENU_SHOTS := ["00_title", "00b_title_settings"]
+## AND THE CAPSULE, WHICH THE MENU HAS BEEN ABLE TO POSE FOR ALL ALONG.
+##
+## `MenuScene.pose_for_capsule` is thirty lines that stop the drift, move the
+## chair, the patient and the nurse, and re-aim the camera so the cast fills the
+## right two thirds with the quiet left for a title — a store capsule, written
+## out in full and called by NOTHING. So the one image a Steam page is mostly
+## made of was the one image this project could not produce, by a function whose
+## docstring explains exactly how to produce it. The card is hidden for this
+## frame: a capsule with the game's own menu panel across the middle of it is a
+## screenshot, not a capsule.
+const MENU_SHOTS := ["00_title", "00b_title_settings", "00c_capsule"]
 
 func start() -> void:
 	GameState.start_new_career(20260822)
@@ -139,6 +150,21 @@ func tick() -> bool:
 		if menu_index == 1 and not menu_opened and menu.has_method("_open_menu_screen"):
 			menu._open_menu_screen("settings")
 			menu_opened = true
+			return false
+		# ...AND THE CAPSULE, POSED ON THE PASS BEFORE ITS SHOT for the same
+		# reason: the settle counter above is what gives the cast and the camera
+		# a frame to arrive in.
+		if menu_index == 2 and not capsule_posed:
+			capsule_posed = true
+			# The settings submenu is still up from the frame before, and it is
+			# a whole UIRoot on its own layer rather than a child of the panel —
+			# so the first version of this hid the title panel, left the settings
+			# card on top of a black viewport, and photographed that.
+			var sub: Node = menu.get_node_or_null("MenuUI")
+			if sub != null and sub.has_method("close"):
+				sub.close()
+			if menu.has_method("pose_for_capsule"):
+				menu.pose_for_capsule(true)
 			return false
 		_skip_only = not _shot_wanted(String(MENU_SHOTS[menu_index]))
 		if not _skip_only:

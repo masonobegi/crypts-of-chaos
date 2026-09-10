@@ -1541,9 +1541,6 @@ func set_mood(m: float) -> void:
 # set_slumped(), driven straight off the fight's rules clock. They went with the
 # fistfight. Nobody in the building swings at anybody any more.
 
-func mood() -> float:
-	return _mood
-
 func is_seated() -> bool:
 	return _seated
 

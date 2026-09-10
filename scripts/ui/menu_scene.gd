@@ -253,6 +253,11 @@ func pose_for_capsule(on: bool) -> void:
 	_capsule = on
 	set_process(not on)
 	if not on:
+		var back := get_node_or_null("ChairTwo")
+		if back != null:
+			(back as Node3D).visible = true
+		if sitter_two != null and is_instance_valid(sitter_two):
+			sitter_two.visible = true
 		_aim(_t)
 		return
 	if cam == null:
@@ -265,21 +270,50 @@ func pose_for_capsule(on: bool) -> void:
 		for c in get_children():
 			if c is PatientBed:
 				chair = c
+	# THE NURSE WAS IN FRONT OF THE PATIENT, WITH HER BACK TO THE LENS.
+	#
+	# Composed and never rendered — which is what happens to a function nothing
+	# calls. She stood at (0.62, 0.20) looking at the chair, and the chair is
+	# directly behind her from the camera, so the first capsule this project ever
+	# produced was the back of somebody's head in the middle of the frame with
+	# the patient hidden behind it. Two people talking is the picture; one of
+	# them facing away is a queue.
+	#
+	# She goes to the far side of the chair, still looking at the patient, so the
+	# pair reads in profile-and-three-quarter with a gap between them for the
+	# room. The patient's own -0.67 turns out to be almost exactly "face the
+	# camera" and is left alone.
 	if chair != null:
-		chair.position = Vector3(2.05, 0, -1.15)
+		chair.position = Vector3(2.55, 0, -0.85)
 		chair.rotation.y = -0.67
 	if sitter != null and is_instance_valid(sitter):
-		sitter.position = Vector3(2.05, 0, -1.15)
+		sitter.position = Vector3(2.55, 0, -0.85)
 		sitter.rotation.y = -0.67
 		sitter.set_seated(true)
 		sitter.set_mood(-0.35)
 	if nurse != null and is_instance_valid(nurse):
-		nurse.position = Vector3(0.62, 0, 0.20)
-		nurse.rotation.y = 2.32
+		nurse.position = Vector3(3.62, 0, 0.72)
+		# HALFWAY BETWEEN THE PATIENT AND THE LENS. Turned fully to the patient
+		# she is a back; turned fully to the camera she is not talking to
+		# anybody. A capsule wants somebody mid-sentence.
+		nurse.rotation.y = -1.25
 		nurse.set_mood(0.15)
+	# ...AND THE SECOND BED IS NOT IN A CAPSULE. It exists because the drifting
+	# title shot has a panel across its middle and needed somebody in both
+	# thirds; posed, it lands three screen percent from the patient this frame
+	# is about, so the first capsule had two heads overlapping and neither of
+	# them reading. A capsule is one thing happening.
+	var second := get_node_or_null("ChairTwo")
+	if second != null:
+		(second as Node3D).visible = not on
+	if sitter_two != null and is_instance_valid(sitter_two):
+		sitter_two.visible = not on
+	# ...AND THE CAMERA A LITTLE FURTHER LEFT, which is what pushes the pair into
+	# the right two thirds this function's own docstring asks for. From the old
+	# vantage both of them projected within a few pixels of dead centre.
 	cam.fov = 52.0
-	cam.position = Vector3(-1.15, 1.52, 2.75)
-	cam.look_at(Vector3(1.70, 1.16, -0.85), Vector3.UP)
+	cam.position = Vector3(-2.05, 1.52, 3.05)
+	cam.look_at(Vector3(2.30, 1.14, -0.90), Vector3.UP)
 
 func _aim(t: float) -> void:
 	if _capsule:

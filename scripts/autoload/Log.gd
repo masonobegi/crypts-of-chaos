@@ -1,14 +1,17 @@
 extends Node
-## Tiny leveled logger. Keeps a ring buffer so the in-game debug console and the
-## bug-report dump can show recent history without spamming stdout.
+## Tiny leveled logger.
+##
+## IT KEPT A RING BUFFER FOR AN IN-GAME DEBUG CONSOLE AND A BUG-REPORT DUMP,
+## neither of which exists. `recent()` was the only reader of it and had no
+## caller anywhere, so every line the game logged was appended to a four-hundred
+## entry array that nothing would ever look at — and the docstring above
+## described two features by name. Same shape as a constant nothing reads, one
+## level up: the buffer had a reader, the reader had no caller, and the file
+## announced a purpose for both.
 
 enum Level { DEBUG, INFO, WARN, ERROR }
 
-const RING_SIZE := 400
-
 @export var min_level: Level = Level.INFO
-
-var _ring: Array[String] = []
 
 func _ready() -> void:
 	if OS.is_debug_build():
@@ -21,9 +24,6 @@ func e(msg: String, tag: String = "") -> void: _emit(Level.ERROR, tag, msg)
 
 func _emit(lv: Level, tag: String, msg: String) -> void:
 	var line := "[%s]%s %s" % [Level.keys()[lv], ("[" + tag + "]") if tag != "" else "", msg]
-	_ring.append(line)
-	if _ring.size() > RING_SIZE:
-		_ring.remove_at(0)
 	if lv < min_level:
 		return
 	if lv == Level.ERROR:
@@ -33,5 +33,3 @@ func _emit(lv: Level, tag: String, msg: String) -> void:
 	else:
 		print(line)
 
-func recent(n: int = 60) -> Array[String]:
-	return _ring.slice(maxi(0, _ring.size() - n))

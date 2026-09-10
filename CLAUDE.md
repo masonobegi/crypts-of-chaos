@@ -1388,7 +1388,31 @@ with it because a lost afternoon does not care which.
     check can undo has to assert in the same frame**, and the tell that it was
     wrong was the number in its own message: a doctor at a bedside on a
     five-bed ward is seen by five people, and it said one.
-124. **TEN PUBLIC FUNCTIONS IN `scripts/` HAD NO CALLER ANYWHERE.** Gotcha 84
+124. **THE ONE IMAGE A STEAM PAGE IS MOSTLY MADE OF WAS THE ONE IMAGE THIS
+    PROJECT COULD NOT PRODUCE.** `MenuScene.pose_for_capsule` is thirty lines
+    that stop the title screen's drift, move the chair, the patient and the
+    nurse, and re-aim the camera "so the room's occupants fill the right two
+    thirds with the title over the quiet left" — a store capsule, written out in
+    full, with a docstring saying exactly what it is for, called by NOTHING.
+    `MainMenu._capsule_ui` was the other half of it, declared as a null and
+    never written to. It is `00c_capsule` in the shot set now, and rendering it
+    for the first time showed what a composition nobody has ever looked at looks
+    like: **the nurse stood directly between the camera and the patient with her
+    back to the lens**, and the second bed — which exists because the DRIFTING
+    shot has a panel across its middle and needed somebody in both thirds —
+    landed three screen percent from the subject, so two heads overlapped and
+    neither read. Composing is not the same as rendering, and a pose function is
+    a hypothesis until a frame comes out of it.
+125. **THE TANNOY WAS TELLING THE BUILDING OFF ABOUT AN OBJECT THAT WAS NOT IN
+    IT.** `Dressing.vending` is a cabinet, glass, four rows of snacks with a gap
+    where somebody bought one, a coin slot and a card reader — built during the
+    dressing pass and placed nowhere — while `PASystem` has two lines about the
+    vending machine. It is in the corridor now, and the DOOR-SWING check caught
+    the first position on the first run: the office leaf is hinged at 15.3 and
+    sweeps 1.40m, and a 0.9m cabinet centred at 13.6 came within 1.25m of it.
+    That check is why a piece of scenery can be added to a corridor at all
+    without paying for a render.
+126. **TEN PUBLIC FUNCTIONS IN `scripts/` HAD NO CALLER ANYWHERE.** Gotcha 84
     swept constants and signals and the smoke run fails on either; nobody had
     ever swept FUNCTIONS. The haul: a progress bar and a dotted-leader form row
     in `UIKit`, a `comfort()` score on `Room`, a `mood()` getter on `NPCBody`, a
@@ -1399,8 +1423,14 @@ with it because a lost afternoon does not care which.
     method is worse than a dead constant because it reads in review as the place
     where the thing happens — `hurry()` promised a feature in prose and
     `watchers()` looked like the canonical answer to a question that already had
-    two other implementations. The sweep is nine lines of grep and it is worth
-    re-running after any system is cut.
+    two other implementations. Eight went; two were WIRED instead, because a
+    dead function is sometimes a feature nobody finished rather than one nobody
+    wanted (gotchas 124 and 125). Deleting `Log.recent()` then left `_ring`
+    written and never read, which is the same fault one level down: a four
+    hundred entry array every log line appended to, and a docstring naming two
+    features — an in-game debug console and a bug-report dump — that do not
+    exist. The sweep is nine lines of grep and is worth re-running after any
+    system is cut.
 
 ## Design rules that are load-bearing
 

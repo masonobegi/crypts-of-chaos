@@ -476,42 +476,42 @@ func what_the_ward_saw() -> Dictionary:
 	return {"tier": tier, "who": who, "patient_id": pid,
 		"summary": summary, "weight": best}
 
-## Anyone currently able to see the player. Drives the HUD "eyes on you" tell.
-## Who can see the player right now.
+## WHO CAN SEE THE PLAYER RIGHT NOW, AND THERE IS ONE OF THESE.
 ##
-## Cached for a tenth of a second. This fires one physics raycast per registered
-## body and the HUD asked for it EVERY FRAME to update a text panel — fifteen
-## raycasts at 60Hz to redraw the same three names. A tenth of a second is
-## below the point at which anybody notices the panel is late, and it is the
-## single largest saving in the frame.
-## Counted in PHYSICS FRAMES, not seconds. A wall-clock cache is a different
-## amount of staleness depending on how fast the machine happens to be running,
-## which makes a --fixed-fps harness stop being deterministic — it cost two
-## intermittent live-run failures before the cause was obvious. Six frames is a
-## tenth of a second at 60Hz and is exactly six frames everywhere.
-const WATCHERS_CACHE_FRAMES := 6
-var _watchers_cache: Array[NPCBody] = []
-var _watchers_at := -1
-
-func watchers() -> Array[NPCBody]:
-	var now := int(Engine.get_physics_frames())
-	if _watchers_at >= 0 and now - _watchers_at < WATCHERS_CACHE_FRAMES:
-		# Somebody in the cached list may have been freed since it was built.
-		var live: Array[NPCBody] = []
-		for w in _watchers_cache:
-			if is_instance_valid(w):
-				live.append(w)
-		_watchers_cache = live
-		return _watchers_cache
-	var out: Array[NPCBody] = []
-	for id in _bodies.keys():
-		var b = _body(id)
-		if b and b.is_inside_tree() and b.perception and b.perception.sees_player():
-			out.append(b)
-	_watchers_cache = out
-	_watchers_at = now
+## There were three. `WardDay._who_can_see_me` stamps `seen_by` on an entry as
+## it is typed and is what the eight o'clock audit reads; `screen_records`
+## builds the line that PROMISES it — "Anything you write here, you write in
+## front of Nurse Adeyemi and 2 others" — and had its own copy of the same loop,
+## with a comment asking the next reader to keep the two in step by hand. That
+## is gotcha 48's shape on the one pair in this game where a divergence is a LIE
+## TO THE PLAYER: the screen whose whole purpose is that promise, and the record
+## the promise is about, disagreeing.
+##
+## The third was `watchers()`, which returned bodies rather than names on a
+## slightly different predicate (`sees_player` only, no same-room), had a
+## six-frame cache with a comment about the two intermittent live-run failures
+## it once cost, and was called by nothing at all. Deleted rather than made the
+## fourth caller of a rule with three definitions.
+##
+## SUPPRESSED IS THE HALF THAT MATTERS: a dozing patient does not witness you,
+## which is what the last few hours of a shift are for.
+func who_can_see_the_player() -> Array:
+	var out: Array = []
+	var player = get_tree().get_first_node_in_group("player")
+	if player == null:
+		return out
+	var h = get_tree().get_first_node_in_group("hospital")
+	var mine: String = String(h.room_at(player.global_position)) if h != null else ""
+	for m in all_minds():
+		var b = body_of(m.id)
+		if b == null or not is_instance_valid(b) or not b.is_inside_tree():
+			continue
+		if b.perception == null or b.perception.suppressed:
+			continue          ## asleep, or out cold
+		# Same room, or watching you from another one.
+		if (mine != "" and b.current_room() == mine) or b.perception.sees_player():
+			out.append(m.display_name)
 	return out
-
 func refresh_tells(player_pos: Vector3) -> void:
 	for id in _bodies.keys():
 		var b = _body(id)

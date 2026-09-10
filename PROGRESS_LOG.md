@@ -3602,3 +3602,47 @@ reads and worse, because it reads in review as the place where the thing
 happens. It is also not a feature this game wants — these are not lines you
 advance through, they are the ward talking while you work, and the key that
 would hurry one is the key that opens a bed.
+
+## The screen that promises who saw you, and the record of who saw you
+
+Two copies of one loop. `screen_records` builds the line the whole stealth layer
+is legible through — "Anything you write here, you write in front of Nurse
+Adeyemi and 2 others" — and `WardDay._who_can_see_me` stamps `seen_by` on the
+entry, which is what the eight o'clock audit reads through
+`_written_in_front_of_them` and `she_was_standing_there`. Both walked the same
+minds, the same rooms and the same perception cones, in two places, kept in step
+by a comment asking the next reader nicely.
+
+That is the fault this project has burned itself on five times, on the one pair
+where a divergence is not a bug but the game lying to the player about who
+watched them — on the screen whose entire purpose is that promise. There was a
+third implementation as well, `SuspicionSystem.watchers()`, with a six-frame
+cache and a comment about the two intermittent live-run failures it once cost,
+called by nothing at all.
+
+One function now. Both callers ask it. The smoke run asserts that a doctor
+standing at bed one is writing in front of the whole bay and that the two
+answers are identical, and it was proven red by dropping one name.
+
+**And gotcha 68 reproduced itself while that check was being written.** The
+first version deferred its assertion three frames, and three frames later the
+doze checks had put the ward to sleep — a sleeping patient is
+`perception.suppressed` and does not witness you — so it measured one watcher
+out of five and passed. Neither `current_room()` nor `sees_player()` needs a
+frame. The tell was the number in its own message: a doctor at a bedside on a
+five-bed ward is seen by five people, and it said one.
+
+## Ten functions nothing called
+
+Gotcha 84 swept constants and signals, and the smoke run fails on either.
+Nobody had ever swept functions. Ten, in `scripts/`: a progress bar and a
+dotted-leader form row in `UIKit`, a `comfort()` score on `Room`, a `mood()`
+getter on `NPCBody`, a superseded `shell()` on `ScreenBase`, `Log.recent()`,
+`Typewriter.hurry()`, the downstand beam `Dressing.bulkhead` that gotcha 83
+records as tried and reverted, a vending machine nothing places, and
+`SuspicionSystem.watchers()`.
+
+A dead method is worse than a dead constant, because it reads in review as the
+place where the thing happens: `hurry()` promised a feature in prose and
+`watchers()` looked like the canonical answer to a question that already had two
+other implementations.

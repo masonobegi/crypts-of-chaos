@@ -208,6 +208,7 @@ func _check_the_chart_works() -> void:
 
 	_check_the_crosshair_keeps_the_secret(w)
 	_check_somebody_you_could_speak_to_looks_up(w)
+	_check_the_promise_and_the_record_agree(w)
 	# HEADROOM. Every verb below costs ward minutes — a note is eight, a nurse
 	# review fifteen, an examination fifteen, the registrar twenty-five — and
 	# from half past seven that is enough to walk the shift past eight o'clock,
@@ -1970,6 +1971,60 @@ func _all_scripts(dir: String) -> Array:
 		f = d.get_next()
 	d.list_dir_end()
 	return out
+
+## WHAT THE SCREEN PROMISES AND WHAT THE AUDIT RECORDS ARE THE SAME ANSWER.
+##
+## `screen_records` builds one line — "Anything you write here, you write in
+## front of Nurse Adeyemi and 2 others" — and `WardDay._who_can_see_me` stamps
+## `seen_by` on the entry, which is what the eight o'clock audit reads through
+## `_written_in_front_of_them` and `she_was_standing_there`. They were two
+## copies of one loop kept in step by a comment asking the next reader nicely,
+## which is gotcha 48's shape on the one pair in this game where a divergence is
+## the game LYING TO THE PLAYER about who saw them.
+##
+## Asserted against a live ward rather than against the function, because the
+## thing that could break is a caller drifting, not the loop.
+func _check_the_promise_and_the_record_agree(w) -> void:
+	var sus = tree.get_first_node_in_group("suspicion_system")
+	if sus == null or w == null:
+		_fail("no ward to be watched on")
+		return
+	# STAND IN THE BAY FIRST, AND SYNCHRONOUSLY.
+	#
+	# Wherever the player happens to be when this check runs, both answers are
+	# the same EMPTY list — two functions agreeing about nothing, which is a
+	# check that asserts nothing and is failed by the runner for exactly that
+	# reason. So the doctor goes and stands at bed one, where five people are
+	# lying.
+	#
+	# AND NOT DEFERRED, which the first version was. Neither `current_room()`
+	# nor `sees_player()` needs a frame — both read a position directly — and
+	# gotcha 68 is the other half of gotcha 14: anything a NEIGHBOURING check can
+	# reset has to be asserted in the same frame it is set up. Deferred three
+	# frames this landed after the doze checks had put the ward to sleep, and a
+	# sleeping patient is `perception.suppressed` and does not witness you. It
+	# reported one watcher out of five and passed.
+	var pl = tree.get_first_node_in_group("player")
+	var h = tree.get_first_node_in_group("hospital")
+	if pl == null or h == null:
+		_fail("nowhere to stand to be watched")
+		return
+	var was: Vector3 = pl.global_position
+	pl.global_position = h.bed_position(1) + Vector3(0.0, 0.1, 0.9)
+	var promised: Array = sus.who_can_see_the_player()
+	var recorded: Array = w.call("_who_can_see_me", WardDay.TERMINAL_WARD)
+	var behind_a_door: Array = w.call("_who_can_see_me", WardDay.TERMINAL_OFFICE)
+	pl.global_position = was
+	_ok(promised.size() >= 3,
+		"a doctor standing at bed one is writing in front of the bay (%d of them)"
+			% promised.size())
+	_ok(promised == recorded,
+		"and the screen's promise and the audit's record are one answer (%d and %d)"
+			% [promised.size(), recorded.size()])
+	# ...AND THE OFFICE DOOR IS STILL THE THING THAT SHUTS. The delegation must
+	# not have taken the one place the TERMINAL, rather than the room, decides.
+	_ok(behind_a_door.size() <= promised.size(),
+		"and writing in your office is never seen by more people than writing in the ward")
 
 ## A PATIENT YOU COULD SPEAK TO LOOKS UP AT YOU, AND LOOKS AWAY AGAIN.
 ##

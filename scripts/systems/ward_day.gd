@@ -1600,23 +1600,16 @@ func _who_can_see_me(terminal := TERMINAL_WARD) -> PackedStringArray:
 		return witness_stub.duplicate()
 	if not is_inside_tree():
 		return out
+	# THE LOOP LIVES IN `SuspicionSystem` AND THERE IS ONE OF IT. It was copied
+	# out here and again in `screen_records`, which builds the line that PROMISES
+	# this — "Anything you write here, you write in front of..." — with a comment
+	# asking the next reader to keep the two in step by hand. A divergence there
+	# is not a bug, it is the game lying to the player about who saw them, on the
+	# one screen whose whole purpose is that promise.
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
-	var player = get_tree().get_first_node_in_group("player")
-	var h = get_tree().get_first_node_in_group("hospital")
-	if sus == null or player == null:
+	if sus == null or not sus.has_method("who_can_see_the_player"):
 		return out
-	var mine: String = String(h.room_at(player.global_position)) if h != null else ""
-	for m in sus.all_minds():
-		var b = sus.body_of(m.id)
-		if b == null or not is_instance_valid(b) or not b.is_inside_tree():
-			continue
-		if b.perception == null or b.perception.suppressed:
-			continue          ## asleep, or out cold
-		# Same room, or watching you from another one.
-		if (mine != "" and b.current_room() == mine) \
-				or b.perception.sees_player():
-			out.append(m.display_name)
-	return out
+	return sus.who_can_see_the_player()
 
 func _log(kind: String, data: Dictionary) -> void:
 	data["t"] = minute

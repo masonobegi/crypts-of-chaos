@@ -106,26 +106,20 @@ func _where() -> String:
 		"office": return "your office  ·  the door is shut"
 	return "the ward terminal  ·  in full view of the beds"
 
-## Everyone who would end up on `seen_by` if you wrote something right now. Read
-## off the same live rooms and perception cones `WardDay._who_can_see_me()` uses,
-## so what this promises and what the audit records cannot drift apart.
+## Everyone who would end up on `seen_by` if you wrote something right now.
+##
+## THE SAME FUNCTION the audit reads, not a copy of it. This used to be its own
+## loop over the same rooms and perception cones, with a comment saying it had
+## to stay in step with `WardDay._who_can_see_me` — which is gotcha 48's shape on
+## the one pair in this game where a divergence is a LIE TO THE PLAYER. The
+## screen that promises "you write in front of Nurse Adeyemi and 2 others" and
+## the record that promise is about now cannot disagree, because there is one
+## answer and both of them ask for it.
 func _who_can_see() -> Array:
-	var out: Array = []
 	var sus = get_tree().get_first_node_in_group("suspicion_system")
-	var p = player()
-	var h = get_tree().get_first_node_in_group("hospital")
-	if sus == null or p == null:
-		return out
-	var mine: String = String(h.room_at(p.global_position)) if h != null else ""
-	for m in sus.all_minds():
-		var b = sus.body_of(m.id)
-		if b == null or not is_instance_valid(b) or not b.is_inside_tree():
-			continue
-		if b.perception == null or b.perception.suppressed:
-			continue
-		if (mine != "" and b.current_room() == mine) or b.perception.sees_player():
-			out.append(m.display_name)
-	return out
+	if sus == null or not sus.has_method("who_can_see_the_player"):
+		return []
+	return sus.who_can_see_the_player()
 
 static func _list(names: Array) -> String:
 	if names.size() == 1:

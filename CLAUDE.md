@@ -1364,6 +1364,44 @@ with it because a lost afternoon does not care which.
     cannot do with a screen open. Second fault that measurement caught in an
     afternoon, having caught none in the year it spent printing.
 
+122. **THE SCREEN THAT PROMISES WHO SAW YOU AND THE RECORD OF WHO SAW YOU WERE
+    TWO COPIES OF ONE LOOP.** `screen_records` builds the line the whole stealth
+    layer is legible through — "Anything you write here, you write in front of
+    Nurse Adeyemi and 2 others" — and `WardDay._who_can_see_me` stamps `seen_by`
+    on the entry, which is what the eight o'clock audit reads. Both walked the
+    same minds, the same rooms and the same perception cones, in two places, kept
+    in step by a comment asking the next reader nicely. That is gotcha 48's shape
+    on the one pair in this game where a divergence is not a bug but **the game
+    lying to the player about who watched them**, on the screen whose entire
+    purpose is that promise. There was a THIRD, `SuspicionSystem.watchers()`,
+    with a six-frame cache and a comment about the two intermittent live-run
+    failures it once cost, called by nothing at all. One function now
+    (`who_can_see_the_player`), both callers ask it, and the smoke run asserts
+    that a doctor standing at bed one is writing in front of the whole bay and
+    that the two answers are identical. Proven red by dropping one name.
+123. **GOTCHA 68 REPRODUCED ITSELF WHILE THE CHECK FOR 122 WAS BEING WRITTEN.**
+    The first version deferred its assertion three frames — and three frames
+    later the doze checks had put the ward to sleep, a sleeping patient is
+    `perception.suppressed` and does not witness you, so it measured ONE watcher
+    out of five and passed. Neither `current_room()` nor `sees_player()` needs a
+    frame; both read a position directly. **A check whose setup a neighbouring
+    check can undo has to assert in the same frame**, and the tell that it was
+    wrong was the number in its own message: a doctor at a bedside on a
+    five-bed ward is seen by five people, and it said one.
+124. **TEN PUBLIC FUNCTIONS IN `scripts/` HAD NO CALLER ANYWHERE.** Gotcha 84
+    swept constants and signals and the smoke run fails on either; nobody had
+    ever swept FUNCTIONS. The haul: a progress bar and a dotted-leader form row
+    in `UIKit`, a `comfort()` score on `Room`, a `mood()` getter on `NPCBody`, a
+    superseded `shell()` on `ScreenBase`, `Log.recent()`, `Typewriter.hurry()`
+    (whose class docstring described the click that calls it), the downstand
+    beam `Dressing.bulkhead` that gotcha 83 records as tried and reverted, a
+    vending machine nothing places, and `SuspicionSystem.watchers()`. A dead
+    method is worse than a dead constant because it reads in review as the place
+    where the thing happens — `hurry()` promised a feature in prose and
+    `watchers()` looked like the canonical answer to a question that already had
+    two other implementations. The sweep is nine lines of grep and it is worth
+    re-running after any system is cut.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

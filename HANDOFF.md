@@ -22,6 +22,7 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 
 | What |
 |---|
+| The check for "a function nobody calls" passed with ten of them in it |
 | The capsule the menu has been able to pose for all along |
 | The screen that promises who saw you, and the record of who saw you |
 | Sixty-seven seeds, and a click that did not exist |
@@ -49,9 +50,11 @@ Nothing is half-done in the working tree. This session's commits, newest first:
 | Two more wards, and the three rules they broke |
 
 **In flight right now:** nothing. Everything below is committed and pushed, the
-whole suite is green, and all 28 frames render and pass their own checks.
+whole suite is green (368 assertions, 273 smoke checks on three seeds), all 29
+frames render and pass their own checks, and all three platforms export with the
+Linux build booting and exiting cleanly.
 
-**This session so far**, in the order it happened: a `CAREER_SEED` sweep across
+**This session**, in the order it happened. A `CAREER_SEED` sweep across
 twenty-seven values found three faults in the career probe and, under them, one
 real inversion in the economy — the every-night liar was beating the restrained
 one, which is the single thing the whole design is built to prevent
@@ -61,14 +64,21 @@ ago and was eating the contrast the darkest faces need. Then the shot harness:
 its two layout measurements now fail the run rather than printing a number
 nobody reads, and asking them at the interface sizes the SLIDER offers found the
 money plate and the objective plate under the card on every screen above 100%.
-Then four things in the frames — the handover staged in the wrong room, the
-morning briefing reading 7:25 PM, the objective arrow pointing at the player's
-own feet, and heads still filling a third of the picture at 2.6m. Then the
+Then the frames — the handover staged in the wrong room, the morning briefing
+reading 7:25 PM, the objective arrow pointing at the player's own feet, the
+handover board photographed from a random floor tile, the station's six-metre
+worktop built as exactly the slab its own neighbour's comment condemns. Then the
 biggest one: the harness moves a camera and leaves the body, so every world
 frame was photographed from a place nobody was standing — which is how "nobody
 in this game ever looks at the doctor standing over them" stayed invisible.
+Then two duplications that were lies rather than untidiness: the screen that
+promises who saw you and the record of who saw you were two copies of one loop.
+And finally the dead-code sweep — ten functions with no caller, two of which
+were features nobody finished (the store capsule and the vending machine the
+tannoy talks about), and the CHECK that was supposed to catch them, which had
+been passing with all ten in it because it counted bare tokens.
 
-See `PROGRESS_LOG.md` and gotchas 110-119.
+See `PROGRESS_LOG.md` and gotchas 110-127.
 
 The frame-by-frame pass of item 2 is DONE —
 every one of the 28 screenshot frames and all six `faces.sh` portraits have been

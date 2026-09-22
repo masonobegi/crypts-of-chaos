@@ -275,14 +275,35 @@ reach, and the ward order is drawn per career.
    needs committing. `STRICT=1 ./export.sh` treats it as a release blocker,
    which is the right setting for the build that actually ships. Not fixable in
    this container: rcedit is a Windows binary.
-7. **Whether tripling the outline weight costs real fill on hardware.**
+7. **THE NURSES' STATION COUNTER IS UNIFORMLY LIT ALONG ALL SIX METRES OF IT,
+   and the reason it has not been fixed is worth more than the fault.** Measured
+   off `06_station`: the counter's front face reads 123..129 across its whole
+   width — a spread of SIX — while the floor in the same frame runs 121..171 and
+   the wall 83..129. `Furniture._block` goes through `Build.wall`, which goes
+   through `box_mi`, which is `rbox_mesh`: a Minkowski-summed sphere whose
+   vertices all end up on the piece's own edges, so a 6 x 0.86 face has nothing
+   in the middle of it for a ceiling fitting to light. It is gotcha 131 and
+   gotcha 139 on the largest object in the room, and it is most of why that
+   counter still reads as a slab after the kick and the shadow gap went in.
+   **The obvious fix does not work.** `slab_mesh` subdivides, which is why the
+   floors, the walls and now the bay markings and the doormats use it — but
+   Godot's `BoxMesh` splits its vertices at every edge, and the inverted-hull
+   outline pushes each vertex along its own normal, so an INKED subdivided box
+   opens a crack down every edge (gotchas 37 and 104 are both about exactly
+   this). The counter has an outline and should keep one. The real fix is
+   `rbox_mesh` built from a SUBDIVIDED box rather than from a bare sphere, so
+   the Minkowski sum keeps the rounded corners and the shared normals AND gains
+   interior vertices. That is a change to the function every solid in the
+   building is made of, so it wants its own session and a full frame pass after
+   it.
+8. **Whether tripling the outline weight costs real fill on hardware.**
    Unmeasurable on llvmpipe; needs a machine with a GPU.
-8. **The hands are still mittens with a thumb**, and there are no cheekbones.
+9. **The hands are still mittens with a thumb**, and there are no cheekbones.
    Both are `npc_body.gd`, and both should be judged from `faces.sh` and not
    from a twenty-minute screenshot run. The socket removal (gotcha 113) is the
    evidence that this model wants FEWER pieces rather than more: read gotcha 86
    before adding geometry to a face.
-9. **A second ill-pair per ward.** The 128 boards are 21 puzzles wearing 128
+10. **A second ill-pair per ward.** The 128 boards are 21 puzzles wearing 128
    sets of names, because a ward's variability is one coin flip.
    `ILL_PAIR_BY_DAY` becomes a LIST of pairs, `_pair_flip` takes an index, and
    `enumerate_draws` folds over them. **Read this before doing it:** a pair

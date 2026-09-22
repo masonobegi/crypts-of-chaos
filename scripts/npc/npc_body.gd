@@ -131,6 +131,9 @@ var _last_progress_pos: Vector3 = Vector3.ZERO
 ## Idle motion. `_idle_offset` is per-character so a corridor of people does not
 ## breathe in unison, which reads as a machine rather than as a crowd.
 var _knees: Array[Node3D] = []
+## The shoes, one per leg, hung off the knee so the walk can hold them level.
+## See `_build_body`; a rigid foot on a swinging shin digs through the floor.
+var _feet: Array[Node3D] = []
 var _idle_phase := 0.0
 var _idle_offset := 0.0
 var _blink_t := 2.0
@@ -735,9 +738,54 @@ func _build_body() -> void:
 		knee.add_child(Build.mi(Build.taper_mesh(Vector2(0.17, 0.17), Vector2(0.20, 0.20), 0.32, 0.075),
 			Build.mat(outfit.darkened(0.42), 0.85, 0.0, Color(0, 0, 0), LINE),
 			Vector3(0, -0.16, 0)))
-		knee.add_child(Build.mi(Build.rbox_mesh(Vector3(0.19, 0.115, 0.35), 0.055),
+		# THE SOLE LANDS ON THE FLOOR, AND IT DID NOT.
+		#
+		# A `CharacterBody3D` rests with its capsule's bottom on the surface, and
+		# the capsule's bottom is the character's own origin — so the floor is
+		# y = 0 in this node's space and anything below it is INSIDE the lino.
+		# The chain was hip 0.68, knee -0.34, shoe -0.29, and the shoe is 0.115
+		# tall: 0.68 - 0.34 - 0.29 - 0.0575 = **-0.0075**, times `height_scale`,
+		# so every standing character in the building had a centimetre of shoe
+		# under the floor and the tall ones had more. Measured at -1.1cm on the
+		# nurse. It is small and it is exactly what "things sinking into the
+		# ground" looks like at a bedside, where the camera is a metre away and
+		# the floor is the brightest surface in the room.
+		#
+		# -0.2825 puts the sole at 0.000 for every height. Derived rather than
+		# nudged: the number is 0.68 - 0.34 - 0.0575, and if any of those three
+		# move this one has to be recomputed from them.
+		# ...AND THE FOOT IS ITS OWN NODE, so the walk can keep it level.
+		#
+		# A rigid shoe on a rigid shin is a pendulum with a thirty-five
+		# centimetre blade on the end of it: swing the leg 0.455 radians — which
+		# is what `WALK_SPEED` produces — and the TOE describes an arc that
+		# passes four centimetres below the floor. Every character in the
+		# building walked with their toes in the lino, on every step, and the
+		# only reason it is not obvious in a screenshot is that a screenshot
+		# catches one frame of a cycle.
+		#
+		# `_animate` cancels the accumulated hip+knee rotation on this node while
+		# walking, so the shoe stays flat and its sole never goes under: the
+		# ankle RISES as the leg swings (a 0.66m pendulum gains 6.7cm at 0.455
+		# rad), so a level foot hanging off it can only go up. Flat feet are also
+		# what this style wants — it is what every stylised walk does rather than
+		# solving IK for a floor nobody can see the join with.
+		# THE ANKLE IS ON THE SHIN'S AXIS AND THE TOE HANGS OFF IT.
+		#
+		# The first version put the foot node itself 7.5cm forward, which is
+		# where the shoe's CENTRE wants to be — and a forward offset rotates
+		# DOWNWARD when the chain swings, so levelling the shoe still left 4.7mm
+		# of sole under the floor. With the pivot on the axis the sole is
+		# `0.68 - 0.6225*cos(swing) - 0.0575`, which is zero at rest and rises
+		# for every other angle: it cannot go under, at any speed, by
+		# construction rather than by measurement.
+		var foot := Node3D.new()
+		foot.position = Vector3(0, -0.2825, 0)
+		knee.add_child(foot)
+		foot.add_child(Build.mi(Build.rbox_mesh(Vector3(0.19, 0.115, 0.35), 0.055),
 			Build.mat(Color(0.19, 0.21, 0.27), 0.6, 0.0, Color(0, 0, 0), LINE),
-			Vector3(0, -0.29, 0.075)))
+			Vector3(0, 0, 0.075)))
+		_feet.append(foot)
 		_knees.append(knee)
 		_legs.append(leg)
 
@@ -1077,6 +1125,7 @@ func _animate(delta: float) -> void:
 		_arms[1].rotation.x = -1.0 + sin(_walk_phase) * 0.16
 		for leg in _legs:
 			leg.rotation.x = 0.0
+		_level_the_feet()
 		return
 	var planar := Vector2(velocity.x, velocity.z).length()
 	_walk_phase += delta * (2.0 + planar * 3.4)
@@ -1125,6 +1174,7 @@ func _animate(delta: float) -> void:
 		if _knees.size() >= 2:
 			_knees[0].rotation.x = maxf(0.0, -swing) * 1.5
 			_knees[1].rotation.x = maxf(0.0, swing) * 1.5
+		_level_the_feet()
 	if _arms.size() >= 2:
 		# Flailing when startled is the entire visual payoff of throwing a tray.
 		var flail := _startle * sin(_walk_phase * 9.0) * 1.4
@@ -1144,6 +1194,18 @@ func _animate(delta: float) -> void:
 
 	_tick_blink(delta)
 	_tick_look(delta)
+
+## THE SOLE STAYS PARALLEL TO THE FLOOR.
+##
+## Cancels the hip and the knee on the foot's own node, so the shoe's world
+## orientation is identity however the leg is swinging. See the note in
+## `_build_body` about the four centimetres of toe that used to be under the
+## lino on every step.
+func _level_the_feet() -> void:
+	for i in _feet.size():
+		if i >= _legs.size() or i >= _knees.size():
+			break
+		_feet[i].rotation.x = -(_legs[i].rotation.x + _knees[i].rotation.x)
 
 ## Where they are looking. ITS OWN PASS, because every early return in _animate
 ## used to skip it.
@@ -1377,6 +1439,12 @@ func set_seated(on: bool) -> void:
 		leg.rotation.x = -1.42 if on else 0.0
 	for knee in _knees:
 		knee.rotation.x = 1.36 if on else 0.0
+	# RIGID WITH THE SHIN HERE. Seated, the leg is folded and the shoe is meant
+	# to point down at the floor with it; `_animate`'s levelling is for the walk
+	# and returns early above this pose anyway. Written rather than left, so a
+	# character who sits down mid-stride does not keep the last frame's ankle.
+	for foot in _feet:
+		foot.rotation.x = 0.0
 	for i in _arms.size():
 		var arm: Node3D = _arms[i]
 		# Down and forward, elbows in — hands land on the thighs rather than
@@ -1443,6 +1511,9 @@ func set_in_bed(on: bool) -> void:
 		leg.rotation.x = -1.02 if on else 0.0
 	for knee in _knees:
 		knee.rotation.x = 0.18 if on else 0.0
+	# Same: in a bed the foot goes with the shin, toes along the mattress.
+	for foot in _feet:
+		foot.rotation.x = 0.0
 	# ...AND THE ARMS DOWN THE SIDES. At -0.30 with the trunk upright they lay
 	# forward over the chest, so the four blue-grey tubes in the bedside frame
 	# were two arms and two legs and you could not tell which was which.

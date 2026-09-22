@@ -282,6 +282,8 @@ func _check_the_verbs_work() -> void:
 	_check_a_readmission_waits_for_the_morning()
 	_check_nobody_is_misgendered()
 	_check_nothing_floats_or_sinks()
+	_check_the_scenery_stands_on_something()
+	_check_nobody_walks_through_the_floor()
 	_check_nobody_has_their_eyes_inside_their_head()
 	_check_every_ward_is_its_own_room()
 	_check_nothing_outside_is_inside()
@@ -542,6 +544,136 @@ func _quoted(line: String) -> Array:
 		if i % 2 == 1:
 			out.append(String(parts[i]))
 	return out
+
+## ...AND SO DOES THE SCENERY, WHICH THE AUDIT ABOVE CANNOT SEE.
+##
+## `_check_nothing_floats_or_sinks` walks `Fixture`s, and everything in
+## `Dressing` is deliberately not one — no collision, no footprint, which is the
+## rule that lets there be a lot of it. So the four pieces that are meant to
+## stand ON A SURFACE rather than on the floor or on a wall were placed by eye
+## and never measured, and three of them were wrong at once: a stack of folded
+## linen and a stack of trays at opposite ends of the nurses' station, ninety
+## centimetres up with NOTHING UNDERNEATH THEM in a room whose worktop does not
+## reach either of them; and the office desk's pens, mug and paperwork forty
+## centimetres behind the desk, over bare carpet. Two floating piles of laundry
+## in the frame `06_station` is entirely about.
+##
+## Wall and ceiling pieces are excluded by not being on this list, which is the
+## same rule the fixture audit uses and for the same reason: a poster is not
+## standing on anything and never was.
+const SCENERY_ON_A_SURFACE := ["Linen", "Trays", "Boxes", "DeskClutter"]
+
+func _check_the_scenery_stands_on_something() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	var boxes: Array = []
+	var standers: Array = []
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null:
+			continue
+		var root := _dressing_root(mi, h)
+		boxes.append({"aabb": mi.global_transform * mi.mesh.get_aabb(), "of": root})
+		var kind := _dressing_kind_of(root)
+		if kind in SCENERY_ON_A_SURFACE:
+			standers.append({"root": root, "kind": kind,
+				"aabb": mi.global_transform * mi.mesh.get_aabb()})
+	# One box per piece: a stack of trays is five meshes and only the bottom of
+	# the stack is resting on anything.
+	var by_piece := {}
+	for st in standers:
+		var key := str((st["root"] as Node).get_instance_id())
+		if by_piece.has(key):
+			by_piece[key]["aabb"] = (by_piece[key]["aabb"] as AABB).merge(st["aabb"])
+		else:
+			by_piece[key] = {"aabb": st["aabb"], "root": st["root"], "kind": st["kind"]}
+	_ok(by_piece.size() >= 3,
+		"there are %d pieces of scenery that have to be resting on a surface"
+			% by_piece.size())
+	var adrift: Array = []
+	for key in by_piece:
+		var box: AABB = by_piece[key]["aabb"]
+		var foot: float = box.position.y
+		var best := 0.0
+		for b in boxes:
+			if b["of"] == by_piece[key]["root"]:
+				continue
+			var other: AABB = b["aabb"]
+			if not _overlaps_in_plan(box, other):
+				continue
+			var top: float = other.position.y + other.size.y
+			if top <= foot + RESTS_TOLERANCE and top > best:
+				best = top
+		var gap: float = foot - best
+		if absf(gap) > RESTS_TOLERANCE:
+			adrift.append("%s %s by %.0fcm at %.1f,%.1f" % [String(by_piece[key]["kind"]),
+				"floats" if gap > 0.0 else "is sunk", absf(gap) * 100.0,
+				box.get_center().x, box.get_center().z])
+	_ok(adrift.is_empty(), "and every one of them is%s"
+		% ("" if adrift.is_empty() else " — " + ", ".join(PackedStringArray(adrift))))
+
+## The topmost ancestor below the hospital, which is what `Dressing._add`
+## parents. Named rather than searched, because gotcha 17 means the node's own
+## name is a lie for everything after the first of its kind.
+func _dressing_root(n: Node, h: Node) -> Node:
+	var cur := n
+	while cur != null and cur.get_parent() != null and cur.get_parent() != h:
+		cur = cur.get_parent()
+	return cur
+
+func _dressing_kind_of(n) -> String:
+	if n == null or not (n is Node):
+		return ""
+	return String((n as Node).get_meta("dressing_kind")) \
+		if (n as Node).has_meta("dressing_kind") else ""
+
+## NOBODY WALKS THROUGH THE FLOOR, AT ANY SPEED, AT ANY POINT IN THE CYCLE.
+##
+## A `CharacterBody3D` rests with the bottom of its capsule — which is its own
+## origin — on the surface, so the floor is y = 0 in the body's space and
+## anything below it is inside the lino. The leg is a rigid pendulum with a
+## 35cm shoe on the end of it, and the walk swings the hip up to 0.6 radians:
+## measured across the cycle, the TOE reached **5.4cm under the floor** on every
+## step, on every character in the building. A screenshot catches one frame of a
+## cycle, which is why twenty-nine of them never showed it.
+##
+## The fix is that the foot is its own node, pivoting on the shin's axis, and
+## the walk cancels the hip and the knee on it — so the sole is
+## `0.68 - 0.6225*cos(swing) - 0.0575`, which is zero at rest and rises for
+## every other angle. This samples the whole cycle rather than trusting the
+## arithmetic, because the arithmetic is what was wrong last time.
+func _check_nobody_walks_through_the_floor() -> void:
+	var who = null
+	for n in tree.get_nodes_in_group("npc"):
+		if n is CharacterBody3D and not bool(n.get("_seated")):
+			who = n
+			break
+	if who == null:
+		_fail("nobody is standing up to walk")
+		return
+	var was: Vector3 = who.velocity
+	var worst := 999.0
+	# Fast enough to saturate the swing clamp, so this is the deepest the cycle
+	# can ever reach rather than the deepest at a walk.
+	for step in 180:
+		who.velocity = Vector3(2.4, 0.0, 0.0)
+		who.call("_animate", 1.0 / 60.0)
+		for k in _all_nodes(who):
+			if not (k is MeshInstance3D):
+				continue
+			var m: MeshInstance3D = k
+			if m.mesh == null or String(m.name) == "ContactShadow":
+				continue
+			var a: AABB = m.global_transform * m.mesh.get_aabb()
+			worst = minf(worst, a.position.y - (who as Node3D).global_position.y)
+	who.velocity = was
+	_ok(worst > -0.005,
+		"no part of a walking body goes under the floor (lowest %.1fmm)"
+			% (worst * 1000.0))
 
 ## THINGS THAT STAND ON THINGS ACTUALLY STAND ON THEM.
 ##

@@ -46,6 +46,17 @@ const CEILING_GROUP := "ceiling_fitting"
 static var tag := ""
 
 static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0) -> Node3D:
+	# WHAT THIS PIECE IS, RECORDED BEFORE THE ENGINE TAKES THE NAME AWAY.
+	#
+	# Gotcha 17: Godot DISCARDS an explicit name when it collides with a sibling
+	# and substitutes the class name, and every piece of scenery in the building
+	# is parented to the same Hospital node — so the second poster, the second
+	# vent and the thirteenth bin are all called `@Node3D@5306` and nothing can
+	# say what they are afterwards. The group rule fixes "find all the vents";
+	# it does not fix "this thing is floating ninety centimetres above the floor
+	# and I cannot tell you what it is", which is what an audit of the whole
+	# building needs. One line, set on the way past, while the name still says.
+	n.set_meta("dressing_kind", String(n.name))
 	h.add_child(n)
 	if tag != "":
 		n.add_to_group(tag)
@@ -496,10 +507,14 @@ static func boxes(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 static func trays(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Trays"
+	# THE ORIGIN IS THE BASE, like `linen` and `boxes` and unlike this used to
+	# be: the first tray was CENTRED on y = 0, so the bottom of the stack sat
+	# 17mm below the point every caller was treating as "where it stands", and a
+	# stack placed exactly on a worktop cut into it.
 	for i in 5:
 		root.add_child(Build.box_mi(Vector3(0.34, 0.035, 0.26),
 			[Color(0.36, 0.68, 0.72), Color(0.94, 0.86, 0.42)][i % 2],
-			Vector3(0, float(i) * 0.05, 0), 0.8, 0.006))
+			Vector3(0, 0.018 + float(i) * 0.05, 0), 0.8, 0.006))
 	return _add(h, root, pos, rot_y)
 
 ## A mug and a stack of paper on a desk, which is the difference between a desk

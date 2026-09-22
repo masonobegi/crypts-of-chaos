@@ -452,13 +452,28 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 	_occupy(13.15, z0 + 0.32, 0.9, 0.6)
 
 static func _dress_station(h: Hospital, r: Room) -> void:
+	var c := r.center()
 	# Raised from 1.68 to clear the back worktop it hangs over.
 	Dressing.noticeboard(h, _far_wall(r, 0.50, 1.78), _far_rot(r), 1.7, 1.05)
 	Dressing.poster(h, _left_wall(r, 0.35, 1.66), LEFT_ROT, 0.56, 0.78,
 		Color(0.94, 0.66, 0.30), 5)
 	Dressing.clock(h, _far_wall(r, 0.16, 2.30), _far_rot(r))
-	Dressing.linen(h, Vector3(r.rect.position.x + 0.9, 0.90, r.rect.position.y + 1.2))
-	Dressing.trays(h, Vector3(r.rect.end.x - 1.0, 0.90, r.rect.position.y + 1.4))
+	# ON THE WORKTOP, AND THEY WERE IN MID-AIR.
+	#
+	# A stack of folded linen at (0.9, 0.90) and a stack of trays at (11.0,
+	# 0.88), in a room whose back worktop runs x 3 to 9 with its surface at
+	# 1.16 — so both stacks stood ninety centimetres up with nothing whatever
+	# underneath them, at opposite ends of a room the worktop does not reach.
+	# Two floating piles of laundry, in the frame `06_station` is entirely
+	# about. The fixture audit could not see them: it checks `Fixture`s, and
+	# scenery is not one.
+	#
+	# The numbers come off `_station`'s own worktop rather than off the room, so
+	# they cannot drift apart again: `back_z` there is `rect.position.y + 0.5`
+	# and the plate is 8cm centred at 1.12, which is a surface at 1.16.
+	var wt_z: float = r.rect.position.y + 0.5
+	Dressing.linen(h, Vector3(c.x - 2.3, 1.16, wt_z + 0.05))
+	Dressing.trays(h, Vector3(c.x - 0.9, 1.16, wt_z + 0.05))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 3.0))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 3.0), 0.85)
 	# The board every ward station has, with the bed list on it in somebody's
@@ -485,8 +500,15 @@ static func _dress_office(h: Hospital, r: Room) -> void:
 	# which is the same fault as a constant nothing reads with a modelling
 	# session behind it. The office desk is the one surface in the building the
 	# player stands over for a whole conversation.
-	Dressing.desk_clutter(h, Vector3(r.rect.get_center().x + 0.35, 0.74,
-		r.rect.get_center().y + 0.10), _far_rot(r))
+	# ...ON THE DESK. It was at (centre.x + 0.35, 0.74, centre.y + 0.10), and
+	# `_office` puts the desk at `centre.z + 1.0`, two metres by one, with a 6cm
+	# top CENTRED on 0.75 — so its surface is 0.78 and it spans z -3.5 to -2.5.
+	# The clutter sat at z -3.9: forty centimetres behind the desk, four
+	# centimetres down inside where the desk would have been if it were there,
+	# and therefore floating over bare floor. The terminal occupies x 15.35 to
+	# 16.05, so the paperwork goes to the right of it.
+	var oc := r.rect.get_center()
+	Dressing.desk_clutter(h, Vector3(oc.x + 0.60, 0.78, oc.y + 1.15), _far_rot(r))
 
 ## Record a solid footprint, grown slightly so NPCs keep their shoulders clear.
 static func _occupy(centre_x: float, centre_z: float, w: float, d: float) -> void:

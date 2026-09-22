@@ -3716,3 +3716,129 @@ on purpose: there a name mentioned only in prose does count, because the failure
 that check hunts is a constant nobody has thought about, and a constant somebody
 wrote a paragraph about is not that. A function is different. The paragraph is
 usually its own docstring.
+
+## Every character walked with their toes five centimetres into the floor
+
+A `CharacterBody3D` rests with the bottom of its capsule — its own origin — on
+the surface, so the floor is y=0 in the body's space and every part of the model
+has to stay above it for the whole cycle. The leg was a rigid pendulum with a
+35cm shoe welded to the end and the walk swings the hip up to 0.6 radians, so
+the toe described an arc 5.4cm under the lino on every step, on everybody in the
+building. Twenty-nine screenshots never showed it, because a screenshot is one
+frame of a cycle.
+
+The foot is its own node now, pivoting on the shin's axis with the shoe offset
+forward inside it — the first attempt put the pivot at the shoe's centre and a
+pivot 7.5cm forward of the ankle rotates downward, which left 4.7mm still under
+the floor. Measured across the whole cycle at a speed that saturates the swing
+clamp: 0.0mm.
+
+And six IV stands were hanging ninety centimetres in the air. `BoxShape3D` is
+centred on its `CollisionShape3D` and `make_prop` left that at the origin, so a
+prop settles with the MIDDLE of its collision box on the floor — the stand is
+1.8 tall with a model running 0 to 1.7 from its base disc. Both call sites had a
+hand-written half-box lift compensating for it, which is how it survived: the
+numbers looked deliberate.
+
+## Three piles of scenery standing on nothing, and two pieces inside each other
+
+The fixture audit walks `Fixture`s, and almost everything in a ward is scenery.
+A stack of linen and a stack of trays stood ninety centimetres up at opposite
+ends of the nurses' station, in a room whose worktop reaches neither of them,
+and the office desk's pens and mug sat forty centimetres behind the desk over
+bare floor. `_dress_ward_top` fills both ends of the ward's near wall and the
+pass that fills its MIDDLE was written later and put its two pieces in the
+corners, so a folding screen contained a whole stool and most of a water cooler
+and a laundry hamper contained a stack of crates.
+
+Four checks, all proven red. `Dressing._add` records each piece's kind as meta
+before Godot takes the name away (gotcha 17), because an audit of a whole
+building is useless if everything in it is `@Node3D@5306`.
+
+## The bay strip was a slab of flat colour with no lamp on it
+
+The largest painted shape in the game is eighteen metres by four — about a third
+of the floor in `02_ward_from_door` — and it was two `box_mi` boxes. `rbox_mesh`
+is a Minkowski-summed sphere with its vertices on the edges, so a slab that size
+has nothing in the middle for a ceiling fitting to light; and `Build.mat` is one
+flat albedo, so the floor's fleck and its welded seam every two metres stopped
+at the marking and started again on the far side. Measured: the strip ran
+118..124 across its whole width, a spread of six, while the vinyl a metre in
+front of it ran 194..242.
+
+It had been blamed on the tint twice. `Surfaces.floor_mat` is keyed to world
+position, so a tinted copy over the real floor carries the fleck and the seams
+straight through, in register. Everything painted on a floor goes through
+`Build.floor_paint` now — and the mix that decides how the paint reads was doing
+nothing at all until it was lit, so it moved from 0.62 to 0.50.
+
+Which then found that the corridor had TWO sets of wayfinding stripes, drawn by
+two functions that did not know about each other, three centimetres apart, at
+the same height, down the whole of the first room in the game.
+
+## Everything on an outside wall was mounted on glass
+
+All four runs of the outer shell are glazed from the sill to the head over their
+whole length, and the ward's bed wall is one of them — so the oxygen outlets and
+a twenty-centimetre sharps bin were screwed to a window, five of each, in
+`03_bedside`, which is the frame this game is played through. Gotcha 13 from the
+other side: the mounting offset was right and there was nothing behind it to
+mount to. Nine pieces in all, including the office's wall art floating in the
+middle of the glazing with a mullion passing behind the frame, and the handover
+board — 1.9 metres of whiteboard, the one piece of information in this game that
+is a place rather than a screen.
+
+`Dressing._add` asks `Hospital.glazed_at` and puts a pier in behind the piece,
+because the call sites are the one place that cannot see it: a wall is a wall in
+`Furniture` and only the `Hospital` knows which runs it glazed. The fittings
+were also mounted on the wall's CENTRELINE rather than its face, eight
+centimetres inside the plaster on every bed, which had never shown because there
+was no plaster there to be inside of.
+
+The register of piers built so far had to be thrown away and asked of the
+building instead: `Hospital.reskin` runs every morning and `redress_ward` frees
+the whole ward's dressing, so from the first day rollover the list still held
+five piers that no longer existed and answered "already covered" for every
+fitting on that wall.
+
+## A panel on a wall is not inside the worktop in front of it
+
+The handover board is 1.1m tall and was centred at 1.55, so it spanned y 1.00 to
+2.10; the station's back worktop is an 8cm plate centred on 1.12 and 85cm deep,
+and the board hangs over it. The bottom sixteen centimetres of it were inside
+the counter, on the only wall that room's only camera points at. The first
+version of the check excluded any solid that was thin in ANY axis, so an 8cm
+worktop that is 85cm deep read as a wall and the fault did not go red: what may
+contain a panel is something thin along the panel's own FACING axis.
+
+Four objects on the same worktop were boxes, and the file already said why that
+is not enough. Gotcha 120 records that `_station`'s own comment lists what turns
+a slab into joinery and that it had not been applied to the six-metre worktop it
+was written next to; it had not been applied to anything standing on it either.
+The printer was one `_block` in near-white with a sheet of paper on the lid. The
+rota was five `_block`s thirty lines from `Dressing.whiteboard`, which is the
+same board with a frame, a pen tray, two pens and the magnets somebody pinned it
+up with. The debt letters were a dark institutional signboard reading FINAL
+NOTICE three times, which reads as a label drawn three times by mistake. And the
+pens stood at an angle on a 10cm tile with no pot. The fifth magnet on every
+whiteboard in the building was below the board.
+
+## Every face had its nose between its eyes and its mouth under its nostrils
+
+The nose ball sat at y -0.022 squashed to 0.72, so its top reached +0.003 while
+the eye runs -0.008 to +0.022 — and it is the one lined feature in the middle of
+the face, so what landed in `03_bedside` was the nose's ink arc cutting across
+the inner corner of an eye and reading as a monocle. The mouth sat at -0.061,
+fourteen millimetres under that, with half a head of blank face below it.
+
+A mouth belongs where the lower lip runs into the chin, so it is measured from
+the chin ball now — whose top edge moves five centimetres across the cast,
+because `jaw` runs 0.84 to 1.18 and `skull.y` 0.90 to 1.11. On a short skull
+with a heavy jaw a proud skin-coloured solid stood in front of the mouth.
+
+The check went red on all 24 faces for the wrong reason first, and that is the
+part worth keeping: a mouth is supposed to be lower than the chin ball's top,
+because the ball is centred well behind the face and only its front cap shows.
+The chin question is a depth test, not a height one. The nose question is not a
+box test either — a nose is supposed to be between two eyes — so what is
+asserted is that the TIP is below the line of the eyes.

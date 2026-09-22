@@ -55,12 +55,21 @@ var doors: Array = []
 ## The five PatientBeds, in bed order, filled in by Furniture as it places them.
 var beds: Array = []
 var _room_list: Array[Room] = []
+## WHERE THE GLASS IS, so that nothing gets hung on it.
+##
+## Every one of the four exterior runs is glazed from the sill to the head over
+## its whole length, and every room in the building has at least one of them —
+## so a poster at picture height on an outside wall is a poster hanging in the
+## middle of a window with hedges visible round it. `Dressing._add` asks this
+## and puts a pier in behind the piece; see `Dressing.wall_pier`.
+var _glazed: Array = []
 
 func _ready() -> void:
 	add_to_group("hospital")
 
 func build() -> void:
 	nav = NavGrid.new(0.0)
+	_glazed.clear()
 	_build_rooms()
 	_build_shell()
 	_build_outside()
@@ -649,6 +658,7 @@ func _wall_segment(a: Vector3, b: Vector3, exterior := false) -> void:
 ## Teal up to a sill swallows the lower two thirds of an exterior wall, which
 ## is the note that came back from the first attempt at this.
 func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> void:
+	_glazed.append({"h": horizontal, "mid": mid, "len": length})
 	var t := WALL_T
 	var below := Vector3(size.x, WIN_SILL, size.z)
 	var above := Vector3(size.x, WALL_H - WIN_HEAD, size.z)
@@ -698,6 +708,25 @@ func _glaze(mid: Vector3, size: Vector3, horizontal: bool, length: float) -> voi
 		var at := Vector3(off, 0, 0) if horizontal else Vector3(0, 0, off)
 		add_child(Build.box_mi(mull, frame,
 			mid + at + Vector3(0, WIN_SILL + pane_h * 0.5, 0), 0.6, 0.0))
+
+## Is this point on a pane rather than on plaster? Asked with the position a
+## piece of wall dressing is about to be mounted at, which by the convention in
+## `Dressing._add` is the plaster face — so the test is generous about depth
+## (a quarter of a metre either side of the run) and exact about the band.
+func glazed_at(p: Vector3) -> bool:
+	if p.y < WIN_SILL - 0.05 or p.y > WIN_HEAD + 0.05:
+		return false
+	for g in _glazed:
+		var mid: Vector3 = g["mid"]
+		var half: float = float(g["len"]) * 0.5
+		if bool(g["h"]):
+			if absf(p.z - mid.z) > 0.25 or absf(p.x - mid.x) > half:
+				continue
+		else:
+			if absf(p.x - mid.x) > 0.25 or absf(p.z - mid.z) > half:
+				continue
+		return true
+	return false
 
 func _lintel(a: Vector3, b: Vector3) -> void:
 	var length := a.distance_to(b)

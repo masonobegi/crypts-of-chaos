@@ -285,7 +285,12 @@ func _check_the_verbs_work() -> void:
 	_check_the_scenery_stands_on_something()
 	_check_nobody_walks_through_the_floor()
 	_check_every_prop_sits_on_its_own_base()
+	_check_nothing_is_inside_anything_else()
+	_check_nothing_you_read_is_buried_in_the_furniture()
+	_check_nothing_is_hung_on_a_window()
+	_check_no_two_markings_are_painted_on_each_other()
 	_check_nobody_has_their_eyes_inside_their_head()
+	_check_every_face_is_in_the_right_order()
 	_check_every_ward_is_its_own_room()
 	_check_nothing_outside_is_inside()
 	_check_the_outline_hull_is_closed()
@@ -562,7 +567,7 @@ func _quoted(line: String) -> Array:
 ## Wall and ceiling pieces are excluded by not being on this list, which is the
 ## same rule the fixture audit uses and for the same reason: a poster is not
 ## standing on anything and never was.
-const SCENERY_ON_A_SURFACE := ["Linen", "Trays", "Boxes", "DeskClutter"]
+const SCENERY_ON_A_SURFACE := ["Linen", "Trays", "Boxes", "DeskClutter", "Printer"]
 
 func _check_the_scenery_stands_on_something() -> void:
 	var h = tree.get_first_node_in_group("hospital")
@@ -631,6 +636,330 @@ func _dressing_kind_of(n) -> String:
 		return ""
 	return String((n as Node).get_meta("dressing_kind")) \
 		if (n as Node).has_meta("dressing_kind") else ""
+
+## NOTHING IN THE BUILDING IS INSIDE ANYTHING ELSE.
+##
+## "Things phasing through each other" is the oldest reported fault in this
+## project — gotcha 13 is about it — and the only thing that has ever been done
+## about it is one mounting rule for wall fittings. Nothing has ever looked at
+## two objects standing on the floor.
+##
+## Two were, in the first room of the game: `_dress_ward_top` fills both ends of
+## the near wall, and the pass that fills its MIDDLE was written later and put
+## its two pieces in the corners instead — so a folding screen at x 17.84..19.62
+## by z 5.54..6.94 contained a whole stool and most of a water cooler, and a
+## laundry hamper contained a stack of crates. Both look completely reasonable
+## in the source; the only way to see it is to intersect them.
+##
+## SCENERY AGAINST SCENERY, and only that. A handrail is supposed to go into a
+## wall, a patient is supposed to be inside a bed, a shoulder is supposed to be
+## inside a trunk, and a sign is supposed to be on its plate — architecture,
+## people and fixtures all overlap each other by design and comparing them finds
+## twenty-four true things and nothing useful. Two loose objects standing on the
+## same square metre of floor is the fault, and `dressing_kind` is exactly the
+## set of things that are loose.
+##
+## Boxes rather than meshes, so this is coarse on anything rotated — which is
+## why the bar is a THIRD of the smaller object and four litres, not "they
+## touch".
+const INSIDE_SHARE := 0.30
+const INSIDE_VOLUME := 0.004
+
+func _check_nothing_is_inside_anything_else() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	var plan := Rect2()
+	for r in h.room_list():
+		plan = r.rect if plan.size == Vector2.ZERO else plan.merge(r.rect)
+	var pieces := {}
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null or String(mi.name) == "ContactShadow":
+			continue
+		var root := _dressing_root(mi, h)
+		if not (root as Node).has_meta("dressing_kind"):
+			continue
+		var key := str((root as Node).get_instance_id())
+		var box: AABB = mi.global_transform * mi.mesh.get_aabb()
+		if pieces.has(key):
+			pieces[key] = (pieces[key] as AABB).merge(box)
+		else:
+			pieces[key] = box
+	var list: Array = []
+	for k in pieces:
+		var a: AABB = pieces[k]
+		# The SHELL contains everything on purpose, and the view out of the
+		# windows is not in the building at all.
+		if a.size.x > 6.0 or a.size.z > 6.0 or a.size.y > 2.9:
+			continue
+		if a.size.x * a.size.y * a.size.z < 0.0005:
+			continue
+		if not plan.has_point(Vector2(a.get_center().x, a.get_center().z)):
+			continue
+		list.append(a)
+	_ok(list.size() > 40, "there are %d pieces of loose scenery in the building"
+		% list.size())
+	var buried: Array = []
+	for i in list.size():
+		for j in range(i + 1, list.size()):
+			var a: AABB = list[i]
+			var b: AABB = list[j]
+			var inter := a.intersection(b)
+			if inter.size.x <= 0.0 or inter.size.y <= 0.0 or inter.size.z <= 0.0:
+				continue
+			var vol: float = inter.size.x * inter.size.y * inter.size.z
+			var small: float = minf(a.size.x * a.size.y * a.size.z,
+				b.size.x * b.size.y * b.size.z)
+			if vol / small > INSIDE_SHARE and vol > INSIDE_VOLUME:
+				buried.append("%.0f%% at %.1f,%.1f" % [vol / small * 100.0,
+					inter.get_center().x, inter.get_center().z])
+	_ok(buried.is_empty(), "and none of them is inside another%s"
+		% ("" if buried.is_empty() else " — " + ", ".join(PackedStringArray(buried))))
+
+## NO TWO MARKINGS ARE PAINTED ON TOP OF EACH OTHER.
+##
+## The corridor had TWO sets of wayfinding stripes. `Furniture._corridor` drew a
+## teal, an orange and a red line at z 0.72, 0.88 and 1.04; `_dress_corridor` —
+## written later, in the other file, through `Dressing.floor_line` — drew a blue
+## one at 0.75, a yellow one at 0.95 and a green one across the far side. Every
+## line is 9 to 10cm wide, so the blue sat three centimetres from the teal and
+## the yellow seven from the orange, at the SAME y, coplanar: two markings
+## fighting for the same pixels down the whole of the first room in the game.
+##
+## Everything painted on a floor goes through `Build.floor_paint`, which puts it
+## in a group, so this is a plan-overlap test over that group. Pieces of the
+## same marking are allowed to overlap — a bay zone is a slab with a smaller,
+## lighter slab on top of it, and that is how it gets a border — so the
+## comparison is between PARENTS, not between meshes.
+const PAINT_OVERLAP := 0.02
+
+func _check_no_two_markings_are_painted_on_each_other() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	var by_piece := {}
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D) or not n.is_in_group(Build.FLOOR_PAINT):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null or not mi.is_inside_tree():
+			continue
+		var key := str(mi.get_parent().get_instance_id())
+		var box: AABB = mi.global_transform * mi.mesh.get_aabb()
+		by_piece[key] = (by_piece[key] as AABB).merge(box) if by_piece.has(key) else box
+	var list: Array = by_piece.values()
+	_ok(list.size() >= 4, "there are %d markings painted on the floors" % list.size())
+	var clashes: Array = []
+	for i in list.size():
+		for j in range(i + 1, list.size()):
+			var a: AABB = list[i]
+			var b: AABB = list[j]
+			var ox: float = minf(a.end.x, b.end.x) - maxf(a.position.x, b.position.x)
+			var oz: float = minf(a.end.z, b.end.z) - maxf(a.position.z, b.position.z)
+			if ox * oz > PAINT_OVERLAP and ox > 0.0 and oz > 0.0:
+				clashes.append("%.1f m2 at %.1f,%.1f" % [ox * oz,
+					(maxf(a.position.x, b.position.x) + minf(a.end.x, b.end.x)) * 0.5,
+					(maxf(a.position.z, b.position.z) + minf(a.end.z, b.end.z)) * 0.5])
+	_ok(clashes.is_empty(), "and none of them is painted over another%s"
+		% ("" if clashes.is_empty() else " — " + ", ".join(PackedStringArray(clashes))))
+
+## NOTHING IS HUNG ON A WINDOW.
+##
+## All four runs of the outer shell are glazed from the sill to the head over
+## their whole length (`Hospital._glaze`), and every room in the building has at
+## least one of them — so `_far_wall`, `_left_wall` and `_right_wall` hand back
+## picture height on a pane about half the time. Nine pieces were: the office's
+## wall art and its notice, floating in the middle of the glazing in `07_office`
+## with hedges and sky visible round them and a mullion passing behind the
+## frame; the station's noticeboard and its rota; the corridor's noticeboard and
+## its wall art; the ward's coat hooks; and — the one that showed first, because
+## it is twenty centimetres deep and bright yellow — a sharps bin beside every
+## bed on the ward, hanging over the countryside.
+##
+## `Dressing._add` asks `Hospital.glazed_at` and puts a `WallPier` in behind
+## anything mounted on glass. This is the check that the rule keeps reaching
+## everything: it does not ask the register, it asks the WORLD, because a piece
+## added to a wall by a route nobody thought about is exactly the case a
+## register cannot see.
+const PIER_KIND := "WallPier"
+
+func _check_nothing_is_hung_on_a_window() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null or not h.has_method("glazed_at"):
+		_fail("no hospital to measure")
+		return
+	var piers: Array = []
+	var hung: Array = []
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null or not mi.is_inside_tree():
+			continue
+		var root := _dressing_root(mi, h)
+		var kind := _dressing_kind_of(root)
+		# ...AND THE FIXTURES TOO, which do not go through `Dressing._add` and
+		# so get no pier unless somebody asks for one. The handover board is
+		# 1.9m of whiteboard on the station's south exterior wall and was the
+		# largest single thing in this game hanging in a window.
+		if kind == "" and root is Fixture:
+			kind = String((root as Fixture).fixture_name)
+		if kind == "":
+			continue
+		var box: AABB = mi.global_transform * mi.mesh.get_aabb()
+		if kind == PIER_KIND:
+			piers.append(box)
+			continue
+		hung.append({"kind": kind, "box": box, "root": root})
+	var merged := {}
+	for e in hung:
+		var key := str((e["root"] as Node).get_instance_id())
+		if merged.has(key):
+			merged[key]["box"] = (merged[key]["box"] as AABB).merge(e["box"])
+		else:
+			merged[key] = {"kind": e["kind"], "box": e["box"]}
+	_ok(piers.size() >= 5, "there are %d piers in the glazing" % piers.size())
+	var floating: Array = []
+	for key in merged:
+		var b: AABB = merged[key]["box"]
+		# Long runs and floor-standing pieces are not "hung on the wall": a
+		# handrail is bracketed INTO one and a vending machine stands in front
+		# of one, and neither is what this is about.
+		if b.size.x > 3.2 or b.size.z > 3.2 or b.position.y < 0.05:
+			continue
+		var c := b.get_center()
+		if not h.glazed_at(Vector3(c.x, c.y, c.z)):
+			continue
+		var backed := false
+		for p in piers:
+			# GROWN IN BOTH HORIZONTAL AXES, and the first version was not.
+			# A pier on a wall that runs in Z is a few centimetres wide in X
+			# and two metres long in Z, and on a wall that runs in X it is the
+			# other way round — so a tolerance written per-axis is right on one
+			# pair of walls and wrong on the other. It reported the ward's own
+			# coat hooks, poster and wall art as unbacked when all three had a
+			# pier behind them, which is the same shape of mistake as measuring
+			# a room with the tape held only one way.
+			var q: AABB = (p as AABB).grow(0.35)
+			if c.x >= q.position.x and c.x <= q.end.x \
+					and c.z >= q.position.z and c.z <= q.end.z \
+					and c.y >= q.position.y - 0.05 and c.y <= q.end.y + 0.05:
+				backed = true
+				break
+		if not backed:
+			floating.append("%s at %.1f,%.1f,%.1f" % [String(merged[key]["kind"]),
+				c.x, c.y, c.z])
+	_ok(floating.is_empty(), "and nothing is hung on the glass without one%s"
+		% ("" if floating.is_empty() else " — " + ", ".join(PackedStringArray(floating))))
+
+## A PANEL ON A WALL IS NOT INSIDE THE WORKTOP IN FRONT OF IT.
+##
+## `_check_nothing_is_inside_anything_else` compares loose scenery against loose
+## scenery and says in its own comment why: architecture, people and fixtures
+## overlap each other by design, so comparing everything finds two dozen true
+## things and nothing useful. That exclusion is correct and it left a hole
+## exactly where the worst instance was.
+##
+## The HANDOVER BOARD — the one piece of information in this game that is a
+## place rather than a screen you can open from anywhere — is 1.1m tall and was
+## centred at 1.55, so it spanned y 1.00 to 2.10. The station's back worktop is
+## an 8cm plate centred on 1.12 and 85cm deep, and the board hangs over it. The
+## bottom SIXTEEN CENTIMETRES of it were inside the counter, on the only wall
+## the room's only camera looks at, for as long as both have existed. Neither
+## function knows about the other and both read perfectly sensibly.
+##
+## The rule that separates the fault from the design is THICKNESS. A thing you
+## read is a panel: thin in the direction it faces. What is allowed to contain
+## it is the wall it is screwed to, which is also thin. A worktop, a cabinet or
+## a bed is not thin in any axis, and nothing like that is ever supposed to be
+## inside a panel — so the test is "a panel, intersected by something deep".
+## Nothing on the floor is a panel for this purpose (`PANEL_FLOOR`), because a
+## door leaf is thin too and is supposed to be inside its frame.
+const PANEL_THIN := 0.35
+const PANEL_FLOOR := 0.5
+const PANEL_VOLUME := 0.002
+
+func _check_nothing_you_read_is_buried_in_the_furniture() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	# Every solid in the building that is not itself a fixture: the walls, the
+	# floors, and everything `Furniture._block` bolts down.
+	var solids: Array = []
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null or not mi.is_inside_tree():
+			continue
+		var body := _static_owner(mi)
+		if body == null or body is Fixture:
+			continue
+		solids.append(mi.global_transform * mi.mesh.get_aabb())
+	var panels := 0
+	var buried: Array = []
+	for f in tree.get_nodes_in_group("fixture"):
+		if not (f is Node3D) or not (f as Node3D).is_inside_tree():
+			continue
+		var box := AABB()
+		var got := false
+		for n in _all_nodes(f):
+			if not (n is MeshInstance3D):
+				continue
+			var mi2: MeshInstance3D = n
+			if mi2.mesh == null:
+				continue
+			var b: AABB = mi2.global_transform * mi2.mesh.get_aabb()
+			box = b if not got else box.merge(b)
+			got = true
+		if not got or box.position.y < PANEL_FLOOR:
+			continue
+		var thin: float = minf(box.size.x, minf(box.size.y, box.size.z))
+		if thin > PANEL_THIN or box.size.y < 0.30:
+			continue
+		# WHICH WAY IT FACES IS THE WHOLE TEST, and the first version asked the
+		# wrong object. It excluded any solid that was thin in ANY axis, so the
+		# worktop — an 8cm plate that is 85cm DEEP — was read as a wall and the
+		# fault this check was written for did not go red. What is allowed to
+		# contain a panel is something thin along the panel's OWN facing axis,
+		# because that is the wall it is screwed to. A worktop is thin across
+		# the panel and deep through it, which is the definition of in the way.
+		var axis := 0
+		if box.size.y < box.size.x and box.size.y <= box.size.z:
+			axis = 1
+		elif box.size.z < box.size.x and box.size.z <= box.size.y:
+			axis = 2
+		panels += 1
+		for s in solids:
+			if s.size[axis] <= PANEL_THIN:
+				continue
+			var inter := box.intersection(s)
+			if inter.size.x <= 0.0 or inter.size.y <= 0.0 or inter.size.z <= 0.0:
+				continue
+			var vol: float = inter.size.x * inter.size.y * inter.size.z
+			if vol > PANEL_VOLUME:
+				buried.append("%s is %.0fcm into something at %.1f,%.1f"
+					% [(f as Node).get("fixture_name"), inter.size.y * 100.0,
+						inter.get_center().x, inter.get_center().z])
+	_ok(panels > 0, "there %s %d panel%s on a wall that the player reads"
+		% ["is" if panels == 1 else "are", panels, "" if panels == 1 else "s"])
+	_ok(buried.is_empty(), "and none of them is inside the furniture%s"
+		% ("" if buried.is_empty() else " — " + ", ".join(PackedStringArray(buried))))
+
+## The nearest StaticBody3D at or above a mesh, or null if it is loose scenery.
+func _static_owner(n: Node) -> Node:
+	var cur: Node = n
+	while cur != null:
+		if cur is StaticBody3D:
+			return cur
+		cur = cur.get_parent()
+	return null
 
 ## A PROP'S COLLIDER IS UNDER ITS MODEL, NOT AROUND ITS ORIGIN.
 ##
@@ -2632,6 +2961,95 @@ func _check_what_she_saw_gets_to_the_folder(w, sus, pid: String) -> void:
 ## Measured against the SKULL MESH's own scale rather than against `_face_z`,
 ## which would only ever agree with itself: if somebody changes how the head is
 ## built and not how the face is placed, this is what says so.
+## EYES, THEN NOSE, THEN MOUTH — AND THE MOUTH IN FRONT OF THE CHIN.
+##
+## Gotcha 80 is about features placed at a literal DEPTH on a skull whose front
+## moves. This is the same fault in the other axis, and it had two instances.
+## The nose ball sat at y -0.022 squashed to 0.72, so its top reached +0.003
+## while the eye runs -0.008 to +0.022 — the nose was IN the eye's own band, and
+## it is the one LINED feature in the middle of the face, so what landed in
+## `03_bedside` was the nose's ink arc cutting across the inner corner of an eye
+## and reading as a monocle. And the mouth sat at a literal -0.061 while the
+## chin ball's top edge moves from -0.116 to -0.063 across the cast (`jaw` is
+## 0.84 to 1.18 and `skull.y` 0.90 to 1.11) — so on a short skull with a heavy
+## jaw a proud, skin-coloured solid stood in front of the mouth.
+##
+## THE CHIN TEST IS A DEPTH TEST, NOT A HEIGHT ONE, and the first version of it
+## failed every face in the game for the wrong reason. The mouth is SUPPOSED to
+## be lower than the chin ball's top: the ball is centred well behind the face
+## and only its front cap shows, so a mouth level with it is simply in front of
+## it. What is wrong is a mouth BEHIND that cap, which is the same question
+## `_check_nobody_has_their_eyes_inside_their_head` asks of the skull, asked of
+## a second ellipsoid.
+##
+## Asked of the BUILT MESHES, like its neighbour: `_nose_mi` and `_chin_mi` are
+## kept for this, because re-deriving the numbers the file used to place them
+## only ever agrees with itself.
+const FACE_ORDER_GAP := 0.002
+
+func _check_every_face_is_in_the_right_order() -> void:
+	var wrong: Array = []
+	var tried := 0
+	for i in 24:
+		var look: Dictionary = Appearance.of({"id": "order_face_%d" % i, "age": 30 + i * 2})
+		var b := NPCBody.new()
+		b.set_look(look)
+		tree.root.add_child(b)
+		if b._nose_mi == null or b._chin_mi == null or b._mouth == null \
+				or b._eyes_open.is_empty():
+			b.queue_free()
+			continue
+		tried += 1
+		var eye: MeshInstance3D = b._eyes_open[0]
+		# The tip of the nose is below the line of the eyes. NOT "clear of the
+		# eye's rectangle": a nose is supposed to be between two eyes, and a
+		# box test either passes on everybody (the two are 3mm apart in x, so
+		# they never overlap however high the nose goes) or fails on everybody
+		# once the ink allowance is in. What went wrong is that the BALL sat at
+		# eye level, and `Appearance` draws the nose 0.78 to 1.33, so the big
+		# ones reached 11mm above the eye's own centre.
+		var nose_high: float = b._nose_mi.position.y + _half(b._nose_mi, 1)
+		if nose_high > eye.position.y - FACE_ORDER_GAP:
+			wrong.append("nose %.0fmm above the line of the eyes on face %d"
+				% [(nose_high - eye.position.y) * 1000.0, i])
+		# The mouth is under the nose...
+		var nose_low: float = b._nose_mi.position.y - _half(b._nose_mi, 1)
+		var mouth_high: float = b._mouth.position.y + _half(b._mouth, 1)
+		if mouth_high > nose_low - FACE_ORDER_GAP:
+			wrong.append("mouth %.0fmm into the nose on face %d"
+				% [(mouth_high - nose_low) * 1000.0, i])
+		# ...and in front of the chin, which is where the first version of this
+		# asked the wrong question. See the note above.
+		var clear := _in_front_of(b._mouth, b._chin_mi)
+		if clear < 0.0:
+			wrong.append("mouth %.0fmm inside the chin on face %d"
+				% [-clear * 1000.0, i])
+		b.queue_free()
+	_ok(tried == 24, "%d of 24 generated faces could be measured" % tried)
+	_ok(wrong.is_empty(), "and every one has its features in the right order%s"
+		% ("" if wrong.is_empty() else " — " + ", ".join(PackedStringArray(wrong))))
+
+## Half a built piece's own mesh along one axis, in head space. From the MESH,
+## not from the number that placed it.
+func _half(m: MeshInstance3D, axis: int) -> float:
+	var sz: Vector3 = m.mesh.get_aabb().size
+	return sz[axis] * 0.5 * m.scale[axis]
+
+## How far a piece's front face stands in front of an ellipsoid's surface at
+## the piece's own x and y. Negative means it is inside it.
+func _in_front_of(piece: MeshInstance3D, ball: MeshInstance3D) -> float:
+	var r: Vector3 = ball.mesh.get_aabb().size * 0.5
+	var a: float = r.x * ball.scale.x
+	var bb: float = r.y * ball.scale.y
+	var c: float = r.z * ball.scale.z
+	var px: float = piece.position.x - ball.position.x
+	var py: float = piece.position.y - ball.position.y
+	var t: float = 1.0 - (px / a) * (px / a) - (py / bb) * (py / bb)
+	if t <= 0.0:
+		return 1.0
+	var surface: float = ball.position.z + c * sqrt(t)
+	return piece.position.z + _half(piece, 2) - surface
+
 func _check_nobody_has_their_eyes_inside_their_head() -> void:
 	var worst := 0.0
 	var worst_who := ""

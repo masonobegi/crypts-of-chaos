@@ -241,7 +241,14 @@ static func _dress_ward_body(h: Hospital, r: Room) -> void:
 	# one shape in the room that is supposed to say "the beds live here".
 	Dressing.floor_zone(h, Vector3(r.rect.get_center().x, 0, bed_z + into * 0.4),
 		Vector2(r.rect.size.x - 1.6, 3.6),
-		_bay_tint(0).lerp(Color(Cases.ward_look().get("floor", Build.FLOOR_A)), 0.62))
+	# 0.50 AND NOT 0.62, because the marking is now LIT. As a flat `Build.mat`
+	# slab it rendered at 122 against a floor at 222 whatever mix went in — the
+	# number was doing nothing and the darkness was the missing lighting. With
+	# the zone on the floor's own surface (see `Dressing.floor_zone`) the mix
+	# is finally the thing that decides how the paint reads, and at 0.62 it was
+	# three levels of 255 away from the vinyl: a bay marking nobody can see.
+		_bay_tint(0).lerp(Color(Cases.ward_look().get("floor", Build.FLOOR_A)), 0.50),
+		r.rect)
 	# A curtain track between each pair of bays, gathered against the divider.
 	for i in Hospital.BEDS - 1:
 		var mid: float = (h.bed_position(i + 1).x + h.bed_position(i + 2).x) * 0.5
@@ -367,10 +374,25 @@ static func _dress_ward_top(h: Hospital, r: Room) -> void:
 		[_swing_gap(door_x, _door_w(r))], 0.92)
 	# The near half of the bay, which is otherwise a lot of empty floor between
 	# the door and the people.
-	var hmp := Vector3(r.rect.position.x + 1.0, 0, _door_wall_z(r) - into * 2.4)
+	# ...AND NOT ON TOP OF WHAT IS ALREADY THERE, which is what these two were.
+	#
+	# `_dress_ward_top` had already filled both ends of this wall — the linen,
+	# the hamper, the boxes and the mop bucket on the west, two stools, a water
+	# cooler and a plant on the east — and these two were added afterwards to
+	# fill the middle and put in the corners instead. Measured: the near screen
+	# stood at x 17.84..19.62 by z 5.54..6.94, which contains one whole stool
+	# (18.35..19.05 by 5.27..5.96) and most of the water cooler (18.87..19.48 by
+	# 6.52..7.18); the near hamper at 0.51..1.49 by 5.91..6.89 contains the
+	# stack of boxes at 0.53..1.22 by 6.49..7.27. A stool inside a folding
+	# screen and a crate inside a laundry bin, in the first room of the game.
+	#
+	# The MIDDLE of the wall is where they belong and where there was nothing:
+	# clear of the door's swing (the jamb is at 9.2 and the leaf sweeps 1.4m),
+	# clear of the far screen at 7.05..7.75, and clear of everything above.
+	var hmp := Vector3(r.rect.position.x + 5.4, 0, _door_wall_z(r) - into * 2.6)
 	Dressing.hamper(h, hmp, 0.4)
 	_occupy(hmp.x, hmp.z, 0.6, 0.6)
-	var scr := Vector3(r.rect.end.x - 1.2, 0, _door_wall_z(r) - into * 2.2)
+	var scr := Vector3(r.rect.position.x + 13.6, 0, _door_wall_z(r) - into * 2.4)
 	Dressing.screen_partition(h, scr, _door_rot(r) + 0.5, _screen_tint(4))
 	_occupy(scr.x, scr.z, 1.4, 0.6)
 
@@ -413,9 +435,13 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 			south_gaps.append(gap)
 	Dressing.handrail_run(h, x0, x1, z0 + 0.12, south_gaps)
 	Dressing.handrail_run(h, x0, x1, z1 - 0.12, north_gaps)
-	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88))
-	Dressing.floor_line(h, x0, x1, z0 + 0.95, Color(0.94, 0.72, 0.24))
-	Dressing.floor_line(h, x0, x1, z1 - 0.80, Color(0.42, 0.76, 0.52))
+	# Three down the near side and one across the far one, so the corridor has a
+	# line to follow whichever wall you are walking. The third near line was
+	# `_corridor`'s red one, which is why it is here and not there.
+	Dressing.floor_line(h, x0, x1, z0 + 0.75, Color(0.30, 0.58, 0.88), 0.10, r.rect)
+	Dressing.floor_line(h, x0, x1, z0 + 0.91, Color(0.94, 0.72, 0.24), 0.10, r.rect)
+	Dressing.floor_line(h, x0, x1, z0 + 1.07, Color(0.84, 0.36, 0.44), 0.10, r.rect)
+	Dressing.floor_line(h, x0, x1, z1 - 0.80, Color(0.42, 0.76, 0.52), 0.10, r.rect)
 	# Hung between the ceiling lamps rather than on top of them. The one that
 	# names the ward is built by `rename_ward` instead, because it is rewritten
 	# every morning along with the plate above the beds.
@@ -454,7 +480,12 @@ static func _dress_corridor(h: Hospital, r: Room) -> void:
 static func _dress_station(h: Hospital, r: Room) -> void:
 	var c := r.center()
 	# Raised from 1.68 to clear the back worktop it hangs over.
-	Dressing.noticeboard(h, _far_wall(r, 0.50, 1.78), _far_rot(r), 1.7, 1.05)
+	# 0.56 ALONG THE WALL AND NOT 0.50: at 0.50 it spanned x 5.11 to 6.89 and
+	# the handover board spans 3.45 to 5.35 at the same z, so a quarter of a
+	# metre of cork was inside the board somebody reads the day off. Two things
+	# hung on one wall by two functions that do not know about each other, which
+	# is the same fault as the screen that contained a stool.
+	Dressing.noticeboard(h, _far_wall(r, 0.56, 1.78), _far_rot(r), 1.7, 1.05)
 	Dressing.poster(h, _left_wall(r, 0.35, 1.66), LEFT_ROT, 0.56, 0.78,
 		Color(0.94, 0.66, 0.30), 5)
 	Dressing.clock(h, _far_wall(r, 0.16, 2.30), _far_rot(r))
@@ -471,9 +502,15 @@ static func _dress_station(h: Hospital, r: Room) -> void:
 	# The numbers come off `_station`'s own worktop rather than off the room, so
 	# they cannot drift apart again: `back_z` there is `rect.position.y + 0.5`
 	# and the plate is 8cm centred at 1.12, which is a surface at 1.16.
+	# ...AND CLEAR OF THE BOARDS ON THE WALL BEHIND, AND FORWARD ON THE
+	# WORKTOP. The handover board hangs at c.x - 1.6 and is about 1.5 wide, so
+	# anything between x 3.65 and 5.15 is read against it rather than against
+	# the wall; and an item at the back of a 0.85m worktop, seen from an eye at
+	# 1.7m, is a sliver behind a board. 22cm forward of the wall line puts them
+	# on the front half of the top, where there is floor behind them.
 	var wt_z: float = r.rect.position.y + 0.5
-	Dressing.linen(h, Vector3(c.x - 2.3, 1.16, wt_z + 0.05))
-	Dressing.trays(h, Vector3(c.x - 0.9, 1.16, wt_z + 0.05))
+	Dressing.linen(h, Vector3(c.x - 2.7, 1.16, wt_z + 0.22))
+	Dressing.trays(h, Vector3(c.x - 0.4, 1.16, wt_z + 0.22))
 	Dressing.bin(h, Vector3(r.rect.position.x + 0.9, 0, r.rect.end.y - 3.0))
 	Dressing.plant(h, Vector3(r.rect.end.x - 0.9, 0, r.rect.end.y - 3.0), 0.85)
 	# The board every ward station has, with the bed list on it in somebody's
@@ -707,7 +744,23 @@ static func _ward(h: Hospital, r: Room) -> void:
 		# standoff on top is double-offsetting. The gas panel hung 13cm proud of
 		# the plaster and the sharps bin a full 30cm, floating in mid-air beside
 		# every bed on the ward.
-		Dressing.oxygen_panel(h, Vector3(slot.x, 1.42, far_z), _far_rot(r))
+		# THE PIER FIRST, then everything that is screwed to it. Without this
+		# the gas panel and the sharps bin are mounted on a window pane: see
+		# `Dressing.bedhead_panel`.
+		var face: float = far_z + into * Hospital.WALL_T * 0.5
+		Dressing.wall_pier(h, Vector3(slot.x,
+			(Hospital.WIN_SILL + Hospital.WIN_HEAD) * 0.5, face), _far_rot(r), 1.72)
+		# ...AND THE FITTINGS MOUNT ON THE PLASTER, NOT ON THE CENTRELINE.
+		#
+		# `Dressing._add` pushes a piece out by half its own depth from the
+		# plane it is given, so the plane it wants is the WALL FACE. These two
+		# were handed `far_z`, which is the wall's CENTRELINE — and a wall is
+		# `Hospital.WALL_T` thick, so the gas panel and the sharps bin were
+		# eight centimetres inside the plaster on every bed on the ward. It
+		# never showed because this particular wall is a window and there was
+		# no plaster there to be inside of; it showed the moment the pier went
+		# in, as five gas panels 55% swallowed and five sharps bins 34%.
+		Dressing.oxygen_panel(h, Vector3(slot.x, 1.42, face), _far_rot(r))
 		# OFF TO THE SIDE, because the patient's floating name tag is centred
 		# over the same bed. Directly above the head the two sat on top of each
 		# other and every bedside shot read "Sam Oduya" with a "4" printed
@@ -719,7 +772,7 @@ static func _ward(h: Hospital, r: Room) -> void:
 		# still landed on top of each other. Beds are 4m apart, so there is room.
 		_wall_sign(h, str(n), Vector3(slot.x - 1.35, 2.30, far_z + into * 0.14),
 			_far_rot(r), 0.16)
-		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, far_z), _far_rot(r))
+		Dressing.sharps(h, Vector3(slot.x + 0.66, 1.15, face), _far_rot(r))
 
 		# The cabinet by the head and the tray table across the foot: the two
 		# things that are actually beside a hospital bed. Both take a footprint,
@@ -796,18 +849,20 @@ static func _corridor(h: Hospital, r: Room) -> void:
 	_cart(h, Vector3(13.2, 0, z + 1.1), -1.9)
 	_iv_stand(h, Vector3(17.6, 0, z + 1.3))
 
-	# Wayfinding stripes down the floor. They give the eye something to follow
-	# and something to measure your own progress against, which an unbroken pale
-	# blue plane does not.
-	var stripes := [
-		[0.72, Color(0.16, 0.62, 0.66)],
-		[0.88, Color(0.94, 0.68, 0.24)],
-		[1.04, Color(0.84, 0.36, 0.44)],
-	]
-	for st in stripes:
-		var strip := Build.box_mi(Vector3(19.0, 0.012, 0.09), st[1],
-			Vector3(10.0, 0.008, float(st[0])), 0.5, 0.0)
-		h.add_child(strip)
+	# THE WAYFINDING STRIPES ARE IN `_dress_corridor`, AND THERE WERE TWO SETS
+	# OF THEM, ONE ON TOP OF THE OTHER.
+	#
+	# This function drew a teal, an orange and a red line at z 0.72, 0.88 and
+	# 1.04, and `_dress_corridor` — written later, in the other file, through
+	# `Dressing.floor_line` — drew a blue one at 0.75, a yellow one at 0.95 and
+	# a green one across the far side. Every line is 9 to 10cm wide, so the
+	# blue sat three centimetres from the teal and the yellow seven from the
+	# orange: two sets of markings overlapping, at the SAME y, coplanar, which
+	# on any renderer is a fight rather than a colour. The corridor is the
+	# first room in the game and the one a player walks most.
+	#
+	# One set, in the one place that has a function for it. Gotcha 48's shape
+	# again: two implementations of one thing, kept apart by nothing.
 
 	# Benches along the north wall, clear of the ward opening at 9.2-10.8. A
 	# bench four centimetres from a doorway is a bench every player walking that
@@ -843,7 +898,7 @@ static func _station(h: Hospital, r: Room) -> void:
 	# single surface in the room and it filled the middle of `06_station` as a
 	# blank slab. Same fault the office desk had and the same one line of fix;
 	# the plate is 8cm centred at 1.12, so its surface is 1.16.
-	Dressing.desk_clutter(h, Vector3(c.x + 1.55, 1.16, back_z + 0.05))
+	Dressing.desk_clutter(h, Vector3(c.x + 1.55, 1.16, back_z + 0.20))
 	# ...and a chair pushed in at it. There are two chairs in this room and both
 	# are at the meeting table; the one permanently staffed post in the building
 	# had nowhere to sit and four metres of empty vinyl in front of it, which is
@@ -896,11 +951,26 @@ static func _station(h: Hospital, r: Room) -> void:
 	# have to be standing IN the station to read it — which is the point: it is
 	# the one piece of information in the game that is somewhere rather than on
 	# a screen you can open from anywhere.
+	# ON A PIER, LIKE EVERYTHING ELSE ON THIS WALL. The station's back wall is
+	# the south exterior run and is glazed from 1.05 to 2.30 over its whole
+	# length, so the one piece of information in this game that is a PLACE was
+	# hanging in a window. `Dressing._add` does this automatically for scenery
+	# and a Fixture does not go through it, so it is asked for here.
+	Dressing.wall_pier(h, Vector3(c.x - 1.6, 1.84,
+		r.rect.position.y + Hospital.WALL_T * 0.5), 0.0, 2.15)
 	var board := HandoverBoard.new()
 	board.room_key = r.key
 	h.add_child(board)
 	board.build()
-	board.position = Vector3(c.x - 1.6, 1.55, r.rect.position.y + 0.14)
+	# 1.84 AND NOT 1.55, BECAUSE THE WORKTOP RAN THROUGH IT. The board is 1.1
+	# tall and centred, so at 1.55 it spanned y 1.00 to 2.10 — and the back
+	# worktop's top plate is 8cm centred on 1.12, which is a surface at 1.16
+	# spanning z -7.93 to -7.07 over the board's own z -7.89 to -7.84. The
+	# bottom SIXTEEN CENTIMETRES of the one thing in this building that is a
+	# place rather than a screen was inside the counter in front of it, on the
+	# wall the room's only camera points at. At 1.84 it clears the surface by
+	# 13cm, which is a board hung over a worktop rather than growing out of one.
+	board.position = Vector3(c.x - 1.6, 1.84, r.rect.position.y + 0.14)
 
 	# The station terminal, on the counter with its screen turned into the room:
 	# to use it you stand behind the counter, two metres from a doorway that has
@@ -944,24 +1014,76 @@ static func _station(h: Hospital, r: Room) -> void:
 	# The rota, over the far end of the back worktop. Whiteboard, four ruled
 	# lines, permanently out of date. Kept to the east end because the clock and
 	# the noticeboard are on the same wall and something has to give.
+	# ...AND IT IS THE SAME OBJECT AS THE ONE NEXT TO IT. This was five
+	# `_block`s — a white slab, four ruled lines — while `Dressing.whiteboard`,
+	# thirty lines away and already called twice in this building, is the same
+	# board with a frame round it, a pen tray under it, two pens in the tray and
+	# the magnets somebody pinned the rota up with. Two implementations of one
+	# object, and the worse one was on the wall of the room `06_station` is
+	# about: gotcha 48's shape, where the code and the comment do not disagree
+	# because there is no comment, and the picture is the only way to see it.
 	var board_z: float = r.rect.position.y + 0.2
-	_block(h, Vector3(2.6, 1.2, 0.07), Color(0.93, 0.94, 0.92), Vector3(c.x + 3.6, 1.85, board_z))
-	for ln in 4:
-		_block(h, Vector3(2.3, 0.03, 0.02), Color(0.62, 0.68, 0.72),
-			Vector3(c.x + 3.6, 1.42 + 0.24 * float(ln), board_z + 0.05))
-	_wall_sign(h, "TODAY", Vector3(c.x + 3.6, 2.32, board_z + 0.06), 0.0, 0.095)
+	# East of the printer rather than over it: a 2.6m board centred at c.x + 3.6
+	# starts at x 8.27 and the printer's paper feed reaches 8.39.
+	Dressing.whiteboard(h, Vector3(c.x + 4.0, 1.85, board_z), 0.0, 2.6, 1.2)
+	_wall_sign(h, "TODAY", Vector3(c.x + 4.0, 2.56, board_z + 0.06), 0.0, 0.095)
 
-	# A printer, and the paper it has run out of.
-	_block(h, Vector3(0.52, 0.34, 0.44), Color(0.86, 0.87, 0.85),
-		Vector3(c.x + 2.2, 1.29, r.rect.position.y + 0.5))
-	_block(h, Vector3(0.40, 0.03, 0.30), Build.PAPER,
-		Vector3(c.x + 2.2, 1.47, r.rect.position.y + 0.62))
+	# A printer, and the paper it has run out of. `Dressing.printer` rather than
+	# a box: see the note on it. Its origin is its BASE, like the linen and the
+	# trays, so the worktop's surface at 1.16 is the number that goes in.
+	Dressing.printer(h, Vector3(c.x + 2.2, 1.16, r.rect.position.y + 0.48))
 
 	# Records cabinet — physical copies. Investigators love these.
 	_block(h, Vector3(1.2, 1.6, 0.5), Color(0.55, 0.57, 0.52), Vector3(r.rect.position.x + 0.8, 0.8, c.z + 3.4))
 	_wall_sign(h, "WARD RECORDS", Vector3(r.rect.position.x + 0.8, 1.72, c.z + 3.66), 0.0, 0.07)
 
 # ------------------------------------------------------------------ office
+## THE DEBT LETTERS WERE A SIGNBOARD SAYING "FINAL NOTICE" THREE TIMES.
+##
+## `_wall_sign` is a dark plate with white text on it — a piece of institutional
+## wayfinding, which is exactly right for NURSES' STATION and exactly wrong for
+## a letter from a man who wants his money. Three identical lines on one plate
+## do not read as three letters; photographed in `07_office` they read as a
+## label that has been drawn three times by mistake, which is the one thing a
+## player cannot un-see once they have seen it.
+##
+## Three sheets of A4, pinned at three different angles, overlapping, with the
+## header in red and the body as ruled lines. The tilt is the whole point: a
+## square sheet on a wall is a poster and a crooked one is a piece of paper
+## somebody jammed on a pin.
+static func _debt_letters(h: Hospital, pos: Vector3, rot_y: float) -> void:
+	# Along the wall and out of it, from the one rotation the caller passes.
+	var along := Vector3(cos(rot_y), 0.0, -sin(rot_y))
+	# ...AND ON A PIER, because the office's east wall is an exterior run and
+	# is glass at this height: three letters pinned to a window.
+	Dressing.wall_pier(h, pos - Vector3(sin(rot_y), 0.0, cos(rot_y)) * 0.01,
+		rot_y, 0.62)
+	var tilts := [-0.14, 0.09, -0.05]
+	for i in 3:
+		var leaf := Node3D.new()
+		leaf.name = "FinalNotice"
+		h.add_child(leaf)
+		leaf.position = pos + along * (-0.07 + 0.07 * float(i)) \
+			+ Vector3(0, 0.05 - 0.05 * float(i), 0)
+		leaf.rotation = Vector3(0, rot_y, float(tilts[i]))
+		var z: float = 0.004 * float(i)
+		leaf.add_child(Build.box_mi(Vector3(0.21, 0.297, 0.003), Build.PAPER,
+			Vector3(0, 0, z), 0.95, 0.0))
+		var head := Build.label3d("FINAL NOTICE", 0.028, Color(0.70, 0.15, 0.15), false)
+		head.position = Vector3(0, 0.100, z + 0.004)
+		leaf.add_child(head)
+		# The body of it, as ruled lines rather than as text: a letter read from
+		# two metres is a block of grey with a red word at the top of it, and
+		# five boxes cost nothing next to five more Label3Ds.
+		for ln in 6:
+			leaf.add_child(Build.box_mi(
+				Vector3(0.155 - 0.016 * float(ln % 3), 0.005, 0.002),
+				Color(0.45, 0.47, 0.51),
+				Vector3(-0.015, 0.042 - 0.028 * float(ln), z + 0.004), 0.95, 0.0))
+		# The amount, underlined, which is the only thing anybody reads.
+		leaf.add_child(Build.box_mi(Vector3(0.075, 0.012, 0.002),
+			Color(0.70, 0.15, 0.15), Vector3(0.045, -0.128, z + 0.004), 0.95, 0.0))
+
 static func _office(h: Hospital, r: Room) -> void:
 	var c := r.center()
 	_table(h, Vector3(c.x, 0, c.z + 1.0), 2.0, 1.0, 0.75, Color(0.42, 0.30, 0.22))
@@ -983,6 +1105,5 @@ static func _office(h: Hospital, r: Room) -> void:
 	_wall_sign(h, "PERSONAL FILES", Vector3(r.rect.position.x + 0.10, 1.62, c.z - 2.4),
 		LEFT_ROT, 0.07)
 	# The debt letters. Purely narrative, entirely load-bearing.
-	_wall_sign(h, "FINAL NOTICE\nFINAL NOTICE\nFINAL NOTICE",
-		Vector3(r.rect.end.x - 0.10, 1.5, c.z - 1.0), RIGHT_ROT, 0.075)
+	_debt_letters(h, Vector3(r.rect.end.x - 0.10, 1.5, c.z - 1.0), RIGHT_ROT)
 	_wall_sign(h, "DR. YOU", Vector3(c.x, 2.3, r.rect.position.y + 0.14), 0.0, 0.15)

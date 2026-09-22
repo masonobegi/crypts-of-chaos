@@ -100,6 +100,27 @@ static func _add(h: Node3D, n: Node3D, pos: Vector3, rot_y := 0.0, depth := 0.0)
 			sh.position = Vector3(box.get_center().x, 0.02 - pos.y,
 				box.get_center().z)
 			n.add_child(sh)
+	# AND ANYTHING HUNG IN A WINDOW GETS A PIER TO BE HUNG ON.
+	#
+	# All four exterior runs are glazed from the sill to the head over their
+	# whole length, and every room has one — so `_far_wall`, `_left_wall` and
+	# `_right_wall` hand back picture height on a pane about half the time.
+	# Photographed in `07_office`: the wall art and the notice float in the
+	# middle of the glazing with hedges and sky visible round them and a
+	# mullion passing BEHIND the frame. It is the same fault as the sharps bin
+	# beside every bed, and there were eight more of it.
+	#
+	# Here rather than at the call sites, because the call sites are the one
+	# place that cannot see it: a wall is a wall in `Furniture` and only the
+	# `Hospital` knows which runs it glazed. Long pieces are skipped — a
+	# nineteen-metre handrail would ask for a nineteen-metre pier — and so is
+	# anything standing on the floor, which is in front of a window rather than
+	# on it.
+	if pos.y >= 0.05 and h.has_method("glazed_at") and h.glazed_at(pos) \
+			and not _has_pier(h, pos, rot_y):
+		var mounted := _local_box(n)
+		if mounted.size.x < 3.2 and mounted.size.y < 2.0:
+			wall_pier(h, pos, rot_y, mounted.size.x + 0.52)
 	n.position = pos + Vector3(sin(rot_y), 0.0, cos(rot_y)) * depth * 0.5
 	n.rotation.y = rot_y
 	return n
@@ -367,11 +388,13 @@ static func handrail(h: Node3D, x0: float, x1: float, z: float, y := 0.92,
 ## Guide lines on the floor. Follow the blue line to Radiology, and so on: the
 ## cheapest wayfinding in architecture and the cheapest here too.
 static func floor_line(h: Node3D, x0: float, x1: float, z: float, tint: Color,
-		width := 0.10) -> Node3D:
+		width := 0.10, room := Rect2()) -> Node3D:
 	var root := Node3D.new()
 	root.name = "FloorLine"
-	root.add_child(Build.box_mi(Vector3(absf(x1 - x0), 0.012, width), tint,
-		Vector3.ZERO, 0.6, 0.0))
+	# Paint, through the one place that knows what paint is: see
+	# `Build.floor_paint`. As a flat box these read as glowing tape.
+	root.add_child(Build.floor_paint(Vector3(absf(x1 - x0), 0.012, width), tint,
+		Vector3.ZERO, room))
 	return _add(h, root, Vector3((x0 + x1) * 0.5, 0.008, z))
 
 ## The head of a curtain track: one thin rail across the bay at head height.
@@ -529,14 +552,75 @@ static func desk_clutter(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
 	for i in 6:
 		root.add_child(Build.box_mi(Vector3(0.22, 0.006, 0.30), PAPER,
 			Vector3(0.004 * float(i % 3), 0.004 + float(i) * 0.007, 0), 0.95, 0.0))
-	root.add_child(Build.box_mi(Vector3(0.10, 0.02, 0.10), Color(0.35, 0.40, 0.44),
-		Vector3(-0.24, 0.01, 0.06), 0.6, 0.006))
+	# A POT, not a plate. The pens were three sticks standing at an angle over a
+	# 10cm x 2cm tile, which is the one arrangement of a pen and a desk that
+	# cannot happen — photographed on the station worktop at eighty centimetres
+	# they read as three coloured straws balancing on a coaster. The pot is a
+	# cylinder with a darker mouth ring, so it is open at the top rather than
+	# being a peg the pens are stuck into.
+	root.add_child(Build.mi(Build.cyl_mesh(0.038, 0.11, 10),
+		Build.mat(Color(0.35, 0.40, 0.44), 0.7), Vector3(-0.24, 0.055, 0.06)))
+	root.add_child(Build.mi(Build.cyl_mesh(0.032, 0.02, 10),
+		Build.mat(Color(0.22, 0.26, 0.30), 0.8), Vector3(-0.24, 0.105, 0.06)))
 	for i in 3:
 		var pen := Build.box_mi(Vector3(0.012, 0.012, 0.15),
 			[Color(0.25, 0.45, 0.85), Color(0.90, 0.30, 0.30), Color(0.30, 0.70, 0.45)][i],
-			Vector3(-0.24 + 0.02 * float(i), 0.08, 0.06), 0.5, 0.0)
-		pen.rotation = Vector3(1.25 + 0.1 * float(i), 0.2 * float(i), 0)
+			Vector3(-0.245 + 0.018 * float(i), 0.135, 0.058), 0.5, 0.0)
+		pen.rotation = Vector3(1.32 + 0.09 * float(i), 0.5 * float(i), 0)
 		root.add_child(pen)
+	return _add(h, root, pos, rot_y)
+
+## THE PRINTER, and it was a white brick.
+##
+## `_station` built it as one `_block` — 0.52 x 0.34 x 0.44 in near-white — with
+## a single sheet of paper laid on the lid. It is the largest object on six
+## metres of worktop and the thing closest to the camera in `06_station`, and
+## at eighty centimetres it is a blank box with a blank box on it: no slot, no
+## lid line, no panel, nothing that says which way round it is or what it does.
+##
+## Gotcha 120 in a third place. `_station`'s own comment lists what turns a slab
+## into joinery — a recess, a shadow gap, a line where two parts meet — and none
+## of it had been applied to the objects STANDING on the thing it was written
+## about. A printer is a body, a lid sitting on it with a gap, a slot the paper
+## comes out of, a tray under the slot with paper in it and a panel you press.
+## Five boxes and two of them are two centimetres.
+static func printer(h: Node3D, pos: Vector3, rot_y := 0.0) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Printer"
+	var body := Color(0.80, 0.81, 0.82)
+	# Body, lid and the dark seam between them. The lid is INSET, because a
+	# shadow gap is a horizontal inset and not a vertical one: two boxes the
+	# same width with air between them read as one box with a crack in it.
+	root.add_child(Build.box_mi(Vector3(0.52, 0.20, 0.44), body,
+		Vector3(0, 0.10, 0), 0.6, 0.010))
+	root.add_child(Build.box_mi(Vector3(0.47, 0.03, 0.40), Color(0.24, 0.26, 0.29),
+		Vector3(0, 0.205, 0), 0.8, 0.0))
+	root.add_child(Build.box_mi(Vector3(0.50, 0.06, 0.42), body.darkened(0.10),
+		Vector3(0, 0.25, 0), 0.6, 0.010))
+	# The slot, the lip under it and the sheet halfway out of it. The slot is a
+	# dark recess rather than a painted line: it is 12mm deep, so it catches a
+	# shadow of its own at any angle the worktop is seen from.
+	root.add_child(Build.box_mi(Vector3(0.36, 0.035, 0.012), Color(0.16, 0.17, 0.19),
+		Vector3(0, 0.145, 0.214), 0.9, 0.0))
+	root.add_child(Build.box_mi(Vector3(0.34, 0.012, 0.11), body.darkened(0.06),
+		Vector3(0, 0.118, 0.265), 0.6, 0.006))
+	for i in 2:
+		root.add_child(Build.box_mi(Vector3(0.30, 0.006, 0.13), PAPER,
+			Vector3(0.004 * float(i), 0.127 + 0.007 * float(i), 0.255 - 0.006 * float(i)),
+			0.95, 0.0))
+	# The panel, on the right of the lid where a right-handed person reaches,
+	# with a green light and an amber one. The amber is why it is out of paper.
+	root.add_child(Build.box_mi(Vector3(0.15, 0.012, 0.09), Color(0.28, 0.31, 0.34),
+		Vector3(0.16, 0.287, 0.10), 0.7, 0.0))
+	for i in 2:
+		root.add_child(Build.box_mi(Vector3(0.018, 0.010, 0.018),
+			[Color(0.36, 0.84, 0.46), Color(0.95, 0.68, 0.20)][i],
+			Vector3(0.115 + float(i) * 0.045, 0.290, 0.128), 0.4, 0.0))
+	# The feed tray at the back, with the ream it is not printing.
+	var tray := Build.box_mi(Vector3(0.38, 0.012, 0.16), body.darkened(0.04),
+		Vector3(0, 0.30, -0.24), 0.7, 0.006)
+	tray.rotation.x = -0.42
+	root.add_child(tray)
 	return _add(h, root, pos, rot_y)
 
 ## A bedside cabinet with a drawer, a lamp and a beaker on it. Small enough to
@@ -714,11 +798,18 @@ static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 
 	for i in 3:
 		root.add_child(Build.box_mi(Vector3(0.012, tall - 0.16, 0.006), Color(0.45, 0.50, 0.55),
 			Vector3(-w * 0.28 + float(i) * w * 0.28, 0, 0.019), 0.9, 0.0))
+	# THE FIFTH MAGNET WAS BELOW THE BOARD. The step was 0.19 of the height
+	# starting from 0.22, so the last of five landed at -0.648 of a board whose
+	# bottom edge is at -0.5 — four and a half centimetres of coloured plastic
+	# floating in front of the pen tray, on all three whiteboards in the
+	# building and at every size they are built at. A run that steps off the end
+	# of the thing it is decorating is the same arithmetic fault whichever way
+	# it goes; 0.16 keeps all five inside by a comfortable margin at any `tall`.
 	for i in 5:
 		root.add_child(Build.box_mi(Vector3(w * 0.18, 0.02, 0.006),
 			[Color(0.24, 0.44, 0.82), Color(0.80, 0.26, 0.26)][i % 2],
 			Vector3(-w * 0.24 + float(i % 3) * w * 0.26,
-				tall * 0.22 - float(i) * tall * 0.19, 0.023), 0.9, 0.0))
+				tall * 0.32 - float(i) * tall * 0.16, 0.023), 0.9, 0.0))
 	root.add_child(Build.box_mi(Vector3(w * 0.5, 0.04, 0.09), Color(0.55, 0.60, 0.64),
 		Vector3(0, -tall * 0.5 - 0.04, 0.06), 0.5, 0.008))
 	for i in 2:
@@ -731,14 +822,132 @@ static func whiteboard(h: Node3D, pos: Vector3, rot_y := 0.0, w := 1.6, tall := 
 ## A bay of different-coloured flooring, with a border. Hospitals mark out the
 ## bit of the room the bed lives in, and a floor with a zone on it is a floor
 ## somebody planned rather than a coloured plane.
-static func floor_zone(h: Node3D, centre: Vector3, size: Vector2, tint: Color) -> Node3D:
+##
+## IT IS PAINT ON THE VINYL, AND IT WAS A SLAB OF FLAT COLOUR LAID ON TOP.
+##
+## This is the largest single painted shape in the game — eighteen metres by
+## four, about a third of the floor in `02_ward_from_door` — and it was two
+## `box_mi` boxes, which is `rbox_mesh` plus `Build.mat`. Two things follow
+## from that and both of them are visible in every ward frame this project has
+## ever rendered:
+##
+##   * `rbox_mesh` is a Minkowski-summed sphere and puts its vertices on the
+##     EDGES, so a slab eighteen metres across has nothing in the middle of it
+##     to light. That is gotcha 2b in `shot_impl`'s own words — "a lamp three
+##     metres above the middle of a twenty-metre floor had nothing to light" —
+##     and it is why the floor is built from `slab_mesh` and subdivided. The
+##     zone was not. Measured off `02_ward_from_door`: across the strip the
+##     luma runs 118..124, a spread of SIX, while the plain vinyl in front of
+##     it runs 194..242, a spread of forty-eight. Four ceiling fittings hang
+##     over that strip and not one of them reached it.
+##   * `Build.mat` is one flat albedo, so the speckle, the fleck and the welded
+##     seam every two metres all STOPPED at the marking and picked up again on
+##     the far side. A floor covering that stops is a different floor covering.
+##
+## Between them that is a grey platform the beds stand on rather than a bay
+## marked out on the floor, with a hard straight edge across the middle of the
+## hero frame. `Surfaces.floor_mat` is keyed to WORLD POSITION (that is the
+## whole argument at the top of that file), so tinting it and laying it over
+## the real floor continues the fleck and the seams straight through the
+## marking, in register, which is what paint on vinyl does.
+static func floor_zone(h: Node3D, centre: Vector3, size: Vector2, tint: Color,
+		room := Rect2()) -> Node3D:
 	var root := Node3D.new()
 	root.name = "FloorZone"
-	root.add_child(Build.box_mi(Vector3(size.x, 0.012, size.y), tint,
-		Vector3.ZERO, 0.85, 0.0))
-	root.add_child(Build.box_mi(Vector3(size.x - 0.14, 0.014, size.y - 0.14),
-		tint.lightened(0.10), Vector3(0, 0.003, 0), 0.85, 0.0))
+	root.add_child(Build.floor_paint(Vector3(size.x, 0.012, size.y), tint,
+		Vector3.ZERO, room))
+	root.add_child(Build.floor_paint(Vector3(size.x - 0.14, 0.014, size.y - 0.14),
+		tint.lightened(0.10), Vector3(0, 0.003, 0), room))
 	return _add(h, root, Vector3(centre.x, 0.008, centre.z))
+
+## IS THIS SPOT ALREADY BACKED BY A PIER?
+##
+## ASKED OF THE BUILDING, NOT OF A REGISTER, and the register is the version
+## that had to be thrown away. A static list of "piers put in so far" is right
+## for exactly one build: `Hospital.reskin` runs every morning and
+## `Furniture.redress_ward` throws the whole ward's dressing away and makes it
+## again — so from the first day rollover the register still held five bed-head
+## piers that had been freed, said "already covered" to every fitting on that
+## wall, and the ward went back to having its sharps bins hung on the window
+## with nothing behind them. Same shape as gotcha 71: state bound to objects
+## that get replaced reads as working and serialises an orphan.
+##
+## Each pier records its own span in a meta, and this walks the hospital's
+## children. A freed node is not one of them, so the answer cannot go stale.
+## The CENTRE, not the whole span: a piece that overhangs a pier by a few
+## centimetres wants the pier it has rather than a second one overlapping it.
+const PIER_SPAN := "pier_span"
+
+static func _has_pier(h: Node3D, pos: Vector3, rot_y: float) -> bool:
+	var along_x: bool = absf(sin(rot_y)) < 0.5
+	for n in h.get_children():
+		if not n.has_meta(PIER_SPAN):
+			continue
+		var p: Array = n.get_meta(PIER_SPAN)
+		if bool(p[0]) != along_x:
+			continue
+		var plane: float = pos.z if along_x else pos.x
+		if absf(float(p[1]) - plane) > 0.30:
+			continue
+		var c: float = pos.x if along_x else pos.z
+		if c >= float(p[2]) - 0.05 and c <= float(p[3]) + 0.05:
+			return true
+	return false
+
+## A PIER, because everything on an outside wall was mounted on GLASS.
+##
+## The ward's far wall is the north exterior run and `Hospital._glaze` puts one
+## unbroken pane across all twenty metres of it from y 1.05 to 2.30 — which is
+## exactly the band a bed head needs. So the oxygen outlets at 1.42 and the
+## sharps bin at 1.15 were screwed to a window, five of each, in `03_bedside`:
+## the frame this whole game is played through. A 20cm-deep yellow box hanging
+## in front of the countryside with hedges visible round it is the same fault
+## gotcha 13 is about, arriving from the other side — the mounting offset was
+## right and there was nothing behind it to mount to.
+##
+## A pier between the windows is what a real ward has and what the glazing was
+## missing: bed, pier, window, bed. It is scenery, so it costs nothing and
+## takes no footprint; the pane behind it keeps the collision it always had.
+static func wall_pier(h: Node3D, pos: Vector3, rot_y := 0.0,
+		w := 1.66, tall := 0.0) -> Node3D:
+	if tall <= 0.0:
+		tall = Hospital.WIN_HEAD - Hospital.WIN_SILL
+	var root := Node3D.new()
+	root.name = "WallPier"
+	# ITS OWN SPAN, ON ITSELF, and set before `_add` parents it — `_add` is what
+	# asks whether a spot already has a pier, and building this one goes
+	# through it.
+	var along_x: bool = absf(sin(rot_y)) < 0.5
+	var c: float = pos.x if along_x else pos.z
+	root.set_meta(PIER_SPAN, [along_x, pos.z if along_x else pos.x,
+		c - w * 0.5, c + w * 0.5])
+	# `slab_mesh` and the wall's own shader rather than `box_mi`: this is a
+	# piece of WALL, and a flat albedo panel between two shaded ones is the
+	# fault gotcha 55 records about the title screen.
+	# BEHIND THE FACE, NOT IN FRONT OF IT. `_add`'s convention is that the
+	# position a wall piece is given is the plane its BACK sits on and
+	# everything it is made of stands in front of that, into the room — so a
+	# pier built the same way stands in front of the plaster and swallows
+	# whatever is mounted on it. Measured on the first version: all five gas
+	# panels 100% inside the pier and all five sharps bins 70%, which is the
+	# fault this piece exists to fix, arriving from the other side. The mesh
+	# sits at local -0.03 instead, filling the six centimetres of reveal behind
+	# the plaster line. The pane is at the run's centreline with a 26mm
+	# thickness, which is why it is six and not sixteen.
+	root.add_child(Build.mi(Build.slab_mesh(Vector3(w, tall, 0.06)),
+		Surfaces.wall_mat(Build.WALL_UPPER), Vector3(0, 0, -0.03)))
+	# A reveal down each side in the window frame's own colour, so it reads as
+	# the pier BETWEEN two windows rather than as a board screwed over one.
+	# FLUSH WITH THE PLASTER AND NOT PROUD OF IT. Three centimetres of reveal
+	# sticking into the room is three centimetres the piece hung on this pier
+	# is standing inside: measured, the office's notice was 39% inside its own
+	# backing and the station's noticeboard 27%. Everything a pier is made of
+	# lives behind the face, same as the panel.
+	for i in 2:
+		root.add_child(Build.box_mi(Vector3(0.06, tall + 0.02, 0.07),
+			Color(0.95, 0.94, 0.90),
+			Vector3(-w * 0.5 + w * float(i), 0, -0.035), 0.6, 0.0))
+	return _add(h, root, pos, rot_y)
 
 ## A folding privacy screen, parked. Three leaves at an angle, which is the one
 ## piece of hospital furniture that is always somewhere nobody put it.

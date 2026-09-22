@@ -108,6 +108,14 @@ var _eyes_shut: Array[MeshInstance3D] = []
 var _brows: Array[MeshInstance3D] = []
 ## The head sphere itself, so a test can measure the face against the real mesh.
 var _skull_mi: MeshInstance3D = null
+## KEPT FOR THE SAME REASON AS `_skull_mi`: a harness has to be able to ask the
+## nose and the chin where they actually are, rather than re-deriving the
+## numbers this file used to place them and agreeing with itself.
+var _nose_mi: MeshInstance3D = null
+var _chin_mi: MeshInstance3D = null
+## Where the chin ball's top edge is, in head space. The mouth is placed from
+## it rather than from a literal — see the note on the chin.
+var _chin_top := -0.089
 var _mouth: MeshInstance3D = null
 var _mouth_corners: Array[MeshInstance3D] = []
 ## -1 is "you have made this worse", +1 is "that is much better". Sticky: it is
@@ -365,11 +373,21 @@ func _build_body() -> void:
 	# The nose is the most identifying thing on a face and the cheapest to vary.
 	# It also has to move FORWARD on a deeper skull, for the same reason as the
 	# ears — the head is an ellipsoid and its front moves when its depth does.
-	var nose_z: float = _face_z(0.0, -0.022, -0.006)
-	_head.add_child(Build.mi(Build.sphere_mesh(0.035 * nose_size),
+	# ...AND BELOW THE EYES RATHER THAN BETWEEN THEM. At -0.022 with a 0.72
+	# vertical squash the ball's top reached +0.003, and the eye at 0.007 runs
+	# -0.008 to +0.022 — so the nose overlapped the eye's own band, and
+	# `Appearance` draws the nose 0.78 to 1.33 so the big ones were worse. It is
+	# LINED, so what actually landed on the frame was the nose's ink arc cutting
+	# across the inner corner of one eye, which at the bedside reads as a
+	# monocle or a second eyebrow. The eye is the one feature on this model
+	# everything else is judged against; nothing else may reach into it.
+	var nose_y := -0.034
+	var nose_z: float = _face_z(0.0, nose_y, -0.006)
+	_nose_mi = Build.mi(Build.sphere_mesh(0.035 * nose_size),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-		Vector3(0, -0.022, nose_z), Vector3.ZERO,
-		Vector3(0.80, 0.72, 1.02)))
+		Vector3(0, nose_y, nose_z), Vector3.ZERO,
+		Vector3(0.80, 0.72, 1.02))
+	_head.add_child(_nose_mi)
 	# A BRIDGE, so the nose is part of the face rather than stuck to it.
 	#
 	# A single ball between two eyes reads as a clown nose, and at the closest
@@ -412,10 +430,20 @@ func _build_body() -> void:
 	# A chin, so the jaw has a bottom to it. Lined, because it is the profile.
 	# `jaw` is a heavy chin or a small one. It reads from further away than the
 	# nose because it is the bottom edge of the silhouette.
-	_head.add_child(Build.mi(Build.sphere_mesh(0.085),
+	# KEPT, because the MOUTH has to be placed against it. `jaw` runs 0.84 to
+	# 1.18 and `skull.y` 0.90 to 1.11, so this ball's top edge moves five
+	# centimetres across the cast — from -0.116 to -0.063 — while the mouth sat
+	# at a literal -0.061. On a short skull with a heavy jaw the chin is a
+	# proud, skin-coloured solid standing in front of and around the mouth, and
+	# on a long one there is an inch of bare face between them. Gotcha 80
+	# exactly, on the two features it did not cover.
+	var chin_half: float = 0.085 * 0.72 * jaw_size
+	_chin_top = -0.150 * skull.y + chin_half
+	_chin_mi = Build.mi(Build.sphere_mesh(0.085),
 		Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
 		Vector3(0, -0.150 * skull.y, 0.075 * skull.z), Vector3.ZERO,
-		Vector3(1.05 * skull.x * jaw_size, 0.72 * jaw_size, 0.95 * skull.z)))
+		Vector3(1.05 * skull.x * jaw_size, 0.72 * jaw_size, 0.95 * skull.z))
+	_head.add_child(_chin_mi)
 	# FACIAL HAIR, where the record says so. Built as two solids that follow the
 	# jaw the chin already established — a jawline piece and a moustache — both
 	# lined, because the whole reason it is here is that it changes the profile
@@ -602,9 +630,23 @@ func _build_body() -> void:
 	# edge of: narrower than the bar, so the bar's ends overhang it and the
 	# corners read as lips meeting, and short enough that most of it is hidden
 	# behind the bar.
+	# PLACED FROM THE CHIN, NOT FROM A LITERAL. All three of these pieces sat
+	# at -0.061, fourteen millimetres under a nose that is itself between the
+	# eyes — so the mouth was directly beneath the nostrils with half a head of
+	# blank face under it, which is most of what made these read as a mouth
+	# drawn in the wrong place rather than as a face.
+	#
+	# A mouth sits where the lower lip runs into the chin, so the chin is what
+	# it should be measured from: fourteen millimetres BELOW the chin ball's
+	# top edge, which is the front of the face at that height and not the
+	# underside of anything. `jaw` runs 0.84 to 1.18 and `skull.y` 0.90 to
+	# 1.11, so that edge moves five centimetres across the cast and a literal
+	# cannot follow it. The cap keeps a long-faced, light-jawed draw from
+	# putting the mouth up under the nose again.
+	var mouth_y: float = minf(-0.078, _chin_top - 0.014)
 	_head.add_child(Build.mi(Build.rbox_mesh(Vector3(0.038, 0.0095, 0.020), 0.004),
 		Build.mat(_lip(skin), SKIN_ROUGH, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, -0.0660, _face_z(0.0, -0.0660, 0.0021))))
+		Vector3(0, mouth_y - 0.005, _face_z(0.0, mouth_y - 0.005, 0.0021))))
 	# NARROWER THAN THE EYES ARE APART. The bar was 0.086 half-width against an
 	# eye span of 0.105, so the mouth was 82% as wide as the whole face — which
 	# on a stylised head is a letterbox, and it is what kept these reading as
@@ -618,7 +660,7 @@ func _build_body() -> void:
 	# painted line.
 	_mouth = Build.mi(Build.rbox_mesh(Vector3(0.062, 0.0095, 0.022), 0.0045),
 		Build.mat(MOUTH_INK, 0.75, 0.0, Color(0, 0, 0), 0.0),
-		Vector3(0, -0.061, _face_z(0.0, -0.061, 0.0044)))
+		Vector3(0, mouth_y, _face_z(0.0, mouth_y, 0.0044)))
 	_head.add_child(_mouth)
 	for sx in [-1.0, 1.0]:
 		# HALF THE HEIGHT OF THE BAR, so the line TAPERS to the corners. With the
@@ -629,7 +671,8 @@ func _build_body() -> void:
 		# millimetres, and the shape stops being rectangular.
 		var corner := Build.mi(Build.rbox_mesh(Vector3(0.020, 0.005, 0.022), 0.0025),
 			Build.mat(MOUTH_INK, 0.75, 0.0, Color(0, 0, 0), 0.0),
-			Vector3(sx * 0.038, -0.0605, _face_z(0.038, -0.0605, 0.0057)))
+			Vector3(sx * 0.038, mouth_y + 0.0005,
+				_face_z(0.038, mouth_y + 0.0005, 0.0057)))
 		_head.add_child(corner)
 		_mouth_corners.append(corner)
 

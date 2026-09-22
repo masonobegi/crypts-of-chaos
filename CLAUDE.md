@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 363 assertions, a 263-check smoke run through the real tree
+`run_tests.sh` is 368 assertions, a 288-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward plus an honest day on all 128 boards
@@ -1461,6 +1461,163 @@ with it because a lost afternoon does not care which.
     and a constant somebody wrote a paragraph about is not that. A function is
     different — the paragraph is usually its own docstring.
 
+128. **A RIGID FOOT ON A SWINGING SHIN GOES THROUGH THE FLOOR, AND A
+    SCREENSHOT CANNOT SEE IT.** A `CharacterBody3D` rests with the bottom of
+    its capsule — its own origin — on the surface, so the floor is y=0 in the
+    body's space and every part of the model has to stay above it *for the
+    whole cycle*. The leg was a rigid pendulum with a 35cm shoe welded to the
+    end of it and the walk swings the hip up to 0.6 radians, so the toe
+    described an arc **5.4cm under the lino** on every step, on everybody in
+    the building. Twenty-nine screenshots never showed it because a screenshot
+    is one frame of a cycle. The foot is its own node now, pivoting on the
+    SHIN's axis with the shoe offset forward INSIDE it — the first attempt put
+    the pivot at the shoe's centre, and a pivot 7.5cm forward of the ankle
+    rotates downward, which left 4.7mm still under the floor. The walk cancels
+    the hip and the knee on it. Measured across the whole cycle at a speed that
+    saturates the swing clamp: 0.0mm. **Anything animated needs a check that
+    RUNS THE ANIMATION**, not one that looks at the rest pose.
+129. **`BoxShape3D` IS CENTRED ON ITS `CollisionShape3D`, AND `make_prop` LEFT
+    THAT AT THE ORIGIN.** So a prop settles with the MIDDLE of its collision
+    box on the floor and the model ends up half a box-height in the air, and
+    there is nothing to see in the source: a plausible bounding size, a
+    plausible list of parts, and the two simply not in the same place. The IV
+    stand is 1.8 tall with a model running 0 to 1.7 from its base disc, so it
+    rested with its origin at 0.9 and **hung ninety centimetres above the
+    lino** — one beside every bed and one in the corridor, six of them, in the
+    frame the whole game is played from. The carts were 39cm up. Both call
+    sites had a hand-written half-box lift compensating for it, which is how it
+    survived: the numbers looked deliberate. The collider is aligned under the
+    model in `make_prop` now and both lifts are gone.
+130. **THE FIXTURE AUDIT WALKS `Fixture`s, AND ALMOST EVERYTHING IN A WARD IS
+    SCENERY.** A stack of folded linen and a stack of trays stood ninety
+    centimetres up at opposite ends of the nurses' station, in a room whose
+    worktop reaches neither of them, and the office desk's pens and mug sat
+    forty centimetres behind the desk over bare floor. Three floating piles in
+    the two frames those rooms exist for, and the audit that was written to
+    catch exactly this could not see any of them. And two pieces were inside
+    each other: `_dress_ward_top` fills both ends of the ward's near wall and
+    the pass that fills its MIDDLE was written later and put its two pieces in
+    the CORNERS, so a folding screen contained a whole stool and most of a
+    water cooler, and a laundry hamper contained a stack of crates. Both look
+    completely reasonable in the source; the only way to see either is to
+    intersect the boxes. Three checks now, and `Dressing._add` records each
+    piece's kind as META before Godot takes the name away (gotcha 17) — an
+    audit of a whole building is useless if everything in it is `@Node3D@5306`.
+
+131. **PAINT ON A FLOOR IS NOT AN OBJECT LYING ON IT, and the largest painted
+    shape in the game was both wrong ways at once.** The bay strip under the
+    beds is eighteen metres by four — about a third of the floor in
+    `02_ward_from_door` — and it was two `box_mi` boxes. `rbox_mesh` is a
+    Minkowski-summed sphere with its vertices on the EDGES, so a slab that size
+    has nothing in the middle of it for a ceiling fitting to light; and
+    `Build.mat` is one flat albedo, so the floor's fleck and its welded seam
+    every two metres STOPPED at the marking and started again on the far side.
+    Measured: the strip read 118..124 across its whole width — a spread of six
+    — while the vinyl a metre in front of it read 194..242. A grey platform the
+    beds stand on, with a hard straight edge across the middle of the hero
+    frame, and it had been blamed on the tint twice. `Surfaces.floor_mat` is
+    keyed to WORLD POSITION, so a tinted copy over the real floor carries the
+    fleck and the seams straight through in register, which is what paint does.
+    Everything painted on a floor goes through `Build.floor_paint` now — the
+    bay strip, the corridor's three wayfinding stripes, the guide lines into
+    each room. **And the mix that decides how the paint reads was doing nothing
+    until it was lit**: at 0.62 toward the ward's own floor colour the strip
+    had been 100 levels dark for the wrong reason, and once correct it was
+    three levels from the vinyl. It is 0.50.
+132. **A PANEL ON A WALL IS NOT INSIDE THE WORKTOP IN FRONT OF IT.** The
+    handover board — the one piece of information in this game that is a PLACE
+    rather than a screen you can open from anywhere — is 1.1m tall and was
+    centred at 1.55, so it spanned y 1.00 to 2.10; the station's back worktop
+    is an 8cm plate centred on 1.12 and 85cm deep, and the board hangs over it.
+    The bottom SIXTEEN CENTIMETRES of it were inside the counter, on the only
+    wall that room's only camera points at. The check that finds it has to know
+    which way the panel FACES: the first version excluded any solid that was
+    thin in ANY axis, so an 8cm worktop that is 85cm DEEP read as a wall and
+    the fault did not go red. What may contain a panel is something thin along
+    the panel's OWN facing axis, because that is the wall it is screwed to.
+133. **EVERYTHING BEHIND EVERY BED WAS MOUNTED ON GLASS.** All four runs of the
+    outer shell are glazed from the sill to the head over their whole length,
+    and the ward's bed wall is one of them — so the oxygen outlets and a
+    twenty-centimetre sharps bin were screwed to a window, five of each, in
+    `03_bedside`, which is the frame this game is played through. Gotcha 13
+    from the other side: the mounting offset was right and there was nothing
+    behind it to mount to. Eight more pieces were the same — the office's wall
+    art and its notice floating in the middle of the glazing in `07_office`
+    with a mullion passing BEHIND the frame, the station's noticeboard and
+    rota, the corridor's noticeboard and art, the ward's coat hooks.
+    `Dressing._add` asks `Hospital.glazed_at` and puts a pier in behind the
+    piece, because the call sites are the one place that cannot see it: a wall
+    is a wall in `Furniture` and only the `Hospital` knows which runs it
+    glazed. **And the fittings were mounted on the wall's CENTRELINE rather
+    than its FACE** — `_add`'s convention is that the position it is given is
+    the plane the piece's BACK sits on, and these two were handed `far_z`, so
+    they were 8cm inside the plaster on every bed. It never showed, because
+    there was no plaster there to be inside of.
+134. **A REGISTER OF WHAT HAS BEEN BUILT IS STALE THE MOMENT ANYTHING IS
+    REBUILT.** The pier rule needs to know whether a spot already has one, and
+    the obvious way to do it is a static list appended to as they go in. That
+    is correct for exactly one build: `Hospital.reskin` runs every morning and
+    `Furniture.redress_ward` throws the whole ward's dressing away and makes it
+    again — so from the first day rollover the list still held five bed-head
+    piers that had been freed, answered "already covered" for every fitting on
+    that wall, and the ward went back to having its sharps bins hung on a
+    window. Gotcha 71's shape in a new place. Each pier records its own span in
+    a META and the rule walks the hospital's CHILDREN: a freed node is not one
+    of them, so the answer cannot go stale.
+135. **FOUR OBJECTS ON THE MOST-LOOKED-AT SURFACES IN THE BUILDING WERE BOXES,
+    AND THE FILE ALREADY SAID WHY THAT IS NOT ENOUGH.** Gotcha 120 records that
+    `_station`'s own comment lists what turns a slab into joinery — a recess, a
+    shadow gap, a line where two parts meet — and that it had not been applied
+    to the six-metre worktop it was written next to. It had not been applied to
+    anything STANDING on that worktop either. The printer was one `_block` in
+    near-white with a sheet of paper on the lid: at eighty centimetres a blank
+    box with a blank box on it, no slot, no lid line, no panel, nothing saying
+    which way round it is. The rota was five `_block`s — a white slab and four
+    ruled lines — thirty lines away from `Dressing.whiteboard`, which is the
+    same board with a frame, a pen tray, two pens and the magnets somebody
+    pinned it up with: two implementations of one object with the worse one on
+    the wall of the room `06_station` is about. The debt letters were a dark
+    institutional SIGNBOARD reading "FINAL NOTICE" three times, which reads as
+    a label drawn three times by mistake rather than as three letters. And the
+    pens stood at an angle on a 10cm tile with no pot. **And the fifth magnet
+    was below the board**: the run stepped 0.19 of the height from 0.22, so the
+    last of five landed at -0.648 of a board whose bottom edge is at -0.5, on
+    all three whiteboards in the building and at every size they are built at.
+
+136. **TWO SETS OF WAYFINDING STRIPES WERE PAINTED DOWN THE SAME CORRIDOR,
+    THREE CENTIMETRES APART, AT THE SAME HEIGHT.** `Furniture._corridor` drew a
+    teal, an orange and a red line at z 0.72, 0.88 and 1.04; `_dress_corridor`
+    — written later, in the other file, through `Dressing.floor_line` — drew a
+    blue one at 0.75, a yellow one at 0.95 and a green one across the far side.
+    Every line is nine or ten centimetres wide, so the blue sat three
+    centimetres from the teal and the yellow seven from the orange: coplanar
+    markings fighting for the same pixels down the whole of the first room in
+    the game. Everything painted on a floor is in a group now and the smoke run
+    intersects them in plan.
+137. **EVERY FACE HAD ITS NOSE BETWEEN ITS EYES AND ITS MOUTH UNDER ITS
+    NOSTRILS.** Gotcha 80 is about features placed at a literal DEPTH on a
+    skull whose front moves; this is the same fault in the other axis. The nose
+    ball sat at y -0.022 squashed to 0.72, so its top reached +0.003 while the
+    eye runs -0.008 to +0.022 — and it is the one LINED feature in the middle
+    of the face, so what landed in `03_bedside` was the nose's ink arc cutting
+    across the inner corner of an eye and reading as a monocle. The mouth sat
+    at -0.061, fourteen millimetres under that, with half a head of blank face
+    below it. A mouth belongs where the lower lip runs into the chin, so it is
+    measured from the chin ball now — whose top edge moves FIVE CENTIMETRES
+    across the cast, because `jaw` runs 0.84 to 1.18 and `skull.y` 0.90 to
+    1.11, so on a short skull with a heavy jaw a proud skin-coloured solid
+    stood in front of the mouth and on a long one there was an inch of bare
+    face between them.
+    **The check for it went red on all 24 faces for the wrong reason first**,
+    and that is the part worth keeping: a mouth is SUPPOSED to be lower than
+    the chin ball's top, because the ball is centred well behind the face and
+    only its front cap shows. The chin question is a DEPTH test — the same one
+    `_check_nobody_has_their_eyes_inside_their_head` asks of the skull — and
+    not a height one. The nose question is not a box test either: a nose is
+    supposed to be between two eyes, and boxes either never overlap (they are
+    3mm apart in x) or always do once the ink allowance is in. What was wrong
+    is that the TIP was at eye level, so that is what is asserted.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -1693,8 +1850,8 @@ with it because a lost afternoon does not care which.
 
 | Layer | Catches |
 |---|---|
-| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 363 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 263 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 368 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
+| `smoke_run.gd` | "everything compiles and nothing works" — 288 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | the one thing that can see a face: it MEASURES how much room each subject has left below its own skin for the four features that are all darker than it, and exits non-zero when a face runs out. It is also the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

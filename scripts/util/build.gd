@@ -630,7 +630,26 @@ static func shadow_texture() -> ImageTexture:
 	var c := float(N - 1) * 0.5
 	for y in N:
 		for x in N:
-			var d: float = Vector2(float(x) - c, float(y) - c).length() / c
+			# A SHADOW IS THE SHAPE OF THE THING ABOVE IT, AND THIS WAS A DISC.
+			#
+			# The patch is stretched to each object's own footprint, so a radial
+			# falloff under a bed 0.96 by 2.01 becomes a long dark ELLIPSE:
+			# darkest in the middle, missing at the four corners, and sticking
+			# out past the headboard and the footboard where the bed is not.
+			# Photographed from the ward door it reads as a hole in the lino
+			# rather than as the underside of a bed, and there are five of them
+			# in the frame a store page leads with.
+			#
+			# Chebyshev distance — the larger of the two axes — is a SQUARE in
+			# the patch's own space and therefore a rectangle once it is
+			# stretched, which is the shape of almost everything in this
+			# building. Mixed a third of the way back toward Euclidean so the
+			# corners stay rounded: a hard-cornered rectangle is a different
+			# wrong answer, and the plants and the bins want some of the disc.
+			var u: float = (float(x) - c) / c
+			var v: float = (float(y) - c) / c
+			var cheb: float = maxf(absf(u), absf(v))
+			var d: float = lerpf(cheb, Vector2(u, v).length(), 0.34)
 			# Smoothstep, so the edge dissolves instead of ending. A linear
 			# falloff reads as a disc with a soft rim rather than as a shadow.
 			# A FLAT CORE, then a soft edge. A pure smoothstep from the centre
@@ -807,6 +826,41 @@ static func _fit_line(mesh: Mesh, material: Material) -> Material:
 ## the object so a syringe is not rounded off as hard as a wall, and is capped so
 ## a big flat panel keeps a crisp face.
 ## `cap` is the share of the object's own thinnest dimension the ink may grow to
+## PAINT ON THE FLOOR, WHICH IS NOT AN OBJECT LYING ON IT.
+##
+## Every marking in the building — the bay strip under the beds, the three
+## wayfinding stripes down the corridor, the guide lines into each room — was a
+## `box_mi`: an `rbox_mesh` with a flat albedo on it. Both halves of that are
+## wrong for something painted onto a floor, and the bay strip is where it was
+## loud enough to see. `rbox_mesh` is a Minkowski-summed sphere with its
+## vertices on the EDGES, so a slab eighteen metres across has nothing in the
+## middle for a ceiling fitting to light; and a flat albedo stops the floor's
+## fleck and its welded seams dead at the paint and starts them again on the
+## far side. Measured off `02_ward_from_door`: the strip read 118..124 across
+## its whole width while the vinyl a metre in front of it read 194..242.
+##
+## `Surfaces.floor_mat` is keyed to WORLD POSITION, so a tinted copy of it laid
+## over the real floor carries the same fleck and the same seams straight
+## through the marking, in register. `slab_mesh` gives the lamps something to
+## land on. Everything painted on a floor goes through here.
+## `room` is the floor's own rectangle. It is not optional decoration: the
+## floor shader darkens the last two thirds of a metre before each wall, and a
+## marking that does not carry the same term is at its full brightness exactly
+## where the vinyl around it is darkest — so the corridor's green line read as
+## a strip of tape lit from underneath along the whole of the wall it runs
+## beside. Passing the room in is the difference between paint and gaffer tape.
+const FLOOR_PAINT := "floor_paint"
+
+static func floor_paint(size: Vector3, tint: Color, pos := Vector3.ZERO,
+		room := Rect2()) -> MeshInstance3D:
+	var m := mi(slab_mesh(size),
+		Surfaces.floor_mat(tint, 2.0, room.position, room.end), pos)
+	# Tagged so the smoke run can find every marking in the building. Two sets
+	# of wayfinding stripes were drawn down the corridor by two functions that
+	# did not know about each other, three centimetres apart, at the same y.
+	m.add_to_group(FLOOR_PAINT)
+	return m
+
 ## — see gotcha 46 and `INK_CAP`. A MOULDING wants a smaller one than a cabinet
 ## does: at 0.30 a five-centimetre picture rail seen down a sixty-metre corridor
 ## is more ink than rail, which is the two black diagonals gotcha 46 is about,

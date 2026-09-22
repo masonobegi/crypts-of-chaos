@@ -3870,3 +3870,19 @@ cut reads as a pair of headphones. Un-inking the style pieces and re-rendering
 because the band is the crown's silhouette against the skull and the crown has
 to keep its line. The reading is the shape, not the ink — which is the same
 answer gotcha 41's tint sweep came back with.
+
+## The doormat was still a hole, and it was never the colour
+
+`floor_mat` already carries a note saying that at 0.22 of a value it read as a
+rectangular hole in the vinyl and was lifted to 0.42. It still read as one.
+`box_mi` is `rbox_mesh` — a Minkowski-summed sphere whose vertices are all on
+the piece's own edge — so a 1.5 x 0.9 slab has nothing in the middle of its top
+face for a ceiling fitting to light. Measured off `11_patient`: the mat rendered
+at 82 of 255 on a floor at 225, a ratio of 0.36, where the two albedos are 0.42
+against 0.72, a ratio of 0.60. A third of its own brightness was missing and no
+amount of tint could buy it back.
+
+`slab_mesh` and `cloth_mat`: 148 against 225 after, and a doormat is the one
+thing on the floor that is not a hard surface, so it should have had a pile all
+along. Two rounds went into its colour before anybody took a reading off a
+frame, which is gotcha 40 word for word.

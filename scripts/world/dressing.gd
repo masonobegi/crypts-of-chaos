@@ -734,9 +734,26 @@ static func floor_mat(h: Node3D, pos: Vector3, size := Vector2(1.4, 0.9),
 		tint := Color(0.42, 0.47, 0.48), rot_y := 0.0) -> Node3D:
 	var root := Node3D.new()
 	root.name = "FloorMat"
-	root.add_child(Build.box_mi(Vector3(size.x, 0.016, size.y), tint, Vector3.ZERO, 0.95, 0.0))
-	root.add_child(Build.box_mi(Vector3(size.x - 0.16, 0.018, size.y - 0.16),
-		tint.lightened(0.12), Vector3(0, 0.004, 0), 0.95, 0.0))
+	# ...AND IT IS STILL DARKER THAN ITS OWN ALBEDO, WHICH IS A LIGHTING FAULT
+	# AND NOT A COLOUR ONE. The note above raised the tint from 0.22 to 0.42 and
+	# the mat kept reading as a hole, because `box_mi` is `rbox_mesh` — a
+	# Minkowski-summed sphere, whose vertices are all on the piece's own edge.
+	# On a 1.5 x 0.9 slab that leaves the middle of the top face with nothing
+	# for a ceiling fitting to light, which is the same fault the bay strip had
+	# (see `Build.floor_paint`). Measured off `11_patient`: the mat renders at
+	# 82 of 255 on a floor at 225, a ratio of 0.36, where the two albedos are
+	# 0.42 against 0.72 — a ratio of 0.60. A third of its own brightness was
+	# missing.
+	#
+	# `slab_mesh` subdivides, so the lamp reaches it. And `cloth_mat` rather
+	# than `mat`, because a doormat has a PILE: it is the one thing on the floor
+	# that is not a hard surface, and it was the only piece of soft furnishing
+	# in the building still rendered as paint.
+	root.add_child(Build.mi(Build.slab_mesh(Vector3(size.x, 0.016, size.y), 0.42),
+		Build.cloth_mat(tint, 0.0)))
+	root.add_child(Build.mi(Build.slab_mesh(
+		Vector3(size.x - 0.16, 0.018, size.y - 0.16), 0.42),
+		Build.cloth_mat(tint.lightened(0.12), 0.0), Vector3(0, 0.004, 0)))
 	return _add(h, root, pos + Vector3(0, 0.01, 0), rot_y)
 
 ## A screen on a bracket in the corner, showing nothing anybody chose.

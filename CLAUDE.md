@@ -1647,6 +1647,24 @@ with it because a lost afternoon does not care which.
     tint sweep came back with, and the reason to write it down rather than
     ship a change that measured as nothing.
 
+139. **THE DOORMAT WAS STILL A HOLE IN THE FLOOR, AND RAISING ITS TINT HAD NOT
+    FIXED IT BECAUSE THE FAULT WAS THE LIGHT.** `floor_mat` already carries a
+    note saying that at 0.22 of a value it read as a rectangular hole and was
+    lifted to 0.42 — and it still read as one, because `box_mi` is `rbox_mesh`:
+    a Minkowski-summed sphere whose vertices are all on the piece's own edge, so
+    a 1.5 x 0.9 slab has nothing in the middle of its top face for a ceiling
+    fitting to light. Gotcha 131's fault on a second object. Measured off
+    `11_patient`: the mat rendered at 82 of 255 on a floor at 225 — a ratio of
+    0.36 — where the two albedos are 0.42 against 0.72, a ratio of 0.60. A third
+    of its own brightness was missing and the colour could never buy it back.
+    `slab_mesh` and `cloth_mat`: 148 of 225 after, and a doormat is the one
+    thing on the floor that is not a hard surface, so it should have had a pile
+    all along. **A piece that is darker than its own albedo says is not a colour
+    problem**, and two rounds went into its colour before anybody took a reading
+    off a frame — which is gotcha 40, word for word, eight years of numbering
+    later.
+
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

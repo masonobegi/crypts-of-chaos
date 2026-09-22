@@ -284,6 +284,7 @@ func _check_the_verbs_work() -> void:
 	_check_nothing_floats_or_sinks()
 	_check_the_scenery_stands_on_something()
 	_check_nobody_walks_through_the_floor()
+	_check_every_prop_sits_on_its_own_base()
 	_check_nobody_has_their_eyes_inside_their_head()
 	_check_every_ward_is_its_own_room()
 	_check_nothing_outside_is_inside()
@@ -630,6 +631,52 @@ func _dressing_kind_of(n) -> String:
 		return ""
 	return String((n as Node).get_meta("dressing_kind")) \
 		if (n as Node).has_meta("dressing_kind") else ""
+
+## A PROP'S COLLIDER IS UNDER ITS MODEL, NOT AROUND ITS ORIGIN.
+##
+## `BoxShape3D` is CENTRED on its CollisionShape3D, and `make_prop` left that at
+## the origin — so a prop settles with the MIDDLE of its collision box on the
+## floor and the model ends up half a box-height in the air. There is nothing to
+## see in the source: a plausible bounding size, a plausible list of parts, and
+## the two simply not in the same place.
+##
+## The IV STAND is 1.8 tall with a model running 0 to 1.7 from the base disc, so
+## it rested with its origin at 0.9 and **hung ninety centimetres above the
+## lino** — one beside every bed and one in the corridor, six of them, in the
+## frame the whole game is played from. The medical carts were 39cm up on
+## invisible castors. Both call sites then added a manual lift of exactly half a
+## box to compensate for something else, which is how it survived: the numbers
+## looked deliberate.
+##
+## Measured on the BUILT prop rather than on the recipe, because what matters is
+## where the collider is once the parts are in.
+func _check_every_prop_sits_on_its_own_base() -> void:
+	var props := tree.get_nodes_in_group("prop")
+	_ok(props.size() >= 4, "there are %d props with a collider to check" % props.size())
+	var wrong: Array = []
+	for pr in props:
+		if not (pr is Node3D):
+			continue
+		var model := INF
+		var solid := INF
+		for n in _all_nodes(pr):
+			if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+				var mi: MeshInstance3D = n
+				model = minf(model, ((pr as Node3D).global_transform.affine_inverse()
+					* mi.global_transform * mi.mesh.get_aabb()).position.y)
+			elif n is CollisionShape3D and (n as CollisionShape3D).shape is BoxShape3D:
+				var cs: CollisionShape3D = n
+				var half: float = ((cs.shape as BoxShape3D).size.y) * 0.5
+				solid = minf(solid, cs.position.y - half)
+		if model == INF or solid == INF:
+			continue
+		# A collider may legitimately be a little under the model — a castor is
+		# not worth a vertex — but not a whole model's worth.
+		if absf(model - solid) > 0.06:
+			wrong.append("%s: model starts %.2f, collider starts %.2f"
+				% [String((pr as Node).name), model, solid])
+	_ok(wrong.is_empty(), "and each one's collider is under its model%s"
+		% ("" if wrong.is_empty() else " — " + ", ".join(PackedStringArray(wrong))))
 
 ## NOBODY WALKS THROUGH THE FLOOR, AT ANY SPEED, AT ANY POINT IN THE CYCLE.
 ##

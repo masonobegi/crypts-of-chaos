@@ -613,7 +613,9 @@ static func _cart(h: Hospital, pos: Vector3, rot_y := 0.0) -> Prop:
 	cart.noise_radius = 18.0
 	cart.blurb = "Wheels. No brake. Load-bearing to the plot."
 	h.add_child(cart)
-	cart.position = pos + Vector3(0, 0.25, 0)
+	# ON THE FLOOR, because `make_prop` now puts the collider under the model
+	# rather than around its origin. The +0.25 here was half a collision box.
+	cart.position = pos
 	cart.rotation.y = rot_y
 	return cart
 
@@ -627,7 +629,9 @@ static func _iv_stand(h: Hospital, pos: Vector3) -> Prop:
 	stand.blurb = "Top-heavy by design."
 	stand.noise_radius = 14.0
 	h.add_child(stand)
-	stand.position = pos + Vector3(0, 0.9, 0)
+	# Likewise: this was +0.9, which is half of an 1.8m collision box, and it
+	# is why six IV stands hung in mid-air.
+	stand.position = pos
 	return stand
 
 ## Signage on a plate. White outlined text floating directly on a pale wall was

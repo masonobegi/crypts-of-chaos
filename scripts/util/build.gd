@@ -973,9 +973,35 @@ static func make_prop(id: String, disp: String, collision_size: Vector3, mass: f
 	var root := Node3D.new()
 	root.name = "Mesh"
 	p.add_child(root)
+	var low := INF
 	for part in parts:
-		root.add_child(mi(part["mesh"], part["mat"],
-			part.get("pos", Vector3.ZERO), part.get("rot", Vector3.ZERO), part.get("scl", Vector3.ONE)))
+		var piece := mi(part["mesh"], part["mat"],
+			part.get("pos", Vector3.ZERO), part.get("rot", Vector3.ZERO), part.get("scl", Vector3.ONE))
+		root.add_child(piece)
+		if piece.mesh != null:
+			low = minf(low, (piece.transform * piece.mesh.get_aabb()).position.y)
+	# THE COLLIDER SITS UNDER THE MODEL, NOT AROUND ITS ORIGIN.
+	#
+	# A `BoxShape3D` is CENTRED on the CollisionShape3D, and this one was left
+	# at the origin — so a prop rests with the middle of its collision box on
+	# the floor and the model ends up half a box-height in the air. Nothing
+	# about that is visible in the source: the numbers are a plausible bounding
+	# size and a plausible list of parts, and the two are simply not in the same
+	# place.
+	#
+	# The IV STAND is 1.8 tall and its model runs 0 to 1.7 from the base disc,
+	# so it settled with its origin at 0.9 and **the whole stand hung ninety
+	# centimetres above the lino** — one beside every bed in the ward and one in
+	# the corridor, six of them, in the frame the game is played from. The
+	# medical cart was 39cm up on invisible castors for the same reason.
+	#
+	# Aligned to the model's own lowest point, so the origin is the thing's
+	# BASE and a caller places it on the floor by writing the floor's height.
+	# The caller keeps the size — an IV stand's 35cm footprint is deliberately
+	# wider than its 3.6cm pole so it cannot fall between things — but it no
+	# longer has to also know where the middle of that box happens to land.
+	if low < INF:
+		cs.position.y = low + collision_size.y * 0.5
 	return p
 
 

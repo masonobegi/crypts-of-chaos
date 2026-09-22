@@ -39,6 +39,9 @@ const STEEL := Color(0.80, 0.85, 0.92)
 ## them by name found exactly one of each kind, in a fifteen-room hospital, and
 ## pronounced them all correct.
 const CEILING_GROUP := "ceiling_fitting"
+## The underside of the ceiling slab. `Hospital.WALL_H` is where the slab is
+## CENTRED and it is 10cm thick, so anything hung from the ceiling stops here.
+const CEILING_Y := Hospital.WALL_H - 0.05
 
 ## An EXTRA group for whatever is being dressed right now, so a caller can throw
 ## its own pieces away again without knowing what they were. Set around a block
@@ -218,11 +221,22 @@ static func curtain(h: Node3D, pos: Vector3, span: float, rot_y := 0.0,
 		tint := Color(0.36, 0.68, 0.72)) -> Node3D:
 	var root := Node3D.new()
 	root.name = "Curtain"
+	root.add_to_group(CEILING_GROUP)
 	root.add_child(Build.mi(Build.cyl_mesh(0.022, span, 10), Build.mat(STEEL, 0.4, 0.6),
 		Vector3(0, 2.28, 0), Vector3(0, 0, PI * 0.5)))
 	for i in 2:
 		root.add_child(Build.box_mi(Vector3(0.05, 0.16, 0.05), STEEL,
 			Vector3(-span * 0.5 + float(i) * span, 2.36, 0), 0.4, 0.008))
+		# ...AND A DROP TO THE CEILING, which is the fault `ceiling_sign` had
+		# and `curtain_track` was given a comment about, on the piece next to
+		# both of them. The bracket stopped at 2.44 and the ceiling's underside
+		# is at 3.10, so every bay divider in the ward — four of them, in the
+		# frame a store page leads with — hung on two steel posts with
+		# sixty-six centimetres of air above each one. Photographed in
+		# `04c_visitor` it is a pale cylinder floating under a ceiling tile.
+		root.add_child(Build.mi(Build.cyl_mesh(0.016, CEILING_Y - 2.44, 8),
+			Build.mat(STEEL, 0.4, 0.6),
+			Vector3(-span * 0.5 + float(i) * span, (2.44 + CEILING_Y) * 0.5, 0)))
 	# The gather: seven slats of slightly different depth, which is what a
 	# bunched curtain is when you look at one.
 	for i in 7:

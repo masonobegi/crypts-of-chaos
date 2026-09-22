@@ -21,7 +21,7 @@ GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 368 assertions, a 288-check smoke run through the real tree
+`run_tests.sh` is 368 assertions, a 291-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
 2,601-strategy adversarial search per ward plus an honest day on all 128 boards
@@ -1618,6 +1618,35 @@ with it because a lost afternoon does not care which.
     3mm apart in x) or always do once the ink allowance is in. What was wrong
     is that the TIP was at eye level, so that is what is asserted.
 
+138. **FOUR CURTAIN RAILS HUNG FROM NOTHING, AND THE GROUP WRITTEN TO CATCH
+    THAT HAD NO READER.** `Dressing.CEILING_GROUP` exists because gotcha 17 says
+    to find sets of things by group rather than by name, and it was created for
+    a ceiling-height check that no longer exists — four pieces put themselves in
+    it and nothing had read it since. So the rule it was made to enforce had not
+    been enforced for as long as the group has been there, and the bay divider
+    curtains broke it: the rail sits at 2.28 on two 16cm brackets topping out at
+    2.44, the ceiling's underside is at 3.15, and every divider in the ward hung
+    on two steel posts with **seventy centimetres of air above each one**. In
+    `04c_visitor` it is a pale cylinder floating under a ceiling tile, and the
+    piece thirty lines away in the same file — `curtain_track` — carries a
+    comment saying "a rail hanging from nothing is the fault `ceiling_sign`
+    already had once". Same fault, same file, same session, on the neighbour.
+    The check MEASURES the ceiling off the mesh that already carries an
+    `is_ceiling` meta rather than deriving it from `WALL_H`, because the slab is
+    centred on that constant rather than hung below it and the first version was
+    five centimetres out in the forgiving direction.
+    **And the hair was A/B'd and left alone.** On white hair against a cream
+    wall the ink round the crown, round each style piece and along the seam
+    between them stacks into a black band, and at the title screen's
+    magnification a bobbed white cut reads as a pair of headphones. Un-inking
+    the style pieces and re-rendering `00_title` takes the line off the bob's
+    lower edge and changes nothing else, because the band is the CROWN's
+    silhouette against the skull and the crown has to keep its line. The
+    reading is the SHAPE — a crown 1.1cm wider than a 42cm skull leaves two
+    slivers with a face between them — which is the same answer gotcha 41's
+    tint sweep came back with, and the reason to write it down rather than
+    ship a change that measured as nothing.
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding
@@ -1851,7 +1880,7 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 368 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 288 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 291 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | the one thing that can see a face: it MEASURES how much room each subject has left below its own skin for the four features that are all darker than it, and exits non-zero when a face runs out. It is also the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |

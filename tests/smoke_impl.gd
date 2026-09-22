@@ -289,6 +289,7 @@ func _check_the_verbs_work() -> void:
 	_check_nothing_you_read_is_buried_in_the_furniture()
 	_check_nothing_is_hung_on_a_window()
 	_check_no_two_markings_are_painted_on_each_other()
+	_check_everything_hung_from_the_ceiling_reaches_it()
 	_check_nobody_has_their_eyes_inside_their_head()
 	_check_every_face_is_in_the_right_order()
 	_check_every_ward_is_its_own_room()
@@ -719,6 +720,71 @@ func _check_nothing_is_inside_anything_else() -> void:
 					inter.get_center().x, inter.get_center().z])
 	_ok(buried.is_empty(), "and none of them is inside another%s"
 		% ("" if buried.is_empty() else " — " + ", ".join(PackedStringArray(buried))))
+
+## EVERYTHING HUNG FROM THE CEILING REACHES IT.
+##
+## `Dressing.CEILING_GROUP` exists because gotcha 17 says to find sets of things
+## by group rather than by name, and it was written for a ceiling-height check
+## that no longer exists — four pieces put themselves in it and nothing has read
+## it since. So the rule it was created to enforce has not been enforced for as
+## long as the group has been there, and the bay divider curtains broke it: the
+## rail sits at 2.28 on two 16cm brackets topping out at 2.44, the ceiling's
+## underside is at 3.10, and four curtains in the ward hung on steel posts with
+## SIXTY-SIX CENTIMETRES of air above each one. In `04c_visitor` it is a pale
+## cylinder floating under a ceiling tile.
+##
+## The ceiling is MEASURED rather than assumed: the check finds the big
+## downward-facing slab over the rooms and reads its underside off the mesh, so
+## a change to `WALL_H` or to the slab's thickness moves the bar with it.
+const CEILING_SLACK := 0.06
+
+func _check_everything_hung_from_the_ceiling_reaches_it() -> void:
+	var h = tree.get_first_node_in_group("hospital")
+	if h == null:
+		_fail("no hospital to measure")
+		return
+	# The ceiling, by the meta `_build_floor_and_ceiling` already puts on it —
+	# its own comment says why: "the only bare MeshInstance3D parented to a
+	# Room" stopped being a safe way to find a ceiling the moment floor borders
+	# were added, and a size heuristic here would be the same guess again.
+	var under := INF
+	for n in _all_nodes(h):
+		if not (n is MeshInstance3D) or not n.has_meta("is_ceiling"):
+			continue
+		var mi: MeshInstance3D = n
+		if mi.mesh == null or not mi.is_inside_tree():
+			continue
+		under = minf(under, (mi.global_transform * mi.mesh.get_aabb()).position.y)
+	_ok(under < INF, "the ceiling's underside is at %.2fm" % under)
+	if under == INF:
+		return
+	var short: Array = []
+	var seen := 0
+	for n in tree.get_nodes_in_group(Dressing.CEILING_GROUP):
+		if not (n is Node3D) or not (n as Node3D).is_inside_tree():
+			continue
+		var box := AABB()
+		var got := false
+		for m in _all_nodes(n):
+			if not (m is MeshInstance3D):
+				continue
+			var mm: MeshInstance3D = m
+			if mm.mesh == null:
+				continue
+			var mb: AABB = mm.global_transform * mm.mesh.get_aabb()
+			box = mb if not got else box.merge(mb)
+			got = true
+		if not got:
+			continue
+		seen += 1
+		var gap: float = under - (box.position.y + box.size.y)
+		if gap > CEILING_SLACK:
+			short.append("%s hangs %.0fcm below it at %.1f,%.1f"
+				% [_dressing_kind_of(n), gap * 100.0,
+					box.get_center().x, box.get_center().z])
+	_ok(seen >= 4, "and %d things are hung from it" % seen)
+	_ok(short.is_empty(), "and every one of them touches it%s"
+		% ("" if short.is_empty() else " — " + ", ".join(PackedStringArray(short))))
 
 ## NO TWO MARKINGS ARE PAINTED ON TOP OF EACH OTHER.
 ##

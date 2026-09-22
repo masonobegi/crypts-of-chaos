@@ -3842,3 +3842,31 @@ because the ball is centred well behind the face and only its front cap shows.
 The chin question is a depth test, not a height one. The nose question is not a
 box test either — a nose is supposed to be between two eyes — so what is
 asserted is that the TIP is below the line of the eyes.
+
+## Four curtain rails hung from nothing
+
+`Dressing.CEILING_GROUP` exists because gotcha 17 says to find sets of things by
+group rather than by name, and it was created for a ceiling-height check that no
+longer exists — four pieces put themselves in it and nothing had read it since.
+So the rule it was made to enforce had not been enforced for as long as the
+group has been there, and the bay divider curtains broke it: the rail sits at
+2.28 on two 16cm brackets topping out at 2.44, the ceiling's underside is at
+3.15, and every divider in the ward hung on two steel posts with seventy
+centimetres of air above each one. In `04c_visitor` it is a pale cylinder
+floating under a ceiling tile, and `curtain_track` thirty lines away in the same
+file carries a comment saying "a rail hanging from nothing is the fault
+`ceiling_sign` already had once".
+
+The check measures the ceiling off the mesh that already carries an `is_ceiling`
+meta rather than deriving it from `WALL_H`, because the slab is CENTRED on that
+constant rather than hung below it, and the first version was five centimetres
+out in the forgiving direction.
+
+And the hair was A/B'd and left alone. On white hair against a cream wall the
+ink round the crown, round each style piece and along the seam between them
+stacks into a black band, and at the title screen's magnification a bobbed white
+cut reads as a pair of headphones. Un-inking the style pieces and re-rendering
+`00_title` takes the line off the bob's lower edge and changes nothing else,
+because the band is the crown's silhouette against the skull and the crown has
+to keep its line. The reading is the shape, not the ink — which is the same
+answer gotcha 41's tint sweep came back with.

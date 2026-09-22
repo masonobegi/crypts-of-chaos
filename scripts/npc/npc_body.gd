@@ -1650,6 +1650,17 @@ func _hair_style(hair_mat: Material) -> void:
 	# Everything here is squashed spheres in the hair material, because that is
 	# what the crown and the forelock already are and a slab reads as hair from
 	# straight on only (see the note above them).
+	#
+	# LINED, and un-lining them was tried and reverted. On white hair against a
+	# cream wall the ink round the crown, round each style piece and along the
+	# seam between them stacks into a black band, and at the title screen's
+	# magnification a bobbed white cut reads as a pair of headphones. Passing
+	# `hair_flat` here and re-rendering `00_title` settles it: it takes the line
+	# off the bob's lower edge and changes nothing else, because the band is the
+	# CROWN's silhouette against the skull and the crown has to keep its line.
+	# The reading is the SHAPE — a crown only 1.1cm wider than the skull leaves
+	# two slivers with a face between them — and not the ink, which is the same
+	# answer gotcha 41's tint sweep came back with.
 	# Heavy thinning takes the cropped cap whatever the draw said: a receding
 	# bob is not a haircut anybody has.
 	if bald >= 0.5:

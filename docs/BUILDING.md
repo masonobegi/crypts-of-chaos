@@ -38,10 +38,58 @@ tooling scripts, and carry an `include_filter` for `assets/fonts/*.txt` because
 ship. Export templates are a separate ~1GB download and are not vendored;
 `export.sh` prints the exact command to fetch them if they are missing.
 
+### The Windows exe's icon and version block
+
+An exported `.exe` wears the Godot template's icon and reports nothing in its
+Details tab unless **rcedit** stamps it. rcedit is a Windows binary, so on Linux
+Godot runs it under wine, and it reaches both of them through EDITOR settings
+rather than through anything in this repo — which is why the build script wires
+them rather than a document asking somebody to:
+
+```
+./tools/fetch_rcedit.sh                       # downloads tools/rcedit.exe
+apt-get install -y --no-install-recommends wine64   # if there is no wine
+GODOT=/path/to/godot STRICT=1 ./export.sh all
+```
+
+`export.sh` finds `tools/rcedit.exe` and whichever wine is on the path, writes
+both into `~/.config/godot/editor_settings-4.3.tres`, and then **opens the
+finished exe and looks** (`tools/stamp_check.py`) rather than grepping the build
+log — Godot prints `rcedit (<path>):` as a heading over that stage whether or
+not anything went wrong, so for as long as rcedit worked the build reported
+that it had not. `STRICT=1` makes a missing icon or version block fatal.
+
+## The trailer
+
+```
+GODOT=/path/to/godot ./trailer.sh                      # ~40 s of film, ~35 min
+TRAILER_ONLY=03_bedside GODOT=/path/to/godot ./trailer.sh   # one shot, for framing
+TRAILER_SECS=8 TRAILER_W=960 TRAILER_H=540 ./trailer.sh     # a smoke render, ~2 min
+```
+
+Renders a frame sequence out of the real game through the same Xvfb path as the
+screenshots, and muxes it with the real score. Needs `ffmpeg` on the path.
+
+Three things in it are worth knowing before changing anything:
+
+- `--fixed-fps` is load-bearing. A frame costs about two seconds on a software
+  rasteriser, so a tree stepped by real delta animates forty times too slowly
+  and the film is people teleporting between poses.
+- The window is asked for at an exact size and the Xvfb screen is asked for
+  bigger, because the window manager takes a margin: `screenshots.sh` asks for
+  1600x900 and every frame it has ever saved is 1457x820. A still shrugs that
+  off; x264 refuses an odd width outright.
+- The audio is REBUILT, not recorded. The render is forty times slower than real
+  time, so anything captured off the audio server would drift by minutes.
+  `AudioMgr._build_music()` hands back the same PCM the game plays.
+
+The cut ends on the title screen rather than opening on it, because the menu and
+the ward are different scenes and the transition only goes one way.
+
 ## Looking at it
 
 ```
-GODOT=/path/to/godot ./screenshots.sh                 # 21 frames, ~20 min
+GODOT=/path/to/godot ./screenshots.sh                 # 30 frames, ~25 min
 SHOT_ONLY=struck_off GODOT=/path/to/godot ./screenshots.sh   # one frame, ~90 s
 GODOT=/path/to/godot ./look.sh try1                   # 4 frames — a shader or a light
 GODOT=/path/to/godot ./faces.sh try1                  # 7 frames — a CHARACTER

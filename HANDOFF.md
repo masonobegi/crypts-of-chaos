@@ -11,7 +11,72 @@ but the half-finished edit in the buffer.
 > most of which were deliberately cut. If anything below ever stops matching
 > `git log`, believe the log.
 
-## Live log — 2026-09-23
+## Live log — 2026-09-23 (later)
+
+**State: green and shipped-shaped, and it now has the four things it was short
+of.** Version 1.0.0. `run_tests.sh` passes end to end; `screenshots.sh` renders
+every frame and passes its own checks; `STRICT=1 ./export.sh all` passes with a
+Windows exe that carries its own icon and version block; `./trailer.sh` produces
+about forty seconds of film out of the real game with the real score under it.
+
+The last session rated this build the way a buyer rates it and named four things
+holding the number down. This one did all four.
+
+| What |
+|---|
+| A seventh ward: Dalrymple, and the lesson none of the other six teaches |
+| A trailer, rendered out of the game rather than assembled from stills |
+| Twelve achievements, written as a read rather than as a counter |
+| The build said the exe had no icon for as long as it had one |
+
+**In flight right now:** nothing.
+
+**The exe.** `export.sh` decided whether rcedit had stamped the file by grepping
+Godot's log for the word "rcedit", and Godot prints `rcedit (<path>):` as a
+HEADING over that stage whether or not anything went wrong — so from the moment
+rcedit worked, `STRICT=1` went on refusing to release a file that had both an
+icon and a version block. `tools/stamp_check.py` opens the artefact and walks its
+PE resource directory instead; `tools/fetch_rcedit.sh` gets the binary;
+`export.sh` finds it and whatever wine is on the path and writes both into the
+editor settings itself, because Godot reaches them through editor settings and a
+repo therefore cannot describe its own release build. Proven red against the raw
+export template. The icon had also been half missing the whole time: its `$` was
+an SVG `<text>` element and Godot rasterises through thorvg, which does not
+implement `<text>` at all.
+
+**The achievements.** This repo's rules said there were none and that the old
+ones "were read by nothing and were cut" — a rule about DEAD CODE, not about a
+player being able to see what they have done. `Achievements.holds()` is a pure
+read over `DoctorRecord` and `GameState`; nothing anywhere increments anything;
+and the pass runs at the HANDOVER and nowhere else, because the rule that nothing
+in the interface scores the player's choice survives only if the scoring happens
+after the ward sister has said her piece. The Steam API names live in the same
+file as the list, so turning it on is a build step. The smoke run builds one
+maximal career and demands every entry hold against it, which catches both an id
+with no branch in the match and two conditions that contradict each other.
+
+**The trailer.** `./trailer.sh` — the screenshot harness with the still taken out
+of it. `--fixed-fps` is load-bearing (a frame costs two seconds, so a tree stepped
+by real delta animates forty times too slowly); the window is asked for at an
+exact size against a bigger Xvfb screen (the WM takes a margin — every frame
+`screenshots.sh` has ever saved is 1457x820 on a 1600x900 screen, and x264 refuses
+an odd width); and the audio is rebuilt from `AudioMgr._build_music()` rather than
+recorded, because the render is forty times slower than real time. The cut ends on
+the title screen because the menu and the ward are different scenes and the
+transition only goes one way.
+
+**The length.** Dalrymple Ward: ten authored people, five slots, sixteen boards,
+and a thesis none of the other six has — not WHERE the truth is but WHEN. Both
+ends of its pair carry `only_visible_in_person` and `test_reveals` and nothing
+else, so the chart is clean, the nurse's round is clean, and the only two routes
+in are twenty-five minutes of your own hands or eighty-five minutes of laboratory
+lead time. Everybody else on it is a temptation to clear the ward before eleven.
+The frontier probe searched all 2,601 strategies on it and played all sixteen of
+its boards honestly: honest day 3,380 signed off finishing at 17:30, best night
+anybody had 4,350 and referred, top figure not reachable signed off. **74
+authored people across 7 wards, 144 boards.**
+
+## Previous log — 2026-09-23 (the store-page audit)
 
 **State: green and shipped-shaped.** Version 1.0.0. `run_tests.sh` passes end to
 end (368 assertions, 292 smoke checks on three seeds); `screenshots.sh` renders
@@ -38,11 +103,10 @@ strategy across a 2,601-strategy search per ward. Everything weak is
 presentation, and the two surfaces a buyer sees were the two worst things in
 the build — the capsule could not be read and the frame the game is played in
 was a head on a slab. Both are fixed; what is still short is listed under
-**Open** and the top three are a TRAILER, ACHIEVEMENTS and LENGTH. A career is
-nine nights at eight to fifteen minutes a shift, which is an hour and a half to
-two and a half hours to see everything the game has, one win state and one lose
-state. That is a five-to-eight dollar game as it stands and no amount of polish
-moves it.
+**Open**. The three that were top of it — a trailer, achievements and length —
+were done in the session after this one; what is left of the length argument is
+that a career is still nine nights at eight to fifteen minutes a shift, and the
+seventh ward buys one more distinct evening rather than a different answer.
 
 **What the last session changed.** An arm was one rigid node from the shoulder
 to the knuckles — the leg has had a knee and an ankle since the walk went in —
@@ -217,19 +281,19 @@ reach, and the ward order is drawn per career.
 
 ## Open, in rough order of value
 
-0. **THERE IS NO TRAILER, THERE ARE NO ACHIEVEMENTS, AND A CAREER IS UNDER
-   THREE HOURS.** These are the three things standing between this build and a
-   store page that converts, and none of them is a bug. A trailer is the single
-   asset a Steam page is mostly judged on and this project has never produced
-   one second of motion — `screenshots.sh` can pose and photograph anything, so
-   the machinery is there and what is missing is a shot list. Achievements need
-   GodotSteam, which is a GDExtension and a build step, and a page with zero of
-   them reads as unfinished to a large slice of buyers. And nine nights at eight
-   to fifteen minutes a shift is an hour and a half to two and a half hours,
-   with one win state and one lose state: that is a five-to-eight dollar game
-   and polish does not move it. Item 10 below is the honest lever on the last
-   one and its own note explains why the obvious version of it breaks the
-   economy.
+0. **LENGTH IS STILL THE ONE THAT IS NOT FINISHED.** The trailer, the
+   achievements and the exe are done and are checked by harnesses that go red;
+   the seventh ward bought one more distinct evening. A career is nine nights at
+   eight to fifteen minutes a shift, which is an hour and a half to two and a
+   half hours to see everything, with one win state and one lose state — and
+   another ward is another hour of authoring for another sixteen boards, which
+   is a linear lever on a number that wants a step change. **Item 10 is still the
+   honest one** and its own note explains why the obvious version breaks the
+   economy. The trailer now exists but has been WATCHED BY NOBODY: it renders,
+   the harness checks that every shot got the card it asked for, and whether the
+   cut is any good is a judgement no check can make. Watch it before it goes on
+   a page.
+
 1. **THE GAME HAS NEVER BEEN PLAYED BY A PERSON.** Every design number in it —
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by

@@ -3940,3 +3940,85 @@ player has to work out for the design to be legible at all.
 one is a diagnostic standing in a doorway, 48% empty plane, with a patient's
 head 45 pixels tall, and it cannot move because two measured pairs are taken
 from it.
+
+## The four things a Steam page was actually short of
+
+The last session rated this against a store page and came out at 6.8, and the
+four things holding the number down were named rather than guessed: no trailer,
+no achievements, a career that is one evening long, and a Windows exe with no
+icon and no version block. This session did all four.
+
+**The build had been lying about the exe for as long as it was telling the
+truth about it.** `export.sh` decided whether rcedit had stamped the file by
+grepping Godot's log for the word "rcedit" — and Godot prints
+`rcedit (<path>):` as a HEADING over that stage whether or not anything went
+wrong. So the moment rcedit was wired up and working, `STRICT=1` went on
+refusing to release an exe that had both an icon and a version block. The
+question is about an artefact, so `tools/stamp_check.py` opens the artefact and
+walks its PE resource directory; proven red against the raw export template,
+which is exactly what an unstamped export produces. And the icon itself had been
+half missing the whole time: the `$` in `icon.svg` was a `<text>` element, Godot
+rasterises SVG through thorvg, and thorvg does not implement `<text>` at all. A
+teal square, a white cross, and an unexplained red dot with the one thing the
+mark is about absent from it, on the taskbar, in the library and in the Details
+tab. No error, no warning, nothing missing from the file.
+
+**The achievements were cut for being dead, not for being wrong.** This repo's
+own rules said "there are no achievements and no stats dictionary — both existed,
+both were read by nothing, and both were cut", and the distinction turned out to
+be the whole design. What was wrong with the old ones is that systems WROTE to
+them; an `achievements.foo += 1` scattered across the code is a system that has
+to remember to unlock something, which is a system with an unlock bug in it —
+the same argument `DoctorRecord` already makes about escalation. So
+`Achievements.holds()` is a pure read over `DoctorRecord` and `GameState`,
+nothing anywhere increments anything, and the pass runs at the HANDOVER and
+nowhere else, because the rule that nothing in the interface scores the player's
+choice for them survives only if the scoring happens after the ward sister has
+said her piece. Twelve of them, a screen off the title and the pause menu, and
+the Steam API names in the same file as the list so that turning it on is a
+build step rather than an archaeology exercise.
+
+The fault that shape leaves open is an id with no branch — `holds()` is a match
+that falls through to `return false`, so an entry added to the list and not to
+the match renders correctly, ships, and can never be awarded to anybody. The
+smoke run builds one maximal career and demands every entry hold against it,
+which also catches two conditions that contradict each other; invisible in a
+list of twelve predicates read one at a time. Proven red by deleting a branch.
+
+**The trailer is the screenshot harness with the still taken out of it**, and
+three engine facts had to be settled before a second of it was watchable. A
+frame costs about two seconds on this rasteriser, so a tree stepped by real
+delta animates forty times too slowly and the film is people teleporting between
+poses — `--fixed-fps` makes every rendered frame exactly 1/FPS of game time
+however long it took to draw. The window manager takes a margin, so a 1600x900
+Xvfb screen gives Godot an 817x460 window: every frame `screenshots.sh` has ever
+saved is 1457x820 and nobody noticed, because a still is looked at rather than
+measured, while x264 refuses an odd width outright. And the audio cannot be
+recorded at forty times slower than real time without drifting by minutes, so it
+is rebuilt from `AudioMgr._build_music()` and muxed — sample accurate, one pass
+over the buffer.
+
+The first render found a `request_ui` context key that was wrong (`id` where the
+screen reads `patient_id`), which opens NOTHING, silently — gotcha 107 again. In
+a still harness that is one bad frame; in a film it is four and a half seconds of
+an empty bedside with a caption about a chart over it. A shot that asks for a
+card and gets none fails the render now.
+
+**And the length was answered with content, because content is the unit this
+game is made of.** Dalrymple Ward is the seventh: ten authored people, five
+slots, sixteen boards. Its thesis is the one none of the other six is about —
+not WHERE the truth is but WHEN. Both ends of its pair carry
+`only_visible_in_person` and `test_reveals` and nothing else, a two-flag profile
+no other ward has, so the chart is clean, the nurse's round is clean, and there
+are exactly two ways in: twenty-five minutes of your own hands, or eighty-five
+minutes of laboratory lead time. Everybody else on it is a temptation to clear
+the ward before eleven. The frontier probe played all 2,601 strategies on it and
+all sixteen of its boards honestly: the honest day earns 3,380 signed off and
+finishes at half past five, the best night anybody had is 4,350 and it was
+referred, and the top figure cannot be reached signed off. 74 authored people
+across 7 wards, 144 boards.
+
+The ward count is now the one number a sweep has to be SIZED from rather than
+tuned against: seven wards is 5,040 orderings, and the coupon-collector check
+that demands every one of them appear went from 2,000 seeds to 68,166 on its own
+arithmetic when the seventh went in. Gotcha 95 paying for itself.

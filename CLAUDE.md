@@ -17,14 +17,16 @@ GODOT=/path/to/godot ./look.sh try1      # four vantages, for tuning a shader or
 GODOT=/path/to/godot ./faces.sh try1     # six faces close up, for tuning a CHARACTER
 SHOT_ONLY=struck_off GODOT=/path/to/godot ./screenshots.sh   # one frame, ~90s
 GODOT=/path/to/godot ./export.sh all     # windows, linux, macos — and RUNS the linux one
+GODOT=/path/to/godot ./trailer.sh        # ~40s of film out of the real game, ~35 min
+TRAILER_SECS=8 TRAILER_W=960 TRAILER_H=540 ./trailer.sh   # a smoke render, ~2 min
 GODOT=/path/to/godot ./playfast.sh day   # play a WHOLE SHIFT with a controller
 GODOT=/path/to/godot ./play.sh keys      # play it with WASD and a real mouse, under Xvfb
 ```
 
-`run_tests.sh` is 368 assertions, a 291-check smoke run through the real tree
+`run_tests.sh` is 368 assertions, a 294-check smoke run through the real tree
 on three different wards, 39 playtests against seven success criteria, the
 authored-data and draw checks, a career played eight ways on three seeds, a
-2,601-strategy adversarial search per ward plus an honest day on all 128 boards
+2,601-strategy adversarial search per ward plus an honest day on all 144 boards
 the game can deal, two playthroughs driven entirely by
 the input actions a controller sends — the first two minutes, and a whole shift
 from the briefing to the next morning — a check that the game prints nothing it
@@ -1726,6 +1728,63 @@ with it because a lost afternoon does not care which.
     the view through every window in the building took the same value. Gotcha
     131 on the one surface a player looks at for twelve hours.
 
+144. **THE BUILD SAID THE EXE HAD NO ICON FOR AS LONG AS IT HAD ONE.**
+    `export.sh` decided whether rcedit had stamped the Windows exe by grepping
+    Godot's output for the word "rcedit" — and Godot prints
+    `rcedit (<path>):` as a HEADING over that stage whether or not anything
+    went wrong. So the moment rcedit was actually wired up and working, the
+    build went on reporting "no rcedit, so the exe carries no icon or version
+    block" about a file that had both, and `STRICT=1` went on refusing to
+    release it. A harness that reads a LOG is asking the builder how it went;
+    `tools/stamp_check.py` opens the artefact a player downloads and walks its
+    PE resource directory. Proven red against the raw export template, which is
+    exactly what an unstamped export produces.
+    **And the icon was half missing the whole time.** `icon.svg`'s `$` was a
+    `<text>` element, and Godot rasterises SVG through thorvg, which does not
+    implement `<text>` at all — no error, no warning, the glyph simply is not in
+    the image. The taskbar, the Steam library and the Details tab showed a teal
+    square, a white cross and an unexplained red dot, with the one thing the
+    mark is ABOUT missing from it. Anything that has to appear in a rasterised
+    SVG has to be a SHAPE.
+145. **THE ACHIEVEMENTS WERE CUT FOR BEING DEAD, NOT FOR BEING WRONG, AND THE
+    DIFFERENCE IS THE WHOLE DESIGN.** The rule in this file said "there are no
+    achievements and no stats dictionary — both existed, both were read by
+    nothing, and both were cut", and a store page with an empty achievement
+    list reads to a buyer as a game somebody stopped working on. What was wrong
+    with the old ones is that systems WROTE to them: an `achievements.foo += 1`
+    scattered across the code is a system that has to remember to unlock
+    something, which is a system with an unlock bug in it — the same argument
+    `DoctorRecord`'s own comment makes about escalation. `Achievements.holds()`
+    is a pure read over `DoctorRecord` and `GameState`, evaluated at the
+    handover and NOWHERE ELSE, because the design rule that nothing in the
+    interface scores the player's choice survives only if the scoring happens
+    after the ward sister has said her piece.
+    **The fault that shape leaves open is an id with no branch**: `holds()` is a
+    `match` that falls through to `return false`, so an entry added to `LIST`
+    and not to the match renders correctly, ships, and can never be awarded.
+    The smoke run builds one maximal career and demands every entry hold
+    against it — which also catches two conditions that contradict each other,
+    invisible in a list of twelve predicates read one at a time. Proven red by
+    deleting a branch.
+146. **`Input`, `DisplayServer` AND `Time` ALL LIE TO A TRAILER, AND EACH ONE
+    LOOKS LIKE A DIFFERENT BUG.** `trailer.sh` renders the real game to a frame
+    sequence, and three things had to be settled before a single second of it
+    was watchable. A frame costs about two seconds on this rasteriser, so a tree
+    stepped by REAL delta animates forty times too slowly and the film is people
+    teleporting between poses — `--fixed-fps` makes every rendered frame exactly
+    1/FPS of game time however long it took to draw. The window manager takes a
+    margin, so a 1600x900 Xvfb screen gives Godot an 817x460 window: every frame
+    `screenshots.sh` has ever saved is 1457x820 and nobody noticed, because a
+    still is looked at rather than measured, while x264 refuses an odd width
+    outright. And the audio cannot be RECORDED at forty times slower than real
+    time without drifting by minutes, so it is rebuilt — `AudioMgr._build_music`
+    hands back the same PCM the game plays, summed and written as a WAV.
+    **And gotcha 107 fired on the first render**: `request_ui` for a screen that
+    cannot read its own context opens NOTHING, silently, so the shot whose
+    caption is about a chart was four and a half seconds of an empty bedside.
+    The key was `patient_id` and the code said `id`. A shot that asks for a card
+    and gets none fails the render now.
+
 
 ## Design rules that are load-bearing
 
@@ -1889,10 +1948,15 @@ with it because a lost afternoon does not care which.
   remember to escalate is a system with an escalation bug in it. Her opening
   line, the weight of a repeated finding, which excuses she will still hear,
   and whether you are still a doctor are all derived from four counters and a
-  strike total that never reset. There are no achievements and no stats
-  dictionary — both existed, both were read by nothing, and both were cut.
+  strike total that never reset. The stats dictionary is gone for good — it
+  existed and nothing read it. **The achievements came back, and only because
+  they could be written as a read too**: `Achievements.holds()` takes a
+  `DoctorRecord` and answers a question about it, nothing anywhere increments
+  anything, and the whole pass runs at the handover so that no trophy ever tells
+  a player what the game thinks of a decision whose consequences they have not
+  seen yet. See gotcha 145.
 - **Content lives in `Cases`, and adding a patient must not require touching a
-  system.** Sixty-four people across six wards, each a dictionary of authored
+  system.** Seventy-four people across seven wards, each a dictionary of authored
   strings; `tests/probe/data_run.gd` walks every one and fails on any field a
   system would otherwise silently default. If a new kind of patient needs a new
   `if` in `WardDay`, the data model is wrong, not the patient.
@@ -1936,9 +2000,13 @@ with it because a lost afternoon does not care which.
   `Cases.pool_index(day)` is a per-career permutation with a fresh one every
   cycle, so every ward is still visited exactly once per cycle — the
   pressure curve and the debt arithmetic are unchanged — but which one is
-  something you find out by reading the handover. There are SIX wards now, so a
-  nine-night career visits all six before it repeats anything, and the cycle
-  length is `DAYS.size()` everywhere rather than a four written down. Anything
+  something you find out by reading the handover. There are SEVEN wards now, so
+  a nine-night career visits all seven before it repeats anything, and the cycle
+  length is `DAYS.size()` everywhere rather than a four written down. **The
+  ward count is the one number in this game that a sweep has to be SIZED from
+  rather than tuned against** — gotcha 95: seven wards is 5,040 orderings, and
+  the coupon-collector check that demands every one of them appear went from
+  2,000 seeds to 68,166 on its own arithmetic when the seventh went in. Anything
   that pairs a night
   with a ward-indexed table (`PRIOR_BY_DAY`, `ILL_PAIR_BY_DAY`, `DAYS`) must go
   through it, and anything that GROUPS results by night is averaging several
@@ -1960,16 +2028,17 @@ with it because a lost afternoon does not care which.
 | Layer | Catches |
 |---|---|
 | unit + integration (`tests/run_tests.gd`) | maths, serialisation, the audit rules, floor connectivity — 368 assertions across `test_compile.gd`, `test_suspicion.gd` and `test_ward.gd` |
-| `smoke_run.gd` | "everything compiles and nothing works" — 291 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
+| `smoke_run.gd` | "everything compiles and nothing works" — 294 checks through the real tree, and then the whole file again on two wards it has never seen. Every check in it used to name its patients ("oduya", "blake"), so it could only ever run against one of the thirty-two boards the first ward alone can deal; pointing it anywhere else produced eight failures that were all the harness. `SMOKE_SEED` overrides. |
 | `playtest_run.gd` | design inversions, over 39 authored strategies — twenty-three on the first ward, eight on the second, four each on the third and fourth. The last eight exist because the two wards added most recently were checked by the data probe (are they well formed?) and the frontier probe (is there a clean day?) and by nothing that asks what a PERSON would do on them: the third ward's honest hold is in a life and the fourth's is in somebody else's decision, and neither proposition had a single authored day behind it. Seven criteria, and it exits non-zero when one regresses. The seventh is the frontier: the spread must not be flat, and the biggest day in the table must not be a clean one. It was pointed at a field Vinnie drives to zero on every night but the last, and ranked 31 strategies by a constant for four iterations without anybody noticing, because a sorted column of zeroes is a sorted column. |
 | `faces.sh` | the one thing that can see a face: it MEASURES how much room each subject has left below its own skin for the four features that are all darker than it, and exits non-zero when a face runs out. It is also the loop an art pass needs. Six people drawn through `Appearance` — so what is photographed is what ships — each from eighty centimetres, then one whole body, then the cast together. It found in one frame what twenty-one frames of `screenshots.sh` had not in three sessions: a white sclera that made the whole cast read as default-stylised, hair that came down to the eyebrows on every character, a torso whose flat front made everybody look like they were wearing a sandwich board, and nine centimetres of daylight between everyone's thighs. It also produced THREE faults of its own that each looked exactly like a modelling fault — subjects standing outside the building and falling, a camera four and a half metres back in a four-metre room, and a body shot taken after the cast had closed ranks — so it asserts nobody is falling, and the rule is: when a subject looks wrong, check where the camera and the feet are before you change the model. |
 | `look.sh` | nothing on its own — it is `screenshots.sh` with twenty-one frames taken out. Twenty minutes is the wrong loop for a shader, a light or a line weight, and every graphics decision in this project that was made without a picture in front of it turned out to be wrong. It fails on a shader that did not compile, which is the one fault a picture will not show you. |
+| `trailer.sh` | whether the game can be put on a STORE PAGE. It is `screenshots.sh` with the still taken out of it: the same Xvfb path, the same vantages, saving every frame instead of one and handing the sequence to ffmpeg with the real score muxed under it. It fails on a shader that did not compile, on a shot that asked for a card and got none, and on a render that wrote no frames — the first of those caught a `request_ui` context key that was wrong, which in a still harness is a bad frame and in a film is four and a half seconds of an empty room. See gotcha 146 for the three engine facts that make it work at all. |
 | `screenshots.sh` | anything you can only see — and the two things it MEASURES, because a real 1600x900 window is the only place a layout is real: how much of a card is below the fold, and what the card is sitting on top of. The second found the controls reminder buried under the patient card, with three letters of "pause" showing past its edge. |
 | the fixture audit (in `smoke_run.gd`) | anything standing on nothing. Every `Fixture`'s footprint is tested against everything underneath it and reported as "chair floats by 4cm" or "bin is sunk by 11cm" — the failure two pieces of code that do not know about each other produce when they furnish the same square metre. |
-| `tests/probe/data_run.gd` | the authored content itself — sixty-four people across six wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
+| `tests/probe/data_run.gd` | the authored content itself — seventy-four people across seven wards, every field a system will silently default if it is missing, and the one inequality every ward must satisfy (five beds earn less than three). The property tests assert what the game DOES; this asserts what it is made of, which is where a content bug lives. In `run_tests.sh`. |
 | `tests/probe/econ_run.gd` | FOUR WAYS TO PLAY WITHOUT LOOKING AT ANYBODY. The career probe asserts "never looking NEVER pays it off" about exactly one blind policy — discharge all five, every night — which is the laziest blind play there is. The interesting one READS THE HANDOVER: keep whoever the night staff already wrote up as unwell, look at nobody, write nothing. It used to clear the whole debt in eleven nights and never be struck off. The file that found that printed four tables, asserted nothing and was not in `run_tests.sh`, so the largest design inversion in the game was discovered and reported to nobody — the same shape as a harness whose last pipeline stage is `head`. It fails on a blind career that PAYS and on one that neither pays nor is struck off in twenty-five nights, because a career that never ends is the loop the debt rework exists to stop. |
 | `tests/probe/career_run.gd` | anything that only exists ACROSS days — the carry, the remembered beds, the denser rounds after a flag, the debt that grows on a short night. Plays twenty nights eight ways (coast, honest, honest+corroborated, restrained, skilled, one lie, greedy, adaptive). It found that `remembered_beds` was dead across a roster change and that `auditor_present` did nothing at all; after the rework it is the harness that proves crime pays only if you can stop. The six properties: honest play pays it off, a RESTRAINED liar pays it off faster, doing it every night does not, greed is struck off first, never looking at anybody NEVER pays it off, and one bad night is recoverable. Run on three seeds, because nine wards drawn from four pools is not the same nine wards twice; `CAREER_SEED` overrides. |
-| `tests/probe/frontier_run.gd` | dominant strategies, and whether a day is a BUDGET. It fails on a checklist that fits in a shift, on an honest day that does not, and on a top-of-the-money night that is also a clean one — that last property had been PRINTED and never asserted for as long as the probe existed. It also plays an honest day on all 52 reachable boards rather than on the one its seed deals: "every ward has an honest day that signs off" was a claim about four boards out of fifty-two, and the four it happened to pick were the four where it was true. The second ward could not be signed off on ANY of its twelve. 2,601 plays a ward — every subset of beds up to three, crossed with thirteen ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with whether the day was played DILIGENTLY, crossed with how you answer in the room — reported as the most money made at each verdict. Two properties: **the top figure must not be reachable signed off**, and **every ward must have an honest day that signs off**. The second is why the 2,601st play is not a strategy at all but the day a careful person plays, written out by hand: the search alone reported ward four as having no clean day, and that was a claim about the search. In `run_tests.sh`; re-run it after touching the economy, the contradiction rules, the bed audit or a roster. |
+| `tests/probe/frontier_run.gd` | dominant strategies, and whether a day is a BUDGET. It fails on a checklist that fits in a shift, on an honest day that does not, and on a top-of-the-money night that is also a clean one — that last property had been PRINTED and never asserted for as long as the probe existed. It also plays an honest day on all 144 reachable boards rather than on the one its seed deals: "every ward has an honest day that signs off" was a claim about four boards out of fifty-two, and the four it happened to pick were the four where it was true. The second ward could not be signed off on ANY of its twelve. 2,601 plays a ward — every subset of beds up to three, crossed with thirteen ways of justifying a hold, crossed with whether you MIX them (a peer behind the bed that deserves one, your own note on the bed that does not), crossed with whether the day was played DILIGENTLY, crossed with how you answer in the room — reported as the most money made at each verdict. Two properties: **the top figure must not be reachable signed off**, and **every ward must have an honest day that signs off**. The second is why the 2,601st play is not a strategy at all but the day a careful person plays, written out by hand: the search alone reported ward four as having no clean day, and that was a claim about the search. In `run_tests.sh`; re-run it after touching the economy, the contradiction rules, the bed audit or a roster. |
 | `play_run.gd` (`./playfast.sh`, `./play.sh`) | whether it can be PLAYED, and whether it can be FINISHED. Every other layer reaches past the input layer and calls the method a keypress would have called, so all of them pass on a build where nothing is bound to anything. This one presses the buttons: closes the briefing, walks the doctor to a bed on the stick, aims with the other stick, taps use, moves the selection on the card that opens and backs out. On its first run it found that a pad could look all the way round the ward without taking a step (the four move actions had a key each and no axis), that no screen in the game ever took focus, and that A and B were not bound to `ui_accept`/`ui_cancel` at all — on a build whose own Controls screen promised the opposite. Three plans. `pad` and `keys` are the first two minutes — the briefing, a walk across the ward, a card opened and navigated. `day` is the whole shift, played the way a stranger gets it — the tutorial ON, which nothing else in this repo has ever done: a chart read and a note written on the pad, five beds walked to and decided, the office found through a shut door, the records opened, the shift signed off, the ward sister answered until the End of Shift card is up, and "Work tomorrow" pressed into the next morning. `pad` and `day` are in `run_tests.sh` and cost three seconds each; `keys` needs a real captured cursor, so it lives in `./play.sh` under Xvfb. |
 | the quiet check (in `run_tests.sh`) | anything the game PRINTS while it is being played. `boot_check.sh` asserts this for the way in and stops at the title screen, so nothing had ever looked at what Game.tscn says once it is loaded — which is where the world, the NPCs and every system are. It cost a warning on every launch of the shipped build: the environment enabled SSAO, which is Forward+ only, on a project that ships Compatibility. Six harnesses ran past it. It reads the UNIT run too, which it did not: that one had been printing "Cannot call method 'queue_free' on a previously freed instance" twice on every invocation, from two tests that tidied up a ward `setup()` had already freed, and the throw took the line after it with it. A check that watches one surface reports on one surface. |
 | `boot_check.sh` | the real entry point. Everything else instantiates Game.tscn directly and skips Boot and the main menu, which is how "the game is unplayable from the main menu" survived 1,500 assertions. |

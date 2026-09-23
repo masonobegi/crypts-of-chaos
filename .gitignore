@@ -32,3 +32,6 @@ tests/scratch/
 
 # Agent worktrees, created by the Workflow tool.
 .claude/worktrees/
+
+# rcedit is fetched by tools/fetch_rcedit.sh, not vendored — see the note there.
+tools/rcedit.exe

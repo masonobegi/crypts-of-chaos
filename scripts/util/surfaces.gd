@@ -377,6 +377,24 @@ void fragment() {
 	// `drift` is per-vertex and already in the preamble, so it costs nothing
 	// here and it is the only thing standing between these and flat cardboard.
 	vec3 col = base_col * gain * (0.90 + drift * 0.20);
+	// ...WHICH IS NOT ENOUGH ON THE GROUND, BECAUSE THE GROUND IS ONE QUAD.
+	//
+	// `drift` is per-VERTEX, and the field outside is a single 400-metre slab
+	// with vertices only at its corners — so every square metre of it took the
+	// same value and the view through every window in the building was three
+	// flat bands of colour with a hard edge between them. It is gotcha 131 on
+	// the one surface a player looks at for twelve hours: a lawn, a car park
+	// apron and a treeline, all rendered as coloured paper. Same fix as the
+	// floor and the bay marking, and here it costs nothing at all because this
+	// shader is unshaded and the geometry does not change.
+	//
+	// Keyed to WORLD POSITION so it does not move with the slab, at a 16-metre
+	// period for the broad tussocks and a 2-metre one for the near grass, and
+	// `detail_fade` on the finer octave because a pattern finer than a pixel
+	// has to fade rather than alias (gotcha 50).
+	float broad = fbm2(world_pos.xz * 0.062);
+	float fine = mix(0.5, vnoise(world_pos.xz * 0.5), detail_fade(world_pos.xz * 0.5));
+	col *= 0.90 + broad * 0.17 + fine * 0.06;
 	// Distance from the eye, in metres, taken in the fragment stage: the
 	// preamble owns `vertex()` and a shader may only have one, so this is
 	// reconstructed from the world position rather than from MODELVIEW.

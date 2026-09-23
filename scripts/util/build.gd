@@ -1067,8 +1067,11 @@ static func make_prop(id: String, disp: String, collision_size: Vector3, mass: f
 ## every wayfinding system in every real hospital is set in a bold grotesque for
 ## exactly this reason. Callers that are drawing a SCREEN rather than a SIGN
 ## (the EHR terminal, the distance readout, the rota times) pass mono.
+## `outline` is the keyline's weight in font pixels. The default of 5 is sized
+## for a SIGN — a big glyph on a plate of its own — and it is not enough for a
+## small floating label read across a room: see the note where it is set.
 static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard := true,
-		face = null) -> Label3D:
+		face = null, outline := 5) -> Label3D:
 	var l := Label3D.new()
 	l.text = text
 	var use = face if face != null else Typeface.sans_bold()
@@ -1097,8 +1100,8 @@ static func label3d(text: String, size := 0.12, color := Color.WHITE, billboard 
 	# glyphs merged and every sign in the building read as a dark blob with a
 	# suggestion of letters in it. 5 is a keyline: it separates the text from
 	# whatever is behind it without eating the text.
-	l.outline_size = 5
-	l.outline_modulate = Color(0.04, 0.06, 0.09, 0.85)
+	l.outline_size = outline
+	l.outline_modulate = Color(0.04, 0.06, 0.09, 0.85 if outline <= 5 else 1.0)
 	return l
 
 # ------------------------------------------------------------------ lighting

@@ -1665,6 +1665,68 @@ with it because a lost afternoon does not care which.
     later.
 
 
+140. **THE PATIENT IN THE BED WAS A HEAD ON A SLAB, AND NOTHING WAS WRONG
+    WITH ANY OF IT.** An arm on this model was ONE rigid node from the shoulder
+    to the knuckles — the leg has had a knee and an ankle since the walk went
+    in, the arm never got either. Standing up that is survivable. In a BED it is
+    not: measured in the bed's own space, a straight arm hanging at a propped
+    patient's side puts the hand at y 0.985 and the duvet's top surface is at
+    1.20, so **both arms and both hands were twenty centimetres inside the
+    bedding** on every patient in every ward. `03_bedside` is the camera this
+    whole game is played through and what it showed was a bald head floating
+    over a teal slab. No check in the repo could see it and none of them was
+    wrong to: nothing overlaps that should not, the arms are exactly where a
+    person's arms go and the duvet is exactly where a duvet goes. The fault is
+    that a person in a bed puts their forearms ON the covers and this model
+    could not.
+    **The angles are SOLVED, not guessed, and the first attempt proves why.**
+    The trunk lies back at -0.52, which leaves nineteen centimetres between the
+    shoulder and the duvet for an arm with sixty of reach — so working
+    backwards through the trunk's own rotation, a world-space forearm along
+    (0, 0, 1) needs 1.047 rad of combined shoulder and elbow, and a world upper
+    arm along (0, -0.306, 0.952) needs 0.740 of it at the shoulder. The first
+    version used -0.25 and -1.15, which is an arm folded across the lap: it put
+    the HAND at the right height and the ELBOW at 1.178, under the covers, so
+    the render was two hands with no arms attached to them — a worse picture
+    than no hands at all.
+141. **A CAPSULE IS READ AT 460x215 AND EVERY PIXEL THAT IS NOT THE SUBJECT IS
+    WASTED.** `00c_capsule` had three faults and each is a different lesson.
+    The strapline was placed on the dado on the argument that white type on a
+    cream wall is not type — true, and it only covers the FIRST line: the block
+    is 280 tall and the dado band about 120, so both lines of the strapline
+    fell onto the pale floor and the second one dissolved completely. A capsule
+    cannot lose a line, so the left of the frame gets a GROUND rather than a
+    hope. The camera sat 5.9 metres back on a 52-degree lens, which is a wide
+    shot of a small room: 17% empty ceiling over the pair and 28% empty floor
+    under them. And the sight line past the nurse ran straight through a potted
+    plant — a terracotta pot lines up exactly with the two centimetres of
+    daylight between a standing character's thighs, so the first capsule this
+    project rendered had **a bright orange wedge between the nurse's legs from
+    the crotch to the ankles**. Nothing was broken and nothing overlapped: it is
+    one object behind another, which is the one class of fault that only a
+    rendered frame can ever find.
+142. **THE NAME OVER A BED IS HOW YOU PICK THE BED, AND IT WAS WHITE ON CREAM.**
+    Every other piece of text in the world is a `_wall_sign` — a dark quad with
+    the words on it. The patient's floating name tag has no plate, so it has to
+    be legible against a cream wall, a teal dado, a window full of sky and the
+    back of a nurse's head — and `Build.label3d`'s default 5-pixel keyline is
+    sized for a SIGN, which is set at three times the size, so the same
+    fraction of a glyph is three times the halo. At fifteen metres the tag's
+    outline comes out at about one and a third screen pixels and the name
+    cannot be read at all. A default tuned for one size is not a default
+    (gotcha 48's shape); `label3d` takes the weight now and the tag asks for 10.
+143. **THE SEED FIELD WAS THE THIRD THING ON THE MAIN MENU.** "Run seed
+    (optional) / leave blank for random" sat between the button row and Quit,
+    above the fold, on the first screen of the game — so a stranger's third
+    stop after New Career and Settings was a developer text box asking them for
+    a number they have no way to have. It is a good feature and it belongs
+    behind one word. **And the outside was three flat bands**: `outside_mat`
+    varies on `drift`, which is per-VERTEX, and the field is a single
+    400-metre slab with vertices only at its corners — so every square metre of
+    the view through every window in the building took the same value. Gotcha
+    131 on the one surface a player looks at for twelve hours.
+
+
 ## Design rules that are load-bearing
 
 - **Nothing tells the player to press a key by name.** There is a rebinding

@@ -112,7 +112,10 @@ func _furnish() -> void:
 	Dressing.overbed_table(self, Vector3(-1.75, 0, -1.2), 0.2)
 	Dressing.curtain(self, Vector3(-4.3, 0, -0.2), 2.4, PI * 0.5)
 	Dressing.cabinet(self, Vector3(4.3, 0, -2.9), 0.0)
-	Dressing.plant(self, Vector3(4.45, 0, 0.4), 1.15)
+	# KEPT, because `pose_for_capsule` has to move it: its terracotta pot lines
+	# up with the gap between a standing character's legs from the capsule
+	# camera, and a pot behind a nurse is an orange crotch.
+	_plant = Dressing.plant(self, Vector3(4.45, 0, 0.4), 1.15)
 	Dressing.stool(self, Vector3(1.85, 0, 0.35))
 	Dressing.water_cooler(self, Vector3(4.45, 0, 1.9), -PI * 0.5)
 	Dressing.bin(self, Vector3(-4.4, 0, 1.6))
@@ -132,6 +135,7 @@ func _furnish() -> void:
 ## a screenshot of a level; a room with somebody breathing in it reads as a
 ## place with a job going on in it, which is what the game is about.
 var nurse: NPCBody = null
+var _plant: Node3D = null
 var sitter: NPCBody = null
 var sitter_two: NPCBody = null
 
@@ -253,6 +257,8 @@ func pose_for_capsule(on: bool) -> void:
 	_capsule = on
 	set_process(not on)
 	if not on:
+		if _plant != null and is_instance_valid(_plant):
+			_plant.position = Vector3(4.45, 0, 0.4)
 		var back := get_node_or_null("ChairTwo")
 		if back != null:
 			(back as Node3D).visible = true
@@ -292,12 +298,33 @@ func pose_for_capsule(on: bool) -> void:
 		sitter.set_seated(true)
 		sitter.set_mood(-0.35)
 	if nurse != null and is_instance_valid(nurse):
-		nurse.position = Vector3(3.62, 0, 0.72)
+		# ...AND NOT IN FRONT OF THE PLANT POT. At (3.62, 0.72) the sight line
+		# from the capsule camera runs on through the potted plant at
+		# (4.45, 0.4), and a terracotta pot lines up exactly with the two
+		# centimetres of daylight between a standing character's thighs — so
+		# the first capsule this project rendered had a bright orange wedge
+		# between the nurse's legs from the crotch to the ankles. Nothing is
+		# broken and nothing overlaps: it is one object behind another, which
+		# is the class of fault only a rendered frame can find. Forward and in,
+		# so the ray past her clears the pot by 60cm and she stands against the
+		# dado.
+		# ...AND INSIDE THE FRAME. At (3.30, 1.35) she is a metre nearer the lens
+		# than the patient and her outside arm goes off the right edge, so the
+		# capsule was a large cropped nurse and a small whole patient. Back and
+		# in: the two of them are now within 20cm of the same distance, which is
+		# what makes them read as one scene rather than as a foreground object
+		# and a background object.
+		nurse.position = Vector3(2.85, 0, 0.62)
 		# HALFWAY BETWEEN THE PATIENT AND THE LENS. Turned fully to the patient
 		# she is a back; turned fully to the camera she is not talking to
 		# anybody. A capsule wants somebody mid-sentence.
-		nurse.rotation.y = -1.25
+		nurse.rotation.y = -1.62
 		nurse.set_mood(0.15)
+	# ...AND THE POT OUT FROM BEHIND HER. Moving the nurse got most of it and
+	# left a wedge of terracotta at her hip, which at capsule size is a stain
+	# on the scrubs. It is a posed frame and the plant is scenery: it goes.
+	if _plant != null and is_instance_valid(_plant):
+		_plant.position = Vector3(4.45, 0, -1.55)
 	# ...AND THE SECOND BED IS NOT IN A CAPSULE. It exists because the drifting
 	# title shot has a panel across its middle and needed somebody in both
 	# thirds; posed, it lands three screen percent from the patient this frame
@@ -311,9 +338,19 @@ func pose_for_capsule(on: bool) -> void:
 	# ...AND THE CAMERA A LITTLE FURTHER LEFT, which is what pushes the pair into
 	# the right two thirds this function's own docstring asks for. From the old
 	# vantage both of them projected within a few pixels of dead centre.
+	# ...AND CLOSE ENOUGH THAT THE PEOPLE ARE THE PICTURE.
+	#
+	# At 5.9 metres on a 52-degree lens the pair occupied a band across the
+	# middle of the frame with 17% empty ceiling over it and 28% empty floor
+	# under it — a wide shot of a small room, which is a screenshot. A capsule
+	# is read at 460x215 in a grid of other capsules; anything that is not the
+	# subject is wasted. 4.4 metres makes them a third bigger and the lower eye
+	# takes most of the floor back out.
 	cam.fov = 52.0
-	cam.position = Vector3(-2.05, 1.52, 3.05)
-	cam.look_at(Vector3(2.30, 1.14, -0.90), Vector3.UP)
+	cam.position = Vector3(-0.96, 1.38, 2.06)
+	# Aimed at chest height rather than at the hips: the difference is 27% of
+	# the frame in empty floor.
+	cam.look_at(Vector3(2.25, 1.28, -0.80), Vector3.UP)
 
 func _aim(t: float) -> void:
 	if _capsule:

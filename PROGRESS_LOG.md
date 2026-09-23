@@ -3886,3 +3886,57 @@ amount of tint could buy it back.
 thing on the floor that is not a hard surface, so it should have had a pile all
 along. Two rounds went into its colour before anybody took a reading off a
 frame, which is gotcha 40 word for word.
+
+## A Steam audit, and the patient who was a head on a slab
+
+Rated the build the way a store page is rated rather than the way a test suite
+is, and the gap was almost entirely presentation. The loop scored well and is
+invisible from outside; the two things a buyer actually sees — the capsule and
+the frame the game is played in — scored 2 and 5 out of 10.
+
+**The patient in the bed had no body.** An arm on this model was one rigid node
+from the shoulder to the knuckles; the leg has had a knee and an ankle since the
+walk went in, the arm never got either. Measured in the bed's own space, a
+straight arm hanging at a propped patient's side puts the hand at y 0.985 and
+the duvet's top surface is at 1.20 — so both arms and both hands were twenty
+centimetres inside the bedding, on every patient in every ward. `03_bedside` is
+the camera this whole game is played through and what it showed was a bald head
+floating over a teal slab.
+
+No check could see it and none of them was wrong to: nothing overlaps that
+should not, the arms are exactly where a person's arms go and the duvet is
+exactly where a duvet goes. The fault is that a person in a bed puts their
+forearms ON the covers and this model could not.
+
+The angles are solved rather than guessed. The trunk lies back at -0.52, which
+leaves nineteen centimetres between the shoulder and the duvet for an arm with
+sixty of reach, so a world-space forearm along (0, 0, 1) needs 1.047 rad of
+combined shoulder and elbow and a world upper arm along (0, -0.306, 0.952) needs
+0.740 of it at the shoulder. The first attempt used -0.25 and -1.15 — an arm
+folded across the lap — and put the hand at the right height with the elbow at
+1.178, under the covers: two hands with no arms attached to them, which is a
+worse picture than no hands at all.
+
+**The capsule had three faults and each is a different lesson.** The strapline
+was placed on the dado on the argument that white type on a cream wall is not
+type; true, and it only covers the first line, so the second fell onto the pale
+floor and dissolved. The camera sat 5.9 metres back on a 52-degree lens, which
+is a wide shot of a small room — 17% empty ceiling and 28% empty floor. And the
+sight line past the nurse ran straight through a potted plant, whose terracotta
+pot lines up exactly with the gap between a standing character's thighs: the
+first capsule this project rendered had a bright orange wedge between her legs
+from the crotch to the ankles. One object behind another, which is the one class
+of fault only a rendered frame can find.
+
+**Also:** the floating name over a bed was white on cream and unreadable at
+fifteen metres, because `label3d`'s 5-pixel keyline is sized for a sign set at
+three times that size. The main menu's third stop was a developer seed field.
+The view through every window was three flat bands, because `outside_mat` varies
+on `drift` and `drift` is per-vertex on a single 400-metre slab. And there was
+nowhere in the game to read what the six verbs cost, which is the one thing a
+player has to work out for the design to be legible at all.
+
+`00d_hero` is a store frame that is actually a photograph of the game: the old
+one is a diagnostic standing in a doorway, 48% empty plane, with a patient's
+head 45 pixels tall, and it cannot move because two measured pairs are taken
+from it.

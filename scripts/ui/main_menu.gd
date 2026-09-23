@@ -3,6 +3,9 @@ extends Control
 ## shared with a number.
 
 var _seed_field: LineEdit = null
+## Folded away until somebody asks for it: see the note where it is built.
+var _seed_box: VBoxContainer = null
+var _seed_open := false
 var _panel: PanelContainer = null
 var _scrim: ColorRect = null
 var _scene = null
@@ -51,17 +54,47 @@ func _ready() -> void:
 	# day, and it does not keep score across them.
 
 	var opts := UIKit.hbox(8)
+	# "How this works" IS ON THE TITLE SCREEN AS WELL AS IN THE PAUSE MENU.
+	#
+	# The tutorial is three lines and never comes back, which is right — but
+	# the one thing a stranger needs before they start is that the six verbs
+	# cost MINUTES and the minutes run out, and there was nowhere at all to
+	# read that. It goes next to Controls, because it is the same kind of
+	# question.
 	for entry in [["Settings", "settings"], ["Controls", "controls"],
-			["Credits", "credits"]]:
+			["How to play", "howto"], ["Credits", "credits"]]:
 		var screen_id := String(entry[1])
 		var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
 		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		opts.add_child(b2)
 	v.add_child(opts)
 	v.add_child(UIKit.spacer(10))
-	v.add_child(UIKit.label("Run seed (optional)", 13, UIKit.INK_DIM))
+	# THE SEED FIELD IS NOT THE THIRD THING ON THE MAIN MENU.
+	#
+	# "Run seed (optional) / leave blank for random" sat between the button row
+	# and the Quit button, above the fold, on the first screen of the game — so
+	# a stranger's third stop after New Career and Settings was a developer
+	# text box asking them for a number they have no way to have. It is a good
+	# feature (a shift worth talking about has an address) and it belongs
+	# exactly where features for the people who want them belong: behind one
+	# word, folded away, with the field built but hidden until it is asked for.
+	var seed_link := UIKit.button("Start from a seed…", func():
+		_seed_open = not _seed_open
+		_seed_box.visible = _seed_open
+		if _seed_open and _seed_field != null:
+			_seed_field.grab_focus())
+	seed_link.flat = true
+	seed_link.add_theme_font_size_override("font_size", 13)
+	seed_link.add_theme_color_override("font_color", UIKit.INK_DIM)
+	v.add_child(seed_link)
+	_seed_box = UIKit.vbox(4)
+	_seed_box.visible = false
+	_seed_box.add_child(UIKit.label(
+		"A number or a phrase. The same one always deals the same career.",
+		12, UIKit.INK_DIM))
 	_seed_field = UIKit.text_field("leave blank for random")
-	v.add_child(_seed_field)
+	_seed_box.add_child(_seed_field)
+	v.add_child(_seed_box)
 
 	v.add_child(UIKit.spacer(10))
 	v.add_child(UIKit.rule())
@@ -200,23 +233,57 @@ func pose_for_capsule(on: bool) -> void:
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var v := UIKit.vbox(6)
-	# The left third, at the height the pose leaves clear. Not centred: the
-	# whole point of the pose is that the people are on the right.
-	# LOW AND LEFT, over the dado rather than over the pale wall: white type on
-	# a cream wall is not type, and the whole point of the pose is that the left
-	# of the frame is quiet.
-	UIKit.place(v, Control.PRESET_TOP_LEFT, 74, 448, 520, 280)
-	var t := UIKit.title("CHRONIC CARE", 68, Color(0.96, 0.98, 0.97))
-	t.add_theme_constant_override("shadow_offset_y", 4)
+	# A GROUND FOR THE TYPE, BECAUSE "OVER THE QUIET LEFT" IS NOT A GROUND.
+	#
+	# The title block was placed on the dado on the argument that white type on
+	# a cream wall is not type — true, and it only covers the first line. The
+	# block is 280 tall and the dado band is about 120, so both lines of the
+	# strapline fell onto the pale floor below it and "Patients who really
+	# should have gone home by now" dissolved completely. Read at 460x215, a
+	# Steam capsule has no room to lose a line.
+	#
+	# So the left of the frame gets a ground rather than a hope: a vertical
+	# wedge, opaque at the edge and gone by 45%, which is what almost every
+	# capsule on the store does and is honest — it is a title treatment, not a
+	# retouch of the game. The room still shows through it.
+	var scrim := TextureRect.new()
+	scrim.texture = _capsule_wash()
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.stretch_mode = TextureRect.STRETCH_SCALE
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(scrim)
+	var v := UIKit.vbox(10)
+	# Vertically centred on the left rather than pinned to the dado, now that
+	# it carries its own ground.
+	UIKit.place(v, Control.PRESET_TOP_LEFT, 82, 330, 560, 300)
+	var t := UIKit.title("CHRONIC CARE", 76, Color(0.98, 0.99, 0.98))
+	t.add_theme_constant_override("shadow_offset_x", 2)
+	t.add_theme_constant_override("shadow_offset_y", 5)
+	t.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.75))
 	v.add_child(t)
-	v.add_child(UIKit.label("A broke doctor. A struggling hospital.",
-		21, Color(0.88, 0.93, 0.92)))
-	v.add_child(UIKit.label("Patients who really should have gone home by now.",
-		21, Color(0.88, 0.93, 0.92)))
+	for line in ["A broke doctor. A struggling hospital.",
+			"Patients who really should have gone home by now."]:
+		var l := UIKit.label(line, 23, Color(0.92, 0.95, 0.94))
+		l.add_theme_constant_override("shadow_offset_y", 2)
+		l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.7))
+		v.add_child(l)
 	root.add_child(v)
 	add_child(root)
 	_capsule_ui = root
+
+## The wedge behind the capsule's title. Built rather than shipped, like
+## everything else in this project: 64 pixels wide, one row, alpha only, eased
+## so it has no visible edge to it.
+func _capsule_wash() -> ImageTexture:
+	var img := Image.create(64, 4, false, Image.FORMAT_RGBA8)
+	for x in 64:
+		var t: float = float(x) / 63.0
+		# Opaque to a third of the width, then off by 45% of the frame.
+		var a: float = clampf(1.0 - maxf(0.0, t - 0.14) / 0.31, 0.0, 1.0)
+		a = a * a * (3.0 - 2.0 * a) * 0.72
+		for y in 4:
+			img.set_pixel(x, y, Color(0.04, 0.09, 0.12, a))
+	return ImageTexture.create_from_image(img)
 
 func _new_career() -> void:
 	var s := 0

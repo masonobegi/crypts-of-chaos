@@ -297,6 +297,7 @@ func _build_simple(id: String, _ctx: Dictionary) -> Control:
 		"controls": return _controls_screen()
 		"credits": return _credits_screen()
 		"licences": return _licences_screen()
+		"howto": return _howto_screen()
 	Log.w("unknown screen '%s'" % id, "UI")
 	return null
 
@@ -693,6 +694,66 @@ func _licences_screen() -> Control:
 	return parts[0]
 
 # ---- pause
+## WHAT THE SIX VERBS COST, IN ONE PLACE A PLAYER CAN REACH.
+##
+## The tutorial is three lines and that is deliberate — it teaches where the
+## chart is and that there is a number owed at eight, and it does not say what
+## to do about either. What it also does not do is ever come back. A returning
+## player has no way to re-read the rules, and the rule that matters most is
+## not a rule at all but an ARITHMETIC: six verbs, one twelve-hour clock, and
+## the clock is the only thing in this game that never comes back. A player who
+## has not worked out that a day is a budget is playing a different game.
+##
+## Every figure here is read off `WardDay`'s own constants. A reference card
+## with a number typed into it is gotcha 48 waiting to happen, and this is the
+## one surface where being wrong would actively mislead somebody.
+##
+## It says nothing about what any verb is FOR, because that is the game.
+func _howto_screen() -> Control:
+	var parts := _shell(560, 620, "How this works")
+	var v: VBoxContainer = parts[1]
+	v.add_child(UIKit.label(
+		"Five beds. One shift, eight in the morning to eight at night. " +
+		"Every one of these costs minutes off it, and the day is not long " +
+		"enough to do all of them to all five.",
+		14, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	v.add_child(UIKit.spacer(10))
+	for row in [
+		["Read the chart", WardDay.READ_COST,
+			"everything written today, and when it was written"],
+		["Ask how they have been", 0,
+			"free — and it goes no further unless you write it down"],
+		["Examine them", WardDay.EXAMINE_COST,
+			"you will know. It goes in no notes"],
+		["Order bloods", WardDay.ORDER_COST,
+			"back in %d minutes" % WardDay.TEST_TURNAROUND],
+		["Write it up yourself", WardDay.WRITE_COST,
+			"in your name, at whatever terminal you are standing at"],
+		["Ask the nurse to review them", WardDay.NURSE_COST,
+			"she writes what she finds, in her own name"],
+		["Ask the registrar", WardDay.COLLEAGUE_COST,
+			"when he is on this ward, and he covers two"],
+	]:
+		v.add_child(UIKit.row(String(row[0]),
+			"free" if int(row[1]) == 0 else "%d min" % int(row[1]),
+			UIKit.GOOD if int(row[1]) == 0 else UIKit.INK, 15, UIKit.INK))
+		v.add_child(UIKit.label("   " + String(row[2]), 12, UIKit.INK_DIM))
+	v.add_child(UIKit.spacer(10))
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label(
+		"At eight o'clock the ward sister goes through the day with you, and " +
+		"Vinnie takes what he is owed. Nothing here scores your choices for " +
+		"you: you find out what they were by what happens afterwards.",
+		13, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_LEFT, true))
+	v.add_child(UIKit.spacer(8))
+	v.add_child(UIKit.button("Back", func():
+		if _came_from == "pause":
+			_came_from = ""
+			open("pause", {})
+		else:
+			close()))
+	return parts[0]
+
 func _pause_screen() -> Control:
 	var parts := _shell(400, 430, "Paused")
 	var v: VBoxContainer = parts[1]
@@ -713,6 +774,9 @@ func _pause_screen() -> Control:
 	v.add_child(UIKit.button("Controls", func():
 		_came_from = "pause"
 		open("controls", {})))
+	v.add_child(UIKit.button("How this works", func():
+		_came_from = "pause"
+		open("howto", {})))
 	v.add_child(UIKit.spacer(8))
 	# A SHIFT IS ONE SITTING, AND THIS THROWS IT AWAY.
 	#

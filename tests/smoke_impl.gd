@@ -1789,6 +1789,38 @@ func _check_the_build_is_polite_to_the_machine() -> void:
 		"there is a way out of the game that is not through the title screen")
 	if paused != null:
 		paused.free()
+	# ...AND THE REFERENCE CARD SAYS WHAT THE VERBS ACTUALLY COST.
+	#
+	# It is the one screen in the game whose whole job is to be correct about
+	# numbers that live somewhere else, so a figure typed into it is gotcha 48
+	# on the surface where being wrong actively misleads somebody. Asked of the
+	# BUILT labels against `WardDay`'s own constants rather than of the source.
+	#
+	# WHAT IT DOES NOT CATCH, said out loud: both sides read the same constant,
+	# so moving `READ_COST` moves the card with it and this stays green — which
+	# is correct, because that is the card being RIGHT. It catches a row that
+	# has been dropped, a row that quotes a literal, and a row wired to the
+	# wrong constant. Proven red by deleting the registrar's line.
+	var howto = ui.call("_build_simple", "howto", {})
+	var htext := ""
+	if howto != null:
+		for n in _all_nodes(howto):
+			if n is Label:
+				htext += String(n.text) + "\n"
+	var missing: Array = []
+	for pair in [["reading a chart", WardDay.READ_COST],
+			["writing one", WardDay.WRITE_COST],
+			["examining somebody", WardDay.EXAMINE_COST],
+			["the nurse", WardDay.NURSE_COST],
+			["the registrar", WardDay.COLLEAGUE_COST],
+			["the lab", WardDay.TEST_TURNAROUND]]:
+		if htext.find("%d" % int(pair[1])) < 0:
+			missing.append("%s (%d min)" % [String(pair[0]), int(pair[1])])
+	_ok(htext.length() > 200 and missing.is_empty(),
+		"the reference card quotes every verb's real cost%s"
+			% ("" if missing.is_empty() else " — missing " + ", ".join(PackedStringArray(missing))))
+	if howto != null:
+		howto.free()
 	var lic = ui.call("_build_simple", "licences", {})
 	var text := ""
 	if lic != null:

@@ -123,6 +123,41 @@ var _mouth_corners: Array[MeshInstance3D] = []
 var _mood := 0.0
 var _head_y := 1.50
 var _arms: Array[Node3D] = []
+## AN ARM THAT CANNOT BEND CANNOT REST ON ANYTHING.
+##
+## The leg has had a knee and an ankle since the walk went in; the arm was one
+## rigid node from the shoulder to the knuckles. That is survivable standing up
+## and it is not survivable in a BED, which is the camera this whole game is
+## played through: a straight arm hanging at a patient's side is 20cm inside
+## the bedding, so every person in every ward frame was a head on a slab with
+## no shoulders, no arms and no hands. Measured, in the bed's own space: the
+## duvet's top surface is at 1.20 and the hand sat at 0.985.
+var _elbows: Array[Node3D] = []
+## How much the elbow carries at rest. Not zero — a straight arm is a
+## mannequin's, and the same argument as `ARM_REST_X`.
+const ELBOW_REST := -0.16
+## IN A BED, THE FOREARMS LIE ON THE COVERS — and these two are SOLVED for
+## that, not guessed at.
+##
+## The trunk lies back at -0.52, which puts the shoulder at y 1.394 in the
+## bed's own space, and the duvet's top surface is at 1.20. That is nineteen
+## centimetres of headroom for an arm with sixty centimetres of reach, so the
+## angles are not free: the upper arm has to run forward and only 18 degrees
+## below horizontal, and the forearm has to run flat along the covers.
+##
+## Working backwards through the trunk's own rotation, a world-space forearm
+## along (0, 0, 1) needs a combined shoulder+elbow of 1.047 rad and a world
+## upper arm along (0, -0.306, 0.952) needs 0.740 of it at the shoulder. That
+## leaves 0.307 at the elbow, and lands the elbow at y 1.302 and the hand at
+## 1.302 with its underside on 1.217 — resting on the duvet at 1.20.
+##
+## The FIRST attempt was -0.25 and -1.15, which is an arm folded across the
+## lap. It put the hand at the right height and the elbow at 1.178 — under the
+## covers — so the render was two hands with no arms attached to them, which
+## is a worse picture than no hands at all. Both numbers move together if
+## `Bed.MATTRESS_TOP`, the duvet's depth or the trunk angle changes.
+const SHOULDER_IN_BED := -0.74
+const ELBOW_IN_BED := -0.31
 var _torso: Node3D = null
 var _react_cooldown := 0.0
 ## Speed we are TRYING to walk at, captured before move_and_slide resolves the
@@ -725,19 +760,37 @@ func _build_body() -> void:
 		# and three down, which is inside the join rather than on top of it.
 		arm.add_child(Build.mi(Build.sphere_mesh(0.095 * limb),
 			Build.cloth_mat(outfit, 0.0), Vector3(sx * -0.030, -0.035, 0)))
+		# THE UPPER ARM ONLY. This was one 56cm taper from the shoulder to the
+		# wrist, which is why the arm could not bend: see `_elbows`.
 		arm.add_child(Build.mi(Build.taper_mesh(Vector2(0.135 * limb, 0.135 * limb),
-			Vector2(0.190 * limb, 0.190 * limb), 0.56, 0.070),
-			Build.cloth_mat(outfit, LINE), Vector3(0, -0.26, 0)))
+			Vector2(0.165 * limb, 0.165 * limb), 0.30, 0.062),
+			Build.cloth_mat(outfit, LINE), Vector3(0, -0.155, 0)))
+		# The elbow, and everything below it. Same arrangement as the knee: a
+		# joint node the pose rotates, with the forearm hanging off it, so the
+		# reach from shoulder to knuckles is unchanged at 0.60.
+		var elbow := Node3D.new()
+		elbow.position = Vector3(0, -0.30, 0)
+		elbow.rotation.x = ELBOW_REST
+		arm.add_child(elbow)
+		# NO INK ON THE JOINT, and NOT WIDER THAN THE SLEEVE. Gotcha 88 on the
+		# shoulder and gotcha 82 on the wrist, both of which this piece would
+		# repeat: a filler half inside two solids still has a silhouette
+		# against them, and a ball wider than the limb reads as a pad.
+		elbow.add_child(Build.mi(Build.sphere_mesh(0.080 * limb),
+			Build.cloth_mat(outfit, 0.0), Vector3.ZERO))
+		elbow.add_child(Build.mi(Build.taper_mesh(Vector2(0.165 * limb, 0.165 * limb),
+			Vector2(0.190 * limb, 0.190 * limb), 0.26, 0.070),
+			Build.cloth_mat(outfit, LINE), Vector3(0, -0.13, 0)))
 		# A WRIST IS THINNER THAN A SLEEVE, and this one was not: a capsule
 		# 16.4cm across poking out of a sleeve that ends at 15 made the whole
 		# arm one tube from shoulder to knuckles, and the comment two lines down
 		# — "the hand is WIDER than the wrist" — was describing a hand 1.4cm
 		# narrower than the arm it is on. Eleven centimetres is a wrist, and it
 		# is what makes the hand read as a hand rather than as the end of a pipe.
-		arm.add_child(Build.mi(Build.capsule_mesh(0.056, 0.15),
-			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.50, 0)))
-		arm.add_child(Build.mi(Build.rbox_mesh(Vector3(0.15, 0.17, 0.10), 0.048),
-			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.60, 0.01)))
+		elbow.add_child(Build.mi(Build.capsule_mesh(0.056, 0.15),
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.20, 0)))
+		elbow.add_child(Build.mi(Build.rbox_mesh(Vector3(0.15, 0.17, 0.10), 0.048),
+			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE), Vector3(0, -0.30, 0.01)))
 		# A THUMB. The hand was one rounded box, which is a mitten, and a mitten
 		# is the thing on the end of the arm of every person in the building —
 		# including the one holding a chart eighteen inches from the camera. It
@@ -746,10 +799,11 @@ func _build_body() -> void:
 		# long before it counts anything.
 		var thumb := Build.mi(Build.rbox_mesh(Vector3(0.055, 0.095, 0.06), 0.026),
 			Build.mat(skin, SKIN_ROUGH, 0.0, Color(0, 0, 0), LINE),
-			Vector3(-sx * 0.072, -0.585, 0.045))
+			Vector3(-sx * 0.072, -0.285, 0.045))
 		thumb.rotation = Vector3(0.30, 0.0, sx * 0.42)
-		arm.add_child(thumb)
+		elbow.add_child(thumb)
 		_arms.append(arm)
+		_elbows.append(elbow)
 
 		# Thigh, then a KNEE, then shin and shoe.
 		#
@@ -840,7 +894,21 @@ func _build_body() -> void:
 	# wall, over their face. The name is for picking a bed out from the door;
 	# once you are at the bedside the interaction prompt already says who this
 	# is, twice.
-	_nametag = Build.label3d(display, 0.062, Color(0.99, 0.99, 0.96))
+	# A HEAVIER KEYLINE, BECAUSE THIS ONE HAS NO PLATE BEHIND IT.
+	#
+	# Every other piece of text in the world is a `_wall_sign`, which is a dark
+	# quad with the words on it. This one floats: it has to be legible against
+	# a cream wall, a teal dado, a window full of sky and the back of a nurse's
+	# head, and at fifteen metres the default 5-pixel outline comes out at about
+	# one and a third screen pixels. Read off `00d_hero`, "Pieter Achterberg"
+	# over the nearest bed is white-on-cream and cannot be read at all — and
+	# the name over a bed is how you pick the bed you want from the doorway,
+	# which is the one job this label has.
+	#
+	# 10 and fully opaque. The note on the default warns that 12 merged the
+	# glyphs of adjacent letters, and it is about SIGNS: a sign is set at three
+	# times this size, so the same fraction of a glyph is three times the halo.
+	_nametag = Build.label3d(display, 0.062, Color(0.99, 0.99, 0.96), true, null, 10)
 	_nametag.position = Vector3(0, 1.98 * height_scale, 0)
 	# Godot fades a GeometryInstance3D by distance for us. `begin` is the NEAR
 	# limit — below it the label is not drawn at all — so this is "appears once
@@ -853,7 +921,7 @@ func _build_body() -> void:
 	_nametag.visibility_range_fade_mode = GeometryInstance3D.VISIBILITY_RANGE_FADE_SELF
 	add_child(_nametag)
 
-	_speech = Build.label3d("", 0.075, Color(1, 1, 1))
+	_speech = Build.label3d("", 0.075, Color(1, 1, 1), true, null, 10)
 	_speech.position = Vector3(0, 2.20 * height_scale, 0)
 	_speech.width = 900
 	_speech.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -1493,8 +1561,14 @@ func set_seated(on: bool) -> void:
 		# Down and forward, elbows in — hands land on the thighs rather than
 		# hovering over them.
 		var sx: float = -1.0 if i == 0 else 1.0
-		arm.rotation.x = -0.95 if on else ARM_REST_X
+		arm.rotation.x = -0.62 if on else ARM_REST_X
 		arm.rotation.z = (0.16 if i == 0 else -0.16) if on else sx * ARM_REST_Z
+		# ...AND THE ELBOW TAKES THE REST OF IT. With a rigid arm the whole
+		# -0.95 had to come from the shoulder, which points a straight arm at
+		# the floor in front of the knees; a seated person's upper arm hangs
+		# and the FOREARM goes along the thigh.
+		if i < _elbows.size():
+			(_elbows[i] as Node3D).rotation.x = -0.70 if on else ELBOW_REST
 	if _nametag:
 		_nametag.position.y = (1.58 if on else 1.92) * height_scale
 	if _speech:
@@ -1557,13 +1631,30 @@ func set_in_bed(on: bool) -> void:
 	# Same: in a bed the foot goes with the shin, toes along the mattress.
 	for foot in _feet:
 		foot.rotation.x = 0.0
-	# ...AND THE ARMS DOWN THE SIDES. At -0.30 with the trunk upright they lay
-	# forward over the chest, so the four blue-grey tubes in the bedside frame
-	# were two arms and two legs and you could not tell which was which.
+	# ...AND THE ARMS ON TOP OF THE COVERS, WHICH IS THE WHOLE FRAME.
+	#
+	# At -0.30 on a rigid arm the hand ended up at y 0.985 in the bed's own
+	# space and the duvet's top surface is at 1.20 — so both arms and both
+	# hands were TWENTY CENTIMETRES INSIDE THE BEDDING, and what
+	# `03_bedside` showed, which is the camera this game is played through, was
+	# a bald head floating over a teal slab with no shoulders, no arms and no
+	# hands anywhere in the picture. It is the single loudest thing wrong with
+	# the way this game looks and it was invisible to every check in the repo,
+	# because nothing is overlapping that should not be: the arms are exactly
+	# where a person's arms go and the duvet is exactly where a duvet goes.
+	#
+	# A person propped up in a hospital bed has their forearms ON the covers.
+	# That needs an elbow (see `_elbows`); with one, the shoulder goes down the
+	# side as before and the elbow folds the forearm forward across the lap.
 	for i in _arms.size():
 		var arm: Node3D = _arms[i]
-		arm.rotation.x = -0.30 if on else 0.0
-		arm.rotation.z = (0.26 if i == 0 else -0.26) if on else 0.0
+		arm.rotation.x = SHOULDER_IN_BED if on else 0.0
+		# Hands in toward the lap rather than out at the sides of the mattress.
+		# Gentler than it looks: with the arm nearly straight the whole 60cm of
+		# reach swings on this, so 0.22 is already 13cm in at the knuckles.
+		arm.rotation.z = (0.22 if i == 0 else -0.22) if on else 0.0
+	for elbow in _elbows:
+		elbow.rotation.x = ELBOW_IN_BED if on else ELBOW_REST
 	# ...and the labels come down with the head. They were pinned for a patient
 	# whose head was a metre above the pillow.
 	if _nametag:

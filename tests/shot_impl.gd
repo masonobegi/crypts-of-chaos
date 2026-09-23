@@ -19,6 +19,24 @@ var out_dir := ""
 ## at z=11.65. Getting these wrong put the first render inside a bedside table
 ## looking at the sky.
 const SHOTS := [
+	# THE ONE A STORE PAGE LEADS WITH, and until now there was not one.
+	#
+	# `02_ward_from_door` is the frame this repo has always called the hero and
+	# it is a DIAGNOSTIC: it stands in the doorway and looks level down the
+	# room because that is the vantage two measured pairs are taken from
+	# (`02b_fittings_off` and `09_ward_evening`), and it cannot move without
+	# both of those moving with it and both readings being re-taken.
+	#
+	# It is also a bad photograph, and measured rather than felt: of the 710
+	# pixels of 3D below the HUD, 140 are flat ceiling and 160 are flat floor —
+	# 48% of the picture is an empty plane — and a patient's head in it is 45
+	# pixels tall. Nothing in that frame says what this game is about.
+	#
+	# So the store gets its own, and the subject is the thing the game actually
+	# is: a doctor standing over somebody, close enough to read their face,
+	# with the rest of the ward and the rest of the decisions running away
+	# behind them. Bed two's side at eye height, angled down the bay.
+	["00d_hero", Vector3(15.25, 1.62, 10.30), Vector3(12.10, 1.28, 11.70)],
 	["01_corridor", Vector3(1.5, 1.7, 2.0), Vector3(18.0, 1.5, 2.0)],
 	["02_ward_from_door", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0)],
 	# THE SAME FRAME WITH EVERY CEILING FITTING IN THE BUILDING SWITCHED OFF.

@@ -177,7 +177,7 @@ If it ever goes wrong, that is the file to send.
 
 ```
 368 assertions   — units, integration, save round-trips, floor connectivity
-294 smoke checks — boots the real scene and plays a whole shift, on three seeds
+295 smoke checks — boots the real scene and plays a whole shift, on three seeds
  32 ship checks  — is it a BUILD: identity, corrupt saves, RNG across a load
  39 playtests    — day-level, against 7 criteria: does the risk actually cost
                    anything, and is the biggest night on the board a dirty one

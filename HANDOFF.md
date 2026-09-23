@@ -79,7 +79,7 @@ authored people across 7 wards, 144 boards.**
 ## Previous log — 2026-09-23 (the store-page audit)
 
 **State: green and shipped-shaped.** Version 1.0.0. `run_tests.sh` passes end to
-end (368 assertions, 292 smoke checks on three seeds); `screenshots.sh` renders
+end (368 assertions, 295 smoke checks on three seeds); `screenshots.sh` renders
 all 30 frames and passes its own checks.
 
 Nothing is half-done in the working tree. The last two sessions were audits of

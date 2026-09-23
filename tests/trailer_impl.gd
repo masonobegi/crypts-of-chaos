@@ -76,15 +76,21 @@ const CUT := [
 	},
 	{
 		"name": "02_ward", "secs": 4.0,
-		"from": Vector3(10.0, 1.70, 4.6), "to": Vector3(10.0, 1.70, 7.2),
-		"at_from": Vector3(10.0, 1.35, 12.0), "at_to": Vector3(11.4, 1.25, 12.0),
+		"from": Vector3(10.0, 1.70, 4.9), "to": Vector3(10.0, 1.70, 8.6),
+		"at_from": Vector3(10.0, 1.35, 12.0), "at_to": Vector3(11.6, 1.22, 12.0),
 		"clock": 8 * 60 + 40, "ward": -1, "ui": "",
 		"text": "",
 	},
 	{
 		"name": "03_bedside", "secs": 4.0,
-		"from": Vector3(15.6, 1.62, 10.10), "to": Vector3(14.6, 1.58, 10.55),
-		"at_from": Vector3(12.10, 1.30, 11.70), "at_to": Vector3(12.10, 1.28, 11.75),
+		# STARTS AT THE HERO VANTAGE AND ARCS, RATHER THAN CLOSING ON IT.
+		# `00d_hero` in shot_impl is a measured, framed composition; the first
+		# version of this shot started half a metre nearer and dollied a further
+		# metre IN, which put the nearest patient's head across a third of the
+		# frame with the subject of the shot behind it. A dolly toward a subject
+		# that is already framed is a zoom into a crop.
+		"from": Vector3(15.45, 1.62, 10.05), "to": Vector3(15.05, 1.60, 10.62),
+		"at_from": Vector3(12.10, 1.28, 11.70), "at_to": Vector3(12.10, 1.28, 11.72),
 		"clock": 9 * 60 + 30, "ward": -1, "ui": "",
 		"text": "Some of them are ready to go home.",
 	},
@@ -104,7 +110,13 @@ const CUT := [
 	},
 	{
 		"name": "06_evening", "secs": 4.0,
-		"from": Vector3(3.0, 1.70, 9.2), "to": Vector3(7.0, 1.70, 9.6),
+		# STARTED AT x=3, WHICH IS INSIDE THE WARD'S WORKING END. `_dress_ward_top`
+		# fills both ends of the near wall — screen, hamper, crates, cooler — so
+		# the first three metres of the dolly had a grey folding screen across the
+		# bottom-left quarter of the frame. Nothing was broken and nothing
+		# overlapped: one object in front of another, which gotcha 141 records as
+		# the one class of fault only a rendered frame can find.
+		"from": Vector3(4.8, 1.70, 9.3), "to": Vector3(8.4, 1.70, 9.7),
 		"at_from": Vector3(18.5, 1.25, 11.2), "at_to": Vector3(18.5, 1.20, 11.4),
 		"clock": 19 * 60 + 25, "ward": 4, "ui": "",
 		"text": "The ward goes quiet. Nobody is watching now.",
@@ -260,6 +272,7 @@ func _pose(s: Dictionary, t: float) -> void:
 	# render in the still harness and would cost forty here.
 	_stand_where_the_camera_is(cam)
 	_clear_the_lens(cam)
+	_quiet_the_hud()
 
 ## UP FROM BLACK AT THE HEAD OF THE FILM AND DOWN AT THE END OF IT, and
 ## nowhere in between — a dip between every shot is a slideshow with a transition
@@ -277,6 +290,29 @@ func _set_fade(s: Dictionary, want: int) -> void:
 		var left: int = want - 1 - _shot_frame
 		a = clampf(1.0 - float(left) / float(n), 0.0, 1.0)
 	_fade.color = Color(0.02, 0.03, 0.04, a)
+
+## THREE PIECES OF HUD THAT FIGHT A CAPTION, AND ONLY THREE.
+##
+## The clock, the money plate and the objective plate STAY — they are what the
+## game looks like and a trailer that hides its own interface is selling a
+## different product. What goes is the bottom of the screen, which is where the
+## caption lives and where the game already puts three other things: the
+## controls reminder (a first-run onboarding hint that reads as a debug strip in
+## a film), the toasts, and the tannoy subtitles. The first render had "Tannoy:
+## 'Would the" clipped mid-sentence across a caption in two separate shots —
+## two text systems writing to the same corner, which is gotcha 121's lesson
+## about the objective arrow in a different place.
+##
+## EVERY FRAME, not once: `HUD.set_modal` toggles all three as cards open and
+## close, so a one-shot hide is undone by the first screen a shot opens.
+func _quiet_the_hud() -> void:
+	var hud = tree.get_first_node_in_group("hud")
+	if hud == null:
+		return
+	for field in ["_help", "_toasts", "_subtitle_panel"]:
+		var n = hud.get(field)
+		if n != null and is_instance_valid(n) and n is CanvasItem:
+			(n as CanvasItem).visible = false
 
 func _camera() -> Camera3D:
 	var pl = tree.get_first_node_in_group("player")

@@ -69,6 +69,7 @@ const SHOTS := [
 	["02d_ward_ash", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 1],
 	["02e_ward_beech", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 4],
 	["02f_ward_2a", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 5],
+	["02g_ward_dalrymple", Vector3(10.0, 1.7, 4.8), Vector3(10.0, 1.3, 12.0), -1, 6],
 	["03_bedside", "bedside"],
 	["04_face", "face"],
 	["04b_lineup", "lineup"],

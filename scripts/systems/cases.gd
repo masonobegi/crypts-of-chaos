@@ -2607,7 +2607,377 @@ const DAY_SIX := [
 	},
 ]
 
-const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR, DAY_FIVE, DAY_SIX]
+## WARD SEVEN — THE ORDER YOU DO THINGS IN.
+##
+## The other six wards are about WHERE the truth is: in a document, in a body,
+## in a household, in a colleague's plan, in the visitors, in the other people
+## in the bay. This one is about WHEN. Its ill patient is
+## `only_visible_in_person` AND `test_reveals` and nothing else — a two-flag
+## profile no other ward has — so the chart is clean, the nurse's round is
+## clean, and there are exactly two routes to him: your own hands, which cost
+## twenty-five minutes, and the laboratory, which costs ten to order and
+## seventy-five to come back. Eighty-five minutes of lead time on a
+## seven-hundred-and-twenty-minute day.
+##
+## Which makes the whole ward a clock problem rather than a reading problem.
+## Everybody else on it is a temptation to decide early: four beds whose
+## handover notes are unambiguous, whose examinations find nothing, and whose
+## money is good enough that clearing them before eleven looks like competence.
+## Do that and the one bed that needed the lab is the one you are still holding
+## at eight o'clock with nothing written under it.
+##
+## AND THE TRAP IS ALREADY IN THE RULES. `Contradictions._objective_refutes`
+## fires when a normal result post-dates an entry supporting the hold, so a
+## player who learns "order bloods on everybody" from this ward is flagged for
+## it on the next one. The lesson is order the bed you SUSPECT, early — not
+## every bed, and not at four o'clock.
+##
+## Tiers mirror ward one exactly, which is the shape the frontier probe has
+## already searched two and a half thousand ways: a premium pair at beds one and
+## four, a state bed at two held for a reason that has nothing to do with
+## medicine, and standard beds at three and five.
+const DAY_SEVEN := [
+	{
+		"id": "dallimore",
+		"name": "Rufus Dallimore",
+		"age": 58,
+		"bed": 1,
+		"they": "he",
+		"condition": "Day four after a hernia repair, observations normal",
+		"tier": Tier.PREMIUM,
+		"truly_well": false,
+		## THE WARD'S THESIS, AND BOTH ENDS OF THE PAIR CARRY EXACTLY THESE TWO.
+		## `only_visible_in_person` takes him off the rounds, the nurse and the
+		## laboratory's own opinion; `test_reveals` puts the laboratory back —
+		## but only if somebody asks it, and only after seventy-five minutes.
+		"only_visible_in_person": true,
+		"test_reveals": true,
+		"suggestible": 0.2,
+		"recall": 0.75,
+		"summary": "Apyrexial on every set of observations. Wound reviewed and described as clean. Eating and drinking.",
+		"opening": "They keep telling me the numbers are good. I'll take their word for it.",
+		"later": "I've gone off my food. That's not like me, ask anybody who knows me.",
+		"evening": "I've sat in this chair since two because lying down is worse. Nobody's asked why I'm in the chair.",
+		"pressed": "I'm not making a fuss. I've told you what's different and you can do what you like with it.",
+		"on_your_note": "Is that going down as me complaining? Because I've not complained once.",
+		"on_hold": "Right. Well. I'd rather be here than at home wondering.",
+		"on_discharge": "If you say so. You've all said so since Tuesday.",
+		"exam_unwell": "Clammy, tachycardic when he stands, and the lower end of the wound is tense and exquisitely tender in a way no observation chart has a box for.",
+		"note": "Undersells everything. The chart is clean because he answers \"fine\" to every question anybody has thought to ask.",
+		"readmit_summary": "Back at 21:40 with the wound opened and frank pus on the dressing.",
+		"readmit_opening": "It went in the taxi. I felt it go.",
+		"readmit_hold": "Yes. I'm not doing that journey twice.",
+		"readmit_discharge": "You can't. Look at it. You can actually look at it this time.",
+		"readmit_exam": "The lower third of the wound is open, the edges are dusky, and he is shocked and sweating.",
+		"overnight": "Observations remained within limits all night. Sat out in the chair from two, which nobody recorded.",
+		"readmit_later": "I said I'd gone off my food. That was the whole of it. That was the warning.",
+		"readmit_evening": "The man opposite watched them take the dressing down. He's not said a word since.",
+		"readmit_pressed": "Same answer as this morning, only now there's something to see.",
+		"readmit_on_your_note": "Put down that I told you at eleven. Not for me. For whoever's next.",
+	},
+	{
+		"id": "vardy",
+		"name": "Estelle Vardy",
+		"age": 62,
+		"bed": 1,
+		"they": "she",
+		"condition": "Post-operative day three, uncomplicated",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 0.7,
+		"summary": "Wound clean and dry. Mobilising independently. Analgesia stopped yesterday.",
+		"opening": "I've been up and down that corridor four times this morning. I counted.",
+		"later": "My sister is outside in the car park. She's been in the car park since ten.",
+		"evening": "I've had my coat on since lunchtime, which is optimistic of me.",
+		"pressed": "There's nothing to press me about. I feel perfectly ordinary and I'd like to go.",
+		"on_your_note": "What are you writing? Only my sister will ask and I'd like to be able to tell her.",
+		"on_hold": "Another night. Is that something you've found, or something you haven't?",
+		"on_discharge": "Thank you. I'll say nothing else in case you change your mind.",
+		"exam_well": "A clean, dry, healing wound, a soft abdomen, and a woman who gets off the bed faster than you do.",
+		"note": "Well, and knows it. Will accept a night if you ask, and will remember that you asked.",
+		"readmit_summary": "Back at 22:15 with a temperature and a red, hot wound.",
+		"readmit_opening": "It came up this evening. Within the hour. It was fine and then it wasn't.",
+		"readmit_hold": "Yes, please. My sister isn't going through that car park again.",
+		"readmit_discharge": "I've got a temperature. You can feel it from there.",
+		"readmit_exam": "Spreading erythema two fingers beyond the wound edge, hot to the hand, and she is febrile.",
+		"overnight": "Slept through. Up unaided to the bathroom twice. Asked about transport at six.",
+		"readmit_later": "I was so pleased with myself this morning. Four times up that corridor.",
+		"readmit_evening": "I've told my sister not to come. She's coming anyway.",
+		"readmit_pressed": "I told you when it started. I'm not going to make it earlier to suit anybody.",
+		"readmit_on_your_note": "Does it say it was fine this morning? Because it genuinely was.",
+	},
+	{
+		"id": "applegarth",
+		"name": "Winnie Applegarth",
+		"age": 84,
+		"bed": 2,
+		"they": "she",
+		"condition": "Fall at home, no fracture, medically fit",
+		"tier": Tier.STATE,
+		"truly_well": true,
+		"no_care_at_home": true,
+		"social_reason": "Lives alone at the top of two flights with no rail on the second, and the warden's post has been vacant since March.",
+		"suggestible": 0.25,
+		"recall": 0.8,
+		"summary": "Radiographs clear. Mobilising with a frame on the flat. No acute medical issue.",
+		"opening": "I'm not ill. I want that said first, because everybody starts as though I am.",
+		"later": "It's the second flight. The first one has a rail on it and the second one hasn't.",
+		"evening": "It's dark in that stairwell by four and the light's been out since before Christmas.",
+		"pressed": "I've told you what the trouble is and it isn't anything you can give me for it.",
+		"on_your_note": "Write the stairs down. Nobody ever writes the stairs down.",
+		"on_hold": "Thank you. I know that's a bed somebody else could have.",
+		"on_discharge": "Right. I'll manage. I've been managing since 1998.",
+		"exam_well": "Bruised, stiff and entirely sound; she gets out of the chair without using her hands and is quietly pleased that you noticed.",
+		"note": "Medically finished. The reason to keep her is at the top of two flights of stairs and has nothing to do with medicine.",
+		"readmit_summary": "Back at 23:05 having fallen on the second flight. Fractured left wrist.",
+		"readmit_opening": "It was the second flight. I did say it was the second flight.",
+		"readmit_hold": "Yes. And I'd like it written down why, this time.",
+		"readmit_discharge": "With this? I can't turn a key with this.",
+		"readmit_exam": "An obvious dinner-fork deformity of the left wrist, and a woman who is more angry than frightened.",
+		"overnight": "Slept poorly. Asked the night staff twice whether anybody had telephoned about the stairs.",
+		"readmit_later": "Eleven hours. That's how long I lasted. Eleven hours.",
+		"readmit_evening": "I'll not be going back there now, will I. Not with the arm.",
+		"readmit_pressed": "I've said it. Second flight, no rail, light's out. It hasn't changed since this morning.",
+		"readmit_on_your_note": "Put the stairs. Put the stairs this time.",
+	},
+	{
+		"id": "nkrumah",
+		"name": "Cecil Nkrumah",
+		"age": 79,
+		"bed": 2,
+		"they": "he",
+		"condition": "Chest infection, treated, medically fit",
+		"tier": Tier.STATE,
+		"truly_well": true,
+		"no_care_at_home": true,
+		"social_reason": "Moved into a sheltered flat a fortnight ago; the only key is with a niece who is in Aberdeen until Sunday.",
+		"suggestible": 0.3,
+		"recall": 0.7,
+		"summary": "Afebrile forty-eight hours. Chest clear. Oral course completed.",
+		"opening": "The chest is finished. That's not what I'm sat here about.",
+		"later": "The key is in Aberdeen. That's the whole of the difficulty and it sounds stupid when I say it.",
+		"evening": "I keep thinking somebody will ring and say it's sorted. Nobody's rung.",
+		"pressed": "I'm not going to invent a cough for you. I'd rather say the true thing and be turned down.",
+		"on_your_note": "Have you put about the key? It has to be the key, not the chest.",
+		"on_hold": "That's very good of you. I'd shake your hand, but I've been told not to.",
+		"on_discharge": "And go where? No — don't answer that. It isn't your fault.",
+		"exam_well": "Chest clear front and back, and he takes a deep breath for you without being asked twice.",
+		"note": "The medicine finished on Tuesday. What is left is a locked door and a niece in Aberdeen.",
+		"readmit_summary": "Back at 22:40 after four hours in the stairwell of a building he could not get into.",
+		"readmit_opening": "I sat on the steps. From six until a woman came out at ten.",
+		"readmit_hold": "Please. I'll not ask again after tonight.",
+		"readmit_discharge": "I've already done that once today.",
+		"readmit_exam": "Cold, dehydrated, and the chest has coarsened at the right base since this morning.",
+		"overnight": "Settled. Asked the night staff whether anybody had telephoned Aberdeen.",
+		"readmit_later": "Four hours on a concrete step at my age. That's what that decision was.",
+		"readmit_evening": "The woman who let me in wanted to know who I was. I hadn't an answer she liked.",
+		"readmit_pressed": "It's the same thing it was this morning. The key. It's only ever been the key.",
+		"readmit_on_your_note": "Write the key down properly this time, so the next one doesn't have to be told.",
+	},
+	{
+		"id": "boulos",
+		"name": "Mariam Boulos",
+		"age": 44,
+		"bed": 3,
+		"they": "she",
+		"condition": "Migraine with aura, resolved",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.15,
+		"recall": 0.9,
+		"summary": "Headache settled after the second dose. Neurological examination normal throughout.",
+		"opening": "It's gone. It went about five this morning and it's stayed gone.",
+		"later": "I've had the lights on all afternoon on purpose, to test it.",
+		"evening": "Nothing. I've been trying to provoke it all day and there is nothing.",
+		"pressed": "You'll not get a different answer by asking a different way.",
+		"on_your_note": "Can I see? I've been told before that a note said something I didn't say.",
+		"on_hold": "For a headache that's stopped? All right, but I think you're being careful at me.",
+		"on_discharge": "Good. I've a class at nine and I'd rather not cancel it twice.",
+		"exam_well": "A normal neurological examination performed twice, because she asked you to do the eyes again.",
+		"note": "Precise about her own symptoms and unimpressed by vagueness in anybody else's notes.",
+		"readmit_summary": "Back at 21:20 with the worst headache of her life and vomiting.",
+		"readmit_opening": "This is not the same thing. I want to be very clear that this is not the same thing.",
+		"readmit_hold": "Yes. Yes, obviously.",
+		"readmit_discharge": "No. I've had migraines for twenty years and this is not one.",
+		"readmit_exam": "Photophobic, vomiting, and she cannot get her chin anywhere near her chest.",
+		"overnight": "No further headache. Declined the night dose, and was right to.",
+		"readmit_later": "I told you at eleven that I know the difference. I do know the difference.",
+		"readmit_evening": "The lights. Can somebody do something about the lights.",
+		"readmit_pressed": "Worst of my life, came on in a second, and I have already said so three times.",
+		"readmit_on_your_note": "Read it back to me. I want to hear what it says before you file it.",
+	},
+	{
+		"id": "rook",
+		"name": "Douglas Rook",
+		"age": 57,
+		"bed": 3,
+		"they": "he",
+		"condition": "Atypical chest pain, all investigations negative",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.6,
+		"recall": 0.45,
+		"summary": "Serial troponins negative. Tracings unchanged. Exercise tolerance normal on the ward.",
+		"opening": "Everything's come back clear, so I'm told. Three times clear.",
+		"later": "I walked to the far end and back with the nurse and never felt a thing.",
+		"evening": "It's my wife who wants me kept in. I'd have gone at lunchtime.",
+		"pressed": "There's nothing more to tell you. It was a tightness, it lasted a minute, it hasn't come back.",
+		"on_your_note": "She'll read that, you know. My wife. She reads everything.",
+		"on_hold": "She'll be pleased. I'll not be, but she will.",
+		"on_discharge": "Right. You can be the one that telephones her.",
+		"exam_well": "Nothing at all: a comfortable man with a normal examination who walks the corridor without a pause.",
+		"note": "Wants to go. Somebody at home wants him kept, and he will agree with whoever spoke last.",
+		"readmit_summary": "Back at 23:50 with crushing central chest pain and a changed tracing.",
+		"readmit_opening": "This is different. This is the one they were looking for.",
+		"readmit_hold": "Don't ask me. Ask her. But yes.",
+		"readmit_discharge": "You're not sending me anywhere. Look at the tracing.",
+		"readmit_exam": "Grey, sweating, and in genuine pain for the first time since he arrived.",
+		"overnight": "Slept. No further pain. Asked at six whether the last blood test was back.",
+		"readmit_later": "Three times clear. I kept saying it like it was a qualification.",
+		"readmit_evening": "She was right. I'm going to have to say that out loud at some point.",
+		"readmit_pressed": "It started in the car. That's all there is and I've said it to four people.",
+		"readmit_on_your_note": "Does it say the first lot were negative? Only that's the bit that matters now.",
+	},
+	{
+		"id": "loxley",
+		"name": "Harriet Loxley",
+		"age": 51,
+		"bed": 4,
+		"they": "she",
+		"condition": "Pyelonephritis, treated, afebrile thirty-six hours",
+		"tier": Tier.PREMIUM,
+		"truly_well": true,
+		"suggestible": 0.2,
+		"recall": 0.85,
+		"summary": "Apyrexial since yesterday morning. Switched to oral. Passing urine normally.",
+		"opening": "I feel human again. I'd forgotten what that was like.",
+		"later": "I've had a shower and put my own clothes on, which is the best thing that's happened all week.",
+		"evening": "I keep waiting for the shivering to start again. It hasn't.",
+		"pressed": "I'm well. I'm not going to pretend otherwise so that somebody can tick something.",
+		"on_your_note": "What's gone in? Only I'd like to know what my own file says about me.",
+		"on_hold": "If you want. I'll not fight you on it, but I'd like to know what it's for.",
+		"on_discharge": "Thank you. Genuinely.",
+		"exam_well": "No tenderness anywhere, a normal temperature taken twice, and she is irritated by how long the second one took.",
+		"note": "Better, and clear-headed about it. Will ask what a hold is FOR and will not be fobbed off.",
+		"readmit_summary": "Back at 20:30 rigoring, having stopped the tablets nobody told her to keep taking.",
+		"readmit_opening": "I thought the shivering meant it was working. Somebody should have said.",
+		"readmit_hold": "Yes. I'm not doing this at home again.",
+		"readmit_discharge": "I'm shaking. You can see me shaking from where you're stood.",
+		"readmit_exam": "Rigoring, tender in the right loin, and a temperature of thirty-nine.",
+		"overnight": "Apyrexial throughout. Tolerated the oral switch. Asked about work on Monday.",
+		"readmit_later": "Nobody told me to keep taking them. I'd have kept taking them.",
+		"readmit_evening": "I got as far as my own front step and had to sit down on it.",
+		"readmit_pressed": "It started at five. I have said five o'clock to everybody I have met.",
+		"readmit_on_your_note": "Put that I wasn't told. Not to blame anybody — so it's written down somewhere.",
+	},
+	{
+		"id": "wasilewski",
+		"name": "Teodor Wasilewski",
+		"age": 66,
+		"bed": 4,
+		"they": "he",
+		"condition": "Cellulitis, responding, markers said to be improving",
+		"tier": Tier.PREMIUM,
+		"truly_well": false,
+		## THE OTHER END OF THE PAIR, AND IT CARRIES THE SAME TWO FLAGS AND NO
+		## OTHERS. Ward two and ward four were each authored with their mechanic
+		## on ONE end of their pair, so on half of every career's nights the
+		## ward played with its own premise switched off; `data_impl` asserts the
+		## parity now and this is what passing it looks like.
+		"only_visible_in_person": true,
+		"test_reveals": true,
+		"suggestible": 0.35,
+		"recall": 0.65,
+		"summary": "Redness described as settling. Apyrexial at every recorded observation. For oral switch.",
+		"opening": "They say it's going the right way. I'm not going to argue with anybody.",
+		"later": "It's tighter than it was. That might be nothing. It might be the dressing.",
+		"evening": "I've kept the leg up all day because it's easier up. That's all I'll say about it.",
+		"pressed": "I've told you. It's tighter. If that's not useful to you then it's not useful.",
+		"on_your_note": "Is that from me, or from the chart? Because they don't say the same thing.",
+		"on_hold": "All right. I'd sooner somebody looked at it properly than not.",
+		"on_discharge": "If that's the decision. I'll not make a scene about it.",
+		"exam_unwell": "The leg is tense to the mid-calf, the redness has crept two fingers past yesterday's pen mark, and he cannot bear you to press it — none of which is in the observation chart.",
+		"note": "Agreeable, undemonstrative, and describing a worsening leg in the flattest voice on the ward.",
+		"readmit_summary": "Back at 22:00 septic, with the redness above the knee.",
+		"readmit_opening": "It went past the knee in the time it took to get home.",
+		"readmit_hold": "Yes. Please.",
+		"readmit_discharge": "Look at where the pen mark is. Look at where it is now.",
+		"readmit_exam": "Erythema to the mid-thigh, blistering over the shin, and he is hypotensive and confused.",
+		"overnight": "Apyrexial. Observations unremarkable. Kept the leg elevated all night without being asked.",
+		"readmit_later": "I did say it was tighter. I said it in that same chair.",
+		"readmit_evening": "The pen mark's still on me. That's how fast it went.",
+		"readmit_pressed": "Tighter this morning, above the knee tonight. That is the whole account.",
+		"readmit_on_your_note": "Write down that the chart said one thing and the leg said another.",
+	},
+	{
+		"id": "barrowclough",
+		"name": "Sunita Barrowclough",
+		"age": 39,
+		"bed": 5,
+		"they": "she",
+		"condition": "Gastroenteritis, resolved",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.3,
+		"recall": 0.7,
+		"summary": "No vomiting for thirty hours. Tolerating diet. Bloods normalised.",
+		"opening": "I've eaten a whole breakfast and kept it, which is a first for the week.",
+		"later": "I've had lunch as well. I'm telling anybody who'll listen.",
+		"evening": "Nobody at home knows I'm in here. I'd quite like to keep it that way.",
+		"pressed": "It's stopped. You can ask me differently and it'll still have stopped.",
+		"on_your_note": "That's fine. I just like to know what's being said.",
+		"on_hold": "Overnight? I suppose one more won't kill me.",
+		"on_discharge": "Brilliant. I'll get the bus before it's dark.",
+		"exam_well": "A soft, non-tender abdomen, and a woman visibly annoyed to still be wearing a gown.",
+		"note": "Straightforwardly better. There is nothing here to find and she will not help you invent any.",
+		"readmit_summary": "Back at 21:05 with a rigid abdomen and a perforation on the film.",
+		"readmit_opening": "It came on in the bus station. I couldn't stand up straight.",
+		"readmit_hold": "Yes. God, yes.",
+		"readmit_discharge": "I can't walk. You'd be putting me out on the pavement.",
+		"readmit_exam": "A board-like abdomen, absent bowel sounds, and she will not let you take your hand off.",
+		"overnight": "Ate and kept a full supper. Slept. Asked twice about the first bus.",
+		"readmit_later": "I was that pleased about the breakfast. I keep thinking about the breakfast.",
+		"readmit_evening": "I've had to ring home in the end. I didn't want to and I've had to.",
+		"readmit_pressed": "In the bus station, about seven, and it hasn't let up since.",
+		"readmit_on_your_note": "Say I was fine at four. Because I was fine at four.",
+	},
+	{
+		"id": "fewtrell",
+		"name": "Ambrose Fewtrell",
+		"age": 71,
+		"bed": 5,
+		"they": "he",
+		"condition": "Exacerbation of airways disease, recovered",
+		"tier": Tier.STANDARD,
+		"truly_well": true,
+		"suggestible": 0.2,
+		"recall": 0.75,
+		"summary": "Off oxygen forty-eight hours. Saturations maintained on air. Chest clear.",
+		"opening": "I'm better than I was and worse than I'd like, which is where I usually live.",
+		"later": "I did the corridor with the physiotherapist and didn't have to stop.",
+		"evening": "I've been eyeing that door since teatime. That's not a complaint about anybody.",
+		"pressed": "You're after something I haven't got. I'm as well as I get.",
+		"on_your_note": "Read it out, if you don't mind. My eyes are worse than my chest.",
+		"on_hold": "If there's a reason, keep me. If there isn't, I'd rather my own bed.",
+		"on_discharge": "Right you are. I'll send somebody for my case.",
+		"exam_well": "A quiet chest, saturations you can watch holding steady, and he walks to the window and back to prove it.",
+		"note": "Honest about his own baseline, which is rarer on this ward than it ought to be.",
+		"readmit_summary": "Back at 23:30 unable to speak in full sentences.",
+		"readmit_opening": "It went. In the night. It just went.",
+		"readmit_hold": "Aye. I'd be glad of it.",
+		"readmit_discharge": "I can't — get across — the room.",
+		"readmit_exam": "Using every accessory muscle he has, three words at a time, and frightened.",
+		"overnight": "Saturations maintained on air all night. No nebulisers required.",
+		"readmit_later": "I did that corridor yesterday. Yesterday, I did that corridor.",
+		"readmit_evening": "I keep thinking if I sit up straighter it'll come easier. It doesn't.",
+		"readmit_pressed": "Two in the morning. That's all I've got and it's all there is.",
+		"readmit_on_your_note": "Put down that I was walking yesterday. Somebody ought to know how fast it turns.",
+	},
+]
+
+const DAYS := [DAY_ONE, DAY_TWO, DAY_THREE, DAY_FOUR, DAY_FIVE,
+	DAY_SIX, DAY_SEVEN]
 
 ## WHICH WARD YOU ARE STANDING IN, AND WHAT IT LOOKS LIKE.
 ##
@@ -2679,13 +3049,29 @@ const WARDS := [
 	},
 	{
 		"name": "Ward 2A",
-		## The newest of the six and the coldest: a green-grey floor, an
+		## The newest of the first six and the coldest: a green-grey floor, an
 		## aubergine dado, and bays picked from a contract catalogue by
 		## somebody who was never going to work in it.
 		"floor": Color(0.72, 0.78, 0.76),
 		"dado": Color(0.40, 0.30, 0.46),
 		"bays": [Color(0.56, 0.50, 0.70), Color(0.46, 0.66, 0.66),
 			Color(0.70, 0.56, 0.66), Color(0.50, 0.60, 0.74), Color(0.62, 0.70, 0.64)],
+	},
+	{
+		"name": "Dalrymple Ward",
+		## A FOURTH SHAPE OF NAME — a letter, three trees, two numbers, and now
+		## somebody's surname on a brass plate by the door. A set of names that
+		## are all the same kind of thing reads as generated, which is the one
+		## thing six authored wards must not look like.
+		##
+		## And the only warm-dark ward in the building: a putty floor that was
+		## cream once and a chocolate dado that has outlasted everybody who
+		## chose it. The bays are the muted primaries of a paediatric overflow
+		## this ward was, briefly, in about 1978.
+		"floor": Color(0.78, 0.75, 0.70),
+		"dado": Color(0.42, 0.30, 0.22),
+		"bays": [Color(0.76, 0.46, 0.42), Color(0.46, 0.56, 0.70),
+			Color(0.82, 0.70, 0.42), Color(0.52, 0.66, 0.50), Color(0.50, 0.64, 0.66)],
 	},
 ]
 
@@ -3103,7 +3489,7 @@ static func draw_five(day: int, picks: Array = []) -> Array:
 ## ignored and the slots draw independently — which is what happens on any ward
 ## that has not been given the alternates yet.
 const ILL_PAIR_BY_DAY := {1: [1, 4], 2: [4, 5], 3: [4, 1], 4: [1, 3],
-	5: [1, 4], 6: [1, 3]}
+	5: [1, 4], 6: [1, 3], 7: [1, 4]}
 
 ## Which way the coin came down for this career and this ward. Same mixer as the
 ## slot draw, on a key that cannot collide with a bed number.
@@ -3341,8 +3727,61 @@ const ROUNDS := [10 * 60, 13 * 60, 16 * 60, 19 * 60]
 ## LATEST, so a handover note timed after the player's own note quietly
 ## outranked it, and the ward's own opinion beat yours on the beds where you had
 ## bothered to write early.
+const PRIOR_SEVEN := [
+	{
+		"patient": "dallimore", "minute": 6 * 60 + 30,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Apyrexial. Wound checked at six and described as clean. Nil to report.",
+	},
+	{
+		"patient": "vardy", "minute": 7 * 60 + 25,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Independent to the bathroom overnight. Dressing dry. Asking about transport.",
+	},
+	{
+		"patient": "applegarth", "minute": 7 * 60 + 5,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Walked the bay with the frame twice. Steady. Anxious about the stairs at home.",
+	},
+	{
+		"patient": "nkrumah", "minute": 7 * 60 + 45,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Chest clear on the night round. Course finished. Asked about his door key.",
+	},
+	{
+		"patient": "boulos", "minute": 6 * 60 + 50,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "No further headache. Declined the night dose. Reading with the light on.",
+	},
+	{
+		"patient": "rook", "minute": 7 * 60 + 15,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "No further pain. Third troponin negative. Asked at six whether it was back.",
+	},
+	{
+		"patient": "loxley", "minute": 7 * 60 + 35,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Apyrexial. Oral switch tolerated. Showered and dressed before the round.",
+	},
+	{
+		"patient": "wasilewski", "minute": 6 * 60 + 40,
+		"claim": "SETTLED", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Apyrexial. Redness described as settling within the marked line. For oral switch.",
+	},
+	{
+		"patient": "barrowclough", "minute": 7 * 60 + 20,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Supper taken and kept. No vomiting since Tuesday. Asking about the first bus.",
+	},
+	{
+		"patient": "fewtrell", "minute": 7 * 60 + 50,
+		"claim": "MOBILISING", "author": "NURSE", "author_id": "Adeyemi",
+		"text": "Saturations held on air overnight. No nebulisers. Walked to the window at seven.",
+	},
+]
+
 const PRIOR_BY_DAY := [PRIOR_ONE, PRIOR_TWO, PRIOR_THREE, PRIOR_FOUR,
-	PRIOR_FIVE, PRIOR_SIX]
+	PRIOR_FIVE, PRIOR_SIX, PRIOR_SEVEN]
 
 static func prior_entries(day := -1) -> Array:
 	var d: int = day if day > 0 else GameState.day

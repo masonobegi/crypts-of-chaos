@@ -58,6 +58,20 @@ examine → write it up → order bloods, and do not ask the two people who have
 already told you. Every one of those traps is legible on the chart before you
 touch anything, which is what makes it fair.
 
+**The seventh ward is built on the first two and on the clock.** Both ends of
+its pair — Rufus Dallimore and Teodor Wasilewski — carry
+`only_visible_in_person` AND `test_reveals` and nothing else, which is a profile
+no other ward has: the chart is clean, the nurse's round is clean, and there are
+exactly two routes in. Your own hands cost twenty-five minutes. The laboratory
+costs ten to order and **seventy-five to come back**, so a request made after
+about a quarter to seven lands after you have had to decide. Everybody else on
+Dalrymple Ward is a temptation to clear the ward before eleven and go home early.
+
+It also sets the trap for the ward after it: `_objective_refutes` fires when a
+normal result post-dates an entry supporting a hold, so a player who learns
+"order bloods on everybody" here is flagged for it somewhere else. Order the bed
+you suspect, early.
+
 ---
 
 ## The six verbs, in minutes

@@ -11,19 +11,19 @@ but the half-finished edit in the buffer.
 > most of which were deliberately cut. If anything below ever stops matching
 > `git log`, believe the log.
 
-## Live log — 2026-09-22
+## Live log — 2026-09-23
 
 **State: green and shipped-shaped.** Version 1.0.0. `run_tests.sh` passes end to
-end (370 assertions, 291 smoke checks on three seeds); `screenshots.sh` renders
-all 29 frames and passes its own checks.
+end (368 assertions, 292 smoke checks on three seeds); `screenshots.sh` renders
+all 30 frames and passes its own checks.
 
-Nothing is half-done in the working tree. This session was an audit of the
-BUILDING rather than of the systems: it was opened with "things phasing into the
-ground, items looking bad on a shelf", and everything below came out of
-intersecting boxes and photographing frames rather than out of reading code.
+Nothing is half-done in the working tree. The last two sessions were audits of
+the BUILDING and then of the STORE PAGE, and between them they are where every
+commit below came from.
 
 | What |
 |---|
+| The patient in the bed was a head on a slab |
 | Four curtain rails were hanging from nothing |
 | Nothing in this building is inside anything else |
 | Six IV stands were hanging ninety centimetres above the floor |
@@ -31,39 +31,37 @@ intersecting boxes and photographing frames rather than out of reading code.
 
 **In flight right now:** nothing.
 
-**What was wrong, in the order it was found.** Every character's toe went 5.4cm
-under the lino at part of the walk cycle — a rigid foot on a swinging shin, in a
-world where the floor is y=0 in the body's own space, and invisible to
-twenty-nine screenshots because a screenshot is one frame of a cycle. Six IV
-stands and two carts floated, because `BoxShape3D` is centred on its
-`CollisionShape3D` and both call sites had a hand-written half-box lift
-compensating for it. Three piles of scenery stood on nothing and two pieces
-stood inside each other. The handover board's bottom sixteen centimetres were
-inside the worktop in front of it. Everything on an outside wall — nine pieces,
-including a sharps bin beside every bed — was mounted on GLASS, because all four
-runs of the shell are glazed over their whole length. The bay strip under the
-beds, which is a third of the floor in the hero frame, was an unlit slab of flat
-colour, and fixing that found two sets of wayfinding stripes painted on top of
-each other down the corridor. Four objects on the nurses' station worktop were
-boxes, including a printer that was one white brick and a rota that was a second
-and worse copy of `Dressing.whiteboard`. Every face had its nose between its
-eyes and its mouth under its nostrils. And every bay divider in the ward hung
-from two steel posts with seventy centimetres of air above them.
+**Where this build actually stands, rated the way a buyer rates it.** The loop
+is the asset and it is the thing a store page cannot show: truth, record and
+belief allowed to disagree, six verbs on one twelve-hour clock, no dominant
+strategy across a 2,601-strategy search per ward. Everything weak is
+presentation, and the two surfaces a buyer sees were the two worst things in
+the build — the capsule could not be read and the frame the game is played in
+was a head on a slab. Both are fixed; what is still short is listed under
+**Open** and the top three are a TRAILER, ACHIEVEMENTS and LENGTH. A career is
+nine nights at eight to fifteen minutes a shift, which is an hour and a half to
+two and a half hours to see everything the game has, one win state and one lose
+state. That is a five-to-eight dollar game as it stands and no amount of polish
+moves it.
 
-**Seven checks were added and every one was proven red**: scenery rests on a
-surface; nobody walks through the floor over a whole cycle; a prop sits on its
-own base; no two loose pieces are inside each other; nothing you read is buried
-in the furniture; nothing is hung on the glass without a pier behind it; no two
-markings are painted on each other; everything hung from the ceiling reaches it;
-and every face has its features in the right order.
+**What the last session changed.** An arm was one rigid node from the shoulder
+to the knuckles — the leg has had a knee and an ankle since the walk went in —
+so both arms and both hands sat twenty centimetres inside the bedding on every
+patient in every ward, and `03_bedside` was a bald head floating over a teal
+slab. It has an elbow now and the angles are solved rather than guessed. The
+capsule's strapline fell off the dado onto the pale floor and dissolved; the
+camera was 5.9m back on a 52-degree lens with 45% of the frame empty plane; and
+the sight line past the nurse ran through a plant pot whose terracotta lined up
+exactly with the gap between her legs. The floating name over a bed was white
+on cream and unreadable at fifteen metres. The main menu's third stop was a
+developer seed field. The view through every window was three flat bands. And
+there was nowhere in the game to read what the six verbs cost.
 
-**Two things were tried and reverted**, which is the half worth keeping.
-Un-inking the hair style pieces: on white hair the ink stacks into a black band
-and a bobbed cut reads as headphones, but the band is the CROWN's silhouette and
-taking the line off the style pieces changes nothing else — the reading is the
-shape. And a register of "piers built so far": `reskin()` runs every morning and
-frees the ward's dressing, so from the first day rollover it answered "already
-covered" for pieces whose backing no longer existed.
+**`00d_hero` is new and is the frame a store page should lead with.**
+`02_ward_from_door` is a DIAGNOSTIC and cannot move — two measured pairs are
+taken from it — and it is a bad photograph: measured, 48% of its 3D area is
+flat ceiling or flat floor and a patient's head in it is 45 pixels tall. The
+new one is 0%.
 
 ## Previous log — 2026-09-10
 
@@ -198,7 +196,7 @@ prints the exact command to fetch them.
 
 ## Last known good
 
-**370 assertions · 291 smoke checks on three seeds · 39 day criteria runs
+**368 assertions · 292 smoke checks on three seeds · 39 day criteria runs
 against 7 criteria · the authored-data, ship, draw and economics checks · 6
 career properties on three seeds · a 2,601-strategy frontier probe per ward plus
 an honest day on all 128 reachable boards · both play runs · the quiet check ·
@@ -219,6 +217,19 @@ reach, and the ward order is drawn per career.
 
 ## Open, in rough order of value
 
+0. **THERE IS NO TRAILER, THERE ARE NO ACHIEVEMENTS, AND A CAREER IS UNDER
+   THREE HOURS.** These are the three things standing between this build and a
+   store page that converts, and none of them is a bug. A trailer is the single
+   asset a Steam page is mostly judged on and this project has never produced
+   one second of motion — `screenshots.sh` can pose and photograph anything, so
+   the machinery is there and what is missing is a shot list. Achievements need
+   GodotSteam, which is a GDExtension and a build step, and a page with zero of
+   them reads as unfinished to a large slice of buyers. And nine nights at eight
+   to fifteen minutes a shift is an hour and a half to two and a half hours,
+   with one win state and one lose state: that is a five-to-eight dollar game
+   and polish does not move it. Item 10 below is the honest lever on the last
+   one and its own note explains why the obvious version of it breaks the
+   economy.
 1. **THE GAME HAS NEVER BEEN PLAYED BY A PERSON.** Every design number in it —
    the verb costs, the round times, the forty-five-minute window — is validated
    by probes rather than by anybody's hands. This is the biggest open item by

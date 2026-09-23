@@ -1834,6 +1834,94 @@ func _check_the_build_is_polite_to_the_machine() -> void:
 	if lic != null:
 		lic.free()
 
+	# ...AND EVERY ACHIEVEMENT IN THE LIST CAN ACTUALLY BE REACHED.
+	#
+	# `Achievements.holds()` is a `match` over an id that falls through to
+	# `return false`, so an entry added to `LIST` with no branch written for it
+	# is an achievement that renders correctly on the screen, ships, and can
+	# never be awarded to anybody — no error, nothing missing, exactly the shape
+	# of a constant nobody reads (gotcha 15) with a trophy on it.
+	#
+	# Asked by building ONE maximal career — everything cleared, nothing flagged,
+	# the strikes at the edge, the forgiveness spent, one habit at four — and
+	# demanding that every entry holds against it. That also catches the other
+	# half: two conditions that contradict each other, which is invisible in a
+	# list of twelve one-line predicates read one at a time.
+	#
+	# It walks `LIST` in order and writes into `unlocked` as it goes, because
+	# `both_endings` is a read over the unlocked set and has to see the two
+	# endings unlocked before it. NOTHING IS SAVED — `evaluate()` would write
+	# user://achievements.json, and a test suite must not award a player their
+	# achievements or take them away.
+	var keep_unlocked: Dictionary = Achievements.unlocked.duplicate()
+	var keep_record = GameState.flag(DoctorRecord.FLAG, {})
+	var keep_debt := GameState.debt_remaining()
+	Achievements.unlocked.clear()
+	GameState.set_flag("debt_remaining", 0)
+	var maxed := DoctorRecord.new()
+	maxed.nights = Cases.DAYS.size() + 3
+	maxed.clean_nights = maxed.nights
+	maxed.flagged_nights = 0
+	maxed.referrals = 0
+	maxed.strikes = DoctorRecord.STRIKES_TO_STRIKE_OFF
+	maxed.forgiven = DoctorRecord.FORGIVENESS
+	# `backdated` and not `reversed_a_colleague`, because `long_way` asks for
+	# none of the latter and `the_list` asks for four of something.
+	maxed.counts = {"backdated": 4}
+	maxed.save_to_state()
+	var unreachable: Array = []
+	for a in Achievements.LIST:
+		var aid := String(a["id"])
+		if Achievements.holds(aid, maxed):
+			Achievements.unlocked[aid] = true
+		else:
+			unreachable.append(aid)
+	Achievements.unlocked = keep_unlocked
+	GameState.set_flag(DoctorRecord.FLAG, keep_record)
+	GameState.set_flag("debt_remaining", keep_debt)
+	_ok(Achievements.LIST.size() > 0 and unreachable.is_empty(),
+		"every one of the %d achievements can be reached%s"
+			% [Achievements.LIST.size(), "" if unreachable.is_empty()
+				else " — unreachable: " + ", ".join(PackedStringArray(unreachable))])
+	# And every one of them has a Steam API name, because the mapping is the
+	# whole reason that dictionary is in the same file as the list: an entry
+	# added to one and not the other is an achievement that unlocks in the game
+	# and never appears in the player's Steam profile.
+	var unnamed: Array = []
+	for a in Achievements.LIST:
+		if String(Achievements.STEAM_API_NAME.get(String(a["id"]), "")) == "":
+			unnamed.append(String(a["id"]))
+	var orphan_names: Array = []
+	for k in Achievements.STEAM_API_NAME:
+		if Achievements.entry(String(k)).is_empty():
+			orphan_names.append(String(k))
+	_ok(unnamed.is_empty() and orphan_names.is_empty(),
+		"and every one carries a Steam API name, with none left over%s"
+			% ("" if unnamed.is_empty() and orphan_names.is_empty()
+				else " — %s / %s" % [str(unnamed), str(orphan_names)]))
+	# ...AND THE SCREEN LISTS ALL OF THEM. Built rather than grepped, for the
+	# same reason as the reference card above: a row that is built and never
+	# parented passes a grep and is gotcha 53. It is also the only thing that
+	# would notice `_achievements_screen` quietly rendering an empty panel,
+	# which is what a screen driven off a list looks like when the list is
+	# reached through a name that has moved.
+	var ach = ui.call("_build_simple", "achievements", {})
+	var atext := ""
+	if ach != null:
+		for n in _all_nodes(ach):
+			if n is Label:
+				atext += String(n.text) + "\n"
+	var unlisted: Array = []
+	for a in Achievements.LIST:
+		if atext.find(String(a["name"])) < 0:
+			unlisted.append(String(a["name"]))
+	_ok(unlisted.is_empty(),
+		"and the achievements screen lists every one of them%s"
+			% ("" if unlisted.is_empty()
+				else " — missing " + ", ".join(PackedStringArray(unlisted))))
+	if ach != null:
+		ach.free()
+
 ## EVERY SETTING A PLAYER OWNS HAS A ROW ON THE SCREEN.
 ##
 ## The other half of gotcha 15. That one is about a constant nothing reads; this

@@ -298,6 +298,7 @@ func _build_simple(id: String, _ctx: Dictionary) -> Control:
 		"credits": return _credits_screen()
 		"licences": return _licences_screen()
 		"howto": return _howto_screen()
+		"achievements": return _achievements_screen()
 	Log.w("unknown screen '%s'" % id, "UI")
 	return null
 
@@ -650,6 +651,41 @@ func _credits_screen() -> Control:
 	v.add_child(UIKit.button("Back", _back))
 	return parts[0]
 
+## THE LIST, LOCKED ENTRIES AND ALL.
+##
+## A locked entry shows its name and what it asks for. Nothing here is hidden
+## behind a "???" — the four things this game keeps secret are what a patient is
+## actually like, and an achievement that hid its own description would read as
+## though it were about to tell you one. None of them does; see the note at the
+## top of scripts/autoload/Achievements.gd.
+##
+## SCROLLED, because there are twelve of them and `_shell` caps its own height
+## against the window — at 140% interface size the canvas is 643 units tall and
+## a list this long would put its own Back button off the bottom of the monitor,
+## which is the fault the cap was added for in the first place.
+func _achievements_screen() -> Control:
+	var parts := _shell(660, 700, "Achievements")
+	var v: VBoxContainer = parts[1]
+	v.add_child(UIKit.label("%d of %d" % [Achievements.count(), Achievements.LIST.size()],
+		15, UIKit.INK_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	var list := UIKit.vbox(6)
+	for a in Achievements.LIST:
+		var got: bool = Achievements.has(String(a["id"]))
+		var box := UIKit.panel(UIKit.PANEL_LIGHT, 6)
+		var bv := UIKit.vbox(2)
+		bv.add_child(UIKit.label(String(a["name"]), 15,
+			UIKit.ACCENT if got else UIKit.INK_DIM))
+		bv.add_child(UIKit.label(String(a["desc"]), 13,
+			UIKit.INK if got else UIKit.INK_DIM,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
+		box.add_child(bv)
+		list.add_child(box)
+	var sc := UIKit.scroll(list)
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	v.add_child(sc)
+	v.add_child(UIKit.button("Back", _back))
+	return parts[0]
+
 ## THE LICENCE TEXT, IN THE GAME, WHICH IS WHERE IT HAS TO BE.
 ##
 ## Three OFL families ship with their notices beside them and the SIL Open Font
@@ -777,6 +813,9 @@ func _pause_screen() -> Control:
 	v.add_child(UIKit.button("How this works", func():
 		_came_from = "pause"
 		open("howto", {})))
+	v.add_child(UIKit.button("Achievements", func():
+		_came_from = "pause"
+		open("achievements", {})))
 	v.add_child(UIKit.spacer(8))
 	# A SHIFT IS ONE SITTING, AND THIS THROWS IT AWAY.
 	#

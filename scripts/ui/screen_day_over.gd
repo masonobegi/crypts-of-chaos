@@ -22,9 +22,17 @@ func _build() -> void:
 	var hud = get_tree().get_first_node_in_group("hud")
 	if hud != null and hud.has_method("_refresh_money"):
 		hud.call("_refresh_money")
+	# AT THE HANDOVER AND NOWHERE ELSE. The long note at the top of
+	# scripts/autoload/Achievements.gd says why: the design rule that nothing in
+	# the interface scores the player's choice for them survives only if the
+	# scoring happens AFTER the ward sister has said her piece, which is the one
+	# moment in the game where a verdict is the subject. It runs above the ending
+	# branch so that an ending's own entry lands on the card that announces it
+	# rather than on a card that never comes.
+	var earned: Array = Achievements.evaluate()
 	var ending := GameState.ending()
 	if ending != "":
-		_ending_card(ending)
+		_ending_card(ending, earned)
 		return
 
 	# THE VERDICT MAKES A SOUND. This card — the stamp, what Vinnie wanted, what
@@ -109,6 +117,8 @@ func _build() -> void:
 	for line in _consequences(verdict, short):
 		v.add_child(UIKit.label("· " + String(line), 14, UIKit.INK,
 			HORIZONTAL_ALIGNMENT_LEFT, true))
+
+	_earned_block(v, earned)
 
 	var foot := UIKit.vbox(6)
 	foot.add_child(UIKit.button("Work tomorrow", func():
@@ -277,7 +287,7 @@ func _carry(verdict: String, short: bool) -> void:
 ## handler and emitted by nobody, and the debt was a constant the loan shark
 ## asked for every night forever. A game whose worst outcome is "denser nurse
 ## rounds, indefinitely" has nothing at the top of its own risk curve.
-func _ending_card(ending: String) -> void:
+func _ending_card(ending: String, earned: Array) -> void:
 	# A FINISHED CAREER IS FINISHED.
 	#
 	# Both endings offer "Start again" and "Main menu" and neither touched the
@@ -338,6 +348,8 @@ func _ending_card(ending: String) -> void:
 			"Nothing on your record at all. She never once had to ask you twice.",
 			14, UIKit.GOOD, HORIZONTAL_ALIGNMENT_LEFT, true))
 
+	_earned_block(v, earned)
+
 	var foot := UIKit.vbox(6)
 	foot.add_child(UIKit.button("Start again", func():
 		GameState.start_new_career()
@@ -345,6 +357,27 @@ func _ending_card(ending: String) -> void:
 	foot.add_child(UIKit.button("Main menu", func():
 		_leave("res://scenes/MainMenu.tscn")))
 	card_footer(foot)
+
+## WHAT THE CAREER HAS ADDED UP TO, on the two cards where a verdict is already
+## the subject.
+##
+## NAME ONLY, one line each, and no count against a total. The End of Shift card
+## has been measured with 23% of itself below the fold once already, so anything
+## added to it is added as a line rather than as a box — and a "3 / 12" progress
+## figure would be the interface putting a number on a career, which is the one
+## thing this game has never done. The full list, locked entries and all, is a
+## screen of its own off the pause menu and the title screen.
+func _earned_block(v: VBoxContainer, earned: Array) -> void:
+	if earned.is_empty():
+		return
+	v.add_child(UIKit.rule())
+	v.add_child(UIKit.label("ACHIEVEMENTS", 12, UIKit.INK_DIM))
+	for id in earned:
+		var a: Dictionary = Achievements.entry(String(id))
+		if a.is_empty():
+			continue
+		v.add_child(UIKit.label("· " + String(a["name"]), 14, UIKit.ACCENT,
+			HORIZONTAL_ALIGNMENT_LEFT, true))
 
 func ward():
 	return get_tree().get_first_node_in_group("ward_day")

@@ -46,6 +46,7 @@ GameState="*res://scripts/autoload/GameState.gd"
 AudioMgr="*res://scripts/autoload/AudioMgr.gd"
 SaveSystem="*res://scripts/autoload/SaveSystem.gd"
 Settings="*res://scripts/autoload/Settings.gd"
+Achievements="*res://scripts/autoload/Achievements.gd"
 
 [display]
 

@@ -18,7 +18,7 @@ func _ready() -> void:
 	# Short on purpose. A PanelContainer grows to fit, so this is a floor and
 	# not a ceiling — the panel is exactly as tall as what is in it, which is
 	# different on a first run and a hundredth.
-	var panel := UIKit.center_panel(660, 420)
+	var panel := UIKit.center_panel(660, 460)
 	_panel = panel
 	add_child(panel)
 	var v := UIKit.vbox(10)
@@ -61,13 +61,24 @@ func _ready() -> void:
 	# cost MINUTES and the minutes run out, and there was nowhere at all to
 	# read that. It goes next to Controls, because it is the same kind of
 	# question.
-	for entry in [["Settings", "settings"], ["Controls", "controls"],
-			["How to play", "howto"], ["Credits", "credits"]]:
-		var screen_id := String(entry[1])
-		var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
-		b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		opts.add_child(b2)
+	#
+	# TWO ROWS, AND THE SECOND ONE IS WHY THE PANEL IS FORTY PIXELS TALLER.
+	# Five buttons across 660 units is 124 each and "Achievements" does not fit
+	# in 124 — a button whose text is clipped reads as a broken button, and this
+	# is the first screen anybody sees. The panel's height is a literal rather
+	# than something the box works out, because `center_panel` pins the offsets
+	# and a VBox that outgrows them grows DOWNWARD off the centre line.
+	var opts2 := UIKit.hbox(8)
+	for row in [[opts, [["Settings", "settings"], ["Controls", "controls"],
+				["How to play", "howto"]]],
+			[opts2, [["Achievements", "achievements"], ["Credits", "credits"]]]]:
+		for entry in row[1]:
+			var screen_id := String(entry[1])
+			var b2 := UIKit.button(String(entry[0]), func(): _open_menu_screen(screen_id))
+			b2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			(row[0] as HBoxContainer).add_child(b2)
 	v.add_child(opts)
+	v.add_child(opts2)
 	v.add_child(UIKit.spacer(10))
 	# THE SEED FIELD IS NOT THE THIRD THING ON THE MAIN MENU.
 	#
